@@ -1,4 +1,5 @@
 // app/_layout.tsx
+import "./global.css";
 import { Stack } from "expo-router";
 import { ThemeProvider } from "@/store/themeStore";   // hum abhi banayenge
 import { StatusBar } from "expo-status-bar";
@@ -13,12 +14,10 @@ export default function RootLayout() {
         <ThemeProvider>
           <ThemeWrapper>
             <StatusBar style="auto" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: "slide_from_right",
-              }}
-            />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="splash" />
+              <Stack.Screen name="index" />
+            </Stack>
           </ThemeWrapper>
         </ThemeProvider>
       </SafeAreaProvider>

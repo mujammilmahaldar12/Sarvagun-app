@@ -1,16 +1,16 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState } from "react";
 
-// 1: Define context type
+// Type of theme context
 type ThemeContextType = {
   theme: string;
-  setTheme: (theme: string) => void;
+  setTheme: (value: string) => void;
 };
 
-// 2: Create context with default null
+// Create context
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
-// 3: Provider
-export function ThemeProvider({ children }: { children: ReactNode }) {
+// Provider
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState("light");
 
   return (
@@ -20,13 +20,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// 4: Hook
+// Hook
 export function useThemeStore() {
-  const ctx = useContext(ThemeContext);
+  const context = useContext(ThemeContext);
 
-  if (!ctx) {
+  if (!context) {
     throw new Error("useThemeStore must be used inside ThemeProvider");
   }
 
-  return ctx;
+  return context;
 }
