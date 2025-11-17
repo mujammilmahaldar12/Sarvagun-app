@@ -18,7 +18,7 @@ export default function Splash() {
         ref={animationRef}
         autoPlay
         loop={false}
-        style={{ width: 250, height: 250 }}
+        style={{ width: "100%", height: "100%" }}
         source={require("../assets/animations/sarvagun.json")}
       />
     </View>

@@ -1,32 +1,24 @@
-import React, { createContext, useContext, useState } from "react";
+import { create } from "zustand";
 
-// Type of theme context
-type ThemeContextType = {
-  theme: string;
-  setTheme: (value: string) => void;
+type ThemeMode = "light" | "dark";
+type ThemeName = "default" | "winter" | "ganpati";
+
+type ThemeState = {
+  mode: ThemeMode;
+  theme: ThemeName;
+
+  toggleMode: () => void;
+  setTheme: (name: ThemeName) => void;
 };
 
-// Create context
-const ThemeContext = createContext<ThemeContextType | null>(null);
+export const useThemeStore = create<ThemeState>((set, get) => ({
+  mode: "light",
+  theme: "default",
 
-// Provider
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState("light");
+  toggleMode: () => {
+    const next = get().mode === "light" ? "dark" : "light";
+    set({ mode: next });
+  },
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-// Hook
-export function useThemeStore() {
-  const context = useContext(ThemeContext);
-
-  if (!context) {
-    throw new Error("useThemeStore must be used inside ThemeProvider");
-  }
-
-  return context;
-}
+  setTheme: (name) => set({ theme: name }),
+}));

@@ -7,25 +7,47 @@ import { Platform } from 'react-native';
 
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
+export const THEME = {
+  default: {
+    light: {
+      background: "#ffffff",
+      foreground: "#000000",
+      primary: "#7f16ff",
+    },
+    dark: {
+      background: "#000000",
+      foreground: "#ffffff",
+      primary: "#a855f7",
+    }
+  },
 
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+  winter: {
+    light: {
+      background: "#E0F7FA",
+      foreground: "#004D40",
+      primary: "#00ACC1",
+    },
+    dark: {
+      background: "#004D40",
+      foreground: "#E0F7FA",
+      primary: "#26C6DA",
+    }
   },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+
+  ganpati: {
+    light: {
+      background: "#FFF3E0",
+      foreground: "#BF360C",
+      primary: "#E65100",
+    },
+    dark: {
+      background: "#3E2723",
+      foreground: "#FFCCBC",
+      primary: "#FF7043",
+    }
+  }
 };
+
 
 export const Fonts = Platform.select({
   ios: {
