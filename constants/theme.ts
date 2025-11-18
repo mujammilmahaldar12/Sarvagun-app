@@ -1,75 +1,37 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+import { MD3LightTheme, MD3DarkTheme } from "react-native-paper";
+import { COLORS } from "./colors";
 
-import { Platform } from 'react-native';
+export const LightTheme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: COLORS.primary,
+    background: COLORS.backgroundLight,
+    surface: COLORS.surfaceLight,
+    text: COLORS.textLight,
+    outline: COLORS.borderLight,
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-export const THEME = {
-  default: {
-    light: {
-      background: "#ffffff",
-      foreground: "#000000",
-      primary: "#7f16ff",
+    // elevation values are used by Paper components
+    elevation: {
+      level1: COLORS.shadowLight,
+      level2: COLORS.shadowLight,
     },
-    dark: {
-      background: "#000000",
-      foreground: "#ffffff",
-      primary: "#a855f7",
-    }
   },
-
-  winter: {
-    light: {
-      background: "#E0F7FA",
-      foreground: "#004D40",
-      primary: "#00ACC1",
-    },
-    dark: {
-      background: "#004D40",
-      foreground: "#E0F7FA",
-      primary: "#26C6DA",
-    }
-  },
-
-  ganpati: {
-    light: {
-      background: "#FFF3E0",
-      foreground: "#BF360C",
-      primary: "#E65100",
-    },
-    dark: {
-      background: "#3E2723",
-      foreground: "#FFCCBC",
-      primary: "#FF7043",
-    }
-  }
 };
 
+export const DarkTheme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: COLORS.primarySoft,
+    background: COLORS.backgroundDark,
+    surface: COLORS.surfaceDark,
+    text: COLORS.textDark,
+    outline: COLORS.borderDark,
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+    elevation: {
+      level1: COLORS.shadowDark,
+      level2: COLORS.shadowDark,
+    },
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+};
