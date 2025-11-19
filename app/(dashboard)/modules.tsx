@@ -95,7 +95,7 @@ export default function ModulesScreen() {
         </Text>
         <Text
           className="text-base"
-          style={{ color: theme.colors.textSecondary }}
+          style={{ color: theme.colors.textSecondary, fontSize: 15 }}
         >
           Access all ERP modules from here
         </Text>
@@ -147,7 +147,7 @@ export default function ModulesScreen() {
                 </Text>
                 <Text
                   className="text-sm"
-                  style={{ color: theme.colors.textSecondary }}
+                  style={{ color: theme.colors.textSecondary, fontSize: 14 }}
                 >
                   {module.description}
                 </Text>

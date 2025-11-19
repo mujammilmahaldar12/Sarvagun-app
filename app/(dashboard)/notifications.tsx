@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
             </Text>
             <Text
               className="text-sm"
-              style={{ color: theme.colors.textSecondary }}
+              style={{ color: theme.colors.textSecondary, fontSize: 14 }}
             >
               {unreadCount} unread notifications
             </Text>
@@ -227,13 +227,13 @@ export default function NotificationsScreen() {
                   </View>
                   <Text
                     className="text-sm mb-2"
-                    style={{ color: theme.colors.textSecondary }}
+                    style={{ color: theme.colors.textSecondary, fontSize: 14 }}
                   >
                     {notification.message}
                   </Text>
                   <Text
                     className="text-xs"
-                    style={{ color: theme.colors.textSecondary }}
+                    style={{ color: theme.colors.textSecondary, fontSize: 12, opacity: 0.8 }}
                   >
                     {notification.time}
                   </Text>

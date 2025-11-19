@@ -8,13 +8,19 @@ export const THEME = {
     foreground: "#1A1A1A",
     primary: "#6D376D",
     border: "#E3DCE9",
+    text: "#1A1A1A",
+    textSecondary: "#6B7280",
+    textTertiary: "#9CA3AF",
   },
   dark: {
-    background: "#100E11",
+    background: "#0F0E10",
     surface: "#1A171D",
     foreground: "#F5F5F5",
-    primary: "#8A4A8A",
+    primary: "#9D5B9D",
     border: "#2A242E",
+    text: "#F9FAFB",
+    textSecondary: "#D1D5DB",
+    textTertiary: "#9CA3AF",
   },
 } as const;
 

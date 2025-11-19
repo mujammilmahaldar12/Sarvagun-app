@@ -16,9 +16,9 @@ export default function DashboardLayout() {
           backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: isDark ? '#374151' : '#E5E7EB',
-          height: Platform.OS === 'ios' ? 85 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 90 : 70,
+          paddingBottom: Platform.OS === 'ios' ? 32 : 12,
+          paddingTop: 2,
           elevation: 12,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
@@ -128,6 +128,12 @@ export default function DashboardLayout() {
               color={color}
             />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

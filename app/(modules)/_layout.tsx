@@ -7,7 +7,7 @@ export default function ModulesLayout() {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="hr" />
+      <Stack.Screen name="hr/index" options={{ title: 'HR' }} />
       <Stack.Screen name="events" />
       <Stack.Screen name="finance" />
       <Stack.Screen name="projects" />

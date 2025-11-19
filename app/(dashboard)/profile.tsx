@@ -148,7 +148,7 @@ export default function ProfileScreen() {
           </Text>
           <Text
             className="text-base mb-1"
-            style={{ color: theme.colors.textSecondary }}
+            style={{ color: theme.colors.textSecondary, fontSize: 15 }}
           >
             {user?.email || 'user@example.com'}
           </Text>
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
         <View className="px-6 mt-6">
           <Text
             className="text-sm font-semibold mb-3 uppercase"
-            style={{ color: theme.colors.textSecondary }}
+            style={{ color: theme.colors.textSecondary, fontSize: 12 }}
           >
             Settings
           </Text>
@@ -220,7 +220,7 @@ export default function ProfileScreen() {
                 />
                 <Text
                   className="text-base font-medium flex-1"
-                  style={{ color: item.color || theme.colors.text }}
+                  style={{ color: item.color || theme.colors.text, fontSize: 15 }}
                 >
                   {item.title}
                 </Text>
@@ -257,7 +257,7 @@ export default function ProfileScreen() {
         <View className="items-center mt-8">
           <Text
             className="text-xs"
-            style={{ color: theme.colors.textSecondary }}
+            style={{ color: theme.colors.textSecondary, fontSize: 12, opacity: 0.7 }}
           >
             Sarvagun ERP v2.0.0
           </Text>

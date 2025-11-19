@@ -4,10 +4,10 @@ export interface Theme {
   colors: {
     background: string;
     surface: string;
-    text: string; // maps to foreground
-    textSecondary: string; // maps to border
+    text: string;
+    textSecondary: string;
     primary: string;
-    border: string; // maps to border
+    border: string;
   };
 }
 
@@ -18,8 +18,8 @@ export function useTheme() {
     colors: {
       background: colors.background,
       surface: colors.surface,
-      text: colors.foreground,
-      textSecondary: colors.border,
+      text: colors.text,
+      textSecondary: colors.textSecondary,
       primary: colors.primary,
       border: colors.border,
     },
