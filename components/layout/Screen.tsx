@@ -1,15 +1,27 @@
-import { View } from "react-native";
-import { useTheme } from "react-native-paper";
+import { View, ScrollView } from "react-native";
+import { useThemeStore } from "@/store/themeStore";
 
-export default function Screen({ children }: any) {
-  const theme = useTheme();
+type ScreenProps = {
+  children: React.ReactNode;
+  scrollable?: boolean;
+};
+
+export default function Screen({ children, scrollable = true }: ScreenProps) {
+  const { colors } = useThemeStore();
+
+  const Container = scrollable ? ScrollView : View;
 
   return (
-    <View
-      className="flex-1 px-4 py-4"
-      style={{ backgroundColor: theme.colors.background }}
+    <Container
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+      }}
+      contentContainerStyle={scrollable ? { paddingBottom: 32 } : undefined}
     >
       {children}
-    </View>
+    </Container>
   );
 }

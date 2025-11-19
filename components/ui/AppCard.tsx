@@ -1,14 +1,10 @@
-import { View, TouchableOpacity } from "react-native";
-import { Text } from "react-native-paper";
+import { View, Text, TouchableOpacity } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
   useSharedValue,
 } from "react-native-reanimated";
-import { cssInterop } from "nativewind";
-const AnimatedView = cssInterop(Animated.View, {
-  className: "style",
-});
+import { useThemeStore } from "@/store/themeStore";
 
 type AppCardProps = {
   title?: string;
@@ -17,46 +13,50 @@ type AppCardProps = {
 };
 
 export default function AppCard({ title, children, onPress }: AppCardProps) {
+  const { colors } = useThemeStore();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  function pressIn() {
-    scale.value = withSpring(0.97, { damping: 10 });
-  }
-
-  function pressOut() {
-    scale.value = withSpring(1, { damping: 10 });
-    onPress && onPress();
-  }
-
   return (
-    <AnimatedView
-      style={animatedStyle}
-      className="w-[90%] self-center my-3"
+    <Animated.View 
+      style={[
+        animatedStyle,
+        { width: "92%", alignSelf: "center", marginVertical: 16 }
+      ]}
     >
       <TouchableOpacity
         activeOpacity={0.9}
-        onPressIn={pressIn}
-        onPressOut={pressOut}
+        onPressIn={() => (scale.value = withSpring(0.97))}
+        onPressOut={() => {
+          scale.value = withSpring(1);
+          onPress?.();
+        }}
       >
         <View
-          className="
-            p-4 rounded-3xl
-            bg-surface
-            shadow-lg shadow-purple-900/10
-            border border-border
-          "
           style={{
-            elevation: 4,
+            borderRadius: 20,
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderWidth: 1,
+            padding: 18,
+            elevation: 3,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.08,
+            shadowRadius: 20,
           }}
         >
           {title && (
             <Text
-              variant="titleMedium"
-              className="text-foreground font-semibold mb-2"
+              style={{
+                color: colors.foreground,
+                fontSize: 18,
+                marginBottom: 8,
+                fontWeight: "600",
+              }}
             >
               {title}
             </Text>
@@ -65,6 +65,6 @@ export default function AppCard({ title, children, onPress }: AppCardProps) {
           <View>{children}</View>
         </View>
       </TouchableOpacity>
-    </AnimatedView>
+    </Animated.View>
   );
 }

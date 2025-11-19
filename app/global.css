@@ -1,21 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Light mode */
-:root {
-  --primary: #6D376D;
-  --background: #F5F3F7;
-  --surface: #ffffff;
-  --foreground: #1A1A1A;
-  --border: #E3DCE9;
-}
-
-/* Dark mode */
-.dark {
-  --primary: #8A4A8A;
-  --background: #100E11;
-  --surface: #1A171D;
-  --foreground: #F5F5F5;
-  --border: #2A242E;
-}
