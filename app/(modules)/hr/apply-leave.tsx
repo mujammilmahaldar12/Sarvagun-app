@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import AppButton from '@/components/ui/AppButton';
 
 const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Optional Leave'];
 
@@ -329,22 +330,17 @@ export default function ApplyLeaveScreen() {
           )}
 
           {/* Submit Button */}
-          <Pressable
-            style={{
-              backgroundColor: loading ? '#9CA3AF' : theme.colors.primary,
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              marginTop: 24,
-              marginBottom: 32,
-            }}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-              {loading ? 'Submitting...' : 'Submit Leave Application'}
-            </Text>
-          </Pressable>
+          <View style={{ marginTop: 24, marginBottom: 32 }}>
+            <AppButton
+              title={loading ? 'Submitting...' : 'Submit Leave Application'}
+              onPress={handleSubmit}
+              disabled={loading}
+              loading={loading}
+              fullWidth
+              size="lg"
+              leftIcon="send"
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 

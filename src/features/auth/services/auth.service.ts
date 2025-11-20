@@ -31,7 +31,7 @@ class AuthService {
     try {
       await apiClient.post("/hr/auth/logout/", { refresh: refreshToken });
     } catch (error) {
-      console.error("Logout API error:", error);
+      // Silent error
     } finally {
       // Always clear local storage, even if API call fails
       await removeToken();

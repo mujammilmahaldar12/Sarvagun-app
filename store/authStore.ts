@@ -1,8 +1,16 @@
 ﻿import { create } from "zustand";
-import { User } from "@features/auth/types/auth.types";
-import { authService } from "@features/auth/services/auth.service";
-import { getToken } from "@lib/storage";
-import { showMessage } from "react-native-flash-message";
+// import { User } from "@features/auth/types/auth.types";
+import { authService } from "../services/auth.service";
+import { getToken } from "../utils/storage";
+
+// Simple User type definition
+type User = {
+  id: number;
+  email: string;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+};
 
 type AuthStore = {
   user: User | null;
@@ -27,11 +35,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   login: async (username, password) => {
     try {
-      console.log("🔐 Login attempt:", { username });
       set({ isLoading: true });
       
       const response = await authService.login({ username, password });
-      console.log("✅ Login successful:", response.user.username);
       
       set({
         user: response.user,
@@ -41,23 +47,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
       });
 
-      showMessage({
-        message: "Welcome back!",
-        description: `Logged in as ${response.user.first_name}`,
-        type: "success",
-      });
-
       return true;
     } catch (error: any) {
-      console.error("❌ Login failed:", error.response?.data || error.message);
       set({ isLoading: false });
-      
-      showMessage({
-        message: "Login Failed",
-        description: error.response?.data?.non_field_errors?.[0] || "Invalid credentials",
-        type: "danger",
-      });
-
       return false;
     }
   },
@@ -70,19 +62,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         await authService.logout(refreshToken);
       }
     } catch (error) {
-      console.error("Logout error:", error);
+      // Silent error
     } finally {
       set({
         user: null,
         accessToken: null,
         refreshToken: null,
         isAuthenticated: false,
-      });
-
-      showMessage({
-        message: "Logged out",
-        description: "You have been logged out successfully",
-        type: "info",
       });
     }
   },
@@ -107,7 +93,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ isLoading: false });
       }
     } catch (error) {
-      console.error("Load user error:", error);
       set({ isLoading: false });
     }
   },

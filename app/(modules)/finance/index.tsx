@@ -111,23 +111,23 @@ export default function FinanceManagementScreen() {
       title: 'Type',
       sortable: true,
       width: 120,
-      render: (item: any) => (
+      render: (value: any, item: any) => (
         <View style={{
           paddingHorizontal: 8,
           paddingVertical: 4,
           borderRadius: 4,
           backgroundColor: 
-            item.expenseType === 'Event' ? '#DBEAFE' :
-            item.expenseType === 'Reimbursement' ? '#FEF3C7' : '#E5E7EB',
+            item?.expenseType === 'Event' ? '#DBEAFE' :
+            item?.expenseType === 'Reimbursement' ? '#FEF3C7' : '#E5E7EB',
         }}>
           <Text style={{
             fontSize: 12,
             fontWeight: '600',
             color: 
-              item.expenseType === 'Event' ? '#1E40AF' :
-              item.expenseType === 'Reimbursement' ? '#92400E' : '#374151',
+              item?.expenseType === 'Event' ? '#1E40AF' :
+              item?.expenseType === 'Reimbursement' ? '#92400E' : '#374151',
           }}>
-            {item.expenseType}
+            {item?.expenseType || 'Unknown'}
           </Text>
         </View>
       ),
@@ -143,7 +143,7 @@ export default function FinanceManagementScreen() {
       title: 'Amount',
       sortable: true,
       width: 120,
-      render: (item: any) => `₹${item.amount?.toLocaleString('en-IN')}`,
+      render: (value: any, item: any) => `₹${item?.amount?.toLocaleString('en-IN') || '0'}`,
     },
     {
       key: 'date',
@@ -162,9 +162,9 @@ export default function FinanceManagementScreen() {
       title: 'Status',
       sortable: true,
       width: 120,
-      render: (item: any) => (
+      render: (value: any, item: any) => (
         <StatusBadge
-          status={item.status}
+          status={item?.status || 'pending'}
         />
       ),
     },
@@ -237,7 +237,7 @@ export default function FinanceManagementScreen() {
       title: 'Amount',
       sortable: true,
       width: 120,
-      render: (item: any) => `₹${item.amount?.toLocaleString('en-IN')}`,
+      render: (value: any, item: any) => `₹${item?.amount?.toLocaleString('en-IN') || '0'}`,
     },
     {
       key: 'date',
@@ -256,9 +256,9 @@ export default function FinanceManagementScreen() {
       title: 'Status',
       sortable: true,
       width: 120,
-      render: (item: any) => (
+      render: (value: any, item: any) => (
         <StatusBadge
-          status={item.status}
+          status={item?.status || 'pending'}
         />
       ),
     },

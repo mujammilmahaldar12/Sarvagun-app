@@ -1,62 +1,51 @@
+import "./disable-logs";
 import "./global.css";
-import { Slot, useRouter, useSegments } from "expo-router";
-import { View, ActivityIndicator } from "react-native";
-import { useThemeStore } from "@/store/themeStore";
-import { useAuthStore } from "@/store/authStore";
-import FlashMessage from "react-native-flash-message";
-import { useEffect } from "react";
+import { Slot } from "expo-router";
+import { View, Text } from "react-native";
+import React from "react";
 
-export default function RootLayout() {
-  const { colors } = useThemeStore();
-  const { isAuthenticated, isLoading, loadUser } = useAuthStore();
-  const segments = useSegments();
-  const router = useRouter();
-
-  // Load user on app start
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  // Protected routes logic
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-    const inDashboard = segments[0] === "(dashboard)";
-
-    if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to login if not authenticated
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to dashboard if authenticated and in auth pages
-      router.replace("/(dashboard)/home");
-    }
-  }, [isAuthenticated, segments, isLoading]);
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
-        <View
-          style={{
-            width: 80,
-            height: 80,
-            backgroundColor: colors.primary,
-            borderRadius: 20,
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
-      </View>
-    );
+// Error boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if ((this.state as any).hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#fff' }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#6D376D', marginBottom: 10 }}>Sarvagun</Text>
+          <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 10 }}>
+            Something went wrong. Please restart the app.
+          </Text>
+          {__DEV__ && (
+            <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
+              Error: {String((this.state as any).error)}
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    return (this.props as any).children;
+  }
+}
+
+export default function RootLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Slot />
-      <FlashMessage position="top" />
-    </View>
+    <ErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <Slot />
+      </View>
+    </ErrorBoundary>
   );
 }

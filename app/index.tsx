@@ -1,35 +1,38 @@
-import { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { useEffect } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 
 export default function Index() {
+  const { isAuthenticated, isLoading, loadUser } = useAuthStore();
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    loadUser();
   }, []);
 
   useEffect(() => {
-    if (mounted && !isLoading) {
-      // Small delay to ensure root layout is mounted
-      const timer = setTimeout(() => {
-        if (isAuthenticated) {
-          router.replace("/(dashboard)/home");
-        } else {
-          router.replace("/(auth)/login");
-        }
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.replace("/(dashboard)/home");
+      } else {
+        router.replace("/(auth)/login");
+      }
     }
-  }, [mounted, isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading]);
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+    <View style={styles.container}>
       <ActivityIndicator size="large" color="#6D376D" />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+});

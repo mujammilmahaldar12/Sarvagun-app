@@ -1,0 +1,426 @@
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert, Switch } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuthStore } from '@/store/authStore';
+
+export default function ProfileScreen() {
+  const router = useRouter();
+  const { theme, isDark, toggleTheme } = useTheme();
+  const { user, logout } = useAuthStore();
+  
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/login');
+          },
+        },
+      ]
+    );
+  };
+
+  const navigateTo = (route: string) => {
+    router.push(route as any);
+  };
+
+  const getInitials = () => {
+    const first = user?.first_name?.charAt(0) || '';
+    const last = user?.last_name?.charAt(0) || '';
+    return first + last || 'U';
+  };
+
+  const SettingItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    showToggle,
+    toggleValue,
+    onToggle,
+    isDanger,
+  }: {
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    subtitle?: string;
+    onPress?: () => void;
+    showToggle?: boolean;
+    toggleValue?: boolean;
+    onToggle?: (val: boolean) => void;
+    isDanger?: boolean;
+  }) => (
+    <Pressable
+      onPress={!showToggle ? onPress : undefined}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        backgroundColor: pressed && !showToggle ? (isDark ? 'rgba(55, 65, 81, 0.1)' : 'rgba(243, 244, 246, 0.6)') : 'transparent',
+      })}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: isDanger ? '#FEE2E2' : theme.colors.primary + '15',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 14,
+        }}
+      >
+        <Ionicons
+          name={icon}
+          size={20}
+          color={isDanger ? '#EF4444' : theme.colors.primary}
+        />
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: '500',
+            color: isDanger ? '#EF4444' : theme.colors.text,
+            marginBottom: subtitle ? 3 : 0,
+          }}
+        >
+          {title}
+        </Text>
+        {subtitle && (
+          <Text
+            style={{
+              fontSize: 13,
+              color: theme.colors.textSecondary,
+            }}
+          >
+            {subtitle}
+          </Text>
+        )}
+      </View>
+
+      {showToggle && (
+        <Switch
+          value={toggleValue}
+          onValueChange={onToggle}
+          trackColor={{
+            false: isDark ? '#4B5563' : '#D1D5DB',
+            true: theme.colors.primary,
+          }}
+          thumbColor="#FFFFFF"
+        />
+      )}
+
+      {!showToggle && (
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={theme.colors.textSecondary}
+        />
+      )}
+    </Pressable>
+  );
+
+  const SectionDivider = () => (
+    <View
+      style={{
+        height: 1,
+        backgroundColor: theme.colors.border,
+        marginLeft: 66,
+      }}
+    />
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.background}
+      />
+
+      <ScrollView 
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* User Profile Header */}
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 56,
+            paddingBottom: 20,
+            backgroundColor: theme.colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {/* Avatar */}
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 34,
+                backgroundColor: theme.colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 26,
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                }}
+              >
+                {getInitials()}
+              </Text>
+            </View>
+
+            {/* User Info */}
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 19,
+                  fontWeight: '600',
+                  color: theme.colors.text,
+                  marginBottom: 5,
+                }}
+              >
+                {user?.first_name} {user?.last_name}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: theme.colors.textSecondary,
+                  marginBottom: 3,
+                }}
+              >
+                {user?.email}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: theme.colors.textSecondary,
+                }}
+              >
+                {user?.designation || 'Employee'}
+              </Text>
+            </View>
+
+            {/* Edit Icon */}
+            <Pressable
+              onPress={() => navigateTo('/(settings)/account')}
+              style={({ pressed }) => ({
+                padding: 8,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Ionicons
+                name="create-outline"
+                size={23}
+                color={theme.colors.primary}
+              />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Account Section */}
+        <View style={{ marginTop: 12 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: theme.colors.textSecondary,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            ACCOUNT
+          </Text>
+          <View style={{ backgroundColor: theme.colors.surface }}>
+            <SettingItem
+              icon="person-outline"
+              title="Your account"
+              subtitle={`${user?.first_name} ${user?.last_name}`}
+              onPress={() => navigateTo('/(settings)/account')}
+            />
+            <SectionDivider />
+            <SettingItem
+              icon="shield-checkmark-outline"
+              title="Privacy & Security"
+              subtitle="Manage your privacy settings"
+              onPress={() => navigateTo('/(settings)/privacy')}
+            />
+          </View>
+        </View>
+
+        {/* Preferences Section */}
+        <View style={{ marginTop: 20 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: theme.colors.textSecondary,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            PREFERENCES
+          </Text>
+          <View style={{ backgroundColor: theme.colors.surface }}>
+            <SettingItem
+              icon="notifications-outline"
+              title="Notifications"
+              subtitle={notificationsEnabled ? 'On' : 'Off'}
+              showToggle
+              toggleValue={notificationsEnabled}
+              onToggle={setNotificationsEnabled}
+            />
+            <SectionDivider />
+            <SettingItem
+              icon="mail-outline"
+              title="Email notifications"
+              subtitle={emailNotifications ? 'Enabled' : 'Disabled'}
+              showToggle
+              toggleValue={emailNotifications}
+              onToggle={setEmailNotifications}
+            />
+            <SectionDivider />
+            <SettingItem
+              icon={isDark ? 'moon' : 'sunny'}
+              title="Appearance"
+              subtitle={isDark ? 'Dark mode' : 'Light mode'}
+              onPress={() => navigateTo('/(settings)/appearance')}
+            />
+          </View>
+        </View>
+
+        {/* App Settings Section */}
+        <View style={{ marginTop: 20 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: theme.colors.textSecondary,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            APP SETTINGS
+          </Text>
+          <View style={{ backgroundColor: theme.colors.surface }}>
+            <SettingItem
+              icon="language-outline"
+              title="Language"
+              subtitle="English (US)"
+              onPress={() => {}}
+            />
+            <SectionDivider />
+            <SettingItem
+              icon="cellular-outline"
+              title="Data usage"
+              subtitle="Manage your data preferences"
+              onPress={() => {}}
+            />
+            <SectionDivider />
+            <SettingItem
+              icon="information-circle-outline"
+              title="About"
+              subtitle="Version 1.0.0"
+              onPress={() => navigateTo('/(settings)/about')}
+            />
+          </View>
+        </View>
+
+        {/* Support Section */}
+        <View style={{ marginTop: 20 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: theme.colors.textSecondary,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            SUPPORT
+          </Text>
+          <View style={{ backgroundColor: theme.colors.surface }}>
+            <SettingItem
+              icon="help-circle-outline"
+              title="Help & feedback"
+              subtitle="Get help or send feedback"
+              onPress={() => {}}
+            />
+            <SectionDivider />
+            <SettingItem
+              icon="document-text-outline"
+              title="Terms & policies"
+              subtitle="View terms and privacy policy"
+              onPress={() => {}}
+            />
+          </View>
+        </View>
+
+        {/* Logout */}
+        <View style={{ marginTop: 20, backgroundColor: theme.colors.surface }}>
+          <SettingItem
+            icon="log-out-outline"
+            title="Logout"
+            onPress={handleLogout}
+            isDanger
+          />
+        </View>
+
+        {/* Footer */}
+        <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+          <Text
+            style={{
+              fontSize: 12,
+              color: theme.colors.textSecondary,
+              textAlign: 'center',
+            }}
+          >
+            Sarvagun ERP v1.0.0
+          </Text>
+          <Text
+            style={{
+              fontSize: 11,
+              color: theme.colors.textSecondary,
+              textAlign: 'center',
+              marginTop: 4,
+            }}
+          >
+            © 2025 All rights reserved
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}

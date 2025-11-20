@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import AppButton from '@/components/ui/AppButton';
 
 export default function AddEmployeeScreen() {
   const router = useRouter();
@@ -178,22 +179,17 @@ export default function AddEmployeeScreen() {
           />
 
           {/* Submit Button */}
-          <Pressable
-            style={{
-              backgroundColor: loading ? '#9CA3AF' : theme.colors.primary,
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              marginTop: 24,
-              marginBottom: 32,
-            }}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-              {loading ? 'Adding Employee...' : 'Add Employee'}
-            </Text>
-          </Pressable>
+          <View style={{ marginTop: 24, marginBottom: 32 }}>
+            <AppButton
+              title={loading ? 'Adding Employee...' : 'Add Employee'}
+              onPress={handleSubmit}
+              disabled={loading}
+              loading={loading}
+              fullWidth
+              size="lg"
+              leftIcon="person-add"
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

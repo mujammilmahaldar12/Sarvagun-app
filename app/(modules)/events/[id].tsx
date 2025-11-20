@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import TabBar, { Tab } from '@/components/layout/TabBar';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import eventsService from '@/services/events.service';
 
 type TabType = 'info' | 'timeline' | 'documents';
 
@@ -21,12 +22,12 @@ export default function EventDetailScreen() {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const itemType = type || 'leads'; // 'leads' or 'events'
+  const itemType = type || 'leads'; // 'leads', 'events', 'clients', 'venues'
 
   // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
-  const canEdit = canManage || item?.employeeId === user?.id;
-  const canDelete = canManage || (item?.employeeId === user?.id && item?.status !== 'completed');
+  const canEdit = canManage || item?.created_by === user?.id;
+  const canDelete = canManage;
 
   useEffect(() => {
     fetchItemDetails();
@@ -35,50 +36,34 @@ export default function EventDetailScreen() {
   const fetchItemDetails = async () => {
     setLoading(true);
     
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      let mockData;
+    try {
+      let data;
+      const itemId = parseInt(id);
       
-      if (itemType === 'leads') {
-        mockData = {
-          id: parseInt(id),
-          companyName: 'Tech Corp',
-          contactPerson: 'John Doe',
-          phone: '9876543210',
-          email: 'john@techcorp.com',
-          status: 'new',
-          assignedTo: 'Sarah Wilson',
-          createdDate: '2024-03-15',
-          source: 'Website',
-          industry: 'Technology',
-          employeeCount: '100-500',
-          address: '123 Business St, Tech City',
-          notes: 'Interested in our enterprise solution',
-          employeeId: 1,
-        };
-      } else {
-        mockData = {
-          id: parseInt(id),
-          eventName: 'Annual Conference 2024',
-          eventType: 'Conference',
-          startDate: '2024-04-01',
-          endDate: '2024-04-03',
-          venue: 'Grand Hotel',
-          venueAddress: '456 Convention Ave, City Center',
-          status: 'planned',
-          budget: 500000,
-          actualExpense: 0,
-          attendees: 200,
-          coordinator: 'Sarah Wilson',
-          description: 'Annual company conference with keynote speakers',
-          agenda: 'Day 1: Opening ceremony\nDay 2: Panel discussions\nDay 3: Closing remarks',
-          employeeId: 1,
-        };
+      switch (itemType) {
+        case 'leads':
+          data = await eventsService.getLead(itemId);
+          break;
+        case 'events':
+          data = await eventsService.getEvent(itemId);
+          break;
+        case 'clients':
+          data = await eventsService.getClient(itemId);
+          break;
+        case 'venues':
+          data = await eventsService.getVenue(itemId);
+          break;
+        default:
+          router.back();
+          return;
       }
       
-      setItem(mockData);
+      setItem(data);
+    } catch (error: any) {
+      router.back();
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const handleEdit = () => {
@@ -89,42 +74,31 @@ export default function EventDetailScreen() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      `Delete ${itemType === 'leads' ? 'Lead' : 'Event'}`,
-      `Are you sure you want to delete this ${itemType === 'leads' ? 'lead' : 'event'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            console.log(`Deleting ${itemType}:`, id);
-            router.back();
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    const itemName = itemType.slice(0, -1); // Remove 's' from plural
+    try {
+      const itemId = parseInt(id);
+      switch (itemType) {
+        case 'leads':
+          await eventsService.rejectLead(itemId, 'Deleted by user');
+          break;
+        case 'events':
+          await eventsService.deleteEvent(itemId);
+          break;
+        case 'clients':
+          await eventsService.deleteClient(itemId);
+          break;
+        case 'venues':
+          await eventsService.deleteVenue(itemId);
+          break;
+      }
+      router.back();
+    } catch (error: any) {
+      // Silent error
+    }
   };
 
-  const handleConvertToEvent = () => {
-    Alert.alert(
-      'Convert to Event',
-      'Convert this lead to an event?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Convert',
-          onPress: () => {
-            router.push({
-              pathname: '/(modules)/events/add-event',
-              params: { fromLead: id },
-            } as any);
-          },
-        },
-      ]
-    );
-  };
+
 
   const renderInfoTab = () => {
     if (!item) return null;
@@ -132,25 +106,21 @@ export default function EventDetailScreen() {
     if (itemType === 'leads') {
       return (
         <View style={{ padding: 16, gap: 20 }}>
-          {/* Company Information */}
+          {/* Client Information */}
           <View style={{ gap: 12 }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
-              Company Information
+              Client Information
             </Text>
-            <InfoRow label="Company Name" value={item.companyName} />
-            <InfoRow label="Industry" value={item.industry} />
-            <InfoRow label="Employee Count" value={item.employeeCount} />
-            <InfoRow label="Address" value={item.address} />
-          </View>
-
-          {/* Contact Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
-              Contact Information
-            </Text>
-            <InfoRow label="Contact Person" value={item.contactPerson} />
-            <InfoRow label="Phone" value={item.phone} />
-            <InfoRow label="Email" value={item.email} />
+            <InfoRow label="Client Name" value={item.client?.name || 'N/A'} />
+            <InfoRow label="Contact Number" value={item.client?.number || 'N/A'} />
+            <InfoRow label="Email" value={item.client?.email || 'N/A'} />
+            <InfoRow label="Lead Person" value={item.client?.leadperson || 'N/A'} />
+            {item.client?.category?.length > 0 && (
+              <InfoRow label="Category" value={item.client.category.map((c: any) => c.name).join(', ')} />
+            )}
+            {item.client?.organisation?.length > 0 && (
+              <InfoRow label="Organisation" value={item.client.organisation.map((o: any) => o.name).join(', ')} />
+            )}
           </View>
 
           {/* Lead Details */}
@@ -160,13 +130,16 @@ export default function EventDetailScreen() {
             </Text>
             <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
             <InfoRow label="Source" value={item.source} />
-            <InfoRow label="Assigned To" value={item.assignedTo} />
-            <InfoRow label="Created Date" value={item.createdDate} />
-            <InfoRow label="Notes" value={item.notes} multiline />
+            <InfoRow label="User" value={item.user_name || 'N/A'} />
+            <InfoRow label="Referral" value={item.referral || '-'} />
+            <InfoRow label="Created Date" value={item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN') : 'N/A'} />
+            {item.message && <InfoRow label="Message" value={item.message} multiline />}
+            <InfoRow label="Converted" value={item.convert ? 'Yes' : 'No'} />
+            <InfoRow label="Rejected" value={item.reject ? 'Yes' : 'No'} />
           </View>
         </View>
       );
-    } else {
+    } else if (itemType === 'events') {
       return (
         <View style={{ padding: 16, gap: 20 }}>
           {/* Event Information */}
@@ -174,12 +147,21 @@ export default function EventDetailScreen() {
             <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
               Event Information
             </Text>
-            <InfoRow label="Event Name" value={item.eventName} />
-            <InfoRow label="Type" value={item.eventType} />
+            <InfoRow label="Event Name" value={item.name} />
             <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
-            <InfoRow label="Start Date" value={item.startDate} />
-            <InfoRow label="End Date" value={item.endDate} />
-            <InfoRow label="Coordinator" value={item.coordinator} />
+            <InfoRow label="Start Date" value={item.start_date ? new Date(item.start_date).toLocaleDateString('en-IN') : 'N/A'} />
+            <InfoRow label="End Date" value={item.end_date ? new Date(item.end_date).toLocaleDateString('en-IN') : 'N/A'} />
+            <InfoRow label="Created By" value={item.created_by_name || 'N/A'} />
+          </View>
+
+          {/* Client Information */}
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+              Client Information
+            </Text>
+            <InfoRow label="Client Name" value={item.client?.name || 'N/A'} />
+            <InfoRow label="Contact" value={item.client?.number || 'N/A'} />
+            <InfoRow label="Email" value={item.client?.email || 'N/A'} />
           </View>
 
           {/* Venue Information */}
@@ -187,9 +169,11 @@ export default function EventDetailScreen() {
             <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
               Venue Information
             </Text>
-            <InfoRow label="Venue" value={item.venue} />
-            <InfoRow label="Address" value={item.venueAddress} />
-            <InfoRow label="Expected Attendees" value={item.attendees?.toString()} />
+            <InfoRow label="Venue" value={item.venue?.name || 'N/A'} />
+            <InfoRow label="Address" value={item.venue?.address || 'N/A'} />
+            <InfoRow label="Capacity" value={item.venue?.capacity?.toString() || 'N/A'} />
+            <InfoRow label="Contact Person" value={item.venue?.contact_person || 'N/A'} />
+            <InfoRow label="Contact Phone" value={item.venue?.contact_phone || 'N/A'} />
           </View>
 
           {/* Financial Information */}
@@ -197,21 +181,79 @@ export default function EventDetailScreen() {
             <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
               Financial Information
             </Text>
-            <InfoRow label="Budget" value={`₹${item.budget?.toLocaleString('en-IN')}`} />
-            <InfoRow label="Actual Expense" value={`₹${item.actualExpense?.toLocaleString('en-IN')}`} />
+            <InfoRow label="Total Budget" value={item.total_budget ? `₹${item.total_budget.toLocaleString('en-IN')}` : 'N/A'} />
           </View>
 
-          {/* Description */}
+          {/* Additional Details */}
+          {item.active_days?.length > 0 && (
+            <View style={{ gap: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+                Active Days
+              </Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text }}>
+                {item.active_days.map((day: any) => 
+                  new Date(day.date).toLocaleDateString('en-IN')
+                ).join(', ')}
+              </Text>
+            </View>
+          )}
+        </View>
+      );
+    } else if (itemType === 'clients') {
+      return (
+        <View style={{ padding: 16, gap: 20 }}>
+          {/* Client Information */}
           <View style={{ gap: 12 }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
-              Description
+              Client Information
             </Text>
-            <InfoRow label="Description" value={item.description} multiline />
-            <InfoRow label="Agenda" value={item.agenda} multiline />
+            <InfoRow label="Name" value={item.name} />
+            <InfoRow label="Contact Number" value={item.number || 'N/A'} />
+            <InfoRow label="Email" value={item.email || 'N/A'} />
+            <InfoRow label="Lead Person" value={item.leadperson || 'N/A'} />
+            <InfoRow label="Bookings Count" value={item.bookings_count?.toString() || '0'} />
+          </View>
+
+          {/* Category & Organisation */}
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+              Classification
+            </Text>
+            {item.category?.length > 0 && (
+              <InfoRow label="Categories" value={item.category.map((c: any) => c.name).join(', ')} />
+            )}
+            {item.organisation?.length > 0 && (
+              <InfoRow label="Organisations" value={item.organisation.map((o: any) => o.name).join(', ')} />
+            )}
+          </View>
+        </View>
+      );
+    } else if (itemType === 'venues') {
+      return (
+        <View style={{ padding: 16, gap: 20 }}>
+          {/* Venue Information */}
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+              Venue Information
+            </Text>
+            <InfoRow label="Name" value={item.name} />
+            <InfoRow label="Address" value={item.address || 'N/A'} />
+            <InfoRow label="Capacity" value={item.capacity?.toString() || 'N/A'} />
+          </View>
+
+          {/* Contact Information */}
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+              Contact Information
+            </Text>
+            <InfoRow label="Contact Person" value={item.contact_person || 'N/A'} />
+            <InfoRow label="Contact Phone" value={item.contact_phone || 'N/A'} />
           </View>
         </View>
       );
     }
+
+    return null;
   };
 
   const renderTimelineTab = () => (
@@ -254,22 +296,42 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.colors.text }}>Loading...</Text>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
+
+  const getTitle = () => {
+    switch (itemType) {
+      case 'leads':
+        return item?.client?.name || 'Lead Details';
+      case 'events':
+        return item?.name || 'Event Details';
+      case 'clients':
+        return item?.name || 'Client Details';
+      case 'venues':
+        return item?.name || 'Venue Details';
+      default:
+        return 'Details';
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Header */}
       <ModuleHeader
-        title={itemType === 'leads' ? item?.companyName : item?.eventName}
+        title={getTitle()}
         showBack
         rightActions={
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {itemType === 'leads' && canManage && item?.status === 'qualified' && (
+            {itemType === 'leads' && canManage && item && !item.reject && !item.convert && (
               <Pressable
-                onPress={handleConvertToEvent}
+                onPress={() => {
+                  router.push({
+                    pathname: '/(modules)/events/convert-lead',
+                    params: { leadId: id }
+                  } as any);
+                }}
                 style={({ pressed }) => ({
                   padding: 8,
                   borderRadius: 8,
@@ -277,18 +339,6 @@ export default function EventDetailScreen() {
                 })}
               >
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
-              </Pressable>
-            )}
-            {canEdit && (
-              <Pressable
-                onPress={handleEdit}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? theme.colors.surface : 'transparent',
-                })}
-              >
-                <Ionicons name="create-outline" size={24} color={theme.colors.text} />
               </Pressable>
             )}
             {canDelete && (

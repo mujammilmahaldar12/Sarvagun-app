@@ -1,13 +1,10 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { getToken, saveToken, removeToken } from "./storage";
-import { showMessage } from "react-native-flash-message";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__ 
-  ? "http://192.168.1.104:8000/api"  // Your PC's local IP
+  ? "http://10.231.38.221:8000/api"  // Your PC's current local IP
   : "https://your-production-api.com/api";  // Production
-
-console.log("🌐 API Base URL:", API_BASE_URL);
 
 // Create axios instance
 export const api = axios.create({
@@ -64,35 +61,11 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed - logout user
         await removeToken();
-        showMessage({
-          message: "Session expired",
-          description: "Please login again",
-          type: "danger",
-        });
         return Promise.reject(refreshError);
       }
     }
 
     // Handle other errors
-    console.error("❌ API Error:", {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-    });
-
-    const errorMessage =
-      (error.response?.data as any)?.message ||
-      error.message ||
-      "Something went wrong";
-
-    showMessage({
-      message: "Error",
-      description: errorMessage,
-      type: "danger",
-    });
-
     return Promise.reject(error);
   }
 );
@@ -100,7 +73,13 @@ api.interceptors.response.use(
 // API helper functions
 export const apiClient = {
   get: <T>(url: string, config?: AxiosRequestConfig) =>
-    api.get<T>(url, config).then((res) => res.data),
+    api.get<T>(url, config).then((res) => {
+      // Handle paginated responses - extract results array
+      if (res.data && typeof res.data === 'object' && 'results' in res.data) {
+        return (res.data as any).results as T;
+      }
+      return res.data;
+    }),
 
   post: <T>(url: string, data?: any, config?: AxiosRequestConfig) =>
     api.post<T>(url, data, config).then((res) => res.data),

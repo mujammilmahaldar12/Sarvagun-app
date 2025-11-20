@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import AppButton from '@/components/ui/AppButton';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 
@@ -420,25 +421,13 @@ export default function AddSaleScreen() {
         {/* Documents */}
         <View style={{ gap: 12 }}>
           <SectionHeader title="Supporting Documents" />
-          <Pressable
+          <AppButton
+            title="Upload Documents"
             onPress={pickDocument}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: 12,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.surface : 'transparent',
-            })}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.primary} />
-            <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600' }}>
-              Upload Documents
-            </Text>
-          </Pressable>
+            variant="secondary"
+            fullWidth
+            leftIcon="cloud-upload-outline"
+          />
 
           {documents.length > 0 && (
             <View style={{ gap: 8 }}>
@@ -470,21 +459,15 @@ export default function AddSaleScreen() {
         </View>
 
         {/* Submit Button */}
-        <Pressable
-          onPress={handleSubmit}
-          style={({ pressed }) => ({
-            backgroundColor: pressed ? theme.colors.primary + 'dd' : theme.colors.primary,
-            padding: 16,
-            borderRadius: 8,
-            alignItems: 'center',
-            marginTop: 8,
-            marginBottom: 20,
-          })}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-            Create Invoice
-          </Text>
-        </Pressable>
+        <View style={{ marginTop: 8, marginBottom: 20 }}>
+          <AppButton
+            title="Create Invoice"
+            onPress={handleSubmit}
+            fullWidth
+            size="lg"
+            leftIcon="document-text"
+          />
+        </View>
       </ScrollView>
     </View>
   );

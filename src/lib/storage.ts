@@ -15,7 +15,7 @@ export const saveToken = async (
       await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     }
   } catch (error) {
-    console.error("Error saving token:", error);
+    // Silent error
   }
 };
 
@@ -24,7 +24,6 @@ export const getToken = async (type: "access" | "refresh" = "access"): Promise<s
     const key = type === "access" ? TOKEN_KEY : REFRESH_TOKEN_KEY;
     return await AsyncStorage.getItem(key);
   } catch (error) {
-    console.error("Error getting token:", error);
     return null;
   }
 };
@@ -33,7 +32,7 @@ export const removeToken = async (): Promise<void> => {
   try {
     await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
   } catch (error) {
-    console.error("Error removing token:", error);
+    // Silent error
   }
 };
 
@@ -42,7 +41,7 @@ export const saveUser = async (user: any): Promise<void> => {
   try {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
   } catch (error) {
-    console.error("Error saving user:", error);
+    // Silent error
   }
 };
 
@@ -51,7 +50,6 @@ export const getUser = async (): Promise<any | null> => {
     const user = await AsyncStorage.getItem(USER_KEY);
     return user ? JSON.parse(user) : null;
   } catch (error) {
-    console.error("Error getting user:", error);
     return null;
   }
 };
@@ -63,7 +61,7 @@ export const storage = {
       const jsonValue = JSON.stringify(value);
       await AsyncStorage.setItem(key, jsonValue);
     } catch (error) {
-      console.error(`Error setting ${key}:`, error);
+      // Silent error
     }
   },
 
@@ -72,7 +70,6 @@ export const storage = {
       const jsonValue = await AsyncStorage.getItem(key);
       return jsonValue ? JSON.parse(jsonValue) : null;
     } catch (error) {
-      console.error(`Error getting ${key}:`, error);
       return null;
     }
   },
@@ -81,7 +78,7 @@ export const storage = {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error(`Error removing ${key}:`, error);
+      // Silent error
     }
   },
 
@@ -89,7 +86,7 @@ export const storage = {
     try {
       await AsyncStorage.clear();
     } catch (error) {
-      console.error("Error clearing storage:", error);
+      // Silent error
     }
   },
 };

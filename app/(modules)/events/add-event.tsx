@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import AppButton from '@/components/ui/AppButton';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 
@@ -36,8 +37,6 @@ export default function AddEventScreen() {
 
   const pickDocument = async () => {
     // TODO: Implement document picker
-    console.log('Pick document');
-    Alert.alert('Info', 'Document picker will be implemented with expo-document-picker');
   };
 
   const removeDocument = (index: number) => {
@@ -47,27 +46,20 @@ export default function AddEventScreen() {
   const handleSubmit = () => {
     // Validation
     if (!formData.eventName.trim()) {
-      Alert.alert('Error', 'Please enter event name');
       return;
     }
     if (!formData.eventType) {
-      Alert.alert('Error', 'Please select event type');
       return;
     }
     if (!formData.startDate.trim()) {
-      Alert.alert('Error', 'Please enter start date');
       return;
     }
     if (!formData.venue.trim()) {
-      Alert.alert('Error', 'Please enter venue');
       return;
     }
 
     // Submit logic here
-    console.log('Submitting event:', formData);
-    Alert.alert('Success', 'Event created successfully', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    router.back();
   };
 
   const FormInput = ({
@@ -282,25 +274,13 @@ export default function AddEventScreen() {
         {/* Documents */}
         <View style={{ gap: 12 }}>
           <SectionHeader title="Documents" />
-          <Pressable
+          <AppButton
+            title="Upload Documents"
             onPress={pickDocument}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: 12,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.surface : 'transparent',
-            })}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.primary} />
-            <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600' }}>
-              Upload Documents
-            </Text>
-          </Pressable>
+            variant="secondary"
+            fullWidth
+            leftIcon="cloud-upload-outline"
+          />
 
           {documents.length > 0 && (
             <View style={{ gap: 8 }}>
@@ -332,21 +312,15 @@ export default function AddEventScreen() {
         </View>
 
         {/* Submit Button */}
-        <Pressable
-          onPress={handleSubmit}
-          style={({ pressed }) => ({
-            backgroundColor: pressed ? theme.colors.primary + 'dd' : theme.colors.primary,
-            padding: 16,
-            borderRadius: 8,
-            alignItems: 'center',
-            marginTop: 8,
-            marginBottom: 20,
-          })}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-            Create Event
-          </Text>
-        </Pressable>
+        <View style={{ marginTop: 8, marginBottom: 20 }}>
+          <AppButton
+            title="Create Event"
+            onPress={handleSubmit}
+            fullWidth
+            size="lg"
+            leftIcon="calendar"
+          />
+        </View>
       </ScrollView>
     </View>
   );

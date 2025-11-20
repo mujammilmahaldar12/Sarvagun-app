@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import AppButton from '@/components/ui/AppButton';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 
@@ -346,25 +347,13 @@ export default function AddExpenseScreen() {
           <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
             Upload invoices, receipts, or other supporting documents
           </Text>
-          <Pressable
+          <AppButton
+            title="Upload Documents"
             onPress={pickDocument}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: 12,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.surface : 'transparent',
-            })}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.primary} />
-            <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600' }}>
-              Upload Documents
-            </Text>
-          </Pressable>
+            variant="secondary"
+            fullWidth
+            leftIcon="cloud-upload-outline"
+          />
 
           {documents.length > 0 && (
             <View style={{ gap: 8 }}>
@@ -396,21 +385,15 @@ export default function AddExpenseScreen() {
         </View>
 
         {/* Submit Button */}
-        <Pressable
-          onPress={handleSubmit}
-          style={({ pressed }) => ({
-            backgroundColor: pressed ? theme.colors.primary + 'dd' : theme.colors.primary,
-            padding: 16,
-            borderRadius: 8,
-            alignItems: 'center',
-            marginTop: 8,
-            marginBottom: 20,
-          })}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-            Submit Expense
-          </Text>
-        </Pressable>
+        <View style={{ marginTop: 8, marginBottom: 20 }}>
+          <AppButton
+            title="Submit Expense"
+            onPress={handleSubmit}
+            fullWidth
+            size="lg"
+            leftIcon="cash"
+          />
+        </View>
       </ScrollView>
     </View>
   );

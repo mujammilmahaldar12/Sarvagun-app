@@ -1,24 +1,21 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert, Switch, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-
-interface MenuItem {
-  id: string;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  route?: string;
-  action?: () => void;
-  color?: string;
-  showArrow?: boolean;
-}
+import { Avatar, ListItem } from '@/components';
+import { spacing, borderRadius, iconSizes } from '@/constants/designTokens';
+import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { theme, isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuthStore();
+  
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
 
   const handleLogout = () => {
     Alert.alert(
@@ -29,240 +26,306 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/(auth)/login');
+          onPress: async () => {
+            await logout();
+            router.replace('/login');
           },
         },
       ]
     );
   };
 
-  const PROFILE_MENU: MenuItem[] = [
-    {
-      id: 'edit-profile',
-      title: 'Edit Profile',
-      icon: 'person-outline',
-      route: '/profile/edit',
-      showArrow: true,
-    },
-    {
-      id: 'theme',
-      title: `Theme: ${isDark ? 'Dark' : 'Light'}`,
-      icon: isDark ? 'moon' : 'sunny',
-      action: toggleTheme,
-      showArrow: false,
-    },
-    {
-      id: 'notifications',
-      title: 'Notification Settings',
-      icon: 'notifications-outline',
-      route: '/settings/notifications',
-      showArrow: true,
-    },
-    {
-      id: 'privacy',
-      title: 'Privacy & Security',
-      icon: 'shield-checkmark-outline',
-      route: '/settings/privacy',
-      showArrow: true,
-    },
-    {
-      id: 'help',
-      title: 'Help & Support',
-      icon: 'help-circle-outline',
-      route: '/settings/help',
-      showArrow: true,
-    },
-    {
-      id: 'about',
-      title: 'About Sarvagun',
-      icon: 'information-circle-outline',
-      route: '/settings/about',
-      showArrow: true,
-    },
-  ];
-
-  const handleMenuPress = (item: MenuItem) => {
-    if (item.action) {
-      item.action();
-    } else if (item.route) {
-      // router.push(item.route);
-      console.log('Navigate to:', item.route);
-    }
-  };
-
-  const getInitials = (name?: string) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
+        backgroundColor="transparent"
+        translucent
       />
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* Profile Header */}
-        <View
-          className="px-6 pt-12 pb-8 items-center"
-          style={{
-            paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight! + 24 : 56,
-            backgroundColor: theme.colors.surface,
-          }}
-        >
-          {/* Avatar */}
-          <View
-            className="w-24 h-24 rounded-full items-center justify-center mb-4"
-            style={{
-              backgroundColor: theme.colors.primary,
-              shadowColor: theme.colors.primary,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
-          >
-            <Text className="text-3xl font-bold text-white">
-              {getInitials(user?.full_name)}
-            </Text>
-          </View>
+      {/* Clean Header */}
+      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Profile</Text>
+      </View>
 
-          {/* User Info */}
-          <Text
-            className="text-2xl font-bold mb-1"
-            style={{ color: theme.colors.text }}
-          >
-            {user?.full_name || 'User'}
-          </Text>
-          <Text
-            className="text-base mb-1"
-            style={{ color: theme.colors.textSecondary, fontSize: 15 }}
-          >
-            {user?.email || 'user@example.com'}
-          </Text>
-          <View className="flex-row items-center gap-2 mt-2">
-            <View
-              className="px-3 py-1 rounded-full"
-              style={{ backgroundColor: `${theme.colors.primary}20` }}
-            >
-              <Text
-                className="text-sm font-semibold"
-                style={{ color: theme.colors.primary }}
-              >
-                {user?.designation || 'Employee'}
-              </Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Profile Header Card */}
+        <View style={styles.section}>
+          <View style={[styles.profileCard, getCardStyle(theme.colors.surface, 'md', 'xl')]}>
+            <View style={styles.profileHeader}>
+              <Avatar
+                size={72}
+                source={user?.photo ? { uri: user.photo } : undefined}
+                name={user?.full_name}
+                onlineStatus={true}
+              />
+              <View style={styles.profileInfo}>
+                <Text style={[styles.userName, { color: theme.colors.text }]}>
+                  {user?.full_name || 'User Name'}
+                </Text>
+                <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>
+                  {user?.email || 'user@example.com'}
+                </Text>
+                <Text style={[styles.userRole, { color: theme.colors.textSecondary }]}>
+                  {user?.designation || 'Employee'} • {user?.category || 'Staff'}
+                </Text>
+              </View>
             </View>
-            <View
-              className="px-3 py-1 rounded-full"
-              style={{ backgroundColor: `${theme.colors.primary}20` }}
+
+            <Pressable
+              onPress={() => router.push('/(settings)/account')}
+              style={({ pressed }) => [
+                styles.editProfileButton,
+                { 
+                  backgroundColor: theme.colors.primary,
+                  borderWidth: 0,
+                  opacity: pressed ? 0.8 : 1,
+                },
+                getShadowStyle('sm'),
+              ]}
             >
-              <Text
-                className="text-sm font-semibold"
-                style={{ color: theme.colors.primary }}
-              >
-                {user?.category || 'Staff'}
-              </Text>
-            </View>
+              <Ionicons name="create-outline" size={iconSizes.sm} color="#FFFFFF" />
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </Pressable>
           </View>
         </View>
 
-        {/* Menu Items */}
-        <View className="px-6 mt-6">
-          <Text
-            className="text-sm font-semibold mb-3 uppercase"
-            style={{ color: theme.colors.textSecondary, fontSize: 12 }}
-          >
-            Settings
-          </Text>
-          <View
-            className="rounded-2xl overflow-hidden"
-            style={{
-              backgroundColor: theme.colors.surface,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 8,
-              elevation: 3,
-            }}
-          >
-            {PROFILE_MENU.map((item, index) => (
-              <Pressable
-                key={item.id}
-                onPress={() => handleMenuPress(item)}
-                className="px-5 py-4 flex-row items-center"
-                style={({ pressed }) => ({
-                  backgroundColor: pressed
-                    ? isDark
-                      ? '#37415120'
-                      : '#F3F4F620'
-                    : 'transparent',
-                  borderBottomWidth: index < PROFILE_MENU.length - 1 ? 1 : 0,
-                  borderBottomColor: isDark ? '#374151' : '#E5E7EB',
-                })}
-              >
-                <Ionicons
-                  name={item.icon}
-                  size={24}
-                  color={item.color || theme.colors.text}
-                  style={{ marginRight: 16 }}
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>ACCOUNT</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+            <ListItem
+              title="Your Account"
+              description={`${user?.first_name} ${user?.last_name}`}
+              leftIcon="person-outline"
+              onPress={() => router.push('/(settings)/account')}
+            />
+            <ListItem
+              title="Privacy & Security"
+              description="Manage your privacy settings"
+              leftIcon="shield-checkmark-outline"
+              onPress={() => console.log('Privacy')}
+            />
+            <ListItem
+              title="Language"
+              description="English"
+              leftIcon="language-outline"
+              showDivider={false}
+              onPress={() => console.log('Language')}
+            />
+          </View>
+        </View>
+
+        {/* Preferences Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>PREFERENCES</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+            <ListItem
+              title="Push Notifications"
+              description={notificationsEnabled ? 'Enabled' : 'Disabled'}
+              leftIcon="notifications-outline"
+              rightContent={
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={setNotificationsEnabled}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary + '50' }}
+                  thumbColor={notificationsEnabled ? theme.colors.primary : '#f4f3f4'}
                 />
-                <Text
-                  className="text-base font-medium flex-1"
-                  style={{ color: item.color || theme.colors.text, fontSize: 15 }}
-                >
-                  {item.title}
-                </Text>
-                {item.showArrow && (
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color={theme.colors.textSecondary}
-                  />
-                )}
-              </Pressable>
-            ))}
+              }
+            />
+            <ListItem
+              title="Email Notifications"
+              description={emailNotifications ? 'Enabled' : 'Disabled'}
+              leftIcon="mail-outline"
+              rightContent={
+                <Switch
+                  value={emailNotifications}
+                  onValueChange={setEmailNotifications}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary + '50' }}
+                  thumbColor={emailNotifications ? theme.colors.primary : '#f4f3f4'}
+                />
+              }
+            />
+            <ListItem
+              title="Dark Mode"
+              description={isDark ? 'On' : 'Off'}
+              leftIcon="moon-outline"
+              showDivider={false}
+              rightContent={
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary + '50' }}
+                  thumbColor={isDark ? theme.colors.primary : '#f4f3f4'}
+                />
+              }
+            />
+          </View>
+        </View>
+
+        {/* App Settings Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>APP SETTINGS</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+            <ListItem
+              title="Appearance"
+              description="Customize app theme"
+              leftIcon="color-palette-outline"
+              onPress={() => router.push('/(settings)/appearance')}
+            />
+            <ListItem
+              title="Storage"
+              description="Manage app data"
+              leftIcon="cloud-outline"
+              onPress={() => console.log('Storage')}
+            />
+            <ListItem
+              title="Data & Privacy"
+              description="Control your data"
+              leftIcon="lock-closed-outline"
+              showDivider={false}
+              onPress={() => console.log('Data')}
+            />
+          </View>
+        </View>
+
+        {/* Support Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>SUPPORT</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+            <ListItem
+              title="Help Center"
+              description="Get help and support"
+              leftIcon="help-circle-outline"
+              onPress={() => console.log('Help')}
+            />
+            <ListItem
+              title="Report a Problem"
+              description="Let us know about issues"
+              leftIcon="alert-circle-outline"
+              onPress={() => console.log('Report')}
+            />
+            <ListItem
+              title="About"
+              description="App version and info"
+              leftIcon="information-circle-outline"
+              showDivider={false}
+              onPress={() => router.push('/(settings)/about')}
+            />
           </View>
         </View>
 
         {/* Logout Button */}
-        <View className="px-6 mt-8">
+        <View style={styles.section}>
           <Pressable
             onPress={handleLogout}
-            className="rounded-2xl px-6 py-4 flex-row items-center justify-center"
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? '#DC2626' : '#EF4444',
-              opacity: pressed ? 0.9 : 1,
-            })}
+            style={({ pressed }) => [
+              styles.logoutButton,
+              getCardStyle(theme.colors.surface, 'md', 'lg'),
+              { 
+                opacity: pressed ? 0.7 : 1,
+                borderWidth: 1.5,
+                borderColor: '#EF4444',
+              },
+            ]}
           >
-            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
-            <Text className="text-base font-bold text-white ml-2">
-              Logout
-            </Text>
+            <View style={[styles.logoutIconContainer, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="log-out-outline" size={iconSizes.sm} color="#EF4444" />
+            </View>
+            <Text style={[styles.logoutText, { color: '#EF4444' }]}>Logout</Text>
+            <Ionicons name="chevron-forward" size={iconSizes.sm} color="#EF4444" />
           </Pressable>
-        </View>
-
-        {/* App Version */}
-        <View className="items-center mt-8">
-          <Text
-            className="text-xs"
-            style={{ color: theme.colors.textSecondary, fontSize: 12, opacity: 0.7 }}
-          >
-            Sarvagun ERP v2.0.0
-          </Text>
         </View>
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+  },
+  headerTitle: {
+    ...getTypographyStyle('2xl', 'bold'),
+  },
+  scrollContent: {
+    paddingTop: spacing.xl,
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+  },
+  section: {
+    marginBottom: spacing['2xl'],
+    paddingHorizontal: spacing.lg,
+  },
+  profileCard: {
+    padding: spacing.xl,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.base,
+    marginBottom: spacing.lg,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  userName: {
+    ...getTypographyStyle('xl', 'bold'),
+    marginBottom: spacing.xs,
+  },
+  userEmail: {
+    ...getTypographyStyle('sm', 'regular'),
+    marginBottom: spacing.xs,
+  },
+  userRole: {
+    ...getTypographyStyle('sm', 'medium'),
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
+  },
+  editButtonText: {
+    ...getTypographyStyle('base', 'semibold'),
+    color: '#FFFFFF',
+  },
+  sectionTitle: {
+    ...getTypographyStyle('xs', 'bold'),
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+    marginLeft: spacing.xs,
+  },
+  sectionCard: {
+    overflow: 'hidden',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  logoutIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutText: {
+    ...getTypographyStyle('base', 'semibold'),
+    flex: 1,
+  },
+});

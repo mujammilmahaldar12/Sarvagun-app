@@ -97,6 +97,9 @@ export default function LoginScreen() {
             title={isLoading ? "Logging in..." : "Login"}
             onPress={handleLogin}
             disabled={isLoading || !username || !password}
+            loading={isLoading}
+            fullWidth
+            size="lg"
           />
         </View>
 
