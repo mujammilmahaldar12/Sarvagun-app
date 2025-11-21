@@ -263,6 +263,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
             onPress={() => handleLeadDetails(row.id)}
             variant="secondary"
             size="small"
+            accessibilityLabel={`View lead for ${row.clientName}`}
           />
           
           {canApprove && row.status === 'pending' && (
@@ -273,6 +274,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
                 onPress={() => handleConvertLead(row.id)}
                 variant="success"
                 size="small"
+                accessibilityLabel={`Convert lead for ${row.clientName}`}
               />
               
               <ActionButton
@@ -281,6 +283,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
                 onPress={() => handleRejectLead(row.id)}
                 variant="warning"
                 size="small"
+                accessibilityLabel={`Reject lead for ${row.clientName}`}
               />
             </>
           )}
@@ -292,6 +295,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
               onPress={() => handleDeleteLead(row.id)}
               variant="danger"
               size="small"
+              accessibilityLabel={`Delete lead for ${row.clientName}`}
             />
           )}
         </View>

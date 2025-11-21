@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/useTheme';
 export interface TableColumn<T = any> {
   key: string;
   title: string;
+  label?: string; // Alternative to title for backwards compatibility
   width?: number;
   sortable?: boolean;
   render?: (value: any, item: T) => React.ReactNode;
@@ -285,7 +286,7 @@ export default function AppTable<T = any>({
                     fontWeight: '700',
                   }}
                 >
-                  {column.title}
+                  {column.title || column.label}
                 </Text>
                 {column.sortable && (
                   <Ionicons

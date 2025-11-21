@@ -257,6 +257,7 @@ const EventsList: React.FC<EventsListProps> = ({
                 onPress={() => handleEditEvent(row.id)}
                 variant="secondary"
                 size="small"
+                accessibilityLabel={`Edit event ${row.eventName}`}
               />
               
               <ActionButton
@@ -265,6 +266,7 @@ const EventsList: React.FC<EventsListProps> = ({
                 onPress={() => handleDeleteEvent(row.id)}
                 variant="danger"
                 size="small"
+                accessibilityLabel={`Delete event ${row.eventName}`}
               />
             </>
           )}

@@ -12,6 +12,7 @@ interface ActionButtonProps {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityLabel?: string;
 }
 
 export default function ActionButton({

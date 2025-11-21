@@ -20,6 +20,7 @@ export type StatusType =
 interface StatusBadgeProps {
   status: string;
   type?: StatusType;
+  variant?: StatusType; // Alias for type for consistency
   showIcon?: boolean;
   size?: 'small' | 'medium' | 'large';
 }
@@ -99,7 +100,7 @@ const STATUS_CONFIG = {
   },
 };
 
-export default function StatusBadge({ status, type, showIcon = true, size = 'medium' }: StatusBadgeProps) {
+export default function StatusBadge({ status, type, variant, showIcon = true, size = 'medium' }: StatusBadgeProps) {
   // Handle undefined or null status
   if (!status) {
     return null;
@@ -107,7 +108,7 @@ export default function StatusBadge({ status, type, showIcon = true, size = 'med
 
   // Auto-detect type from status text if not provided
   const statusLower = status.toLowerCase().replace(/\s+/g, '-');
-  const detectedType = type || (statusLower as StatusType);
+  const detectedType = variant || type || (statusLower as StatusType);
 
   const config = STATUS_CONFIG[detectedType] || STATUS_CONFIG.draft;
 
