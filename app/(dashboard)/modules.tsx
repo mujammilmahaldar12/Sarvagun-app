@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
-import { Chip } from '@/components';
+import { Chip, AnimatedPressable } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designTokens';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
@@ -138,18 +138,19 @@ export default function ModulesScreen() {
           {CATEGORIES.map((category) => {
             const isActive = selectedCategory === category;
             return (
-              <Pressable
+              <AnimatedPressable
                 key={category}
                 onPress={() => setSelectedCategory(category)}
-                style={({ pressed }) => [
+                style={[
                   styles.categoryChip,
                   {
                     backgroundColor: isActive ? theme.colors.primary : theme.colors.surface,
                     borderWidth: 1.5,
                     borderColor: isActive ? theme.colors.primary : theme.colors.border,
-                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
+                hapticType="selection"
+                springConfig="bouncy"
               >
                 <Text
                   style={[
@@ -161,7 +162,7 @@ export default function ModulesScreen() {
                 >
                   {category}
                 </Text>
-              </Pressable>
+              </AnimatedPressable>
             );
           })}
         </ScrollView>
@@ -177,14 +178,16 @@ export default function ModulesScreen() {
               const isActive = module.badge === 'Active';
               
               return (
-                <Pressable
+                <AnimatedPressable
                   key={module.id}
                   onPress={() => router.push(module.route as any)}
-                  style={({ pressed }) => [
+                  style={[
                     styles.moduleCard,
                     getCardStyle(theme.colors.surface, 'md', 'lg'),
-                    { opacity: pressed ? 0.8 : 1 },
                   ]}
+                  hapticType="medium"
+                  springConfig="gentle"
+                  animateOnMount={true}
                 >
                   <View style={styles.moduleContent}>
                     {/* Icon Container */}
@@ -223,7 +226,7 @@ export default function ModulesScreen() {
                     {/* Arrow Icon */}
                     <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.colors.textSecondary} />
                   </View>
-                </Pressable>
+                </AnimatedPressable>
               );
             })}
           </View>

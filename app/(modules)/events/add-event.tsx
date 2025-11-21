@@ -37,6 +37,8 @@ export default function AddEventScreen() {
 
   const pickDocument = async () => {
     // TODO: Implement document picker
+    console.log('Pick document');
+    Alert.alert('Info', 'Document picker will be implemented with expo-document-picker');
   };
 
   const removeDocument = (index: number) => {
@@ -46,20 +48,27 @@ export default function AddEventScreen() {
   const handleSubmit = () => {
     // Validation
     if (!formData.eventName.trim()) {
+      Alert.alert('Error', 'Please enter event name');
       return;
     }
     if (!formData.eventType) {
+      Alert.alert('Error', 'Please select event type');
       return;
     }
     if (!formData.startDate.trim()) {
+      Alert.alert('Error', 'Please enter start date');
       return;
     }
     if (!formData.venue.trim()) {
+      Alert.alert('Error', 'Please enter venue');
       return;
     }
 
     // Submit logic here
-    router.back();
+    console.log('Submitting event:', formData);
+    Alert.alert('Success', 'Event created successfully', [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
   };
 
   const FormInput = ({

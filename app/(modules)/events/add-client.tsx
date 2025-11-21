@@ -42,7 +42,7 @@ export default function AddClientScreen() {
       setCategories(categoriesData);
       setOrganisations(orgsData);
     } catch (error: any) {
-      // Silent error
+      Alert.alert('Error', error.message || 'Failed to load reference data');
     }
   };
 
@@ -52,6 +52,7 @@ export default function AddClientScreen() {
 
   const handleAddOrganisation = async () => {
     if (!newOrgName.trim()) {
+      Alert.alert('Error', 'Please enter organisation name');
       return;
     }
 
@@ -61,32 +62,39 @@ export default function AddClientScreen() {
       setFormData({ ...formData, organisationId: newOrg.id });
       setNewOrgName('');
       setShowOrgInput(false);
+      Alert.alert('Success', 'Organisation added successfully');
     } catch (error: any) {
-      // Silent error
+      Alert.alert('Error', error.message || 'Failed to add organisation');
     }
   };
 
   const handleSubmit = async () => {
     // Validation
     if (!formData.name.trim()) {
+      Alert.alert('Error', 'Please enter client name');
       return;
     }
     if (!formData.contactPerson.trim()) {
+      Alert.alert('Error', 'Please enter contact person name');
       return;
     }
     if (!formData.phone.trim()) {
+      Alert.alert('Error', 'Please enter phone number');
       return;
     }
     if (!formData.email.trim()) {
+      Alert.alert('Error', 'Please enter email address');
       return;
     }
     if (!formData.categoryId) {
+      Alert.alert('Error', 'Please select client category');
       return;
     }
 
     // Check if B2B/B2G requires organisation
     const selectedCategory = categories.find(c => c.id === formData.categoryId);
     if (selectedCategory && ['B2B', 'B2G'].includes(selectedCategory.name) && !formData.organisationId) {
+      Alert.alert('Error', `${selectedCategory.name} clients require an organisation`);
       return;
     }
 
@@ -102,9 +110,11 @@ export default function AddClientScreen() {
         organisation_id: formData.organisationId || undefined,
       });
 
-      router.back();
+      Alert.alert('Success', 'Client created successfully', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
     } catch (error: any) {
-      // Silent error
+      Alert.alert('Error', error.message || 'Failed to create client');
     } finally {
       setLoading(false);
     }

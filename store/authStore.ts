@@ -1,16 +1,8 @@
 ﻿import { create } from "zustand";
-// import { User } from "@features/auth/types/auth.types";
 import { authService } from "../services/auth.service";
 import { getToken } from "../utils/storage";
-
-// Simple User type definition
-type User = {
-  id: number;
-  email: string;
-  username: string;
-  first_name?: string;
-  last_name?: string;
-};
+import { syncPermissionsWithAuth } from "./permissionStore";
+import type { User } from "@/types/user";
 
 type AuthStore = {
   user: User | null;
@@ -47,6 +39,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
       });
 
+      // Sync permissions with auth state
+      syncPermissionsWithAuth();
+
       return true;
     } catch (error: any) {
       set({ isLoading: false });
@@ -70,6 +65,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         refreshToken: null,
         isAuthenticated: false,
       });
+
+      // Clear permissions on logout
+      syncPermissionsWithAuth();
     }
   },
 
@@ -89,6 +87,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           isAuthenticated: true,
           isLoading: false,
         });
+
+        // Sync permissions after loading user
+        syncPermissionsWithAuth();
       } else {
         set({ isLoading: false });
       }
@@ -97,5 +98,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    set({ user });
+    // Sync permissions when user is updated
+    syncPermissionsWithAuth();
+  },
 }));

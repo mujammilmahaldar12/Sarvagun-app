@@ -1,75 +1,104 @@
+/**
+ * Professional EmptyState Component
+ * Standardized empty state with proper accessibility and theming
+ */
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
-import { spacing, iconSizes } from '../../constants/designTokens';
-import { getTypographyStyle, getCenteredStyle } from '../../utils/styleHelpers';
+import { spacing, typography, iconSizes } from '../../constants/designSystem';
+import { Button } from './Button';
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
   title: string;
   description?: string;
-  action?: React.ReactNode;
+  actionTitle?: string;
+  onActionPress?: () => void;
   style?: ViewStyle;
+  variant?: 'default' | 'compact';
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = 'folder-open-outline',
+  icon = 'folder-outline',
   title,
   description,
-  action,
+  actionTitle,
+  onActionPress,
   style,
+  variant = 'default',
 }) => {
   const { theme } = useTheme();
 
-  const containerStyle: ViewStyle = {
-    ...getCenteredStyle(),
-    padding: spacing['3xl'],
-  };
-
-  const iconContainerStyle: ViewStyle = {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: `${theme.colors.primary}10`,
-    ...getCenteredStyle(),
-    marginBottom: spacing.lg,
-  };
-
-  const titleStyle: TextStyle = {
-    ...getTypographyStyle('xl', 'semibold'),
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  };
-
-  const descriptionStyle: TextStyle = {
-    ...getTypographyStyle('base', 'regular'),
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: spacing.xl,
-  };
+  const isCompact = variant === 'compact';
 
   return (
-    <View style={[containerStyle, style]}>
-      <View style={iconContainerStyle}>
-        <Ionicons name={icon} size={iconSizes.xl} color={theme.colors.primary} />
+    <View
+      style={[
+        {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingHorizontal: spacing[6],
+          paddingVertical: isCompact ? spacing[8] : spacing[12],
+        },
+        style,
+      ]}
+    >
+      {/* Icon */}
+      <View
+        style={{
+          backgroundColor: theme.surfaceElevated,
+          padding: isCompact ? spacing[4] : spacing[6],
+          borderRadius: isCompact ? spacing[8] : spacing[12],
+          marginBottom: isCompact ? spacing[3] : spacing[4],
+        }}
+      >
+        <Ionicons
+          name={icon}
+          size={isCompact ? iconSizes.lg : iconSizes['2xl']}
+          color={theme.textSecondary}
+        />
       </View>
 
-      <Text style={titleStyle}>{title}</Text>
+      {/* Title */}
+      <Text
+        style={{
+          fontSize: isCompact ? typography.sizes.base : typography.sizes.lg,
+          fontWeight: typography.weights.semibold,
+          color: theme.text,
+          textAlign: 'center',
+          marginBottom: description ? spacing[2] : spacing[4],
+        }}
+      >
+        {title}
+      </Text>
 
+      {/* Description */}
       {description && (
-        <Text style={descriptionStyle}>{description}</Text>
+        <Text
+          style={{
+            fontSize: isCompact ? typography.sizes.sm : typography.sizes.base,
+            color: theme.textSecondary,
+            textAlign: 'center',
+            lineHeight: isCompact ? 18 : 22,
+            marginBottom: spacing[4],
+            maxWidth: 280,
+          }}
+        >
+          {description}
+        </Text>
       )}
 
-      {action && <View style={styles.actionContainer}>{action}</View>}
+      {/* Action Button */}
+      {actionTitle && onActionPress && (
+        <Button
+          title={actionTitle}
+          variant="outline"
+          size={isCompact ? 'sm' : 'md'}
+          onPress={onActionPress}
+        />
+      )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  actionContainer: {
-    marginTop: spacing.md,
-  },
-});

@@ -3,7 +3,7 @@ import { getToken, saveToken, removeToken } from "./storage";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__ 
-  ? "http://10.231.38.221:8000/api"  // Your PC's current local IP
+  ? "http://10.231.38.177:8000/api"  // Your PC's current local IP
   : "https://your-production-api.com/api";  // Production
 
 // Create axios instance

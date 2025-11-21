@@ -3,6 +3,7 @@
 export interface ClientCategory {
   id: number;
   name: string;
+  code?: string;  // B2B, B2C, B2G codes
   description?: string;
   created_at: string;
   updated_at: string;
@@ -57,6 +58,7 @@ export interface Venue {
   contact_person?: string;
   contact_phone?: string;
   facilities?: string;
+  type?: string;
   created_by: number;
 }
 
@@ -117,14 +119,21 @@ export interface CreateLeadRequest {
 }
 
 export interface ConvertLeadRequest {
-  event_name: string;
-  venue_id: number;
+  event_name?: string;
+  venue_id?: number;
   description?: string;
   start_date: string;
   end_date: string;
-  active_days: EventActiveDay[];
+  active_days?: EventActiveDay[];
   event_vendors?: EventVendor[];
   total_budget?: number;
+  company?: string;
+  client_category?: string;
+  organisation?: number;
+  venue?: number;
+  type_of_event?: string;
+  category?: string;
+  event_dates?: EventActiveDay[];
 }
 
 export interface CreateClientRequest {

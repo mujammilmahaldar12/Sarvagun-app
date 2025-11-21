@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { Avatar, ListItem } from '@/components';
+import { Avatar, ListItem, AnimatedPressable, AnimatedButton } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designTokens';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
@@ -75,21 +75,22 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            <Pressable
+            <AnimatedPressable
               onPress={() => router.push('/(settings)/account')}
-              style={({ pressed }) => [
+              style={[
                 styles.editProfileButton,
                 { 
                   backgroundColor: theme.colors.primary,
                   borderWidth: 0,
-                  opacity: pressed ? 0.8 : 1,
                 },
                 getShadowStyle('sm'),
               ]}
+              hapticType="medium"
+              springConfig="bouncy"
             >
               <Ionicons name="create-outline" size={iconSizes.sm} color="#FFFFFF" />
               <Text style={styles.editButtonText}>Edit Profile</Text>
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </View>
 
@@ -220,24 +221,25 @@ export default function ProfileScreen() {
 
         {/* Logout Button */}
         <View style={styles.section}>
-          <Pressable
+          <AnimatedPressable
             onPress={handleLogout}
-            style={({ pressed }) => [
+            style={[
               styles.logoutButton,
               getCardStyle(theme.colors.surface, 'md', 'lg'),
               { 
-                opacity: pressed ? 0.7 : 1,
                 borderWidth: 1.5,
                 borderColor: '#EF4444',
               },
             ]}
+            hapticType="heavy"
+            springConfig="gentle"
           >
             <View style={[styles.logoutIconContainer, { backgroundColor: '#FEE2E2' }]}>
               <Ionicons name="log-out-outline" size={iconSizes.sm} color="#EF4444" />
             </View>
             <Text style={[styles.logoutText, { color: '#EF4444' }]}>Logout</Text>
             <Ionicons name="chevron-forward" size={iconSizes.sm} color="#EF4444" />
-          </Pressable>
+          </AnimatedPressable>
         </View>
       </ScrollView>
     </View>

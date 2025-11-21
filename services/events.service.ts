@@ -13,42 +13,82 @@ import type {
   LeadStatistics,
 } from '@/types/events';
 
+// Enhanced service with React Query support
 class EventsService {
   // ==================== LEADS ====================
   
   /**
-   * Get all leads
+   * Get all leads with pagination support
    */
-  async getLeads(params?: { status?: string; search?: string }) {
-    return await apiClient.get<Lead[]>('/events/leads/', { params });
+  async getLeads(params?: { 
+    status?: string; 
+    search?: string; 
+    company?: string;
+    created_date?: string;
+    page?: number;
+    page_size?: number;
+  }) {
+    try {
+      return await apiClient.get<any>('/events/leads/', { params });
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      throw error;
+    }
   }
 
   /**
    * Get single lead by ID
    */
   async getLead(id: number) {
-    return await apiClient.get<Lead>(`/events/leads/${id}/`);
+    try {
+      return await apiClient.get<Lead>(`/events/leads/${id}/`);
+    } catch (error) {
+      console.error('Error fetching lead:', error);
+      throw error;
+    }
   }
 
   /**
    * Create lead with existing client
    */
   async createLead(data: { client_id: number; source: string; notes?: string; referral?: string }) {
-    return await apiClient.post<Lead>('/events/leads/', data);
+    try {
+      return await apiClient.post<Lead>('/events/leads/', data);
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      throw error;
+    }
   }
 
   /**
    * Create lead with client in one atomic transaction
    */
   async createLeadComplete(data: CreateLeadRequest) {
-    return await apiClient.post<Lead>('/events/leads/create-complete/', data);
+    try {
+      return await apiClient.post<Lead>('/events/leads/create-complete/', data);
+    } catch (error) {
+      console.error('Error creating complete lead:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convert lead to event (alias for convertLeadToEvent for React Query)
+   */
+  async convertLead(leadId: number, eventData: ConvertLeadRequest) {
+    return this.convertLeadToEvent(leadId, eventData);
   }
 
   /**
    * Convert lead to event
    */
   async convertLeadToEvent(leadId: number, data: ConvertLeadRequest) {
-    return await apiClient.post<Event>(`/events/leads/${leadId}/convert-to-event/`, data);
+    try {
+      return await apiClient.post<Event>(`/events/leads/${leadId}/convert-to-event/`, data);
+    } catch (error) {
+      console.error('Error converting lead to event:', error);
+      throw error;
+    }
   }
 
   /**
@@ -85,10 +125,18 @@ class EventsService {
   // ==================== EVENTS ====================
   
   /**
-   * Get all events
+   * Get all events with pagination support
    */
-  async getEvents(params?: { status?: string; search?: string }) {
-    return await apiClient.get<Event[]>('/events/events/', { params });
+  async getEvents(params?: { 
+    status?: string; 
+    search?: string; 
+    company?: string;
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }) {
+    return await apiClient.get<any>('/events/events/', { params });
   }
 
   /**
@@ -96,6 +144,13 @@ class EventsService {
    */
   async getEvent(id: number) {
     return await apiClient.get<Event>(`/events/events/${id}/`);
+  }
+
+  /**
+   * Create new event
+   */
+  async createEvent(data: Partial<Event>) {
+    return await apiClient.post<Event>('/events/events/', data);
   }
 
   /**
@@ -110,6 +165,20 @@ class EventsService {
    */
   async deleteEvent(id: number) {
     await apiClient.delete(`/events/events/${id}/`);
+  }
+
+  /**
+   * Bulk update events
+   */
+  async bulkUpdateEvents(ids: number[], data: Partial<Event>) {
+    return await apiClient.patch<Event[]>('/events/events/bulk-update/', { ids, data });
+  }
+
+  /**
+   * Bulk delete events
+   */
+  async bulkDeleteEvents(ids: number[]) {
+    return await apiClient.delete('/events/events/bulk-delete/', { data: { ids } });
   }
 
   // ==================== CLIENTS ====================
@@ -189,6 +258,13 @@ class EventsService {
   // ==================== REFERENCE DATA ====================
   
   /**
+   * Get all client categories (alias for React Query)
+   */
+  async getCategories() {
+    return this.getClientCategories();
+  }
+
+  /**
    * Get all client categories (B2B, B2C, B2G)
    */
   async getClientCategories() {
@@ -207,6 +283,24 @@ class EventsService {
    */
   async createOrganisation(data: Partial<Organisation>) {
     return await apiClient.post<Organisation>('/events/organisations/', data);
+  }
+
+  // ==================== ANALYTICS ====================
+
+  /**
+   * Get events analytics
+   */
+  async getEventsAnalytics(timeRange: string = '30days') {
+    return await apiClient.get<any>(`/events/analytics/events/?range=${timeRange}`);
+  }
+
+  // ==================== SEARCH ====================
+
+  /**
+   * Global search across events, leads, clients
+   */
+  async globalSearch(query: string) {
+    return await apiClient.get<any>(`/events/search/?q=${encodeURIComponent(query)}`);
   }
 }
 

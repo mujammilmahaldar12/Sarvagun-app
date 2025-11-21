@@ -1,35 +1,37 @@
-import { useThemeStore, THEME } from '@/store/themeStore';
-
-export interface Theme {
-  colors: {
-    background: string;
-    surface: string;
-    text: string;
-    textSecondary: string;
-    primary: string;
-    border: string;
-  };
-}
+/**
+ * Enhanced useTheme hook
+ * Integrates with the new design system and theme store
+ */
+import { useThemeStore } from '@/store/themeStore';
+import { designSystem } from '@/constants/designSystem';
 
 export function useTheme() {
-  const { mode, colors, toggleMode, setMode } = useThemeStore();
-
-  const theme: Theme = {
-    colors: {
-      background: colors.background,
-      surface: colors.surface,
-      text: colors.text,
-      textSecondary: colors.textSecondary,
-      primary: colors.primary,
-      border: colors.border,
-    },
-  };
-
+  const themeStore = useThemeStore();
+  
   return {
-    theme,
-    isDark: mode === 'dark',
-    mode,
-    toggleTheme: toggleMode,
-    setTheme: setMode,
+    // Theme colors - direct access to current theme
+    theme: themeStore.colors,
+    
+    // Theme state
+    isDark: themeStore.isDark,
+    mode: themeStore.mode,
+    
+    // Theme actions
+    toggleTheme: themeStore.toggleMode,
+    setTheme: themeStore.setMode,
+    
+    // Design system access
+    spacing: designSystem.spacing,
+    typography: designSystem.typography,
+    borderRadius: designSystem.borderRadius,
+    shadows: designSystem.shadows,
+    layout: designSystem.layout,
+    iconSizes: designSystem.iconSizes,
+    
+    // Helper functions from store
+    getStatusColor: themeStore.getStatusColor,
+    getCardStyle: themeStore.getCardStyle,
+    getInputStyle: themeStore.getInputStyle,
+    getButtonStyle: themeStore.getButtonStyle,
   };
 }
