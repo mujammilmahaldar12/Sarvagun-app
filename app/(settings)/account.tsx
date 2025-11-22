@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import { designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 export default function AccountScreen() {
   const { theme } = useTheme();
@@ -40,15 +42,15 @@ export default function AccountScreen() {
         alignItems: 'center',
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
+        borderBottomColor: theme.border,
       }}
     >
-      <Ionicons name={icon} size={20} color={theme.colors.textSecondary} style={{ marginRight: 12 }} />
+      <Ionicons name={icon} size={20} color={theme.textSecondary} style={{ marginRight: 12 }} />
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>
+        <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginBottom: 4 }}>
           {label}
         </Text>
-        <Text style={{ fontSize: 16, color: theme.colors.text, fontWeight: '500' }}>
+        <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
           {value || 'Not set'}
         </Text>
       </View>
@@ -69,31 +71,31 @@ export default function AccountScreen() {
     keyboardType?: 'default' | 'email-address' | 'phone-pad';
   }) => (
     <View style={{ marginBottom: 20 }}>
-      <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8, fontWeight: '500' }}>
+      <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary, marginBottom: 8 }}>
         {label}
       </Text>
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: theme.colors.background,
+          backgroundColor: theme.background,
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: 8,
           paddingHorizontal: 12,
         }}
       >
-        <Ionicons name={icon} size={20} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
+        <Ionicons name={icon} size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
         <TextInput
           value={value}
           onChangeText={onChangeText}
           style={{
             flex: 1,
             paddingVertical: 12,
-            fontSize: 16,
-            color: theme.colors.text,
+            ...getTypographyStyle('base'),
+            color: theme.text,
           }}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
         />
       </View>
@@ -101,7 +103,7 @@ export default function AccountScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader 
         title="Your account" 
         showBack
@@ -114,9 +116,9 @@ export default function AccountScreen() {
                 setIsEditing(true);
               }
             }}
-            style={{ padding: 8 }}
+            style={{ padding: designSystem.spacing.sm }}
           >
-            <Text style={{ color: theme.colors.primary, fontSize: 16, fontWeight: '600' }}>
+            <Text style={{ color: theme.primary, ...getTypographyStyle('base', 'semibold') }}>
               {isEditing ? 'Save' : 'Edit'}
             </Text>
           </TouchableOpacity>
@@ -128,10 +130,10 @@ export default function AccountScreen() {
         <View
           style={{
             alignItems: 'center',
-            padding: 24,
-            backgroundColor: theme.colors.surface,
+            padding: designSystem.spacing.xl,
+            backgroundColor: theme.surface,
             borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
+            borderBottomColor: theme.border,
           }}
         >
           <View
@@ -139,13 +141,13 @@ export default function AccountScreen() {
               width: 100,
               height: 100,
               borderRadius: 50,
-              backgroundColor: theme.colors.primary,
+              backgroundColor: theme.primary,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 12,
             }}
           >
-            <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#FFFFFF' }}>
+            <Text style={{ ...getTypographyStyle('4xl', 'bold'), color: theme.textInverse }}>
               {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
             </Text>
           </View>
@@ -156,12 +158,12 @@ export default function AccountScreen() {
                 alignItems: 'center',
                 paddingVertical: 8,
                 paddingHorizontal: 16,
-                backgroundColor: theme.colors.primary + '20',
+                backgroundColor: theme.primary + '20',
                 borderRadius: 20,
               }}
             >
-              <Ionicons name="camera-outline" size={18} color={theme.colors.primary} />
-              <Text style={{ marginLeft: 6, color: theme.colors.primary, fontWeight: '600' }}>
+              <Ionicons name="camera-outline" size={18} color={theme.primary} />
+              <Text style={{ marginLeft: 6, color: theme.primary, fontWeight: '600' }}>
                 Change photo
               </Text>
             </TouchableOpacity>
@@ -172,9 +174,8 @@ export default function AccountScreen() {
         <View style={{ padding: 20 }}>
           <Text
             style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: theme.colors.text,
+              ...getTypographyStyle('lg', 'semibold'),
+              color: theme.text,
               marginBottom: 16,
             }}
           >
@@ -219,11 +220,11 @@ export default function AccountScreen() {
           ) : (
             <View
               style={{
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.surface,
                 borderRadius: 12,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: theme.border,
               }}
             >
               <InfoRow label="First Name" value={user?.first_name || ''} icon="person-outline" />
@@ -232,13 +233,13 @@ export default function AccountScreen() {
               <InfoRow label="Phone" value={user?.phone || 'Not set'} icon="call-outline" />
               <InfoRow label="Department" value={user?.department || 'Not set'} icon="business-outline" />
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 16 }}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.textSecondary} style={{ marginRight: 12 }} />
+                <Ionicons name="shield-checkmark-outline" size={20} color={theme.textSecondary} style={{ marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>
+                  <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginBottom: 4 }}>
                     Role
                   </Text>
-                  <Text style={{ fontSize: 16, color: theme.colors.text, fontWeight: '500' }}>
-                    {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
+                  <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
+                    {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
                   </Text>
                 </View>
               </View>
@@ -247,12 +248,11 @@ export default function AccountScreen() {
         </View>
 
         {/* Security */}
-        <View style={{ padding: 20, paddingTop: 0 }}>
+        <View style={{ padding: designSystem.spacing.lg, paddingTop: 0 }}>
           <Text
             style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: theme.colors.text,
+              ...getTypographyStyle('lg', 'semibold'),
+              color: theme.text,
               marginBottom: 16,
             }}
           >
@@ -265,10 +265,10 @@ export default function AccountScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               padding: 16,
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
             }}
           >
             <View
@@ -276,23 +276,23 @@ export default function AccountScreen() {
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: theme.colors.primary + '20',
+                backgroundColor: theme.primary + '20',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 12,
               }}
             >
-              <Ionicons name="key-outline" size={20} color={theme.colors.primary} />
+              <Ionicons name="key-outline" size={20} color={theme.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '500', color: theme.colors.text }}>
+              <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
                 Change password
               </Text>
-              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 2 }}>
+              <Text style={{ ...getTypographyStyle('sm'), color: theme.textSecondary, marginTop: 2 }}>
                 Update your account password
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
 

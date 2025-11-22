@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { COLORS } from '@/constants/colors';
+import { COLORS, designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SegmentData {
@@ -32,7 +33,7 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
   return (
     <View
       style={{
-        backgroundColor: theme.colors.surface,
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
@@ -43,7 +44,7 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
         elevation: 3,
       }}
     >
-      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text, marginBottom: 16 }}>
+      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: designSystem.spacing[4] }}>
         Client Segmentation
       </Text>
 
@@ -54,7 +55,7 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
           const color = colors[index % colors.length];
 
           return (
-            <View key={segment.category}>
+            <View key={`${segment.category}-${index}`}>
               <View
                 style={{
                   flexDirection: 'row',
@@ -76,15 +77,15 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
                   >
                     <Ionicons name={segment.icon} size={18} color={color} />
                   </View>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.text }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
                     {segment.category}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
+                  <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
                     {segment.count}
                   </Text>
-                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary }}>
+                  <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary }}>
                     {percentage.toFixed(1)}%
                   </Text>
                 </View>
@@ -93,7 +94,7 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
               <View
                 style={{
                   height: 12,
-                  backgroundColor: theme.colors.border,
+                  backgroundColor: theme.border,
                   borderRadius: 6,
                   overflow: 'hidden',
                 }}
@@ -111,9 +112,9 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
               {segment.revenue !== undefined && (
                 <Text
                   style={{
-                    fontSize: 11,
-                    color: theme.colors.textSecondary,
-                    marginTop: 4,
+                    ...getTypographyStyle('xs'),
+                    color: theme.textSecondary,
+                    marginTop: designSystem.spacing[1],
                   }}
                 >
                   Revenue: ₹{(segment.revenue / 100000).toFixed(1)}L
@@ -130,11 +131,11 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
           marginTop: 16,
           paddingTop: 16,
           borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
+          borderTopColor: theme.border,
         }}
       >
-        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, textAlign: 'center' }}>
-          Total Clients: <Text style={{ fontWeight: '600', color: theme.colors.text }}>{total}</Text>
+        <Text style={{ ...getTypographyStyle('sm'), color: theme.textSecondary, textAlign: 'center' }}>
+          Total Clients: <Text style={{ fontWeight: '600', color: theme.text }}>{total}</Text>
         </Text>
       </View>
     </View>

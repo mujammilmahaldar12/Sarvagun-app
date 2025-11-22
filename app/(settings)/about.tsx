@@ -3,6 +3,8 @@ import { View, Text, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
 
 export default function AboutScreen() {
   const { theme } = useTheme();
@@ -14,20 +16,20 @@ export default function AboutScreen() {
         justifyContent: 'space-between',
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
+        borderBottomColor: theme.border,
       }}
     >
-      <Text style={{ fontSize: 16, color: theme.colors.textSecondary }}>
+      <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary }}>
         {label}
       </Text>
-      <Text style={{ fontSize: 16, color: theme.colors.text, fontWeight: '500' }}>
+      <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
         {value}
       </Text>
     </View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="About" showBack />
 
       <ScrollView style={{ flex: 1 }}>
@@ -35,10 +37,10 @@ export default function AboutScreen() {
         <View
           style={{
             alignItems: 'center',
-            padding: 40,
-            backgroundColor: theme.colors.surface,
+            padding: designSystem.spacing['3xl'],
+            backgroundColor: theme.surface,
             borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
+            borderBottomColor: theme.border,
           }}
         >
           <View
@@ -46,7 +48,7 @@ export default function AboutScreen() {
               width: 100,
               height: 100,
               borderRadius: 24,
-              backgroundColor: theme.colors.primary,
+              backgroundColor: theme.primary,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 16,
@@ -56,9 +58,8 @@ export default function AboutScreen() {
           </View>
           <Text
             style={{
-              fontSize: 24,
-              fontWeight: 'bold',
-              color: theme.colors.text,
+              ...getTypographyStyle('2xl', 'bold'),
+              color: theme.text,
               marginBottom: 8,
             }}
           >
@@ -66,8 +67,8 @@ export default function AboutScreen() {
           </Text>
           <Text
             style={{
-              fontSize: 16,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('base', 'regular'),
+              color: theme.textSecondary,
             }}
           >
             Version 1.0.0
@@ -75,14 +76,14 @@ export default function AboutScreen() {
         </View>
 
         {/* App Info */}
-        <View style={{ padding: 20 }}>
+        <View style={{ padding: designSystem.spacing.lg }}>
           <View
             style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               padding: 16,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
             }}
           >
             <InfoRow label="Version" value="1.0.0" />
@@ -96,10 +97,10 @@ export default function AboutScreen() {
                 paddingTop: 16,
               }}
             >
-              <Text style={{ fontSize: 16, color: theme.colors.textSecondary }}>
+              <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary }}>
                 Last Updated
               </Text>
-              <Text style={{ fontSize: 16, color: theme.colors.text, fontWeight: '500' }}>
+              <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
                 November 2025
               </Text>
             </View>
@@ -110,9 +111,8 @@ export default function AboutScreen() {
         <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
           <Text
             style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm', 'semibold'),
+              color: theme.textSecondary,
               marginBottom: 12,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -122,17 +122,17 @@ export default function AboutScreen() {
           </Text>
           <View
             style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               padding: 16,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
             }}
           >
             <Text
               style={{
-                fontSize: 15,
-                color: theme.colors.text,
+                ...getTypographyStyle('base', 'regular'),
+                color: theme.text,
                 lineHeight: 22,
               }}
             >
@@ -147,9 +147,8 @@ export default function AboutScreen() {
         <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
           <Text
             style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm', 'semibold'),
+              color: theme.textSecondary,
               marginBottom: 12,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -159,10 +158,10 @@ export default function AboutScreen() {
           </Text>
           <View
             style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
               overflow: 'hidden',
             }}
           >
@@ -178,15 +177,15 @@ export default function AboutScreen() {
                   alignItems: 'center',
                   padding: 16,
                   borderBottomWidth: index < arr.length - 1 ? 1 : 0,
-                  borderBottomColor: theme.colors.border,
+                  borderBottomColor: theme.border,
                 }}
               >
-                <Ionicons name={item.icon as any} size={22} color={theme.colors.primary} style={{ marginRight: 12 }} />
+                <Ionicons name={item.icon as any} size={22} color={theme.primary} style={{ marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 2 }}>
                     {item.label}
                   </Text>
-                  <Text style={{ fontSize: 15, color: theme.colors.text, fontWeight: '500' }}>
+                  <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
                     {item.value}
                   </Text>
                 </View>
@@ -199,9 +198,8 @@ export default function AboutScreen() {
         <View style={{ padding: 20, paddingTop: 0 }}>
           <Text
             style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm', 'semibold'),
+              color: theme.textSecondary,
               marginBottom: 12,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -211,10 +209,10 @@ export default function AboutScreen() {
           </Text>
           <View
             style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
               overflow: 'hidden',
             }}
           >
@@ -228,10 +226,10 @@ export default function AboutScreen() {
                 style={{
                   padding: 16,
                   borderBottomWidth: index < arr.length - 1 ? 1 : 0,
-                  borderBottomColor: theme.colors.border,
+                  borderBottomColor: theme.border,
                 }}
               >
-                <Text style={{ fontSize: 16, color: theme.colors.text, fontWeight: '500' }}>
+                <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
                   {item}
                 </Text>
               </View>
@@ -243,8 +241,8 @@ export default function AboutScreen() {
         <View style={{ padding: 20, alignItems: 'center' }}>
           <Text
             style={{
-              fontSize: 13,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm', 'regular'),
+              color: theme.textSecondary,
               textAlign: 'center',
             }}
           >
@@ -252,8 +250,8 @@ export default function AboutScreen() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('xs', 'regular'),
+              color: theme.textSecondary,
               textAlign: 'center',
               marginTop: 8,
             }}

@@ -81,7 +81,7 @@ export default function AddEventScreen() {
     prefix,
   }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -90,7 +90,7 @@ export default function AddEventScreen() {
             position: 'absolute',
             left: 12,
             fontSize: 14,
-            color: theme.colors.text,
+            color: theme.text,
             zIndex: 1,
           }}>
             {prefix}
@@ -100,20 +100,20 @@ export default function AddEventScreen() {
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           style={{
             flex: 1,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
             borderRadius: 8,
             padding: 12,
             paddingLeft: prefix ? 28 : 12,
             fontSize: 14,
-            color: theme.colors.text,
-            backgroundColor: theme.colors.surface,
+            color: theme.text,
+            backgroundColor: theme.surface,
             textAlignVertical: multiline ? 'top' : 'center',
             minHeight: multiline ? 100 : 44,
           }}
@@ -124,7 +124,7 @@ export default function AddEventScreen() {
 
   const SelectInput = ({ label, value, options, onSelect }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -137,18 +137,18 @@ export default function AddEventScreen() {
               paddingVertical: 8,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: value === option ? theme.colors.primary : theme.colors.border,
+              borderColor: value === option ? theme.primary : theme.border,
               backgroundColor: pressed
-                ? theme.colors.primary + '10'
+                ? theme.primary + '10'
                 : value === option
-                ? theme.colors.primary + '20'
-                : theme.colors.surface,
+                ? theme.primary + '20'
+                : theme.surface,
             })}
           >
             <Text
               style={{
                 fontSize: 14,
-                color: value === option ? theme.colors.primary : theme.colors.text,
+                color: value === option ? theme.primary : theme.text,
                 fontWeight: value === option ? '600' : 'normal',
               }}
             >
@@ -161,13 +161,13 @@ export default function AddEventScreen() {
   );
 
   const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 8 }}>
+    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.text, marginTop: 8 }}>
       {title}
     </Text>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
         title={fromLead ? "Convert Lead to Event" : "Add New Event"}
         showBack
@@ -176,13 +176,13 @@ export default function AddEventScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
         {fromLead && (
           <View style={{
-            backgroundColor: theme.colors.primary + '20',
+            backgroundColor: theme.primary + '20',
             padding: 12,
             borderRadius: 8,
             borderLeftWidth: 4,
-            borderLeftColor: theme.colors.primary,
+            borderLeftColor: theme.primary,
           }}>
-            <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+            <Text style={{ color: theme.text, fontSize: 14 }}>
               Creating event from lead #{fromLead}
             </Text>
           </View>
@@ -302,12 +302,12 @@ export default function AddEventScreen() {
                     justifyContent: 'space-between',
                     padding: 12,
                     borderRadius: 8,
-                    backgroundColor: theme.colors.surface,
+                    backgroundColor: theme.surface,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <Ionicons name="document" size={20} color={theme.colors.primary} />
-                    <Text style={{ color: theme.colors.text, fontSize: 14, flex: 1 }}>
+                    <Ionicons name="document" size={20} color={theme.primary} />
+                    <Text style={{ color: theme.text, fontSize: 14, flex: 1 }}>
                       {doc.name}
                     </Text>
                   </View>

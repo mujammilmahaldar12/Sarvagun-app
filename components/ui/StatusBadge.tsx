@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../hooks/useTheme';
+import { designSystem } from '../../constants/designSystem';
 
 export type StatusType =
   | 'pending'
@@ -25,82 +27,87 @@ interface StatusBadgeProps {
   size?: 'small' | 'medium' | 'large';
 }
 
-const STATUS_CONFIG = {
-  // Leads
-  pending: {
-    bg: '#FEF3C7',
-    text: '#F59E0B',
-    icon: 'hourglass-outline' as const,
-  },
-  converted: {
-    bg: '#D1FAE5',
-    text: '#059669',
-    icon: 'checkmark-circle' as const,
-  },
-  rejected: {
-    bg: '#FEE2E2',
-    text: '#DC2626',
-    icon: 'close-circle' as const,
-  },
+// Define status configuration with theme-based colors
+function getStatusConfig(theme: any) {
+  return {
+    // Leads
+    pending: {
+      bg: theme.warning + '20',
+      text: theme.warning,
+      icon: 'hourglass-outline' as const,
+    },
+    converted: {
+      bg: theme.success + '20',
+      text: theme.success,
+      icon: 'checkmark-circle' as const,
+    },
+    rejected: {
+      bg: theme.error + '20',
+      text: theme.error,
+      icon: 'close-circle' as const,
+    },
 
-  // Events
-  planned: {
-    bg: '#DBEAFE',
-    text: '#2563EB',
-    icon: 'calendar-outline' as const,
-  },
-  'in-progress': {
-    bg: '#E0E7FF',
-    text: '#7C3AED',
-    icon: 'time-outline' as const,
-  },
-  completed: {
-    bg: '#D1FAE5',
-    text: '#059669',
-    icon: 'checkmark-done-circle' as const,
-  },
-  cancelled: {
-    bg: '#FEE2E2',
-    text: '#DC2626',
-    icon: 'ban' as const,
-  },
+    // Events
+    planned: {
+      bg: theme.primary + '20',
+      text: theme.primary,
+      icon: 'calendar-outline' as const,
+    },
+    'in-progress': {
+      bg: theme.secondary + '20',
+      text: theme.secondary,
+      icon: 'time-outline' as const,
+    },
+    completed: {
+      bg: theme.success + '20',
+      text: theme.success,
+      icon: 'checkmark-done-circle' as const,
+    },
+    cancelled: {
+      bg: theme.error + '20',
+      text: theme.error,
+      icon: 'ban' as const,
+    },
 
-  // Sources
-  online: {
-    bg: '#E0E7FF',
-    text: '#6366F1',
-    icon: 'globe-outline' as const,
-  },
-  offline: {
-    bg: '#FCE7F3',
-    text: '#DB2777',
-    icon: 'storefront-outline' as const,
-  },
+    // Sources
+    online: {
+      bg: theme.primary + '20',
+      text: theme.primary,
+      icon: 'globe-outline' as const,
+    },
+    offline: {
+      bg: theme.textSecondary + '20',
+      text: theme.textSecondary,
+      icon: 'storefront-outline' as const,
+    },
 
-  // General
-  approved: {
-    bg: '#ECFDF5',
-    text: '#10B981',
-    icon: 'checkmark-circle' as const,
-  },
-  active: {
-    bg: '#ECFDF5',
-    text: '#10B981',
-    icon: 'checkmark-circle' as const,
-  },
-  inactive: {
-    bg: '#F3F4F6',
-    text: '#6B7280',
-    icon: 'remove-circle' as const,
-  },
-  draft: {
-    bg: '#F3F4F6',
-    text: '#6B7280',
-    icon: 'create-outline' as const,
-  },
-};
+    // General
+    approved: {
+      bg: theme.success + '20',
+      text: theme.success,
+      icon: 'checkmark-circle' as const,
+    },
+    active: {
+      bg: theme.success + '20',
+      text: theme.success,
+      icon: 'checkmark-circle' as const,
+    },
+    inactive: {
+      bg: theme.textSecondary + '20',
+      text: theme.textSecondary,
+      icon: 'remove-circle' as const,
+    },
+    draft: {
+      bg: theme.textSecondary + '20',
+      text: theme.textSecondary,
+      icon: 'create-outline' as const,
+    },
+  };
+}
 
 export default function StatusBadge({ status, type, variant, showIcon = true, size = 'medium' }: StatusBadgeProps) {
+  const theme = useTheme();
+  
   // Handle undefined or null status
   if (!status) {
     return null;
@@ -110,12 +117,25 @@ export default function StatusBadge({ status, type, variant, showIcon = true, si
   const statusLower = status.toLowerCase().replace(/\s+/g, '-');
   const detectedType = variant || type || (statusLower as StatusType);
 
-  const config = STATUS_CONFIG[detectedType] || STATUS_CONFIG.draft;
+  const statusConfig = getStatusConfig(theme);
+  const config = statusConfig[detectedType] || statusConfig.draft;
 
   const sizeConfig = {
-    small: { padding: 6, fontSize: 12, iconSize: 14 },
-    medium: { padding: 10, fontSize: 14, iconSize: 16 },
-    large: { padding: 12, fontSize: 16, iconSize: 18 },
+    small: { 
+      padding: designSystem.spacing[1], 
+      fontSize: designSystem.typography.sizes.xs, 
+      iconSize: 14 
+    },
+    medium: { 
+      padding: designSystem.spacing[2], 
+      fontSize: designSystem.typography.sizes.sm, 
+      iconSize: 16 
+    },
+    large: { 
+      padding: designSystem.spacing[3], 
+      fontSize: designSystem.typography.sizes.base, 
+      iconSize: 18 
+    },
   };
 
   const currentSize = sizeConfig[size];
@@ -127,10 +147,10 @@ export default function StatusBadge({ status, type, variant, showIcon = true, si
         alignItems: 'center',
         paddingHorizontal: currentSize.padding + 4,
         paddingVertical: currentSize.padding,
-        borderRadius: 12,
+        borderRadius: designSystem.borderRadius.lg,
         backgroundColor: config.bg,
         alignSelf: 'flex-start',
-        gap: 4,
+        gap: designSystem.spacing[1],
       }}
     >
       {showIcon && <Ionicons name={config.icon} size={currentSize.iconSize} color={config.text} />}

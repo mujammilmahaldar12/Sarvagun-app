@@ -2,6 +2,9 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { useTheme } from '@/hooks/useTheme';
 
 interface KPICardProps {
   title: string;
@@ -24,34 +27,32 @@ export default function KPICard({
   trendValue,
   onPress,
 }: KPICardProps) {
+  const { theme } = useTheme();
+  
   const content = (
     <LinearGradient
       colors={gradientColors}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{
-        borderRadius: 16,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        borderRadius: designSystem.borderRadius.lg,
+        padding: designSystem.spacing[5],
+        ...designSystem.shadows.lg,
         elevation: 5,
         minHeight: 140,
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#FFF', fontSize: 13, opacity: 0.9, fontWeight: '500' }}>
+          <Text style={{ color: theme.textInverse, ...getTypographyStyle('sm', 'medium'), opacity: 0.9 }}>
             {title}
           </Text>
           <Text
             style={{
-              color: '#FFF',
-              fontSize: 32,
-              fontWeight: 'bold',
-              marginTop: 8,
-              marginBottom: 4,
+              color: theme.textInverse,
+              ...getTypographyStyle('3xl', 'bold'),
+              marginTop: designSystem.spacing[2],
+              marginBottom: designSystem.spacing[1],
             }}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -59,22 +60,22 @@ export default function KPICard({
             {value}
           </Text>
           {subtitle && (
-            <Text style={{ color: '#FFF', fontSize: 11, opacity: 0.85, marginTop: 2 }}>
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs'), opacity: 0.85, marginTop: designSystem.spacing[1] }}>
               {subtitle}
             </Text>
           )}
         </View>
         <View
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
+            width: designSystem.iconSizes['2xl'],
+            height: designSystem.iconSizes['2xl'],
+            borderRadius: designSystem.borderRadius.full,
             backgroundColor: 'rgba(255, 255, 255, 0.2)',
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          <Ionicons name={icon} size={24} color="#FFF" />
+          <Ionicons name={icon} size={designSystem.iconSizes.md} color="#FFF" />
         </View>
       </View>
 
@@ -83,9 +84,9 @@ export default function KPICard({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            marginTop: 12,
-            paddingTop: 12,
-            borderTopWidth: 1,
+            marginTop: designSystem.spacing[3],
+            paddingTop: designSystem.spacing[3],
+            borderTopWidth: designSystem.borderWidth.thin,
             borderTopColor: 'rgba(255, 255, 255, 0.2)',
           }}
         >
@@ -97,10 +98,10 @@ export default function KPICard({
                 ? 'trending-down'
                 : 'remove'
             }
-            size={14}
+            size={designSystem.iconSizes.xs}
             color="#FFF"
           />
-          <Text style={{ color: '#FFF', fontSize: 11, marginLeft: 4, opacity: 0.9 }}>
+          <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs'), marginLeft: designSystem.spacing[1], opacity: 0.9 }}>
             {trendValue}
           </Text>
         </View>

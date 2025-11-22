@@ -65,7 +65,7 @@ export default function AddEmployeeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="Add Employee" />
 
       <KeyboardAvoidingView
@@ -202,7 +202,7 @@ function SectionHeader({ title, theme }: { title: string; theme: any }) {
     <Text style={{
       fontSize: 18,
       fontWeight: '600',
-      color: theme.colors.text,
+      color: theme.text,
       marginTop: 16,
       marginBottom: 12,
     }}>
@@ -238,7 +238,7 @@ function FormInput({
     <View style={{ marginBottom: 16 }}>
       <Text style={{
         fontSize: 14,
-        color: theme.colors.textSecondary,
+        color: theme.textSecondary,
         marginBottom: 8,
         fontWeight: '500',
       }}>
@@ -246,20 +246,20 @@ function FormInput({
       </Text>
       <TextInput
         style={{
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.surface,
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: 8,
           padding: 12,
           fontSize: 16,
-          color: theme.colors.text,
+          color: theme.text,
           minHeight: multiline ? 80 : 48,
           textAlignVertical: multiline ? 'top' : 'center',
         }}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.textSecondary}
+        placeholderTextColor={theme.textSecondary}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         multiline={multiline}

@@ -128,9 +128,9 @@ const LeadsList: React.FC<LeadsListProps> = ({
         {
           text: 'Reject',
           style: 'destructive',
-          onPress: async (reason: string) => {
+          onPress: async (reason?: string) => {
             try {
-              await rejectLead(leadId, reason);
+              await rejectLead(leadId, reason || '');
               Alert.alert('Success', 'Lead rejected successfully');
             } catch (error) {
               console.error('Error rejecting lead:', error);

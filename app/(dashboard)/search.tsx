@@ -11,6 +11,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -52,10 +54,10 @@ export default function SearchScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <View className="flex-1" style={{ backgroundColor: theme.background }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.surface}
+        backgroundColor={theme.surface}
       />
 
       {/* Header with Search Bar */}
@@ -64,9 +66,9 @@ export default function SearchScreen() {
           paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 60,
           paddingHorizontal: 20,
           paddingBottom: 16,
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.surface,
           borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
+          borderBottomColor: theme.border,
         }}
       >
         <View className="flex-row items-center" style={{ gap: 12 }}>
@@ -77,7 +79,7 @@ export default function SearchScreen() {
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
           </Pressable>
 
           {/* Search Input */}
@@ -91,24 +93,24 @@ export default function SearchScreen() {
             <Ionicons
               name="search"
               size={20}
-              color={theme.colors.textSecondary}
+              color={theme.textSecondary}
               style={{ marginRight: 8 }}
             />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search people..."
-              placeholderTextColor={theme.colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               autoFocus
               style={{
                 flex: 1,
-                fontSize: 16,
-                color: theme.colors.text,
+                ...getTypographyStyle('base', 'regular'),
+                color: theme.text,
               }}
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+                <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
               </Pressable>
             )}
           </View>
@@ -125,7 +127,7 @@ export default function SearchScreen() {
           <>
             <Text
               className="text-sm font-semibold mb-4"
-              style={{ color: theme.colors.textSecondary, fontSize: 13 }}
+              style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}
             >
               Results for "{searchQuery}"
             </Text>
@@ -142,7 +144,7 @@ export default function SearchScreen() {
                 <View
                   className="rounded-2xl p-4 flex-row items-center"
                   style={{
-                    backgroundColor: theme.colors.surface,
+                    backgroundColor: theme.surface,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.08,
@@ -154,7 +156,7 @@ export default function SearchScreen() {
                   <View
                     className="w-12 h-12 rounded-full items-center justify-center"
                     style={{
-                      backgroundColor: theme.colors.primary,
+                      backgroundColor: theme.primary,
                     }}
                   >
                     <Text className="text-base font-bold text-white">
@@ -166,13 +168,13 @@ export default function SearchScreen() {
                   <View className="flex-1 ml-3">
                     <Text
                       className="text-base font-semibold mb-1"
-                      style={{ color: theme.colors.text, fontSize: 15 }}
+                      style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}
                     >
                       {person.name}
                     </Text>
                     <Text
                       className="text-sm"
-                      style={{ color: theme.colors.textSecondary, fontSize: 13 }}
+                      style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}
                     >
                       {person.designation} • {person.department}
                     </Text>
@@ -181,7 +183,7 @@ export default function SearchScreen() {
                   <Ionicons
                     name="chevron-forward"
                     size={20}
-                    color={theme.colors.textSecondary}
+                    color={theme.textSecondary}
                   />
                 </View>
               </Pressable>
@@ -192,18 +194,18 @@ export default function SearchScreen() {
             <Ionicons
               name="search-outline"
               size={64}
-              color={theme.colors.textSecondary}
+              color={theme.textSecondary}
               style={{ marginBottom: 16 }}
             />
             <Text
               className="text-lg font-semibold mb-2"
-              style={{ color: theme.colors.text }}
+              style={{ color: theme.text }}
             >
               Search People
             </Text>
             <Text
               className="text-center text-sm"
-              style={{ color: theme.colors.textSecondary, fontSize: 14 }}
+              style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}
             >
               Find colleagues by name, designation,{'\n'}or department
             </Text>

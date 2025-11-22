@@ -5,6 +5,7 @@ export interface ClientCategory {
   name: string;
   code?: string;  // B2B, B2C, B2G codes
   description?: string;
+  requires_organisation?: boolean; // Whether this category requires organisation details
   created_at: string;
   updated_at: string;
 }

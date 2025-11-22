@@ -27,7 +27,7 @@ type TabType = 'analytics' | 'leads' | 'events' | 'clients' | 'venues';
 export default function EventManagementScreen() {
   const { theme } = useTheme();
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
+  const { user, isAuthenticated } = useAuthStore();
   const eventsStore = useEventsStore();
   
   // UI State
@@ -40,15 +40,25 @@ export default function EventManagementScreen() {
   // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
 
-  // Initialize data on component mount
+  // Initialize data on component mount - only if authenticated
   useEffect(() => {
-    initializeData();
-  }, []);
+    if (isAuthenticated && user) {
+      console.log('✅ Events: User authenticated, initializing data...');
+      initializeData();
+    } else {
+      console.log('⚠️ Events: User not authenticated, skipping data initialization');
+    }
+  }, [isAuthenticated, user]);
 
-  // Fetch data when tab changes
+  // Fetch data when tab changes - only if authenticated
   useEffect(() => {
-    fetchTabData();
-  }, [activeTab]);
+    if (isAuthenticated && user) {
+      console.log(`🔄 Events: Fetching data for tab: ${activeTab}`);
+      fetchTabData();
+    } else {
+      console.log(`⚠️ Events: Not authenticated, skipping ${activeTab} data fetch`);
+    }
+  }, [activeTab, isAuthenticated, user]);
 
   // Handle back button on Android
   useFocusEffect(
@@ -65,20 +75,33 @@ export default function EventManagementScreen() {
 
   // Initialize required data
   const initializeData = async () => {
+    if (!isAuthenticated) {
+      console.log('⚠️ Events: Not authenticated, skipping data initialization');
+      return;
+    }
+    
     try {
+      console.log('🔄 Events: Fetching reference data...');
       // Fetch reference data that's commonly needed
       await Promise.all([
         eventsStore.fetchClientCategories(),
         eventsStore.fetchOrganisations(),
       ]);
+      console.log('✅ Events: Reference data loaded successfully');
     } catch (error) {
-      console.error('Error initializing data:', error);
+      console.error('❌ Events: Error initializing data:', error);
     }
   };
 
   // Fetch data based on active tab
   const fetchTabData = async () => {
+    if (!isAuthenticated) {
+      console.log(`⚠️ Events: Not authenticated, skipping ${activeTab} data fetch`);
+      return;
+    }
+    
     try {
+      console.log(`🔄 Events: Fetching ${activeTab} data...`);
       switch (activeTab) {
         case 'analytics':
           // Fetch all data for analytics
@@ -104,8 +127,9 @@ export default function EventManagementScreen() {
           await eventsStore.fetchVenues();
           break;
       }
+      console.log(`✅ Events: ${activeTab} data loaded successfully`);
     } catch (error) {
-      console.error(`Error fetching ${activeTab} data:`, error);
+      console.error(`❌ Events: Error fetching ${activeTab} data:`, error);
     }
   };
 
@@ -170,8 +194,8 @@ export default function EventManagementScreen() {
   }, [activeTab, eventsStore]);
 
   // Handle tab changes
-  const handleTabChange = useCallback((tab: TabType) => {
-    setActiveTab(tab);
+  const handleTabChange = useCallback((tabKey: string) => {
+    setActiveTab(tabKey as TabType);
     // Reset filters when changing tabs
     setSearchQuery('');
     setSelectedStatus('all');
@@ -268,7 +292,6 @@ export default function EventManagementScreen() {
       {/* Header */}
       <ModuleHeader
         title="Event Management"
-        subtitle="Manage leads, events, clients and venues"
         showBack
       />
 
@@ -276,7 +299,7 @@ export default function EventManagementScreen() {
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
-        onTabPress={handleTabChange}
+        onTabChange={handleTabChange}
       />
 
       {/* Filters */}
@@ -313,7 +336,6 @@ export default function EventManagementScreen() {
         <FloatingActionButton
           icon={fabConfig.icon}
           onPress={fabConfig.onPress}
-          accessibilityLabel={fabConfig.label}
         />
       )}
     </View>

@@ -2,8 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
-import { spacing, borderRadius, iconSizes, touchTarget } from '../../constants/designTokens';
+import { designSystem } from '../../constants/designSystem';
 import { getTypographyStyle } from '../../utils/styleHelpers';
+
+const { spacing, borderRadius, iconSizes } = designSystem;
+const touchTarget = { comfortable: 48 };
 
 interface ListItemProps {
   title: string;
@@ -34,16 +37,16 @@ export const ListItem: React.FC<ListItemProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const iconBackgroundColor = leftIconBackground || `${theme.colors.primary}15`;
-  const iconColor = leftIconColor || theme.colors.primary;
+  const iconBackgroundColor = leftIconBackground || `${theme.primary}15`;
+  const iconColor = leftIconColor || theme.primary;
 
   const containerStyle: ViewStyle = {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.surface,
     opacity: disabled ? 0.5 : 1,
   };
 
   const dividerStyle: ViewStyle = {
-    backgroundColor: theme.colors.border,
+    backgroundColor: theme.border,
   };
 
   return (
@@ -72,7 +75,7 @@ export const ListItem: React.FC<ListItemProps> = ({
             <Text
               style={[
                 getTypographyStyle('base', 'medium'),
-                { color: theme.colors.text },
+                { color: theme.text },
               ]}
               numberOfLines={1}
             >
@@ -82,7 +85,7 @@ export const ListItem: React.FC<ListItemProps> = ({
               <Text
                 style={[
                   getTypographyStyle('sm', 'regular'),
-                  { color: theme.colors.textSecondary, marginTop: spacing.xs },
+                  { color: theme.textSecondary, marginTop: spacing.xs },
                 ]}
                 numberOfLines={2}
               >
@@ -96,7 +99,7 @@ export const ListItem: React.FC<ListItemProps> = ({
               <Ionicons
                 name={rightIcon}
                 size={iconSizes.sm}
-                color={theme.colors.textSecondary}
+                color={theme.textSecondary}
                 style={styles.rightIcon}
               />
             )

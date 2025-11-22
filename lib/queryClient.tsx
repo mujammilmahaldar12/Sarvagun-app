@@ -1,9 +1,11 @@
 /**
  * React Query Configuration and Provider
  * Professional data fetching with caching, background updates, and error handling
+ * Enhanced with authentication state management
  */
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/authStore';
 
 // Create a client with production-ready configuration
 export const queryClient = new QueryClient({
@@ -14,7 +16,14 @@ export const queryClient = new QueryClient({
       // Keep data in cache for 10 minutes
       gcTime: 10 * 60 * 1000,
       // Retry failed requests 2 times
-      retry: 2,
+      retry: (failureCount, error: any) => {
+        // Don't retry if user is not authenticated (401 errors)
+        if (error?.response?.status === 401) {
+          console.log('❌ React Query: Skipping retry for 401 error (unauthorized)');
+          return false;
+        }
+        return failureCount < 2;
+      },
       // Retry with exponential backoff
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       // Refetch on window focus for fresh data
@@ -27,7 +36,7 @@ export const queryClient = new QueryClient({
       retry: 1,
       // Show loading state for mutations
       onError: (error) => {
-        console.error('Mutation error:', error);
+        console.error('❌ React Query: Mutation error:', error);
       },
     },
   },
@@ -116,9 +125,23 @@ export const cacheUtils = {
     queryClient.invalidateQueries({ queryKey: queryKeys[resourceType].all });
   },
   
-  // Clear all cache
+  // Clear all cache - used on logout
   clearAll: () => {
+    console.log('🧹 React Query: Clearing all cached data...');
     queryClient.clear();
+    console.log('✅ React Query: Cache cleared successfully');
+  },
+  
+  // Clear all cache and cancel ongoing queries - enhanced logout cleanup
+  clearOnLogout: () => {
+    console.log('🔒 React Query: Logout cleanup starting...');
+    // Cancel all ongoing queries
+    queryClient.cancelQueries();
+    // Clear all cached data
+    queryClient.clear();
+    // Reset error boundary
+    queryClient.resetQueries();
+    console.log('✅ React Query: Logout cleanup complete');
   },
   
   // Prefetch data for better UX

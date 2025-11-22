@@ -28,7 +28,7 @@ export default function FloatingActionButton({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: color || theme.colors.primary,
+        backgroundColor: color || theme.primary,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',

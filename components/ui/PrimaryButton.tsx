@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
 
 interface PrimaryButtonProps {
   onPress: () => void;
@@ -34,35 +35,35 @@ export default function PrimaryButton({
     switch (size) {
       case 'small':
         return {
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          fontSize: 14,
-          iconSize: 16,
-          borderRadius: 8,
+          paddingHorizontal: designSystem.spacing[4],
+          paddingVertical: designSystem.spacing[2],
+          fontSize: designSystem.typography.sizes.sm,
+          iconSize: designSystem.iconSizes.xs,
+          borderRadius: designSystem.borderRadius.md,
         };
       case 'medium':
         return {
-          paddingHorizontal: 20,
-          paddingVertical: 12,
-          fontSize: 16,
-          iconSize: 18,
-          borderRadius: 10,
+          paddingHorizontal: designSystem.spacing[5],
+          paddingVertical: designSystem.spacing[3],
+          fontSize: designSystem.typography.sizes.base,
+          iconSize: designSystem.iconSizes.sm,
+          borderRadius: designSystem.borderRadius.lg,
         };
       case 'large':
         return {
-          paddingHorizontal: 24,
-          paddingVertical: 16,
-          fontSize: 18,
-          iconSize: 20,
-          borderRadius: 12,
+          paddingHorizontal: designSystem.spacing[6],
+          paddingVertical: designSystem.spacing[4],
+          fontSize: designSystem.typography.sizes.lg,
+          iconSize: designSystem.iconSizes.sm,
+          borderRadius: designSystem.borderRadius.xl,
         };
       default:
         return {
-          paddingHorizontal: 20,
-          paddingVertical: 12,
-          fontSize: 16,
-          iconSize: 18,
-          borderRadius: 10,
+          paddingHorizontal: designSystem.spacing[5],
+          paddingVertical: designSystem.spacing[3],
+          fontSize: designSystem.typography.sizes.base,
+          iconSize: designSystem.iconSizes.sm,
+          borderRadius: designSystem.borderRadius.lg,
         };
     }
   };
@@ -71,29 +72,29 @@ export default function PrimaryButton({
     switch (variant) {
       case 'filled':
         return {
-          background: theme.colors.primary,
-          backgroundPressed: theme.colors.primary + 'cc',
+          background: theme.primary,
+          backgroundPressed: theme.primary + 'cc',
           borderColor: 'transparent',
-          textColor: '#FFFFFF',
+          textColor: theme.textInverse,
         };
       case 'outlined':
         return {
           background: 'transparent',
-          backgroundPressed: theme.colors.primary + '10',
-          borderColor: theme.colors.primary,
-          textColor: theme.colors.primary,
+          backgroundPressed: theme.primary + '10',
+          borderColor: theme.primary,
+          textColor: theme.primary,
         };
       case 'ghost':
         return {
           background: 'transparent',
-          backgroundPressed: theme.colors.primary + '10',
+          backgroundPressed: theme.primary + '10',
           borderColor: 'transparent',
-          textColor: theme.colors.primary,
+          textColor: theme.primary,
         };
       default:
         return {
-          background: theme.colors.primary,
-          backgroundPressed: theme.colors.primary + 'cc',
+          background: theme.primary,
+          backgroundPressed: theme.primary + 'cc',
           borderColor: 'transparent',
           textColor: '#FFFFFF',
         };
@@ -123,7 +124,7 @@ export default function PrimaryButton({
           opacity: isDisabled ? 0.6 : 1,
           width: fullWidth ? '100%' : undefined,
           minHeight: sizeStyles.paddingVertical * 2 + sizeStyles.fontSize + 4,
-          shadowColor: variant === 'filled' ? theme.colors.primary : 'transparent',
+          shadowColor: variant === 'filled' ? theme.primary : 'transparent',
           shadowOffset: {
             width: 0,
             height: 2,

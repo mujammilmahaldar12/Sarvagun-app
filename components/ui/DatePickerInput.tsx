@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 interface DatePickerInputProps {
   label: string;
@@ -105,10 +107,9 @@ export default function DatePickerInput({
   return (
     <View style={{ flex: 1 }}>
       <Text style={{ 
-        fontSize: 14, 
-        fontWeight: '600', 
-        color: theme.colors.text, 
-        marginBottom: 8 
+        ...getTypographyStyle('sm', 'semibold'), 
+        color: theme.text, 
+        marginBottom: designSystem.spacing[2] 
       }}>
         {label}
       </Text>
@@ -117,24 +118,24 @@ export default function DatePickerInput({
         onPress={() => setShowModal(true)}
         android_disableSound={true}
         style={{
-          borderWidth: 1,
-          borderColor: value ? theme.colors.primary : theme.colors.border,
-          borderRadius: 8,
-          padding: 12,
-          backgroundColor: theme.colors.surface,
+          borderWidth: designSystem.borderWidth.thin,
+          borderColor: value ? theme.primary : theme.border,
+          borderRadius: designSystem.borderRadius.md,
+          padding: designSystem.spacing[3],
+          backgroundColor: theme.surface,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
         <Text style={{ 
-          color: value ? theme.colors.text : theme.colors.textSecondary,
-          fontSize: 14,
+          color: value ? theme.text : theme.textSecondary,
+          ...getTypographyStyle('sm'),
           flex: 1,
         }}>
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
-        <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+        <Ionicons name="calendar-outline" size={designSystem.iconSizes.sm} color={theme.primary} />
       </Pressable>
 
       {/* Calendar Modal */}
@@ -162,15 +163,12 @@ export default function DatePickerInput({
             onPress={(e) => e.stopPropagation()}
           >
           <View style={{
-            backgroundColor: theme.colors.background,
-            borderRadius: 16,
-            padding: 20,
+            backgroundColor: theme.background,
+            borderRadius: designSystem.borderRadius.xl,
+            padding: designSystem.spacing[5],
             width: '100%',
             maxWidth: 400,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.25,
-            shadowRadius: 12,
+            ...designSystem.shadows.xl,
             elevation: 10,
           }}>
             {/* Header */}
@@ -178,12 +176,11 @@ export default function DatePickerInput({
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: 20,
+              marginBottom: designSystem.spacing[5],
             }}>
               <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: theme.colors.text,
+                ...getTypographyStyle('lg', 'bold'),
+                color: theme.text,
                 textAlign: 'center',
                 flex: 1,
               }}>
@@ -194,11 +191,11 @@ export default function DatePickerInput({
                 onPress={() => setShowModal(false)}
                 android_disableSound={true}
                 style={{
-                  padding: 8,
-                  borderRadius: 8,
+                  padding: designSystem.spacing[2],
+                  borderRadius: designSystem.borderRadius.md,
                 }}
               >
-                <Ionicons name="close" size={24} color={theme.colors.text} />
+                <Ionicons name="close" size={designSystem.iconSizes.md} color={theme.text} />
               </Pressable>
             </View>
 
@@ -207,18 +204,18 @@ export default function DatePickerInput({
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: 20,
+              marginBottom: designSystem.spacing[5],
             }}>
               <Pressable
                 onPress={() => navigateMonth('prev')}
                 android_disableSound={true}
                 style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.surface,
+                  padding: designSystem.spacing[3],
+                  borderRadius: designSystem.borderRadius.md,
+                  backgroundColor: theme.surface,
                 }}
               >
-                <Ionicons name="chevron-back" size={20} color={theme.colors.primary} />
+                <Ionicons name="chevron-back" size={designSystem.iconSizes.sm} color={theme.primary} />
               </Pressable>
 
               <Pressable
@@ -227,16 +224,15 @@ export default function DatePickerInput({
                 }}
                 android_disableSound={true}
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.primary + '20',
+                  paddingHorizontal: designSystem.spacing[4],
+                  paddingVertical: designSystem.spacing[2],
+                  borderRadius: designSystem.borderRadius.md,
+                  backgroundColor: theme.primary + '20',
                 }}
               >
                 <Text style={{
-                  color: theme.colors.primary,
-                  fontWeight: '600',
-                  fontSize: 14,
+                  color: theme.primary,
+                  ...getTypographyStyle('sm', 'semibold'),
                 }}>
                   Today
                 </Text>
@@ -246,26 +242,25 @@ export default function DatePickerInput({
                 onPress={() => navigateMonth('next')}
                 android_disableSound={true}
                 style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.surface,
+                  padding: designSystem.spacing[3],
+                  borderRadius: designSystem.borderRadius.md,
+                  backgroundColor: theme.surface,
                 }}
               >
-                <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
+                <Ionicons name="chevron-forward" size={designSystem.iconSizes.sm} color={theme.primary} />
               </Pressable>
             </View>
 
             {/* Days of Week Header */}
             <View style={{
               flexDirection: 'row',
-              marginBottom: 12,
+              marginBottom: designSystem.spacing[3],
             }}>
               {dayNames.map((day) => (
                 <View key={day} style={{ flex: 1, alignItems: 'center' }}>
                   <Text style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: theme.colors.textSecondary,
+                    ...getTypographyStyle('sm', 'semibold'),
+                    color: theme.textSecondary,
                   }}>
                     {day}
                   </Text>
@@ -274,9 +269,9 @@ export default function DatePickerInput({
             </View>
 
             {/* Calendar Grid */}
-            <View style={{ marginBottom: 20 }}>
+            <View style={{ marginBottom: designSystem.spacing[5] }}>
               {Array.from({ length: Math.ceil(getDaysInMonth(currentMonth).length / 7) }, (_, weekIndex) => (
-                <View key={weekIndex} style={{ flexDirection: 'row', marginBottom: 8, gap: 4 }}>
+                <View key={weekIndex} style={{ flexDirection: 'row', marginBottom: designSystem.spacing[2], gap: designSystem.spacing[1] }}>
                   {getDaysInMonth(currentMonth)
                     .slice(weekIndex * 7, (weekIndex + 1) * 7)
                     .map((date, dayIndex) => {
@@ -291,29 +286,28 @@ export default function DatePickerInput({
                           android_disableSound={true}
                           style={({ pressed }) => ({
                             flex: 1,
-                            height: 48,
+                            height: designSystem.touchTarget.min,
                             alignItems: 'center',
                             justifyContent: 'center',
-                            borderRadius: 12,
+                            borderRadius: designSystem.borderRadius.lg,
                             backgroundColor: isSelectedDate 
-                              ? theme.colors.primary 
+                              ? theme.primary 
                               : isTodayDate 
-                              ? theme.colors.primary + '20'
+                              ? theme.primary + '20'
                               : pressed 
-                              ? theme.colors.surface 
+                              ? theme.surface 
                               : 'transparent',
-                            borderWidth: isSelectedDate ? 0 : 1,
-                            borderColor: theme.colors.border + '30',
+                            borderWidth: isSelectedDate ? 0 : designSystem.borderWidth.thin,
+                            borderColor: theme.border + '30',
                           })}
                         >
                           <Text style={{
-                            fontSize: 16,
-                            fontWeight: isSelectedDate || isTodayDate ? '700' : '500',
+                            ...getTypographyStyle('base', isSelectedDate || isTodayDate ? 'bold' : 'medium'),
                             color: isSelectedDate 
                               ? '#FFFFFF'
                               : isCurrentMonthDay 
-                              ? theme.colors.text
-                              : theme.colors.textSecondary,
+                              ? theme.text
+                              : theme.textSecondary,
                             opacity: isCurrentMonthDay ? 1 : 0.4,
                             textAlign: 'center',
                           }}>
@@ -329,24 +323,24 @@ export default function DatePickerInput({
             {/* Quick Actions */}
             <View style={{
               flexDirection: 'row',
-              gap: 12,
+              gap: designSystem.spacing[3],
             }}>
               <Pressable
                 onPress={() => setShowModal(false)}
                 android_disableSound={true}
                 style={{
                   flex: 1,
-                  padding: 14,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.surface,
+                  padding: designSystem.spacing[3],
+                  borderRadius: designSystem.borderRadius.md,
+                  backgroundColor: theme.surface,
                   alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
+                  borderWidth: designSystem.borderWidth.thin,
+                  borderColor: theme.border,
                 }}
               >
                 <Text style={{ 
-                  color: theme.colors.text,
-                  fontWeight: '600',
+                  color: theme.text,
+                  ...getTypographyStyle('sm', 'semibold'),
                 }}>
                   Cancel
                 </Text>
@@ -360,15 +354,15 @@ export default function DatePickerInput({
                 android_disableSound={true}
                 style={{
                   flex: 1,
-                  padding: 14,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.primary,
+                  padding: designSystem.spacing[3],
+                  borderRadius: designSystem.borderRadius.md,
+                  backgroundColor: theme.primary,
                   alignItems: 'center',
                 }}
               >
                 <Text style={{ 
-                  color: '#fff',
-                  fontWeight: '600',
+                  color: theme.textInverse,
+                  ...getTypographyStyle('sm', 'semibold'),
                 }}>
                   Select Today
                 </Text>

@@ -199,7 +199,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
       key: 'facilities', 
       label: 'Facilities', 
       width: 120,
-      render: (value: string | undefined) => {
+      render: (value: string | undefined, row: VenueRowData) => {
         if (!value) {
           return (
             <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]}>
@@ -213,7 +213,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
           <View>
             {facilities.map((facility, index) => (
               <Text 
-                key={index}
+                key={`${row.id}-facility-${index}-${facility}`}
                 style={[styles.cellTextSecondary, { color: theme.textSecondary }]} 
                 numberOfLines={1}
               >

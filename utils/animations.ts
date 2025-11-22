@@ -78,7 +78,8 @@ export const HAPTIC_TYPES = {
   light: Haptics.ImpactFeedbackStyle.Light,
   medium: Haptics.ImpactFeedbackStyle.Medium,
   heavy: Haptics.ImpactFeedbackStyle.Heavy,
-  selection: Haptics.SelectionType,
+  // Note: SelectionType is deprecated in newer versions of expo-haptics
+  // selection: Haptics.SelectionType,
   notification: {
     success: Haptics.NotificationFeedbackType.Success,
     warning: Haptics.NotificationFeedbackType.Warning,

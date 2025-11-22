@@ -4,8 +4,8 @@
  */
 
 import { ViewStyle, TextStyle, Platform } from 'react-native';
-import { shadows, elevation, spacing, borderRadius, typography } from '../constants/designTokens';
-import type { ShadowKey, ElevationKey, SpacingKey, BorderRadiusKey } from '../constants/designTokens';
+import { shadows, elevation, spacing, borderRadius, typography } from '../constants/designSystem';
+import type { ShadowKey, ElevationKey, SpacingKey, BorderRadiusKey } from '../constants/designSystem';
 
 /**
  * Get platform-appropriate shadow/elevation styles

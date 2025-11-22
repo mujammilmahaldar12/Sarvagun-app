@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 export interface TableColumn<T = any> {
   key: string;
@@ -161,10 +163,10 @@ export default function AppTable<T = any>({
         <View
           className="px-4 py-2 flex-row items-center rounded-xl mx-4 mt-3 mb-2"
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             borderWidth: 1.5,
-            borderColor: searchQuery ? theme.colors.primary : (isDark ? '#374151' : '#E5E7EB'),
-            shadowColor: theme.colors.primary,
+            borderColor: searchQuery ? theme.primary : (isDark ? '#374151' : '#E5E7EB'),
+            shadowColor: theme.primary,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: searchQuery ? 0.1 : 0,
             shadowRadius: 3,
@@ -174,34 +176,33 @@ export default function AppTable<T = any>({
           <Ionicons
             name="search"
             size={20}
-            color={searchQuery ? theme.colors.primary : theme.colors.textSecondary}
+            color={searchQuery ? theme.primary : theme.textSecondary}
             style={{ marginRight: 10 }}
           />
           <TextInput
             className="flex-1"
             style={{ 
-              color: theme.colors.text,
-              fontSize: 15,
-              fontWeight: '500',
+              color: theme.text,
+              ...getTypographyStyle('base', 'medium'),
             }}
             placeholder={searchPlaceholder}
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholderTextColor={theme.textSecondary}
             value={searchQuery}
             onChangeText={handleSearch}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => handleSearch('')}>
               <View style={{
-                backgroundColor: theme.colors.primary,
-                borderRadius: 12,
-                width: 24,
-                height: 24,
+                backgroundColor: theme.primary,
+                borderRadius: designSystem.borderRadius.lg,
+                width: designSystem.iconSizes.md,
+                height: designSystem.iconSizes.md,
                 justifyContent: 'center',
                 alignItems: 'center',
               }}>
                 <Ionicons
                   name="close"
-                  size={16}
+                  size={designSystem.iconSizes.xs}
                   color="#FFFFFF"
                 />
               </View>
@@ -215,19 +216,19 @@ export default function AppTable<T = any>({
         <View
           className="px-4 py-2 mx-4 mb-2 rounded-lg flex-row items-center justify-between"
           style={{
-            backgroundColor: `${theme.colors.primary}20`,
+            backgroundColor: `${theme.primary}20`,
           }}
         >
           <Text
             className="text-sm font-semibold"
-            style={{ color: theme.colors.primary }}
+            style={{ color: theme.primary }}
           >
             {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
           </Text>
           <Pressable onPress={() => onSelectionChange?.(new Set())}>
             <Text
               className="text-sm font-semibold"
-              style={{ color: theme.colors.primary }}
+              style={{ color: theme.primary }}
             >
               Clear
             </Text>
@@ -248,7 +249,7 @@ export default function AppTable<T = any>({
             style={{
               backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
               borderBottomWidth: 2,
-              borderBottomColor: theme.colors.primary + '30',
+              borderBottomColor: theme.primary + '30',
             }}
           >
             {selectable && (
@@ -265,7 +266,7 @@ export default function AppTable<T = any>({
                       : 'square-outline'
                   }
                   size={24}
-                  color={theme.colors.primary}
+                  color={theme.primary}
                 />
               </Pressable>
             )}
@@ -281,9 +282,8 @@ export default function AppTable<T = any>({
                 <Text
                   className="flex-1"
                   style={{ 
-                    color: theme.colors.text,
-                    fontSize: 15,
-                    fontWeight: '700',
+                    color: theme.text,
+                    ...getTypographyStyle('base', 'bold'),
                   }}
                 >
                   {column.title || column.label}
@@ -297,11 +297,11 @@ export default function AppTable<T = any>({
                           : 'chevron-down'
                         : 'swap-vertical'
                     }
-                    size={18}
+                    size={designSystem.iconSizes.sm}
                     color={
                       sortColumn === column.key
-                        ? theme.colors.primary
-                        : theme.colors.textSecondary
+                        ? theme.primary
+                        : theme.textSecondary
                     }
                   />
                 )}
@@ -319,28 +319,27 @@ export default function AppTable<T = any>({
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  tintColor={theme.colors.primary}
+                  tintColor={theme.primary}
                 />
               ) : undefined
             }
           >
             {loading ? (
               <View className="py-20 items-center justify-center">
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <ActivityIndicator size="large" color={theme.primary} />
               </View>
             ) : sortedData.length === 0 ? (
               <View className="py-20 items-center justify-center">
                 <Ionicons
                   name="folder-open-outline"
                   size={72}
-                  color={theme.colors.textSecondary}
+                  color={theme.textSecondary}
                 />
                 <Text
                   style={{ 
-                    color: theme.colors.textSecondary,
-                    fontSize: 16,
-                    fontWeight: '500',
-                    marginTop: 16,
+                    color: theme.textSecondary,
+                    ...getTypographyStyle('base', 'medium'),
+                    marginTop: designSystem.spacing[4],
                   }}
                 >
                   {searchQuery ? 'No results found' : emptyMessage}
@@ -364,12 +363,12 @@ export default function AppTable<T = any>({
                     className="flex-row px-4 py-4"
                     style={({ pressed }) => ({
                       backgroundColor: isSelected
-                        ? `${theme.colors.primary}15`
+                        ? `${theme.primary}15`
                         : pressed
-                        ? `${theme.colors.primary}08`
+                        ? `${theme.primary}08`
                         : index % 2 === 0
-                        ? theme.colors.background
-                        : theme.colors.surface,
+                        ? theme.background
+                        : theme.surface,
                       borderBottomWidth: 1,
                       borderBottomColor: isDark ? '#374151' : '#E5E7EB',
                       opacity: pressed ? 0.9 : 1,
@@ -380,7 +379,7 @@ export default function AppTable<T = any>({
                         <Ionicons
                           name={isSelected ? 'checkbox' : 'square-outline'}
                           size={24}
-                          color={theme.colors.primary}
+                          color={theme.primary}
                         />
                       </View>
                     )}
@@ -400,9 +399,8 @@ export default function AppTable<T = any>({
                             typeof renderedContent === 'string' || typeof renderedContent === 'number' ? (
                               <Text
                                 style={{ 
-                                  color: theme.colors.text,
-                                  fontSize: 14,
-                                  fontWeight: '500',
+                                  color: theme.text,
+                                  ...getTypographyStyle('sm', 'medium'),
                                 }}
                                 numberOfLines={2}
                               >
@@ -414,9 +412,8 @@ export default function AppTable<T = any>({
                           ) : (
                             <Text
                               style={{ 
-                                color: theme.colors.text,
-                                fontSize: 14,
-                                fontWeight: '500',
+                                color: theme.text,
+                                ...getTypographyStyle('sm', 'medium'),
                               }}
                               numberOfLines={2}
                             >

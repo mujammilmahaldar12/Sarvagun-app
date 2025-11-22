@@ -1,186 +1,126 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Alert } from 'react-native';
-import { Text } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ModuleHeader from '@/components/layout/ModuleHeader';
-import TabBar, { Tab } from '@/components/layout/TabBar';
+import { ModuleHeader } from '@/components/layout/ModuleHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useSale, useSalePayments, useDeleteSale } from '@/hooks/useFinanceQueries';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem, getTypographyStyle } from '@/constants/designSystem';
 import { useAuthStore } from '@/store/authStore';
 
-type TabType = 'info' | 'documents' | 'history';
-
-export default function FinanceDetailScreen() {
+export default function SaleDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useTheme();
-  const router = useRouter();
-  const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
-  const user = useAuthStore((state) => state.user);
-  
-  const [activeTab, setActiveTab] = useState<TabType>('info');
-  const [item, setItem] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { hasPermission } = useAuthStore();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const itemType = type || 'expenses'; // 'expenses' or 'sales'
+  const canManage = hasPermission('Finance', 'manage_all_finance');
+  const canEdit = hasPermission('Finance', 'edit_finance');
+  const canDelete = hasPermission('Finance', 'delete_finance');
 
-  // Permission checks
-  const canManage = user?.category === 'hr' || user?.category === 'admin';
-  const canApprove = canManage || user?.designation === 'manager';
-  const canEdit = canManage || item?.employeeId === user?.id;
-  const canDelete = canManage || (item?.employeeId === user?.id && item?.status === 'pending');
+  // Fetch sale data
+  const { data: sale, isLoading, error, refetch } = useSale(Number(id));
+  const { data: payments = [], isLoading: paymentsLoading } = useSalePayments(Number(id));
+  const deleteSale = useDeleteSale();
 
-  useEffect(() => {
-    fetchItemDetails();
-  }, [id, type]);
-
-  const fetchItemDetails = async () => {
-    setLoading(true);
-    
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      let mockData;
-      
-      if (itemType === 'expenses') {
-        mockData = {
-          id: parseInt(id),
-          expenseType: 'Event',
-          title: 'Annual Conference Catering',
-          amount: 150000,
-          date: '2024-03-15',
-          category: 'Food & Beverage',
-          status: 'pending',
-          submittedBy: 'Sarah Wilson',
-          submittedDate: '2024-03-15',
-          approvedBy: null,
-          approvedDate: null,
-          description: 'Catering services for 200 attendees at annual conference',
-          vendor: 'Premium Catering Services',
-          invoiceNumber: 'PCS-2024-123',
-          paymentMethod: 'Bank Transfer',
-          notes: 'Vegetarian and non-vegetarian options included',
-          eventId: 1,
-          employeeId: 1,
-        };
-      } else {
-        mockData = {
-          id: parseInt(id),
-          invoiceNumber: 'INV-2024-001',
-          customerName: 'Tech Corp',
-          customerEmail: 'contact@techcorp.com',
-          customerPhone: '9876543210',
-          customerAddress: '123 Business St, Tech City',
-          productService: 'Enterprise Software License',
-          description: 'Annual enterprise software license for 50 users',
-          amount: 500000,
-          taxAmount: 90000,
-          totalAmount: 590000,
-          date: '2024-03-15',
-          dueDate: '2024-04-15',
-          status: 'pending',
-          paymentMethod: null,
-          paidAmount: 0,
-          paidDate: null,
-          salesPerson: 'Sarah Wilson',
-          terms: '30 days payment terms',
-          notes: 'Annual renewal with 10% discount',
-          employeeId: 1,
-        };
-      }
-      
-      setItem(mockData);
-      setLoading(false);
-    }, 500);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
 
   const handleEdit = () => {
-    if (itemType === 'expenses') {
-      router.push(`/(modules)/finance/add-expense?id=${id}` as any);
-    } else {
-      router.push(`/(modules)/finance/add-sale?id=${id}` as any);
-    }
+    router.push(`/(modules)/finance/add-sale?id=${id}`);
   };
 
   const handleDelete = () => {
     Alert.alert(
-      `Delete ${itemType === 'expenses' ? 'Expense' : 'Sale'}`,
-      `Are you sure you want to delete this ${itemType === 'expenses' ? 'expense' : 'sale'}?`,
+      'Delete Sale',
+      'Are you sure you want to delete this sale? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            console.log(`Deleting ${itemType}:`, id);
-            router.back();
+          onPress: async () => {
+            try {
+              await deleteSale.mutateAsync(Number(id));
+              Alert.alert('Success', 'Sale deleted successfully');
+              router.back();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete sale');
+            }
           },
         },
       ]
     );
   };
 
-  const handleApprove = () => {
-    Alert.alert(
-      'Approve Expense',
-      `Approve this expense of ₹${item.amount?.toLocaleString('en-IN')}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: () => {
-            console.log('Approving expense:', id);
-            // API call here
-            router.back();
-          },
-        },
-      ]
+  if (isLoading) {
+    return <LoadingState message="Loading sale details..." />;
+  }
+
+  if (error || !sale) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <ModuleHeader title="Sale Details" showBack />
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Sale Not Found"
+          message="The sale you're looking for doesn't exist or has been deleted."
+        />
+      </View>
     );
+  }
+
+  const netAmount = (sale.amount || 0) - (sale.discount || 0);
+  const totalReceived = payments.reduce((sum, payment) => sum + (payment.payment_amount || 0), 0);
+  const balanceDue = netAmount - totalReceived;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return '#10B981';
+      case 'pending':
+        return '#F59E0B';
+      case 'partial':
+        return '#3B82F6';
+      case 'overdue':
+        return '#EF4444';
+      default:
+        return theme.textSecondary;
+    }
   };
 
-  const handleReject = () => {
-    Alert.alert(
-      'Reject Expense',
-      'Are you sure you want to reject this expense?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: () => {
-            console.log('Rejecting expense:', id);
-            // API call here
-            router.back();
-          },
-        },
-      ]
-    );
-  };
-
-  const handleMarkPaid = () => {
-    Alert.alert(
-      'Mark as Paid',
-      'Mark this invoice as paid?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Mark Paid',
-          onPress: () => {
-            console.log('Marking sale as paid:', id);
-            // API call here
-          },
-        },
-      ]
-    );
+  const getModeIcon = (mode: string) => {
+    switch (mode) {
+      case 'cash':
+        return 'cash-outline';
+      case 'cheque':
+        return 'document-text-outline';
+      case 'upi':
+        return 'phone-portrait-outline';
+      case 'bank_transfer':
+        return 'swap-horizontal-outline';
+      case 'card':
+        return 'card-outline';
+      default:
+        return 'wallet-outline';
+    }
   };
 
   const renderInfoTab = () => {
-    if (!item) return null;
+    if (!sale) return null;
 
-    if (itemType === 'expenses') {
+    if (false) {
       return (
         <View style={{ padding: 16, gap: 20 }}>
           {/* Expense Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Expense Information
             </Text>
             <InfoRow label="Type" value={
@@ -193,8 +133,7 @@ export default function FinanceDetailScreen() {
                   item.expenseType === 'Reimbursement' ? '#FEF3C7' : '#E5E7EB',
               }}>
                 <Text style={{
-                  fontSize: 12,
-                  fontWeight: '600',
+                  ...getTypographyStyle('xs', 'semibold'),
                   color: 
                     item.expenseType === 'Event' ? '#1E40AF' :
                     item.expenseType === 'Reimbursement' ? '#92400E' : '#374151',
@@ -212,7 +151,7 @@ export default function FinanceDetailScreen() {
 
           {/* Vendor Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Vendor Information
             </Text>
             <InfoRow label="Vendor" value={item.vendor} />
@@ -222,7 +161,7 @@ export default function FinanceDetailScreen() {
 
           {/* Submission Details */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Submission Details
             </Text>
             <InfoRow label="Submitted By" value={item.submittedBy} />
@@ -233,7 +172,7 @@ export default function FinanceDetailScreen() {
 
           {/* Additional Details */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Additional Details
             </Text>
             <InfoRow label="Description" value={item.description} multiline />
@@ -246,7 +185,7 @@ export default function FinanceDetailScreen() {
         <View style={{ padding: 16, gap: 20 }}>
           {/* Invoice Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Invoice Information
             </Text>
             <InfoRow label="Invoice Number" value={item.invoiceNumber} />
@@ -257,7 +196,7 @@ export default function FinanceDetailScreen() {
 
           {/* Customer Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Customer Information
             </Text>
             <InfoRow label="Customer Name" value={item.customerName} />
@@ -268,7 +207,7 @@ export default function FinanceDetailScreen() {
 
           {/* Product/Service Details */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Product/Service Details
             </Text>
             <InfoRow label="Product/Service" value={item.productService} />
@@ -277,7 +216,7 @@ export default function FinanceDetailScreen() {
 
           {/* Financial Details */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Financial Details
             </Text>
             <InfoRow label="Amount" value={`₹${item.amount?.toLocaleString('en-IN')}`} />
@@ -290,7 +229,7 @@ export default function FinanceDetailScreen() {
 
           {/* Additional Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
               Additional Information
             </Text>
             <InfoRow label="Sales Person" value={item.salesPerson} />
@@ -304,151 +243,311 @@ export default function FinanceDetailScreen() {
 
   const renderDocumentsTab = () => (
     <View style={{ padding: 16 }}>
-      <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
+      <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 20 }}>
         Documents coming soon
       </Text>
     </View>
   );
 
-  const renderHistoryTab = () => (
-    <View style={{ padding: 16 }}>
-      <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
-        History coming soon
-      </Text>
-    </View>
-  );
-
-  const InfoRow = ({ label, value, multiline = false }: { label: string; value: React.ReactNode; multiline?: boolean }) => (
-    <View style={{ flexDirection: multiline ? 'column' : 'row', gap: multiline ? 4 : 8 }}>
-      <Text style={{ fontSize: 14, color: theme.colors.textSecondary, width: multiline ? undefined : 140 }}>
-        {label}:
-      </Text>
-      {typeof value === 'string' || typeof value === 'number' ? (
-        <Text style={{ fontSize: 14, color: theme.colors.text, flex: 1 }}>
-          {value}
-        </Text>
-      ) : (
-        value
-      )}
-    </View>
-  );
-
-  const tabs = [
-    { key: 'info' as TabType, label: 'Info', icon: 'information-circle' as const },
-    { key: 'documents' as TabType, label: 'Documents', icon: 'document' as const },
-    { key: 'history' as TabType, label: 'History', icon: 'time' as const },
-  ];
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.colors.text }}>Loading...</Text>
-      </View>
-    );
-  }
-
-  const showApprovalButtons = itemType === 'expenses' && canApprove && item?.status === 'pending';
-  const showMarkPaidButton = itemType === 'sales' && canManage && (item?.status === 'pending' || item?.status === 'partial');
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
-        title={itemType === 'expenses' ? item?.title : item?.invoiceNumber}
+        title={sale ? `Sale #${sale.id}` : 'Sale Details'}
         showBack
-        rightActions={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {showMarkPaidButton && (
-              <Pressable
-                onPress={handleMarkPaid}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? '#10B981' + 'dd' : '#10B981',
-                })}
-              >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', paddingHorizontal: 8 }}>
-                  Mark Paid
-                </Text>
-              </Pressable>
-            )}
-            {canEdit && (
-              <Pressable
-                onPress={handleEdit}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? theme.colors.surface : 'transparent',
-                })}
-              >
-                <Ionicons name="create-outline" size={24} color={theme.colors.text} />
-              </Pressable>
-            )}
-            {canDelete && (
-              <Pressable
-                onPress={handleDelete}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? '#FEE2E2' : 'transparent',
-                })}
-              >
-                <Ionicons name="trash-outline" size={24} color="#EF4444" />
-              </Pressable>
-            )}
-          </View>
+        rightAction={
+          (canManage || canEdit || canDelete) ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(canManage || canEdit) && (
+                <Pressable
+                  onPress={handleEdit}
+                  style={({ pressed }) => ({
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: pressed ? theme.primary + '20' : 'transparent',
+                  })}
+                >
+                  <Ionicons name="create-outline" size={24} color={theme.primary} />
+                </Pressable>
+              )}
+              {(canManage || canDelete) && (
+                <Pressable
+                  onPress={handleDelete}
+                  style={({ pressed }) => ({
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: pressed ? '#EF444420' : 'transparent',
+                  })}
+                >
+                  <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                </Pressable>
+              )}
+            </View>
+          ) : undefined
         }
       />
 
-      {/* Approval Buttons (for pending expenses) */}
-      {showApprovalButtons && (
-        <View style={{
-          flexDirection: 'row',
-          gap: 12,
-          padding: 16,
-          backgroundColor: theme.colors.surface,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
-        }}>
-          <Pressable
-            onPress={handleApprove}
-            style={({ pressed }) => ({
-              flex: 1,
-              padding: 14,
-              borderRadius: 8,
-              backgroundColor: pressed ? '#10B981' + 'dd' : '#10B981',
-              alignItems: 'center',
-            })}
-          >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Approve</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleReject}
-            style={({ pressed }) => ({
-              flex: 1,
-              padding: 14,
-              borderRadius: 8,
-              backgroundColor: pressed ? '#EF4444' + 'dd' : '#EF4444',
-              alignItems: 'center',
-            })}
-          >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Reject</Text>
-          </Pressable>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, gap: 16 }}
+        refreshControl={
+          <ScrollView.RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        {/* Header Card */}
+        <View
+          style={{
+            padding: 20,
+            backgroundColor: theme.surface,
+            borderRadius: 12,
+            ...designSystem.shadows.md,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+                Sale ID
+              </Text>
+              <Text style={{ ...getTypographyStyle('2xl', 'bold'), color: theme.text, marginTop: 4 }}>
+                #{sale.id}
+              </Text>
+            </View>
+            <StatusBadge
+              status={sale.payment_status || 'pending'}
+              label={sale.payment_status?.toUpperCase() || 'PENDING'}
+            />
+          </View>
+
+          <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 12 }} />
+
+          <View style={{ gap: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                Event
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                {sale.event?.name || 'N/A'}
+              </Text>
+            </View>
+
+            {sale.event?.client && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                  Client
+                </Text>
+                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                  {sale.event.client.name}
+                </Text>
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                Sale Date
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                {new Date(sale.date).toLocaleDateString('en-IN')}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                Created By
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                {sale.created_by?.first_name} {sale.created_by?.last_name}
+              </Text>
+            </View>
+          </View>
         </View>
-      )}
 
-      {/* Tabs */}
-      <TabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={(key) => setActiveTab(key as TabType)}
-      />
+        {/* Financial Summary */}
+        <View
+          style={{
+            padding: 20,
+            backgroundColor: theme.surface,
+            borderRadius: 12,
+            gap: 12,
+            ...designSystem.shadows.md,
+          }}
+        >
+          <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text, marginBottom: 4 }}>
+            Financial Summary
+          </Text>
 
-      {/* Content */}
-      <ScrollView style={{ flex: 1 }}>
-        {activeTab === 'info' && renderInfoTab()}
-        {activeTab === 'documents' && renderDocumentsTab()}
-        {activeTab === 'history' && renderHistoryTab()}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+              Gross Amount
+            </Text>
+            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+              ₹{(sale.amount || 0).toLocaleString('en-IN')}
+            </Text>
+          </View>
+
+          {sale.discount > 0 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                Discount
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
+                - ₹{(sale.discount || 0).toLocaleString('en-IN')}
+              </Text>
+            </View>
+          )}
+
+          <View style={{ height: 1, backgroundColor: theme.border }} />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+              Net Amount
+            </Text>
+            <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.primary }}>
+              ₹{netAmount.toLocaleString('en-IN')}
+            </Text>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: theme.border }} />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+              Total Received
+            </Text>
+            <Text style={{ ...getTypographyStyle('sm', 'bold'), color: '#10B981' }}>
+              ₹{totalReceived.toLocaleString('en-IN')}
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+              Balance Due
+            </Text>
+            <Text style={{ ...getTypographyStyle('sm', 'bold'), color: balanceDue > 0 ? '#EF4444' : '#10B981' }}>
+              ₹{balanceDue.toLocaleString('en-IN')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Payment History */}
+        <View
+          style={{
+            padding: 20,
+            backgroundColor: theme.surface,
+            borderRadius: 12,
+            ...designSystem.shadows.md,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+              Payment History
+            </Text>
+            <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+              {payments.length} {payments.length === 1 ? 'Payment' : 'Payments'}
+            </Text>
+          </View>
+
+          {paymentsLoading ? (
+            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
+          ) : payments.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <Ionicons name="wallet-outline" size={40} color={theme.textSecondary} />
+              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 8 }}>
+                No payments recorded yet
+              </Text>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {payments.map((payment, index) => (
+                <View
+                  key={payment.id || index}
+                  style={{
+                    padding: 14,
+                    backgroundColor: theme.background,
+                    borderRadius: 8,
+                    borderLeftWidth: 4,
+                    borderLeftColor: theme.primary,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                        ₹{(payment.payment_amount || 0).toLocaleString('en-IN')}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <Ionicons
+                          name={getModeIcon(payment.mode_of_payment)}
+                          size={14}
+                          color={theme.textSecondary}
+                        />
+                        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                          {payment.mode_of_payment?.replace('_', ' ').toUpperCase()} • {new Date(payment.payment_date).toLocaleDateString('en-IN')}
+                        </Text>
+                      </View>
+                      {payment.notes && (
+                        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 6 }}>
+                          {payment.notes}
+                        </Text>
+                      )}
+                    </View>
+                    {payment.payment_status && (
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 6,
+                          backgroundColor: getStatusColor(payment.payment_status) + '20',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            ...getTypographyStyle('xs', 'semibold'),
+                            color: getStatusColor(payment.payment_status),
+                          }}
+                        >
+                          {payment.payment_status.toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Notes Section */}
+        {sale.notes && (
+          <View
+            style={{
+              padding: 16,
+              backgroundColor: theme.surface,
+              borderRadius: 12,
+              ...designSystem.shadows.sm,
+            }}
+          >
+            <Text style={{ ...getTypographyStyle('sm', 'bold'), color: theme.text, marginBottom: 8 }}>
+              Notes
+            </Text>
+            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, lineHeight: 20 }}>
+              {sale.notes}
+            </Text>
+          </View>
+        )}
+
+        {/* Metadata */}
+        <View
+          style={{
+            padding: 16,
+            backgroundColor: theme.surface,
+            borderRadius: 12,
+            gap: 8,
+          }}
+        >
+          <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+            Created: {new Date(sale.created_at).toLocaleString('en-IN')}
+          </Text>
+          <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+            Last Updated: {new Date(sale.updated_at).toLocaleString('en-IN')}
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );

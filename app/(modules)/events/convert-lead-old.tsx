@@ -197,7 +197,7 @@ export default function ConvertLeadScreen() {
     prefix,
   }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -206,7 +206,7 @@ export default function ConvertLeadScreen() {
             position: 'absolute',
             left: 12,
             fontSize: 14,
-            color: theme.colors.text,
+            color: theme.text,
             zIndex: 1,
           }}>
             {prefix}
@@ -216,20 +216,20 @@ export default function ConvertLeadScreen() {
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           style={{
             flex: 1,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
             borderRadius: 8,
             padding: 12,
             paddingLeft: prefix ? 28 : 12,
             fontSize: 14,
-            color: theme.colors.text,
-            backgroundColor: theme.colors.surface,
+            color: theme.text,
+            backgroundColor: theme.surface,
             textAlignVertical: multiline ? 'top' : 'center',
             minHeight: multiline ? 100 : 44,
           }}
@@ -240,19 +240,19 @@ export default function ConvertLeadScreen() {
 
   // Component for section headers
   const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 8 }}>
+    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.text, marginTop: 8 }}>
       {title}
     </Text>
   );
 
   if (loading || !lead || !categories || !organisations || !venues) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <ModuleHeader title="Convert Lead to Event" showBack />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={theme.primary} />
           <Text style={{ 
-            color: theme.colors.text, 
+            color: theme.text, 
             marginTop: 16,
             fontSize: 16 
           }}>
@@ -265,7 +265,7 @@ export default function ConvertLeadScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      style={{ flex: 1, backgroundColor: theme.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
@@ -285,25 +285,25 @@ export default function ConvertLeadScreen() {
             {/* Lead Info */}
             {lead && (
               <View style={{
-                backgroundColor: theme.colors.primary + '15',
+                backgroundColor: theme.primary + '15',
                 padding: 14,
                 borderRadius: 12,
                 borderLeftWidth: 4,
-                borderLeftColor: theme.colors.primary,
+                borderLeftColor: theme.primary,
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <Ionicons name="person-circle" size={20} color={theme.colors.primary} />
-                  <Text style={{ color: theme.colors.primary, fontSize: 15, fontWeight: '700' }}>
+                  <Ionicons name="person-circle" size={20} color={theme.primary} />
+                  <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>
                     Converting Lead: {lead.client.name}
                   </Text>
                 </View>
                 {lead.client.email && (
-                  <Text style={{ color: theme.colors.text, fontSize: 13, marginLeft: 28 }}>
+                  <Text style={{ color: theme.text, fontSize: 13, marginLeft: 28 }}>
                     📧 {lead.client.email}
                   </Text>
                 )}
                 {lead.client.number && (
-                  <Text style={{ color: theme.colors.text, fontSize: 13, marginLeft: 28 }}>
+                  <Text style={{ color: theme.text, fontSize: 13, marginLeft: 28 }}>
                     📱 {lead.client.number}
                   </Text>
                 )}
@@ -323,10 +323,10 @@ export default function ConvertLeadScreen() {
                       paddingVertical: 16,
                       borderRadius: 12,
                       borderWidth: formData.company === company ? 2 : 1.5,
-                      borderColor: formData.company === company ? theme.colors.primary : theme.colors.border,
+                      borderColor: formData.company === company ? theme.primary : theme.border,
                       backgroundColor: formData.company === company 
-                        ? theme.colors.primary + '15' 
-                        : theme.colors.surface,
+                        ? theme.primary + '15' 
+                        : theme.surface,
                       alignItems: 'center',
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },
@@ -342,12 +342,12 @@ export default function ConvertLeadScreen() {
                     <Ionicons 
                       name="business-outline" 
                       size={20} 
-                      color={formData.company === company ? theme.colors.primary : theme.colors.textSecondary} 
+                      color={formData.company === company ? theme.primary : theme.textSecondary} 
                     />
                     <Text
                       style={{
                         fontSize: 14,
-                        color: formData.company === company ? theme.colors.primary : theme.colors.text,
+                        color: formData.company === company ? theme.primary : theme.text,
                         fontWeight: '700',
                       }}
                     >
@@ -372,10 +372,10 @@ export default function ConvertLeadScreen() {
                         paddingVertical: 12,
                         borderRadius: 20,
                         borderWidth: formData.categoryId === category.id ? 2 : 1,
-                        borderColor: formData.categoryId === category.id ? theme.colors.primary : theme.colors.border,
+                        borderColor: formData.categoryId === category.id ? theme.primary : theme.border,
                         backgroundColor: formData.categoryId === category.id 
-                          ? theme.colors.primary + '15' 
-                          : theme.colors.surface,
+                          ? theme.primary + '15' 
+                          : theme.surface,
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: 0.1,
@@ -388,7 +388,7 @@ export default function ConvertLeadScreen() {
                       <Text
                         style={{
                           fontSize: 14,
-                          color: formData.categoryId === category.id ? theme.colors.primary : theme.colors.text,
+                          color: formData.categoryId === category.id ? theme.primary : theme.text,
                           fontWeight: '700',
                           textAlign: 'center',
                         }}
@@ -416,10 +416,10 @@ export default function ConvertLeadScreen() {
                           paddingVertical: 12,
                           borderRadius: 20,
                           borderWidth: formData.organisationId === org.id ? 2 : 1,
-                          borderColor: formData.organisationId === org.id ? theme.colors.primary : theme.colors.border,
+                          borderColor: formData.organisationId === org.id ? theme.primary : theme.border,
                           backgroundColor: formData.organisationId === org.id 
-                            ? theme.colors.primary + '15' 
-                            : theme.colors.surface,
+                            ? theme.primary + '15' 
+                            : theme.surface,
                           shadowColor: '#000',
                           shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: 0.1,
@@ -432,7 +432,7 @@ export default function ConvertLeadScreen() {
                         <Text
                           style={{
                             fontSize: 14,
-                            color: formData.organisationId === org.id ? theme.colors.primary : theme.colors.text,
+                            color: formData.organisationId === org.id ? theme.primary : theme.text,
                             fontWeight: '700',
                             textAlign: 'center',
                           }}
@@ -459,7 +459,7 @@ export default function ConvertLeadScreen() {
 
               {/* Event Category */}
               <View style={{ gap: 8 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
                   Event Category *
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
@@ -473,10 +473,10 @@ export default function ConvertLeadScreen() {
                           paddingVertical: 10,
                           borderRadius: 20,
                           borderWidth: formData.eventCategory === cat ? 2 : 1,
-                          borderColor: formData.eventCategory === cat ? theme.colors.primary : theme.colors.border,
+                          borderColor: formData.eventCategory === cat ? theme.primary : theme.border,
                           backgroundColor: formData.eventCategory === cat 
-                            ? theme.colors.primary + '15' 
-                            : theme.colors.surface,
+                            ? theme.primary + '15' 
+                            : theme.surface,
                           shadowColor: '#000',
                           shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: 0.1,
@@ -489,7 +489,7 @@ export default function ConvertLeadScreen() {
                         <Text
                           style={{
                             fontSize: 13,
-                            color: formData.eventCategory === cat ? theme.colors.primary : theme.colors.text,
+                            color: formData.eventCategory === cat ? theme.primary : theme.text,
                             fontWeight: '700',
                             textTransform: 'capitalize',
                             textAlign: 'center',
@@ -527,10 +527,10 @@ export default function ConvertLeadScreen() {
                 onPress={() => setShowVenueModal(true)}
                 style={{
                   borderWidth: 1.5,
-                  borderColor: selectedVenue ? theme.colors.primary : theme.colors.border,
+                  borderColor: selectedVenue ? theme.primary : theme.border,
                   borderRadius: 12,
                   padding: 14,
-                  backgroundColor: theme.colors.surface,
+                  backgroundColor: theme.surface,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -544,20 +544,20 @@ export default function ConvertLeadScreen() {
                 <View style={{ flex: 1 }}>
                   {selectedVenue ? (
                     <>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>
                         {selectedVenue.name}
                       </Text>
-                      <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 2 }}>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
                         {selectedVenue.address} • Capacity: {selectedVenue.capacity}
                       </Text>
                     </>
                   ) : (
-                    <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+                    <Text style={{ fontSize: 14, color: theme.textSecondary }}>
                       Tap to search and select a venue
                     </Text>
                   )}
                 </View>
-                <Ionicons name="search" size={20} color={theme.colors.primary} />
+                <Ionicons name="search" size={20} color={theme.primary} />
               </Pressable>
             </View>
 
@@ -574,11 +574,11 @@ export default function ConvertLeadScreen() {
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 8,
-                    backgroundColor: pressed ? theme.colors.primary + '20' : theme.colors.primary + '15',
+                    backgroundColor: pressed ? theme.primary + '20' : theme.primary + '15',
                   })}
                 >
-                  <Ionicons name="add-circle" size={20} color={theme.colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.primary }}>Add Day</Text>
+                  <Ionicons name="add-circle" size={20} color={theme.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>Add Day</Text>
                 </Pressable>
               </View>
 
@@ -588,9 +588,9 @@ export default function ConvertLeadScreen() {
                   style={{
                     padding: 14,
                     borderRadius: 12,
-                    backgroundColor: theme.colors.surface,
+                    backgroundColor: theme.surface,
                     borderWidth: 1,
-                    borderColor: theme.colors.border,
+                    borderColor: theme.border,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: 0.05,
@@ -600,8 +600,8 @@ export default function ConvertLeadScreen() {
                 >
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="calendar" size={16} color={theme.colors.primary} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+                      <Ionicons name="calendar" size={16} color={theme.primary} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
                         Event Day {index + 1}
                       </Text>
                     </View>
@@ -623,8 +623,8 @@ export default function ConvertLeadScreen() {
 
               {(eventDates || []).length === 0 && (
                 <View style={{ padding: 16, alignItems: 'center' }}>
-                  <Ionicons name="calendar-outline" size={40} color={theme.colors.textSecondary} />
-                  <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 8 }}>
+                  <Ionicons name="calendar-outline" size={40} color={theme.textSecondary} />
+                  <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 8 }}>
                     No event days added yet. Click "Add Day" to start.
                   </Text>
                 </View>
@@ -648,7 +648,7 @@ export default function ConvertLeadScreen() {
                 style={{
                   flex: 1,
                   marginTop: 80,
-                  backgroundColor: theme.colors.background,
+                  backgroundColor: theme.background,
                   borderTopLeftRadius: 24,
                   borderTopRightRadius: 24,
                   shadowColor: '#000',
@@ -667,12 +667,12 @@ export default function ConvertLeadScreen() {
                     paddingHorizontal: 20,
                     paddingVertical: 16,
                     borderBottomWidth: 1,
-                    borderBottomColor: theme.colors.border,
+                    borderBottomColor: theme.border,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="location" size={24} color={theme.colors.primary} />
-                    <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>
+                    <Ionicons name="location" size={24} color={theme.primary} />
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
                       Select Venue
                     </Text>
                   </View>
@@ -683,7 +683,7 @@ export default function ConvertLeadScreen() {
                       opacity: pressed ? 0.6 : 1,
                     })}
                   >
-                    <Ionicons name="close" size={28} color={theme.colors.text} />
+                    <Ionicons name="close" size={28} color={theme.text} />
                   </Pressable>
                 </View>
 
@@ -693,30 +693,30 @@ export default function ConvertLeadScreen() {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      backgroundColor: theme.colors.surface,
+                      backgroundColor: theme.surface,
                       borderRadius: 12,
                       paddingHorizontal: 12,
                       paddingVertical: 10,
                       gap: 8,
                       borderWidth: 1,
-                      borderColor: theme.colors.border,
+                      borderColor: theme.border,
                     }}
                   >
-                    <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
+                    <Ionicons name="search" size={20} color={theme.textSecondary} />
                     <TextInput
                       value={venueSearchQuery}
                       onChangeText={setVenueSearchQuery}
                       placeholder="Search venue name or address..."
-                      placeholderTextColor={theme.colors.textSecondary}
+                      placeholderTextColor={theme.textSecondary}
                       style={{
                         flex: 1,
                         fontSize: 15,
-                        color: theme.colors.text,
+                        color: theme.text,
                       }}
                     />
                     {venueSearchQuery.length > 0 && (
                       <Pressable onPress={() => setVenueSearchQuery('')}>
-                        <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+                        <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
                       </Pressable>
                     )}
                   </View>
@@ -726,11 +726,11 @@ export default function ConvertLeadScreen() {
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
                   {filteredVenues.length === 0 ? (
                     <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                      <Ionicons name="location-outline" size={60} color={theme.colors.textSecondary} />
-                      <Text style={{ fontSize: 16, color: theme.colors.textSecondary, marginTop: 16 }}>
+                      <Ionicons name="location-outline" size={60} color={theme.textSecondary} />
+                      <Text style={{ fontSize: 16, color: theme.textSecondary, marginTop: 16 }}>
                         No venues found
                       </Text>
-                      <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginTop: 4 }}>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
                         Try adjusting your search
                       </Text>
                     </View>
@@ -750,11 +750,11 @@ export default function ConvertLeadScreen() {
                             borderRadius: 12,
                             borderWidth: 1.5,
                             borderColor:
-                              selectedVenue?.id === venue.id ? theme.colors.primary : theme.colors.border,
+                              selectedVenue?.id === venue.id ? theme.primary : theme.border,
                             backgroundColor:
                               selectedVenue?.id === venue.id
-                                ? theme.colors.primary + '10'
-                                : theme.colors.surface,
+                                ? theme.primary + '10'
+                                : theme.surface,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 1 },
                             shadowOpacity: 0.05,
@@ -769,12 +769,12 @@ export default function ConvertLeadScreen() {
                                 width: 36,
                                 height: 36,
                                 borderRadius: 18,
-                                backgroundColor: theme.colors.primary + '20',
+                                backgroundColor: theme.primary + '20',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                               }}
                             >
-                              <Ionicons name="location" size={20} color={theme.colors.primary} />
+                              <Ionicons name="location" size={20} color={theme.primary} />
                             </View>
 
                             <View style={{ flex: 1 }}>
@@ -782,7 +782,7 @@ export default function ConvertLeadScreen() {
                                 style={{
                                   fontSize: 15,
                                   fontWeight: '600',
-                                  color: theme.colors.text,
+                                  color: theme.text,
                                   marginBottom: 4,
                                 }}
                               >
@@ -791,7 +791,7 @@ export default function ConvertLeadScreen() {
                               <Text
                                 style={{
                                   fontSize: 13,
-                                  color: theme.colors.textSecondary,
+                                  color: theme.textSecondary,
                                   marginBottom: 6,
                                 }}
                               >
@@ -799,14 +799,14 @@ export default function ConvertLeadScreen() {
                               </Text>
                               <View style={{ flexDirection: 'row', gap: 12 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                  <Ionicons name="people" size={14} color={theme.colors.textSecondary} />
-                                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                                  <Ionicons name="people" size={14} color={theme.textSecondary} />
+                                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
                                     {venue.capacity}
                                   </Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                  <Ionicons name="pricetag" size={14} color={theme.colors.textSecondary} />
-                                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                                  <Ionicons name="pricetag" size={14} color={theme.textSecondary} />
+                                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
                                     {venue.type}
                                   </Text>
                                 </View>
@@ -817,7 +817,7 @@ export default function ConvertLeadScreen() {
                               name="chevron-forward"
                               size={20}
                               color={
-                                selectedVenue?.id === venue.id ? theme.colors.primary : theme.colors.textSecondary
+                                selectedVenue?.id === venue.id ? theme.primary : theme.textSecondary
                               }
                             />
                           </View>

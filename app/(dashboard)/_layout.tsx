@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
 
 export default function DashboardLayout() {
   const { theme, isDark } = useTheme();
@@ -10,7 +11,7 @@ export default function DashboardLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#6B7280',
         tabBarStyle: {
           backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
@@ -30,7 +31,7 @@ export default function DashboardLayout() {
           right: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: designSystem.typography.sizes.xs,
           fontWeight: '600',
           marginTop: 4,
         },
@@ -76,9 +77,9 @@ export default function DashboardLayout() {
                 width: 60,
                 height: 60,
                 borderRadius: 30,
-                backgroundColor: theme.colors.primary,
+                backgroundColor: theme.primary,
                 marginTop: -32,
-                shadowColor: theme.colors.primary,
+                shadowColor: theme.primary,
                 shadowOffset: { width: 0, height: 6 },
                 shadowOpacity: 0.4,
                 shadowRadius: 10,

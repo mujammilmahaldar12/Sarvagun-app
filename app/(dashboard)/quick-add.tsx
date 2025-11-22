@@ -74,10 +74,10 @@ export default function QuickAddScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <View className="flex-1" style={{ backgroundColor: theme.background }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
+        backgroundColor={theme.background}
       />
       
       {/* Header */}
@@ -85,20 +85,20 @@ export default function QuickAddScreen() {
         className="px-6 pt-12 pb-6"
         style={{
           paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight! + 16 : 48,
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.surface,
           borderBottomWidth: 1,
           borderBottomColor: isDark ? '#374151' : '#E5E7EB',
         }}
       >
         <Text
           className="text-3xl font-bold mb-2"
-          style={{ color: theme.colors.text }}
+          style={{ color: theme.text }}
         >
           Quick Actions
         </Text>
         <Text
           className="text-base"
-          style={{ color: theme.colors.textSecondary }}
+          style={{ color: theme.textSecondary }}
         >
           Perform common tasks quickly
         </Text>
@@ -124,7 +124,7 @@ export default function QuickAddScreen() {
               <View
                 className="rounded-2xl p-5 items-center"
                 style={{
-                  backgroundColor: theme.colors.surface,
+                  backgroundColor: theme.surface,
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.08,
@@ -146,7 +146,7 @@ export default function QuickAddScreen() {
                 {/* Title */}
                 <Text
                   className="text-base font-bold text-center mb-1"
-                  style={{ color: theme.colors.text }}
+                  style={{ color: theme.text }}
                 >
                   {action.title}
                 </Text>
@@ -154,7 +154,7 @@ export default function QuickAddScreen() {
                 {/* Description */}
                 <Text
                   className="text-xs text-center"
-                  style={{ color: theme.colors.textSecondary }}
+                  style={{ color: theme.textSecondary }}
                 >
                   {action.description}
                 </Text>

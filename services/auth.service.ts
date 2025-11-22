@@ -25,18 +25,27 @@ export const authService = {
 
   logout: async (refreshToken?: string) => {
     try {
+      console.log('🔐 Auth Service: Starting logout...');
+      
       if (refreshToken) {
+        console.log('📡 Auth Service: Calling logout API...');
         await api.post('/hr/auth/logout/', {
           refresh: refreshToken,
         });
+        console.log('✅ Auth Service: Logout API successful');
+      } else {
+        console.log('⚠️ Auth Service: No refresh token provided');
       }
     } catch (error) {
+      console.log('❌ Auth Service: Logout API error:', error);
       // Silent error - proceed with local cleanup
     } finally {
+      console.log('🧹 Auth Service: Clearing all storage...');
       // Always clean local storage
       await removeToken('access');
       await removeToken('refresh');
       await removeToken('user');
+      console.log('✅ Auth Service: Storage cleared');
     }
   },
 

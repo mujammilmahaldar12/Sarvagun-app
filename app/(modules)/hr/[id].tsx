@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, ScrollView, Text, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useLeave, useUpdateLeaveStatus, useDeleteLeave } from '@/hooks/useHRQueries';
+import { usePermissions } from '@/store/permissionStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
+import hrService from '@/services/hr.service';
 
 type DetailTab = 'info' | 'documents' | 'history';
 type ItemType = 'staff' | 'leave' | 'reimbursement';
@@ -16,14 +21,23 @@ export default function HRDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+  const permissions = usePermissions();
   const [activeTab, setActiveTab] = useState<DetailTab>('info');
-  const [loading, setLoading] = useState(true);
-  const [itemData, setItemData] = useState<any>(null);
   const [itemType, setItemType] = useState<ItemType>('staff');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // API hooks for leave management
+  const { data: leaveData, isLoading: leaveLoading, refetch } = useLeave(
+    parseInt(id as string),
+    { enabled: type === 'leave' }
+  );
+  const { mutate: updateStatus, isPending: isUpdating } = useUpdateLeaveStatus();
+  const { mutate: deleteLeave, isPending: isDeleting } = useDeleteLeave();
 
   // Check user role for permissions
-  const canManage = ['admin', 'hr'].includes(user?.category || '');
-  const canApprove = ['admin', 'hr', 'manager'].includes(user?.category || '');
+  const canManage = permissions.hasPermission('hr:manage');
+  const canApprove = permissions.hasPermission('leave:approve');
 
   // Tabs for detail view
   const detailTabs: Tab[] = [
@@ -33,77 +47,12 @@ export default function HRDetailScreen() {
   ];
 
   useEffect(() => {
-    fetchItemDetails();
-  }, [id]);
+    const itemTypeFromParam = (type as ItemType) || 'staff';
+    setItemType(itemTypeFromParam);
+  }, [id, type]);
 
-  const fetchItemDetails = async () => {
-    setLoading(true);
-    try {
-      // Set type from navigation params
-      const itemTypeFromParam = (type as ItemType) || 'staff';
-      setItemType(itemTypeFromParam);
-
-      // TODO: Replace with real API call based on type
-      // await api.get(`/hr/${itemTypeFromParam}/${id}`)
-      
-      // Mock data based on type
-      setTimeout(() => {
-        let mockData: any;
-        
-        if (itemTypeFromParam === 'staff') {
-          mockData = {
-            id: id,
-            type: 'staff',
-            name: 'John Doe',
-            email: 'john@example.com',
-            phone: '+91 9876543210',
-            designation: 'Senior Developer',
-            department: 'IT',
-            status: 'Active',
-            joinDate: '2024-01-15',
-            employeeId: 'EMP001',
-            address: '123 Main St, Mumbai, Maharashtra',
-            emergencyContact: '+91 9876543211',
-            salary: '₹8,50,000',
-          };
-        } else if (itemTypeFromParam === 'leave') {
-          mockData = {
-            id: id,
-            type: 'leave',
-            employee: 'John Doe',
-            employeeId: user?.id || 1,
-            leaveType: 'Casual Leave',
-            from: '2025-11-25',
-            to: '2025-11-27',
-            days: 3,
-            status: 'Pending',
-            reason: 'Family function',
-            appliedDate: '2025-11-20',
-          };
-        } else if (itemTypeFromParam === 'reimbursement') {
-          mockData = {
-            id: id,
-            type: 'reimbursement',
-            employee: 'John Doe',
-            employeeId: user?.id || 1,
-            reimbursementType: 'Travel',
-            amount: 5000,
-            date: '2025-11-15',
-            status: 'Pending',
-            description: 'Client meeting travel',
-            appliedDate: '2025-11-16',
-          };
-        }
-
-        setItemData(mockData);
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error('Error fetching details:', error);
-      Alert.alert('Error', 'Failed to load details');
-      setLoading(false);
-    }
-  };
+  const itemData = type === 'leave' ? leaveData : null;
+  const loading = type === 'leave' ? leaveLoading : false;
 
   const handleEdit = () => {
     // Navigate to edit screen
@@ -112,17 +61,26 @@ export default function HRDetailScreen() {
 
   const handleApprove = () => {
     Alert.alert(
-      'Approve',
-      `Are you sure you want to approve this ${itemType}?`,
+      'Approve Leave',
+      `Are you sure you want to approve this leave request for ${itemData?.employee_name || 'this employee'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Approve',
-          onPress: async () => {
-            // TODO: Call API to approve
-            console.log('Approved:', id);
-            Alert.alert('Success', `${itemType} approved successfully`);
-            fetchItemDetails();
+          onPress: () => {
+            updateStatus(
+              { id: parseInt(id as string), data: { status: 'approved' } },
+              {
+                onSuccess: () => {
+                  Alert.alert('Success', 'Leave approved successfully', [
+                    { text: 'OK', onPress: () => router.back() }
+                  ]);
+                },
+                onError: (error: any) => {
+                  Alert.alert('Error', error.message || 'Failed to approve leave');
+                },
+              }
+            );
           },
         },
       ]
@@ -130,22 +88,32 @@ export default function HRDetailScreen() {
   };
 
   const handleReject = () => {
-    Alert.alert(
-      'Reject',
-      `Are you sure you want to reject this ${itemType}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            // TODO: Call API to reject
-            console.log('Rejected:', id);
-            Alert.alert('Success', `${itemType} rejected successfully`);
-            fetchItemDetails();
-          },
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = () => {
+    if (!rejectionReason.trim()) {
+      Alert.alert('Required', 'Please provide a reason for rejection');
+      return;
+    }
+
+    updateStatus(
+      {
+        id: parseInt(id as string),
+        data: { status: 'rejected', rejection_reason: rejectionReason.trim() },
+      },
+      {
+        onSuccess: () => {
+          setShowRejectModal(false);
+          setRejectionReason('');
+          Alert.alert('Success', 'Leave rejected successfully', [
+            { text: 'OK', onPress: () => router.back() }
+          ]);
         },
-      ]
+        onError: (error: any) => {
+          Alert.alert('Error', error.message || 'Failed to reject leave');
+        },
+      }
     );
   };
 
@@ -166,7 +134,7 @@ export default function HRDetailScreen() {
           <InfoRow label="Address" value={itemData.address} theme={theme} />
           <InfoRow label="Emergency Contact" value={itemData.emergencyContact} theme={theme} />
           <View style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8 }}>
+            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>
               Status
             </Text>
             <StatusBadge status={itemData.status} type={itemData.status === 'Active' ? 'active' : 'inactive'} />
@@ -176,22 +144,102 @@ export default function HRDetailScreen() {
     }
 
     if (itemType === 'leave') {
+      const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      };
+
+      const shiftTime = hrService.formatShiftTime(itemData.shift_type || 'full_shift');
+
       return (
-        <View style={{ padding: 16 }}>
-          <InfoRow label="Employee" value={itemData.employee} theme={theme} />
-          <InfoRow label="Leave Type" value={itemData.leaveType} theme={theme} />
-          <InfoRow label="From Date" value={itemData.from} theme={theme} />
-          <InfoRow label="To Date" value={itemData.to} theme={theme} />
-          <InfoRow label="Total Days" value={itemData.days?.toString()} theme={theme} />
-          <InfoRow label="Applied On" value={itemData.appliedDate} theme={theme} />
-          <InfoRow label="Reason" value={itemData.reason} theme={theme} />
-          <View style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8 }}>
-              Status
+        <ScrollView style={{ padding: 16 }}>
+          {/* Summary Header */}
+          <View style={{
+            backgroundColor: theme.surface,
+            padding: 20,
+            borderRadius: 12,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: theme.border,
+          }}>
+            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 16 }}>
+              Summary
             </Text>
-            <StatusBadge status={itemData.status} />
+            
+            <SummaryRow label="Type" value={itemData.leave_type} theme={theme} />
+            <SummaryRow 
+              label="Balance before leave applied" 
+              value={`${itemData.balance_before || 0} Days`} 
+              theme={theme} 
+            />
+            <SummaryRow 
+              label="Balance after leave applied" 
+              value={`${itemData.balance_after || 0} Days`} 
+              theme={theme} 
+            />
+            <SummaryRow label="Request Duration" value={`${itemData.total_days} Day(s)`} theme={theme} />
+            <SummaryRow 
+              label="Request Date" 
+              value={`${formatDate(itemData.from_date)}, ${formatDate(itemData.to_date)}, ${formatDate(itemData.applied_date || itemData.from_date)}`}
+              theme={theme} 
+            />
+            <SummaryRow label="Request Time" value={itemData.shift_type?.replace('_', ' ').toUpperCase() || 'FULL SHIFT'} theme={theme} />
+            <SummaryRow label="Shift" value={shiftTime} theme={theme} />
+            <SummaryRow label="Total Time Requested" value={`${itemData.total_days} Day(s)`} theme={theme} isLast />
           </View>
-        </View>
+
+          {/* Employee Info */}
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>
+              Employee Details
+            </Text>
+            <InfoRow label="Name" value={itemData.employee_name} theme={theme} />
+            <InfoRow label="Email" value={itemData.employee_email} theme={theme} />
+            <InfoRow label="Designation" value={itemData.employee_designation} theme={theme} />
+            <InfoRow label="Department" value={itemData.employee_department} theme={theme} />
+          </View>
+
+          {/* Leave Details */}
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>
+              Leave Details
+            </Text>
+            <InfoRow label="Reason" value={itemData.reason} theme={theme} />
+            <InfoRow label="Applied Date" value={formatDate(itemData.applied_date)} theme={theme} />
+            
+            {itemData.approved_by_name && (
+              <InfoRow label="Reviewed By" value={itemData.approved_by_name} theme={theme} />
+            )}
+            {itemData.approved_date && (
+              <InfoRow label="Reviewed On" value={formatDate(itemData.approved_date)} theme={theme} />
+            )}
+            {itemData.rejection_reason && (
+              <InfoRow label="Rejection Reason" value={itemData.rejection_reason} theme={theme} />
+            )}
+            
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>
+                Status
+              </Text>
+              <StatusBadge status={itemData.status} />
+            </View>
+          </View>
+
+          {/* Note for Casual/Other leave */}
+          {itemData.leave_type?.includes('Casual') && (
+            <View style={{
+              backgroundColor: `${theme.primary}10`,
+              padding: 16,
+              borderRadius: 8,
+              borderLeftWidth: 4,
+              borderLeftColor: theme.primary,
+            }}>
+              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
+                ℹ️ Casual Other Planned requests need manager approval. Visit the Time History page to track updates.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
       );
     }
 
@@ -205,7 +253,7 @@ export default function HRDetailScreen() {
           <InfoRow label="Applied On" value={itemData.appliedDate} theme={theme} />
           <InfoRow label="Description" value={itemData.description} theme={theme} />
           <View style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8 }}>
+            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>
               Status
             </Text>
             <StatusBadge status={itemData.status} />
@@ -220,7 +268,7 @@ export default function HRDetailScreen() {
   const renderDocumentsTab = () => {
     return (
       <View style={{ padding: 16 }}>
-        <Text style={{ fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 32 }}>
+        <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, textAlign: 'center', marginTop: 32 }}>
           Documents section will be implemented with file uploads
         </Text>
         {/* TODO: Add document upload/view functionality */}
@@ -231,7 +279,7 @@ export default function HRDetailScreen() {
   const renderHistoryTab = () => {
     return (
       <View style={{ padding: 16 }}>
-        <Text style={{ fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 32 }}>
+        <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, textAlign: 'center', marginTop: 32 }}>
           Activity history will be displayed here
         </Text>
         {/* TODO: Add activity timeline */}
@@ -254,10 +302,24 @@ export default function HRDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <ModuleHeader title="Loading..." />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!itemData && type === 'leave') {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <ModuleHeader title="Not Found" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Ionicons name="document-outline" size={64} color={theme.textSecondary} />
+          <Text style={{ ...getTypographyStyle('lg', 'regular'), color: theme.textSecondary, marginTop: 16, textAlign: 'center' }}>
+            Leave request not found
+          </Text>
         </View>
       </View>
     );
@@ -265,30 +327,35 @@ export default function HRDetailScreen() {
 
   const showApprovalButtons = itemData && 
     itemData.status?.toLowerCase() === 'pending' && 
-    (itemType === 'leave' || itemType === 'reimbursement') && 
+    itemType === 'leave' && 
     canApprove;
 
   // Check if current user can delete (own pending item)
   const canDelete = itemData &&
     itemData.status?.toLowerCase() === 'pending' &&
-    (itemType === 'leave' || itemType === 'reimbursement') &&
-    itemData.employeeId === user?.id;
+    itemType === 'leave' &&
+    itemData.employee === user?.id;
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete',
-      `Are you sure you want to delete this ${itemType}?`,
+      'Cancel Leave',
+      'Are you sure you want to cancel this leave request?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'No', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Yes, Cancel',
           style: 'destructive',
-          onPress: async () => {
-            // TODO: Call API to delete
-            console.log('Deleted:', id);
-            Alert.alert('Success', `${itemType} deleted successfully`, [
-              { text: 'OK', onPress: () => router.back() }
-            ]);
+          onPress: () => {
+            deleteLeave(parseInt(id as string), {
+              onSuccess: () => {
+                Alert.alert('Success', 'Leave cancelled successfully', [
+                  { text: 'OK', onPress: () => router.back() }
+                ]);
+              },
+              onError: (error: any) => {
+                Alert.alert('Error', error.message || 'Failed to cancel leave');
+              },
+            });
           },
         },
       ]
@@ -296,7 +363,7 @@ export default function HRDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
         title={itemType === 'staff' ? itemData?.name : `${itemType} Details`}
       />
@@ -316,9 +383,9 @@ export default function HRDetailScreen() {
       {/* Action Buttons */}
       <View style={{ 
         padding: 16, 
-        backgroundColor: theme.colors.surface,
+        backgroundColor: theme.surface,
         borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
+        borderTopColor: theme.border,
         gap: 12
       }}>
         {showApprovalButtons ? (
@@ -335,8 +402,8 @@ export default function HRDetailScreen() {
               }}
               onPress={handleReject}
             >
-              <Ionicons name="close-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+              <Ionicons name="close-circle" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
+              <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
                 Reject
               </Text>
             </Pressable>
@@ -352,8 +419,8 @@ export default function HRDetailScreen() {
               }}
               onPress={handleApprove}
             >
-              <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+              <Ionicons name="checkmark-circle" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
+              <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
                 Approve
               </Text>
             </Pressable>
@@ -363,7 +430,7 @@ export default function HRDetailScreen() {
         {canManage && itemType === 'staff' && (
           <Pressable
             style={{
-              backgroundColor: theme.colors.primary,
+              backgroundColor: theme.primary,
               padding: 16,
               borderRadius: 12,
               alignItems: 'center',
@@ -372,8 +439,8 @@ export default function HRDetailScreen() {
             }}
             onPress={handleEdit}
           >
-            <Ionicons name="create" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+            <Ionicons name="create" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
               Edit Details
             </Text>
           </Pressable>
@@ -391,13 +458,97 @@ export default function HRDetailScreen() {
             }}
             onPress={handleDelete}
           >
-            <Ionicons name="trash" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+            <Ionicons name="trash" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
               Delete
             </Text>
           </Pressable>
         )}
       </View>
+
+      {/* Rejection Reason Modal */}
+      {showRejectModal && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            backgroundColor: theme.surface,
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 400,
+          }}>
+            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 16 }}>
+              Rejection Reason
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: theme.background,
+                borderWidth: 1,
+                borderColor: theme.border,
+                borderRadius: 8,
+                padding: 12,
+                minHeight: 100,
+                textAlignVertical: 'top',
+                color: theme.text,
+                marginBottom: 16,
+              }}
+              placeholder="Enter reason for rejection..."
+              placeholderTextColor={theme.textSecondary}
+              multiline
+              value={rejectionReason}
+              onChangeText={setRejectionReason}
+            />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Pressable
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.background,
+                  padding: 12,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                }}
+                onPress={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                disabled={isUpdating}
+              >
+                <Text style={{ color: theme.text, ...getTypographyStyle('base', 'semibold') }}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                style={{
+                  flex: 1,
+                  backgroundColor: '#EF4444',
+                  padding: 12,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                }}
+                onPress={confirmReject}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: '#FFFFFF', ...getTypographyStyle('base', 'semibold') }}>
+                    Reject
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -406,10 +557,30 @@ export default function HRDetailScreen() {
 function InfoRow({ label, value, theme }: { label: string; value?: string; theme: any }) {
   return (
     <View style={{ marginBottom: 20 }}>
-      <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 4 }}>
+      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 4 }}>
         {label}
       </Text>
-      <Text style={{ fontSize: 16, color: theme.colors.text, fontWeight: '500' }}>
+      <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
+        {value || 'N/A'}
+      </Text>
+    </View>
+  );
+}
+
+// Helper component for summary rows
+function SummaryRow({ label, value, theme, isLast = false }: { label: string; value?: string; theme: any; isLast?: boolean }) {
+  return (
+    <View style={{ 
+      flexDirection: 'row', 
+      justifyContent: 'space-between', 
+      paddingVertical: 12,
+      borderBottomWidth: isLast ? 0 : 1,
+      borderBottomColor: theme.border,
+    }}>
+      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, flex: 1 }}>
+        {label}
+      </Text>
+      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, flex: 1, textAlign: 'right' }}>
         {value || 'N/A'}
       </Text>
     </View>

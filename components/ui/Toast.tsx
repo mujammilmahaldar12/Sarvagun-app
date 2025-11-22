@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
-import { spacing, borderRadius, iconSizes, duration } from '../../constants/designTokens';
+import { spacing, borderRadius, iconSizes, duration } from '../../constants/designSystem';
 import { getTypographyStyle, getShadowStyle } from '../../utils/styleHelpers';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -16,10 +16,10 @@ interface ToastProps {
 }
 
 const TOAST_CONFIG: Record<ToastType, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  success: { icon: 'checkmark-circle', color: '#10B981' },
-  error: { icon: 'close-circle', color: '#EF4444' },
-  warning: { icon: 'warning', color: '#F59E0B' },
-  info: { icon: 'information-circle', color: '#3B82F6' },
+  success: { icon: 'checkmark-circle', color: '#10B981' }, // TODO: Use theme.success when available
+  error: { icon: 'close-circle', color: '#EF4444' }, // TODO: Use theme.error
+  warning: { icon: 'warning', color: '#F59E0B' }, // TODO: Use theme.warning
+  info: { icon: 'information-circle', color: '#3B82F6' }, // TODO: Use theme.info
 };
 
 export const Toast: React.FC<ToastProps> = ({
@@ -80,7 +80,7 @@ export const Toast: React.FC<ToastProps> = ({
   const config = TOAST_CONFIG[type];
 
   const containerStyle: ViewStyle = {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.surface,
     borderLeftColor: config.color,
     borderLeftWidth: 4,
     ...getShadowStyle('xl'),
@@ -88,7 +88,7 @@ export const Toast: React.FC<ToastProps> = ({
 
   const messageStyle: TextStyle = {
     ...getTypographyStyle('sm', 'medium'),
-    color: theme.colors.text,
+    color: theme.text,
   };
 
   return (

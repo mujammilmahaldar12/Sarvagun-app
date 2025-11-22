@@ -161,13 +161,15 @@ const EventsFilters: React.FC<EventsFiltersProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Search Bar */}
-      <View style={[styles.searchContainer, { marginHorizontal: spacing[4] }]}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={onSearchChange}
-          placeholder={getSearchPlaceholder()}
-          style={[styles.searchBar, { backgroundColor: theme.surface }]}
-        />
+      <View style={[styles.searchContainer, { marginHorizontal: spacing[4], marginTop: spacing[3] }]}>
+        <View style={{ flex: 1 }}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={onSearchChange}
+            placeholder={getSearchPlaceholder()}
+            style={{ backgroundColor: theme.surface }}
+          />
+        </View>
         
         {/* Filter Button */}
         <ActionButton
@@ -175,7 +177,7 @@ const EventsFilters: React.FC<EventsFiltersProps> = ({
           onPress={() => setFilterModalVisible(true)}
           variant={hasActiveFilters ? 'primary' : 'secondary'}
           size="md"
-          style={[styles.filterButton, { backgroundColor: theme.surface }]}
+          style={{ backgroundColor: theme.surface, width: 48, height: 48 }}
           accessibilityLabel="Open filters"
         />
       </View>
@@ -295,13 +297,7 @@ const styles = {
   searchContainer: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: designSystem.spacing[2],
-  },
-  searchBar: {
-    flex: 1,
-  },
-  filterButton: {
-    // backgroundColor handled dynamically
+    gap: designSystem.spacing[3],
   },
   quickFilters: {
     // margins handled dynamically

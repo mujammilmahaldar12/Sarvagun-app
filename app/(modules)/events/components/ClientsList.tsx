@@ -202,7 +202,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
           {value.length > 0 ? (
             value.slice(0, 2).map((category, index) => (
               <Chip
-                key={index}
+                key={`${row.id}-category-${index}-${category}`}
                 label={category}
                 size="sm"
                 variant="secondary"

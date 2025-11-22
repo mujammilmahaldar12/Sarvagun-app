@@ -76,7 +76,7 @@ export default function AddReimbursementScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="Add Reimbursement" />
 
       <KeyboardAvoidingView
@@ -90,15 +90,15 @@ export default function AddReimbursementScreen() {
         >
           {/* Employee Info */}
           <View style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             padding: 16,
             borderRadius: 12,
             marginBottom: 24,
           }}>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 4 }}>
+            <Text style={{ fontSize: 14, color: theme.textSecondary, marginBottom: 4 }}>
               Claiming as
             </Text>
-            <Text style={{ fontSize: 18, color: theme.colors.text, fontWeight: '600' }}>
+            <Text style={{ fontSize: 18, color: theme.text, fontWeight: '600' }}>
               {user?.full_name || 'Employee'}
             </Text>
           </View>
@@ -106,7 +106,7 @@ export default function AddReimbursementScreen() {
           {/* Reimbursement Type Selection */}
           <Text style={{
             fontSize: 14,
-            color: theme.colors.textSecondary,
+            color: theme.textSecondary,
             marginBottom: 8,
             fontWeight: '500',
           }}>
@@ -118,12 +118,12 @@ export default function AddReimbursementScreen() {
                 key={type}
                 style={{
                   backgroundColor: formData.type === type 
-                    ? `${theme.colors.primary}20` 
-                    : theme.colors.surface,
+                    ? `${theme.primary}20` 
+                    : theme.surface,
                   borderWidth: 1,
                   borderColor: formData.type === type 
-                    ? theme.colors.primary 
-                    : theme.colors.border,
+                    ? theme.primary 
+                    : theme.border,
                   padding: 16,
                   borderRadius: 8,
                 }}
@@ -131,8 +131,8 @@ export default function AddReimbursementScreen() {
               >
                 <Text style={{
                   color: formData.type === type 
-                    ? theme.colors.primary 
-                    : theme.colors.text,
+                    ? theme.primary 
+                    : theme.text,
                   fontSize: 16,
                   fontWeight: formData.type === type ? '600' : '400',
                 }}>
@@ -177,7 +177,7 @@ export default function AddReimbursementScreen() {
           <View style={{ marginBottom: 16 }}>
             <Text style={{
               fontSize: 14,
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               marginBottom: 8,
               fontWeight: '500',
             }}>
@@ -186,9 +186,9 @@ export default function AddReimbursementScreen() {
             
             <Pressable
               style={{
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.surface,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: theme.border,
                 borderStyle: 'dashed',
                 borderRadius: 8,
                 padding: 16,
@@ -196,11 +196,11 @@ export default function AddReimbursementScreen() {
               }}
               onPress={pickDocument}
             >
-              <Ionicons name="cloud-upload" size={32} color={theme.colors.primary} />
-              <Text style={{ color: theme.colors.primary, marginTop: 8, fontWeight: '500' }}>
+              <Ionicons name="cloud-upload" size={32} color={theme.primary} />
+              <Text style={{ color: theme.primary, marginTop: 8, fontWeight: '500' }}>
                 Upload Document
               </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
                 PDF, JPG, PNG (Max 5MB)
               </Text>
             </Pressable>
@@ -214,15 +214,15 @@ export default function AddReimbursementScreen() {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      backgroundColor: theme.colors.surface,
+                      backgroundColor: theme.surface,
                       padding: 12,
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: theme.colors.border,
+                      borderColor: theme.border,
                     }}
                   >
-                    <Ionicons name="document" size={20} color={theme.colors.primary} />
-                    <Text style={{ flex: 1, marginLeft: 12, color: theme.colors.text }}>
+                    <Ionicons name="document" size={20} color={theme.primary} />
+                    <Text style={{ flex: 1, marginLeft: 12, color: theme.text }}>
                       Receipt {index + 1}
                     </Text>
                     <Pressable onPress={() => removeDocument(index)}>
@@ -237,7 +237,7 @@ export default function AddReimbursementScreen() {
           {/* Submit Button */}
           <Pressable
             style={{
-              backgroundColor: loading ? '#9CA3AF' : theme.colors.primary,
+              backgroundColor: loading ? '#9CA3AF' : theme.primary,
               padding: 16,
               borderRadius: 12,
               alignItems: 'center',
@@ -247,8 +247,8 @@ export default function AddReimbursementScreen() {
             onPress={handleSubmit}
             disabled={loading}
           >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-              {loading ? 'Submitting...' : 'Submit Reimbursement Claim'}
+            <Text style={{ color: theme.textInverse, fontSize: 16, fontWeight: '600' }}>
+              {loading ? 'Submitting...' : 'Submit Reimbursement'}
             </Text>
           </Pressable>
         </ScrollView>
@@ -285,7 +285,7 @@ function FormInput({
     <View style={{ marginBottom: 16 }}>
       <Text style={{
         fontSize: 14,
-        color: theme.colors.textSecondary,
+        color: theme.textSecondary,
         marginBottom: 8,
         fontWeight: '500',
       }}>
@@ -297,7 +297,7 @@ function FormInput({
             position: 'absolute',
             left: 12,
             fontSize: 16,
-            color: theme.colors.text,
+            color: theme.text,
             fontWeight: '500',
             zIndex: 1,
           }}>
@@ -307,21 +307,21 @@ function FormInput({
         <TextInput
           style={{
             flex: 1,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
             borderRadius: 8,
             padding: 12,
             paddingLeft: prefix ? 32 : 12,
             fontSize: 16,
-            color: theme.colors.text,
+            color: theme.text,
             minHeight: multiline ? 100 : 48,
             textAlignVertical: multiline ? 'top' : 'center',
           }}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
           multiline={multiline}
           numberOfLines={numberOfLines}

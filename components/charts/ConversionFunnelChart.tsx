@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { COLORS } from '@/constants/colors';
+import { COLORS, designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 interface FunnelData {
   total: number;
@@ -36,18 +37,15 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
   return (
     <View
       style={{
-        backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        backgroundColor: theme.surface,
+        borderRadius: designSystem.borderRadius.lg,
+        padding: designSystem.spacing[5],
+        marginBottom: designSystem.spacing[4],
+        ...designSystem.shadows.md,
         elevation: 3,
       }}
     >
-      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text, marginBottom: 16 }}>
+      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: designSystem.spacing[4] }}>
         Lead Conversion Funnel
       </Text>
 
@@ -65,17 +63,17 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
                   marginBottom: 6,
                 }}
               >
-                <Text style={{ fontSize: 13, color: theme.colors.textSecondary, flex: 1 }}>
+                <Text style={{ ...getTypographyStyle('sm'), color: theme.textSecondary, flex: 1 }}>
                   {stage.label}
                 </Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
                   {stage.value}
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
-                    color: theme.colors.textSecondary,
-                    marginLeft: 8,
+                    ...getTypographyStyle('xs'),
+                    color: theme.textSecondary,
+                    marginLeft: designSystem.spacing[2],
                     width: 50,
                     textAlign: 'right',
                   }}
@@ -87,7 +85,7 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
               <View
                 style={{
                   height: 40,
-                  backgroundColor: theme.colors.border,
+                  backgroundColor: theme.border,
                   borderRadius: 8,
                   overflow: 'hidden',
                 }}
@@ -103,7 +101,7 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
                   }}
                 >
                   {barWidth > 60 && (
-                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>
+                    <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>
                       {stage.value}
                     </Text>
                   )}
@@ -116,7 +114,7 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
                     style={{
                       width: 2,
                       height: 8,
-                      backgroundColor: theme.colors.border,
+                      backgroundColor: theme.border,
                     }}
                   />
                 </View>
@@ -132,30 +130,30 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
           marginTop: 16,
           paddingTop: 16,
           borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
+          borderTopColor: theme.border,
           flexDirection: 'row',
           justifyContent: 'space-around',
         }}
       >
         <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: COLORS.charts.success }}>
+          <Text style={{ ...getTypographyStyle('2xl', 'bold'), color: COLORS.charts.success }}>
             {data.total > 0 ? ((data.converted / data.total) * 100).toFixed(1) : 0}%
           </Text>
-          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 4 }}>
+          <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginTop: designSystem.spacing[1] }}>
             Conversion Rate
           </Text>
         </View>
 
-        <View style={{ width: 1, backgroundColor: theme.colors.border }} />
+        <View style={{ width: 1, backgroundColor: theme.border }} />
 
         <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: COLORS.charts.danger }}>
+          <Text style={{ ...getTypographyStyle('2xl', 'bold'), color: COLORS.charts.danger }}>
             {data.total > 0
               ? (((data.total - data.converted - data.pending) / data.total) * 100).toFixed(1)
               : 0}
             %
           </Text>
-          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 4 }}>
+          <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginTop: designSystem.spacing[1] }}>
             Rejection Rate
           </Text>
         </View>

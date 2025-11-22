@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Platform, Modal, Pressable, StyleSheet } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius, typography } from '@/constants/designTokens';
+import { spacing, borderRadius, typography } from '@/constants/designSystem';
 import { useTheme } from '@/hooks/useTheme';
 import AnimatedPressable from './AnimatedPressable';
 
@@ -86,10 +86,10 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
         <Text style={{
           fontSize: typography.sizes.sm,
           fontWeight: 'bold',
-          color: theme.colors.text,
+          color: theme.text,
           marginBottom: spacing.sm
         }}>
-          {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
+          {label} {required && <Text style={{ color: theme.error }}>*</Text>}
         </Text>
       )}
       
@@ -100,44 +100,45 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
           flexDirection: 'row',
           alignItems: 'center',
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: borderRadius.md,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.md,
-          backgroundColor: disabled ? theme.colors.background : theme.colors.surface,
+          backgroundColor: disabled ? theme.background : theme.surface,
           opacity: disabled ? 0.6 : 1,
         }}
       >
         <Ionicons 
           name="calendar-outline" 
           size={20} 
-          color={disabled ? theme.colors.textSecondary : theme.colors.primary}
+          color={disabled ? theme.textSecondary : theme.primary}
           style={{ marginRight: spacing.sm }}
         />
         
         <Text style={{
           flex: 1,
           fontSize: typography.sizes.base,
-          color: value ? theme.colors.text : theme.colors.textSecondary,
+          color: value ? theme.text : theme.textSecondary,
         }}>
           {value ? formatDate(value) : placeholder}
         </Text>
         
         {value && !disabled && (
           <AnimatedPressable
-            onPress={(e) => {
-              e.stopPropagation();
+            onPress={() => {
               clearDate();
             }}
             style={{
               padding: spacing.xs,
               marginLeft: spacing.sm,
             }}
+            accessibilityLabel="Clear date"
+            accessibilityRole="button"
           >
             <Ionicons 
               name="close-circle" 
               size={18} 
-              color={theme.colors.textSecondary}
+              color={theme.textSecondary}
             />
           </AnimatedPressable>
         )}
@@ -145,7 +146,7 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
         <Ionicons
           name="chevron-down"
           size={16}
-          color={theme.colors.textSecondary}
+          color={theme.textSecondary}
           style={{ marginLeft: spacing.xs }}
         />
       </AnimatedPressable>
@@ -159,10 +160,10 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
           onChange={handleDateChange}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
-          accentColor={theme.colors.primary}
-          textColor={theme.colors.text}
+          accentColor={theme.primary}
+          textColor={theme.text}
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
           }}
         />
       )}
@@ -182,14 +183,14 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
             <View 
               style={[
                 styles.modalContent,
-                { backgroundColor: theme.colors.surface }
+                { backgroundColor: theme.surface }
               ]}
               onStartShouldSetResponder={() => true}
             >
               {/* Modal Header */}
               <View style={[
                 styles.modalHeader,
-                { borderBottomColor: theme.colors.border }
+                { borderBottomColor: theme.border }
               ]}>
                 <Pressable
                   onPress={handleIOSCancel}
@@ -197,7 +198,7 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
                 >
                   <Text style={[
                     styles.modalButtonText,
-                    { color: theme.colors.textSecondary }
+                    { color: theme.textSecondary }
                   ]}>
                     Cancel
                   </Text>
@@ -205,7 +206,7 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
                 
                 <Text style={[
                   styles.modalTitle,
-                  { color: theme.colors.text }
+                  { color: theme.text }
                 ]}>
                   Select {mode === 'date' ? 'Date' : mode === 'time' ? 'Time' : 'Date & Time'}
                 </Text>
@@ -216,7 +217,7 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
                 >
                   <Text style={[
                     styles.modalButtonText,
-                    { color: theme.colors.primary, fontWeight: 'bold' }
+                    { color: theme.primary, fontWeight: 'bold' }
                   ]}>
                     Done
                   </Text>
@@ -228,14 +229,14 @@ export const ThemedDatePicker: React.FC<ThemedDatePickerProps> = ({
                 <DateTimePicker
                   value={tempDate || value || new Date()}
                   mode={mode}
-                  display="wheels"
+                  display="default"
                   onChange={handleDateChange}
                   minimumDate={minimumDate}
                   maximumDate={maximumDate}
-                  accentColor={theme.colors.primary}
-                  textColor={theme.colors.text}
+                  accentColor={theme.primary}
+                  textColor={theme.text}
                   style={{
-                    backgroundColor: theme.colors.surface,
+                    backgroundColor: theme.surface,
                   }}
                 />
               </View>

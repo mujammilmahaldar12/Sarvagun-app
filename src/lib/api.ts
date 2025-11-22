@@ -1,9 +1,9 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
-import { getToken, saveToken, removeToken } from "./storage";
+import { getToken, storeToken, removeToken } from "../../utils/storage";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__ 
-  ? "http://10.231.38.177:8000/api"  // Your PC's current local IP
+  ? "http://10.231.38.27:8000/api"  // Your PC's current local IP
   : "https://your-production-api.com/api";  // Production
 
 // Create axios instance
@@ -18,13 +18,17 @@ export const api = axios.create({
 // Request interceptor - Add JWT token to requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await getToken();
+    const token = await getToken('access');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log(`📡 API: ${config.method?.toUpperCase()} ${config.url} [AUTHENTICATED]`);
+    } else {
+      console.log(`📡 API: ${config.method?.toUpperCase()} ${config.url} [NO TOKEN]`);
     }
     return config;
   },
   (error) => {
+    console.log('❌ API: Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -45,23 +49,35 @@ api.interceptors.response.use(
         // Attempt to refresh token
         const refreshToken = await getToken("refresh");
         if (refreshToken) {
+          console.log('🔄 API: Attempting token refresh...');
           const response = await axios.post(`${API_BASE_URL}/hr/auth/refresh/`, {
             refresh: refreshToken,
           });
 
           const newAccessToken = response.data.access;
-          await saveToken(newAccessToken);
+          await storeToken('access', newAccessToken);
+          console.log('✅ API: Token refreshed successfully');
 
           // Retry original request with new token
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           }
           return api(originalRequest);
+        } else {
+          console.log('❌ API: No refresh token available, clearing storage');
+          // No refresh token, clear everything
+          await removeToken('access');
+          await removeToken('refresh');
+          await removeToken('user');
+          throw new Error('Session expired');
         }
       } catch (refreshError) {
-        // Refresh failed - logout user
-        await removeToken();
-        return Promise.reject(refreshError);
+        console.log('❌ API: Token refresh failed, clearing storage:', refreshError);
+        // Refresh failed - clear tokens and reject
+        await removeToken('access');
+        await removeToken('refresh');
+        await removeToken('user');
+        return Promise.reject(new Error('Session expired, please login again'));
       }
     }
 

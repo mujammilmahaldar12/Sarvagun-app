@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { useTheme } from '@/hooks/useTheme';
 import eventsService from '@/services/events.service';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 export default function AddVenueScreen() {
   const { theme } = useTheme();
@@ -62,25 +63,25 @@ export default function AddVenueScreen() {
     required = false,
   }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
         {label} {required && '*'}
       </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.textSecondary}
+        placeholderTextColor={theme.textSecondary}
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 4 : 1}
         style={{
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: 8,
           padding: 12,
-          fontSize: 14,
-          color: theme.colors.text,
-          backgroundColor: theme.colors.surface,
+          ...getTypographyStyle('sm'),
+          color: theme.text,
+          backgroundColor: theme.surface,
           textAlignVertical: multiline ? 'top' : 'center',
           minHeight: multiline ? 100 : 44,
         }}
@@ -89,13 +90,13 @@ export default function AddVenueScreen() {
   );
 
   const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 8 }}>
+    <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text, marginTop: 8 }}>
       {title}
     </Text>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
         title="Add Venue"
         showBack
@@ -159,7 +160,7 @@ export default function AddVenueScreen() {
           onPress={handleSubmit}
           disabled={loading}
           style={({ pressed }) => ({
-            backgroundColor: loading ? theme.colors.border : (pressed ? theme.colors.primary + 'dd' : theme.colors.primary),
+            backgroundColor: loading ? theme.border : (pressed ? theme.primary + 'dd' : theme.primary),
             padding: 16,
             borderRadius: 8,
             alignItems: 'center',
@@ -170,8 +171,8 @@ export default function AddVenueScreen() {
             gap: 8,
           })}
         >
-          {loading && <ActivityIndicator color="#fff" />}
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+          {loading && <ActivityIndicator color={theme.textInverse} />}
+          <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
             {loading ? 'Creating...' : 'Create Venue'}
           </Text>
         </Pressable>

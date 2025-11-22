@@ -11,8 +11,10 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { spacing, borderRadius, duration } from '../../constants/designTokens';
+import { designSystem } from '../../constants/designSystem';
 import { getOverlayStyle } from '../../utils/styleHelpers';
+
+const { spacing, borderRadius, duration } = designSystem;
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -68,7 +70,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   }, [visible, slideAnim, overlayAnim]);
 
   const containerStyle: ViewStyle = {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.surface,
     height: typeof height === 'number' ? height : undefined,
     maxHeight: SCREEN_HEIGHT * 0.9,
   };
@@ -110,7 +112,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           ]}
         >
           <View style={styles.handleContainer}>
-            <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
+            <View style={[styles.handle, { backgroundColor: theme.border }]} />
           </View>
 
           <Content

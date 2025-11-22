@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
 
 type ThemeOption = 'light' | 'dark' | 'auto';
 
@@ -32,25 +34,25 @@ export default function AppearanceScreen() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="Appearance" showBack />
 
       <ScrollView style={{ flex: 1 }}>
         {/* Preview */}
         <View
           style={{
-            margin: 20,
-            padding: 20,
-            backgroundColor: theme.colors.surface,
+            margin: designSystem.spacing.lg,
+            padding: designSystem.spacing.lg,
+            backgroundColor: theme.surface,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text, marginBottom: 8 }}>
+          <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 8 }}>
             Preview
           </Text>
-          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 16 }}>
+          <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 16 }}>
             Currently using {isDark ? 'dark' : 'light'} theme
           </Text>
           <View
@@ -63,9 +65,9 @@ export default function AppearanceScreen() {
               style={{
                 flex: 1,
                 height: 80,
-                backgroundColor: theme.colors.primary,
+                backgroundColor: theme.primary,
                 borderRadius: 8,
-                padding: 12,
+                padding: designSystem.spacing.md,
               }}
             >
               <View
@@ -74,7 +76,7 @@ export default function AppearanceScreen() {
                   height: 24,
                   borderRadius: 12,
                   backgroundColor: 'rgba(255,255,255,0.3)',
-                  marginBottom: 8,
+                  marginBottom: designSystem.spacing.sm,
                 }}
               />
               <View
@@ -98,11 +100,11 @@ export default function AppearanceScreen() {
               style={{
                 flex: 1,
                 height: 80,
-                backgroundColor: theme.colors.background,
+                backgroundColor: theme.background,
                 borderRadius: 8,
                 padding: 12,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: theme.border,
               }}
             >
               <View
@@ -110,14 +112,14 @@ export default function AppearanceScreen() {
                   width: 24,
                   height: 24,
                   borderRadius: 12,
-                  backgroundColor: theme.colors.primary + '40',
+                  backgroundColor: theme.primary + '40',
                   marginBottom: 8,
                 }}
               />
               <View
                 style={{
                   height: 8,
-                  backgroundColor: theme.colors.text + '40',
+                  backgroundColor: theme.text + '40',
                   borderRadius: 4,
                   marginBottom: 4,
                 }}
@@ -126,7 +128,7 @@ export default function AppearanceScreen() {
                 style={{
                   height: 8,
                   width: '60%',
-                  backgroundColor: theme.colors.text + '20',
+                  backgroundColor: theme.text + '20',
                   borderRadius: 4,
                 }}
               />
@@ -138,9 +140,8 @@ export default function AppearanceScreen() {
         <View style={{ paddingHorizontal: 20 }}>
           <Text
             style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm', 'semibold'),
+              color: theme.textSecondary,
               marginBottom: 12,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -151,10 +152,10 @@ export default function AppearanceScreen() {
 
           <View
             style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
               overflow: 'hidden',
             }}
           >
@@ -167,9 +168,9 @@ export default function AppearanceScreen() {
                   alignItems: 'center',
                   padding: 16,
                   borderBottomWidth: index < themeOptions.length - 1 ? 1 : 0,
-                  borderBottomColor: theme.colors.border,
+                  borderBottomColor: theme.border,
                   backgroundColor: selectedTheme === option.value 
-                    ? theme.colors.primary + '10' 
+                    ? theme.primary + '10' 
                     : 'transparent',
                 }}
                 activeOpacity={0.7}
@@ -180,8 +181,8 @@ export default function AppearanceScreen() {
                     height: 40,
                     borderRadius: 20,
                     backgroundColor: selectedTheme === option.value
-                      ? theme.colors.primary + '20'
-                      : theme.colors.background,
+                      ? theme.primary + '20'
+                      : theme.background,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginRight: 12,
@@ -190,16 +191,15 @@ export default function AppearanceScreen() {
                   <Ionicons
                     name={option.icon}
                     size={22}
-                    color={selectedTheme === option.value ? theme.colors.primary : theme.colors.textSecondary}
+                    color={selectedTheme === option.value ? theme.primary : theme.textSecondary}
                   />
                 </View>
 
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 16,
-                      fontWeight: '500',
-                      color: theme.colors.text,
+                      ...getTypographyStyle('base', 'medium'),
+                      color: theme.text,
                       marginBottom: 4,
                     }}
                   >
@@ -207,8 +207,8 @@ export default function AppearanceScreen() {
                   </Text>
                   <Text
                     style={{
-                      fontSize: 14,
-                      color: theme.colors.textSecondary,
+                      ...getTypographyStyle('sm', 'regular'),
+                      color: theme.textSecondary,
                     }}
                   >
                     {option.description}
@@ -219,7 +219,7 @@ export default function AppearanceScreen() {
                   <Ionicons
                     name="checkmark-circle"
                     size={24}
-                    color={theme.colors.primary}
+                    color={theme.primary}
                   />
                 )}
               </TouchableOpacity>
@@ -228,12 +228,11 @@ export default function AppearanceScreen() {
         </View>
 
         {/* Additional Settings */}
-        <View style={{ padding: 20 }}>
+        <View style={{ padding: designSystem.spacing.lg }}>
           <Text
             style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm', 'semibold'),
+              color: theme.textSecondary,
               marginBottom: 12,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -244,10 +243,10 @@ export default function AppearanceScreen() {
 
           <View
             style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: theme.border,
               overflow: 'hidden',
             }}
           >
@@ -257,17 +256,17 @@ export default function AppearanceScreen() {
                 alignItems: 'center',
                 padding: 16,
                 borderBottomWidth: 1,
-                borderBottomColor: theme.colors.border,
+                borderBottomColor: theme.border,
               }}
               activeOpacity={0.7}
             >
-              <Ionicons name="contrast-outline" size={22} color={theme.colors.textSecondary} style={{ marginRight: 12 }} />
+              <Ionicons name="contrast-outline" size={22} color={theme.textSecondary} style={{ marginRight: 12 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: '500', color: theme.colors.text }}>
+                <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
                   High contrast
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -278,16 +277,16 @@ export default function AppearanceScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Ionicons name="text-outline" size={22} color={theme.colors.textSecondary} style={{ marginRight: 12 }} />
+              <Ionicons name="text-outline" size={22} color={theme.textSecondary} style={{ marginRight: 12 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: '500', color: theme.colors.text }}>
+                <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
                   Font size
                 </Text>
-                <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 2 }}>
+                <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 2 }}>
                   Medium
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>

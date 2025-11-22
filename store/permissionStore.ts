@@ -37,6 +37,23 @@ export type Permission =
   | 'venues:delete'
   | 'venues:manage'
   
+  // Leave Management permissions
+  | 'leave:view'        // View leaves
+  | 'leave:view_own'    // View only own leaves
+  | 'leave:view_team'   // View team leaves
+  | 'leave:view_all'    // View all leaves (HR/Admin)
+  | 'leave:create'      // Apply for leave
+  | 'leave:edit'        // Edit own leave requests
+  | 'leave:delete'      // Delete/cancel leave
+  | 'leave:approve'     // Approve/reject leaves
+  | 'leave:manage'      // Full leave management
+  
+  // HR permissions
+  | 'hr:view'
+  | 'hr:manage'
+  | 'hr:employees'
+  | 'hr:reimbursement'
+  
   // Admin permissions
   | 'admin:users'
   | 'admin:settings'
@@ -61,6 +78,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leads:view', 'leads:create', 'leads:edit', 'leads:delete', 'leads:convert', 'leads:manage',
     'clients:view', 'clients:create', 'clients:edit', 'clients:delete', 'clients:manage',
     'venues:view', 'venues:create', 'venues:edit', 'venues:delete', 'venues:manage',
+    'leave:view', 'leave:view_all', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:delete', 'leave:approve', 'leave:manage',
+    'hr:view', 'hr:manage', 'hr:employees', 'hr:reimbursement',
     'admin:users', 'admin:settings', 'admin:reports', 'admin:analytics', 'admin:full',
   ],
   
@@ -69,6 +88,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leads:view', 'leads:create', 'leads:edit', 'leads:delete', 'leads:convert', 'leads:manage',
     'clients:view', 'clients:create', 'clients:edit', 'clients:delete', 'clients:manage',
     'venues:view', 'venues:create', 'venues:edit', 'venues:delete', 'venues:manage',
+    'leave:view', 'leave:view_all', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:delete', 'leave:approve', 'leave:manage',
+    'hr:view', 'hr:manage', 'hr:employees', 'hr:reimbursement',
     'admin:reports', 'admin:analytics',
   ],
   
@@ -77,6 +98,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leads:view', 'leads:create', 'leads:edit', 'leads:convert', 'leads:manage',
     'clients:view', 'clients:create', 'clients:edit', 'clients:manage',
     'venues:view', 'venues:create', 'venues:edit', 'venues:manage',
+    'leave:view', 'leave:view_team', 'leave:view_all', 'leave:create', 'leave:edit', 'leave:approve',
+    'hr:view',
     'admin:reports',
   ],
   
@@ -85,6 +108,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leads:view', 'leads:create', 'leads:edit', 'leads:convert',
     'clients:view', 'clients:create', 'clients:edit',
     'venues:view', 'venues:create', 'venues:edit',
+    'leave:view', 'leave:view_own', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:approve',
   ],
   
   viewer: [
@@ -92,6 +116,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leads:view',
     'clients:view',
     'venues:view',
+    'leave:view', 'leave:view_own',
   ],
   
   client: [

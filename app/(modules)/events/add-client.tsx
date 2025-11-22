@@ -129,25 +129,25 @@ export default function AddClientScreen() {
     multiline = false,
   }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
         {label}
       </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.textSecondary}
+        placeholderTextColor={theme.textSecondary}
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 4 : 1}
         style={{
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: 8,
           padding: 12,
           fontSize: 14,
-          color: theme.colors.text,
-          backgroundColor: theme.colors.surface,
+          color: theme.text,
+          backgroundColor: theme.surface,
           textAlignVertical: multiline ? 'top' : 'center',
           minHeight: multiline ? 100 : 44,
         }}
@@ -156,13 +156,13 @@ export default function AddClientScreen() {
   );
 
   const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 8 }}>
+    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.text, marginTop: 8 }}>
       {title}
     </Text>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
         title="Add Client"
         showBack
@@ -181,7 +181,7 @@ export default function AddClientScreen() {
           
           {/* Client Category */}
           <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
               Client Category *
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -194,18 +194,18 @@ export default function AddClientScreen() {
                     paddingVertical: 8,
                     borderRadius: 20,
                     borderWidth: 1,
-                    borderColor: formData.categoryId === category.id ? theme.colors.primary : theme.colors.border,
+                    borderColor: formData.categoryId === category.id ? theme.primary : theme.border,
                     backgroundColor: pressed
-                      ? theme.colors.primary + '10'
+                      ? theme.primary + '10'
                       : formData.categoryId === category.id
-                      ? theme.colors.primary + '20'
-                      : theme.colors.surface,
+                      ? theme.primary + '20'
+                      : theme.surface,
                   })}
                 >
                   <Text
                     style={{
                       fontSize: 14,
-                      color: formData.categoryId === category.id ? theme.colors.primary : theme.colors.text,
+                      color: formData.categoryId === category.id ? theme.primary : theme.text,
                       fontWeight: formData.categoryId === category.id ? '600' : 'normal',
                     }}
                   >
@@ -220,7 +220,7 @@ export default function AddClientScreen() {
           {formData.categoryId && ['B2B', 'B2G'].includes(categories.find(c => c.id === formData.categoryId)?.name || '') && (
             <View style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
                   Organisation *
                 </Text>
                 <Pressable
@@ -233,8 +233,8 @@ export default function AddClientScreen() {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.colors.primary} />
-                  <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: '600' }}>
+                  <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.primary} />
+                  <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '600' }}>
                     {showOrgInput ? 'Cancel' : 'Add New'}
                   </Text>
                 </Pressable>
@@ -246,28 +246,28 @@ export default function AddClientScreen() {
                     value={newOrgName}
                     onChangeText={setNewOrgName}
                     placeholder="Organisation name"
-                    placeholderTextColor={theme.colors.textSecondary}
+                    placeholderTextColor={theme.textSecondary}
                     style={{
                       flex: 1,
                       borderWidth: 1,
-                      borderColor: theme.colors.border,
+                      borderColor: theme.border,
                       borderRadius: 8,
                       padding: 12,
                       fontSize: 14,
-                      color: theme.colors.text,
-                      backgroundColor: theme.colors.surface,
+                      color: theme.text,
+                      backgroundColor: theme.surface,
                     }}
                   />
                   <Pressable
                     onPress={handleAddOrganisation}
                     style={({ pressed }) => ({
-                      backgroundColor: pressed ? theme.colors.primary + 'dd' : theme.colors.primary,
+                      backgroundColor: pressed ? theme.primary + 'dd' : theme.primary,
                       paddingHorizontal: 16,
                       borderRadius: 8,
                       justifyContent: 'center',
                     })}
                   >
-                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
+                    <Text style={{ color: theme.textInverse, fontSize: 14, fontWeight: '600' }}>Add</Text>
                   </Pressable>
                 </View>
               ) : (
@@ -281,18 +281,18 @@ export default function AddClientScreen() {
                         paddingVertical: 8,
                         borderRadius: 20,
                         borderWidth: 1,
-                        borderColor: formData.organisationId === org.id ? theme.colors.primary : theme.colors.border,
+                        borderColor: formData.organisationId === org.id ? theme.primary : theme.border,
                         backgroundColor: pressed
-                          ? theme.colors.primary + '10'
+                          ? theme.primary + '10'
                           : formData.organisationId === org.id
-                          ? theme.colors.primary + '20'
-                          : theme.colors.surface,
+                          ? theme.primary + '20'
+                          : theme.surface,
                       })}
                     >
                       <Text
                         style={{
                           fontSize: 14,
-                          color: formData.organisationId === org.id ? theme.colors.primary : theme.colors.text,
+                          color: formData.organisationId === org.id ? theme.primary : theme.text,
                           fontWeight: formData.organisationId === org.id ? '600' : 'normal',
                         }}
                       >

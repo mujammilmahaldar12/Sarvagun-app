@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Avatar, Skeleton, SkeletonText, AnimatedPressable } from '@/components';
-import { spacing, borderRadius, iconSizes, typography } from '@/constants/designTokens';
+import { spacing, borderRadius, iconSizes, typography } from '@/constants/designSystem';
 import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 
 interface Module {
@@ -85,7 +85,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
@@ -93,10 +93,10 @@ export default function HomeScreen() {
       />
 
       {/* Clean Professional Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
-            <Text style={[styles.appName, { color: theme.colors.text }]}>Sarvagun</Text>
+            <Text style={[styles.appName, { color: theme.text }]}>Sarvagun</Text>
 
             <View style={styles.headerActions}>
             <AnimatedPressable
@@ -104,14 +104,14 @@ export default function HomeScreen() {
               style={[
                 styles.iconButton,
                 { 
-                  backgroundColor: `${theme.colors.primary}10`,
-                  borderColor: theme.colors.border,
+                  backgroundColor: `${theme.primary}10`,
+                  borderColor: theme.border,
                 }
               ]}
               hapticType="light"
               springConfig="snappy"
             >
-              <Ionicons name="search-outline" size={iconSizes.sm} color={theme.colors.text} />
+              <Ionicons name="search-outline" size={iconSizes.sm} color={theme.text} />
             </AnimatedPressable>
 
               <AnimatedPressable
@@ -119,14 +119,14 @@ export default function HomeScreen() {
                 style={[
                   styles.iconButton,
                   { 
-                    backgroundColor: `${theme.colors.primary}10`,
-                    borderColor: theme.colors.border,
+                    backgroundColor: `${theme.primary}10`,
+                    borderColor: theme.border,
                   }
                 ]}
                 hapticType="light"
                 springConfig="snappy"
               >
-                <Ionicons name="notifications-outline" size={iconSizes.sm} color={theme.colors.text} />
+                <Ionicons name="notifications-outline" size={iconSizes.sm} color={theme.text} />
                 {notificationCount > 0 && (
                   <View style={styles.notificationBadge}>
                     <Text style={styles.badgeText}>
@@ -148,13 +148,13 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
+            tintColor={theme.primary}
           />
         }
       >
         {/* Welcome Card - Clean & Minimal */}
         <View style={styles.section}>
-          <View style={[styles.welcomeCard, getCardStyle(theme.colors.surface, 'md', 'xl')]}>
+          <View style={[styles.welcomeCard, getCardStyle(theme.surface, 'md', 'xl')]}>
             <View style={styles.welcomeContent}>
               <Avatar
                 size={56}
@@ -163,10 +163,10 @@ export default function HomeScreen() {
                 onlineStatus={true}
               />
               <View style={styles.welcomeInfo}>
-                <Text style={[styles.welcomeGreeting, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.welcomeGreeting, { color: theme.textSecondary }]}>
                   {getGreeting()}, 👋
                 </Text>
-                <Text style={[styles.welcomeName, { color: theme.colors.text }]}>
+                <Text style={[styles.welcomeName, { color: theme.text }]}>
                   {user?.full_name || 'User'}
                 </Text>
               </View>
@@ -175,18 +175,18 @@ export default function HomeScreen() {
             {/* Clean Stats Row */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>95%</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Attendance</Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>95%</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Attendance</Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>12</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Leave Days</Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>12</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Leave Days</Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>3</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Active Projects</Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>3</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Active Projects</Text>
               </View>
             </View>
           </View>
@@ -195,9 +195,9 @@ export default function HomeScreen() {
         {/* Modules Section - Professional Cards */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Quick Access</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
             <AnimatedPressable onPress={() => router.push('/(dashboard)/modules')} hapticType="selection">
-              <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>View All</Text>
+              <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
             </AnimatedPressable>
           </View>
 
@@ -208,7 +208,7 @@ export default function HomeScreen() {
                 onPress={() => router.push(module.route as any)}
                 style={[
                   styles.moduleCard,
-                  getCardStyle(theme.colors.surface, 'sm', 'lg'),
+                  getCardStyle(theme.surface, 'sm', 'lg'),
                   { 
                     width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2,
                   },
@@ -220,7 +220,7 @@ export default function HomeScreen() {
                 <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
                   <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
                 </View>
-                <Text style={[styles.moduleTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                <Text style={[styles.moduleTitle, { color: theme.text }]} numberOfLines={1}>
                   {module.title}
                 </Text>
               </AnimatedPressable>
@@ -231,10 +231,10 @@ export default function HomeScreen() {
         {/* Recent Activity Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Recent Activity</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
           </View>
 
-          <View style={[styles.activityContainer, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+          <View style={[styles.activityContainer, getCardStyle(theme.surface, 'md', 'lg')]}>
             {[
               {
                 title: 'Leave Request Approved',
@@ -265,7 +265,7 @@ export default function HomeScreen() {
                   styles.activityItem,
                   {
                     borderBottomWidth: index < arr.length - 1 ? 1 : 0,
-                    borderBottomColor: theme.colors.border,
+                    borderBottomColor: theme.border,
                   },
                 ]}
                 hapticType="light"
@@ -275,17 +275,17 @@ export default function HomeScreen() {
                   <Ionicons name={activity.icon} size={iconSizes.md} color={activity.color} />
                 </View>
                 <View style={styles.activityContent}>
-                  <Text style={[styles.activityTitle, { color: theme.colors.text }]}>
+                  <Text style={[styles.activityTitle, { color: theme.text }]}>
                     {activity.title}
                   </Text>
-                  <Text style={[styles.activityDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+                  <Text style={[styles.activityDescription, { color: theme.textSecondary }]} numberOfLines={2}>
                     {activity.description}
                   </Text>
-                  <Text style={[styles.activityTime, { color: theme.colors.textSecondary }]}>
+                  <Text style={[styles.activityTime, { color: theme.textSecondary }]}>
                     {activity.time}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
               </AnimatedPressable>
             ))}
           </View>
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...getTypographyStyle('xs', 'bold'),
-    color: '#FFFFFF',
+    color: '#FFFFFF', // Will be overridden inline with theme.textInverse
   },
   scrollContent: {
     paddingTop: spacing.xl,

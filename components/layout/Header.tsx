@@ -1,5 +1,6 @@
 import { View, Text, Platform, StatusBar } from "react-native";
 import { useThemeStore } from "@/store/themeStore";
+import { designSystem } from "@/constants/designSystem";
 
 type HeaderProps = {
   title: string;
@@ -27,8 +28,8 @@ export default function Header({ title, showBack = false }: HeaderProps) {
     >
       <Text
         style={{
-          fontSize: 20,
-          fontWeight: "700",
+          fontSize: designSystem.typography.sizes.xl,
+          fontWeight: designSystem.typography.weights.bold,
           color: colors.foreground,
         }}
       >

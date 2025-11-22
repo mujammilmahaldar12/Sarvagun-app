@@ -1,26 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useCreateLeave, useLeaveBalance } from '@/hooks/useHRQueries';
+import { LeaveBalanceCard } from '@/components/hr';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import AppButton from '@/components/ui/AppButton';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
+import type { LeaveType, ShiftType } from '@/types/hr';
 
-const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Optional Leave'];
+const LEAVE_TYPES: LeaveType[] = ['Annual Leave', 'Sick Leave', 'Casual Leave', 'Study Leave', 'Optional Leave'];
+const SHIFT_TYPES: { value: ShiftType; label: string }[] = [
+  { value: 'full_shift', label: 'Full Day (9:00 AM - 6:00 PM)' },
+  { value: 'first_half', label: 'First Half (9:00 AM - 1:00 PM)' },
+  { value: 'second_half', label: 'Second Half (2:00 PM - 6:00 PM)' },
+];
 
 export default function ApplyLeaveScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
   const [showFromDatePicker, setShowFromDatePicker] = useState(false);
   const [showToDatePicker, setShowToDatePicker] = useState(false);
 
+  // API hooks
+  const { mutate: createLeave, isPending: isSubmitting } = useCreateLeave();
+  const { data: balance, isLoading: balanceLoading } = useLeaveBalance();
+
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    leaveType: LeaveType | '';
+    shiftType: ShiftType;
+    fromDate: string;
+    toDate: string;
+    reason: string;
+  }>({
     leaveType: '',
+    shiftType: 'full_shift',
     fromDate: '',
     toDate: '',
     reason: '',
@@ -71,9 +91,25 @@ export default function ApplyLeaveScreen() {
     }
   };
 
+  // Check if user has sufficient leave balance
+  const getAvailableBalance = (leaveType: LeaveType): number => {
+    if (!balance) return 0;
+    
+    const typeKey = leaveType.toLowerCase().replace(' ', '_');
+    const totalKey = `${typeKey}_total` as keyof typeof balance;
+    const usedKey = `${typeKey}_used` as keyof typeof balance;
+    const plannedKey = `${typeKey}_planned` as keyof typeof balance;
+    
+    const total = (balance[totalKey] as number) || 0;
+    const used = (balance[usedKey] as number) || 0;
+    const planned = (balance[plannedKey] as number) || 0;
+    
+    return total - used - planned;
+  };
+
   const handleSubmit = async () => {
     // Validation
-    if (!formData.leaveType || !formData.fromDate || !formData.toDate || !formData.reason) {
+    if (!formData.leaveType || !formData.fromDate || !formData.toDate || !formData.reason.trim()) {
       Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
@@ -84,30 +120,55 @@ export default function ApplyLeaveScreen() {
       return;
     }
 
-    setLoading(true);
+    // Check balance
+    const availableBalance = getAvailableBalance(formData.leaveType);
+    if (days > availableBalance) {
+      Alert.alert(
+        'Insufficient Balance',
+        `You only have ${availableBalance} days available for ${formData.leaveType}. Requested: ${days} days.`
+      );
+      return;
+    }
+
     try {
-      // TODO: Replace with real API call
-      console.log('Applying leave:', { ...formData, days, employee: user?.full_name });
-      
-      // Simulate API call
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert('Success', 'Leave application submitted successfully', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
+      createLeave(
+        {
+          leave_type: formData.leaveType,
+          from_date: formData.fromDate,
+          to_date: formData.toDate,
+          shift_type: formData.shiftType,
+          reason: formData.reason.trim(),
+          documents: [], // TODO: Add document upload
+        },
+        {
+          onSuccess: () => {
+            Alert.alert(
+              'Success',
+              'Your leave application has been submitted successfully and is pending approval.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => router.back(),
+                },
+              ]
+            );
           },
-        ]);
-      }, 1000);
+          onError: (error: any) => {
+            Alert.alert(
+              'Error',
+              error.message || 'Failed to submit leave application. Please try again.'
+            );
+          },
+        }
+      );
     } catch (error) {
-      setLoading(false);
-      Alert.alert('Error', 'Failed to submit leave application');
-      console.error('Error:', error);
+      console.error('Error submitting leave:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="Apply Leave" />
 
       <KeyboardAvoidingView
@@ -121,23 +182,28 @@ export default function ApplyLeaveScreen() {
         >
           {/* Employee Info */}
           <View style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             padding: 16,
             borderRadius: 12,
             marginBottom: 24,
           }}>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 4 }}>
+            <Text style={{ ...getTypographyStyle('sm'), color: theme.textSecondary, marginBottom: 4 }}>
               Applying as
             </Text>
-            <Text style={{ fontSize: 18, color: theme.colors.text, fontWeight: '600' }}>
+            <Text style={{ ...getTypographyStyle('lg'), color: theme.text, fontWeight: 'semibold' }}>
               {user?.full_name || 'Employee'}
             </Text>
           </View>
 
+          {/* Leave Balance Card */}
+          {!balanceLoading && balance && (
+            <LeaveBalanceCard compact />
+          )}
+
           {/* Leave Type Selection */}
           <Text style={{
-            fontSize: 14,
-            color: theme.colors.textSecondary,
+            ...getTypographyStyle('sm'),
+            color: theme.textSecondary,
             marginBottom: 8,
             fontWeight: '500',
           }}>
@@ -149,12 +215,12 @@ export default function ApplyLeaveScreen() {
                 key={type}
                 style={{
                   backgroundColor: formData.leaveType === type 
-                    ? `${theme.colors.primary}20` 
-                    : theme.colors.surface,
+                    ? `${theme.primary}20` 
+                    : theme.surface,
                   borderWidth: 1,
                   borderColor: formData.leaveType === type 
-                    ? theme.colors.primary 
-                    : theme.colors.border,
+                    ? theme.primary 
+                    : theme.border,
                   padding: 16,
                   borderRadius: 8,
                 }}
@@ -162,12 +228,51 @@ export default function ApplyLeaveScreen() {
               >
                 <Text style={{
                   color: formData.leaveType === type 
-                    ? theme.colors.primary 
-                    : theme.colors.text,
-                  fontSize: 16,
-                  fontWeight: formData.leaveType === type ? '600' : '400',
+                    ? theme.primary 
+                    : theme.text,
+                  ...getTypographyStyle('base'),
+                  fontWeight: formData.leaveType === type ? 'semibold' : '400',
                 }}>
                   {type}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Shift Type Selection */}
+          <Text style={{
+            ...getTypographyStyle('sm'),
+            color: theme.textSecondary,
+            marginBottom: 8,
+            fontWeight: '500',
+          }}>
+            Shift Type *
+          </Text>
+          <View style={{ marginBottom: 16, gap: 8 }}>
+            {SHIFT_TYPES.map((shift) => (
+              <Pressable
+                key={shift.value}
+                style={{
+                  backgroundColor: formData.shiftType === shift.value 
+                    ? `${theme.primary}20` 
+                    : theme.surface,
+                  borderWidth: 1,
+                  borderColor: formData.shiftType === shift.value 
+                    ? theme.primary 
+                    : theme.border,
+                  padding: 16,
+                  borderRadius: 8,
+                }}
+                onPress={() => updateField('shiftType', shift.value)}
+              >
+                <Text style={{
+                  color: formData.shiftType === shift.value 
+                    ? theme.primary 
+                    : theme.text,
+                  ...getTypographyStyle('base'),
+                  fontWeight: formData.shiftType === shift.value ? 'semibold' : '400',
+                }}>
+                  {shift.label}
                 </Text>
               </Pressable>
             ))}
@@ -176,8 +281,8 @@ export default function ApplyLeaveScreen() {
           {/* Date Selection */}
           <View style={{ marginBottom: 16 }}>
             <Text style={{
-              fontSize: 14,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm'),
+              color: theme.textSecondary,
               marginBottom: 8,
               fontWeight: '500',
             }}>
@@ -186,9 +291,9 @@ export default function ApplyLeaveScreen() {
             <Pressable
               onPress={() => setShowFromDatePicker(true)}
               style={{
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.surface,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: theme.border,
                 borderRadius: 8,
                 padding: 16,
                 flexDirection: 'row',
@@ -197,19 +302,19 @@ export default function ApplyLeaveScreen() {
               }}
             >
               <Text style={{
-                fontSize: 16,
-                color: formData.fromDate ? theme.colors.text : theme.colors.textSecondary,
+                ...getTypographyStyle('base'),
+                color: formData.fromDate ? theme.text : theme.textSecondary,
               }}>
                 {formData.fromDate ? formatDate(formData.fromDate) : 'Select date'}
               </Text>
-              <Ionicons name="calendar" size={20} color={theme.colors.primary} />
+              <Ionicons name="calendar" size={20} color={theme.primary} />
             </Pressable>
           </View>
 
           <View style={{ marginBottom: 16 }}>
             <Text style={{
-              fontSize: 14,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('sm'),
+              color: theme.textSecondary,
               marginBottom: 8,
               fontWeight: '500',
             }}>
@@ -218,9 +323,9 @@ export default function ApplyLeaveScreen() {
             <Pressable
               onPress={() => setShowToDatePicker(true)}
               style={{
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.surface,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: theme.border,
                 borderRadius: 8,
                 padding: 16,
                 flexDirection: 'row',
@@ -229,27 +334,27 @@ export default function ApplyLeaveScreen() {
               }}
             >
               <Text style={{
-                fontSize: 16,
-                color: formData.toDate ? theme.colors.text : theme.colors.textSecondary,
+                ...getTypographyStyle('base'),
+                color: formData.toDate ? theme.text : theme.textSecondary,
               }}>
                 {formData.toDate ? formatDate(formData.toDate) : 'Select date'}
               </Text>
-              <Ionicons name="calendar" size={20} color={theme.colors.primary} />
+              <Ionicons name="calendar" size={20} color={theme.primary} />
             </Pressable>
           </View>
 
           {/* Calculated Days */}
           {formData.fromDate && formData.toDate && (
             <View style={{
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               padding: 16,
               borderRadius: 8,
               marginBottom: 16,
             }}>
-              <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+              <Text style={{ ...getTypographyStyle('sm'), color: theme.textSecondary }}>
                 Total Days
               </Text>
-              <Text style={{ fontSize: 24, color: theme.colors.primary, fontWeight: '700', marginTop: 4 }}>
+              <Text style={{ ...getTypographyStyle('2xl'), color: theme.primary, fontWeight: 'bold', marginTop: 4 }}>
                 {calculateDays()} {calculateDays() === 1 ? 'day' : 'days'}
               </Text>
             </View>
@@ -270,8 +375,8 @@ export default function ApplyLeaveScreen() {
           {formData.leaveType === 'Sick Leave' && (
             <View style={{ marginBottom: 16 }}>
               <Text style={{
-                fontSize: 14,
-                color: theme.colors.textSecondary,
+                ...getTypographyStyle('sm'),
+                color: theme.textSecondary,
                 marginBottom: 8,
                 fontWeight: '500',
               }}>
@@ -280,9 +385,9 @@ export default function ApplyLeaveScreen() {
               
               <Pressable
                 style={{
-                  backgroundColor: theme.colors.surface,
+                  backgroundColor: theme.surface,
                   borderWidth: 1,
-                  borderColor: theme.colors.border,
+                  borderColor: theme.border,
                   borderStyle: 'dashed',
                   borderRadius: 8,
                   padding: 16,
@@ -290,11 +395,11 @@ export default function ApplyLeaveScreen() {
                 }}
                 onPress={pickDocument}
               >
-                <Ionicons name="cloud-upload" size={32} color={theme.colors.primary} />
-                <Text style={{ color: theme.colors.primary, marginTop: 8, fontWeight: '500' }}>
+                <Ionicons name="cloud-upload" size={32} color={theme.primary} />
+                <Text style={{ color: theme.primary, marginTop: 8, fontWeight: '500' }}>
                   Upload Document
                 </Text>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>
+                <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginTop: 4 }}>
                   PDF, JPG, PNG (Max 5MB)
                 </Text>
               </Pressable>
@@ -308,15 +413,15 @@ export default function ApplyLeaveScreen() {
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: theme.colors.surface,
+                        backgroundColor: theme.surface,
                         padding: 12,
                         borderRadius: 8,
                         borderWidth: 1,
-                        borderColor: theme.colors.border,
+                        borderColor: theme.border,
                       }}
                     >
-                      <Ionicons name="document" size={20} color={theme.colors.primary} />
-                      <Text style={{ flex: 1, marginLeft: 12, color: theme.colors.text }}>
+                      <Ionicons name="document" size={20} color={theme.primary} />
+                      <Text style={{ flex: 1, marginLeft: 12, color: theme.text }}>
                         Document {index + 1}
                       </Text>
                       <Pressable onPress={() => removeDocument(index)}>
@@ -332,14 +437,22 @@ export default function ApplyLeaveScreen() {
           {/* Submit Button */}
           <View style={{ marginTop: 24, marginBottom: 32 }}>
             <AppButton
-              title={loading ? 'Submitting...' : 'Submit Leave Application'}
+              title={isSubmitting ? 'Submitting...' : 'Submit Leave Application'}
               onPress={handleSubmit}
-              disabled={loading}
-              loading={loading}
+              disabled={isSubmitting || !formData.leaveType || !formData.fromDate || !formData.toDate || !formData.reason.trim()}
+              loading={isSubmitting}
               fullWidth
               size="lg"
               leftIcon="send"
             />
+            
+            {formData.leaveType && balance && (
+              <View style={{ marginTop: 12, padding: 12, backgroundColor: theme.surface, borderRadius: 8 }}>
+                <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, textAlign: 'center' }}>
+                  Available {formData.leaveType}: {getAvailableBalance(formData.leaveType)} days
+                </Text>
+              </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -390,8 +503,8 @@ function FormInput({
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={{
-        fontSize: 14,
-        color: theme.colors.textSecondary,
+        ...getTypographyStyle('sm'),
+        color: theme.textSecondary,
         marginBottom: 8,
         fontWeight: '500',
       }}>
@@ -399,20 +512,20 @@ function FormInput({
       </Text>
       <TextInput
         style={{
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.surface,
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: 8,
           padding: 12,
-          fontSize: 16,
-          color: theme.colors.text,
+          ...getTypographyStyle('base'),
+          color: theme.text,
           minHeight: multiline ? 100 : 48,
           textAlignVertical: multiline ? 'top' : 'center',
         }}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.textSecondary}
+        placeholderTextColor={theme.textSecondary}
         multiline={multiline}
         numberOfLines={numberOfLines}
       />
@@ -484,16 +597,16 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: isToday ? theme.colors.primary + '20' : 'transparent',
+            backgroundColor: isToday ? theme.primary + '20' : 'transparent',
             borderWidth: isToday ? 1 : 0,
-            borderColor: theme.colors.primary,
+            borderColor: theme.primary,
             justifyContent: 'center',
             alignItems: 'center',
           }}>
             <Text style={{
-              fontSize: 14,
-              color: disabled ? theme.colors.textSecondary : theme.colors.text,
-              fontWeight: isToday ? '600' : '400',
+              ...getTypographyStyle('sm'),
+              color: disabled ? theme.textSecondary : theme.text,
+              fontWeight: isToday ? 'semibold' : '400',
             }}>
               {day}
             </Text>
@@ -523,7 +636,7 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
       >
         <Pressable
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             borderRadius: 16,
             padding: 20,
             width: '90%',
@@ -538,11 +651,11 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
             alignItems: 'center',
             marginBottom: 20,
           }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ ...getTypographyStyle('lg'), fontWeight: 'semibold', color: theme.text }}>
               {title}
             </Text>
             <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color={theme.colors.text} />
+              <Ionicons name="close" size={24} color={theme.text} />
             </Pressable>
           </View>
 
@@ -564,14 +677,14 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
                         paddingVertical: 8,
                         borderRadius: 8,
                         backgroundColor: selectedMonth === index 
-                          ? theme.colors.primary 
-                          : theme.colors.background,
+                          ? theme.primary 
+                          : theme.background,
                       }}
                     >
                       <Text style={{
-                        fontSize: 14,
-                        color: selectedMonth === index ? '#fff' : theme.colors.text,
-                        fontWeight: selectedMonth === index ? '600' : '400',
+                        ...getTypographyStyle('sm'),
+                        color: selectedMonth === index ? '#fff' : theme.text,
+                        fontWeight: selectedMonth === index ? 'semibold' : '400',
                       }}>
                         {month.substring(0, 3)}
                       </Text>
@@ -596,14 +709,14 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
                         paddingVertical: 8,
                         borderRadius: 8,
                         backgroundColor: selectedYear === year 
-                          ? theme.colors.primary 
-                          : theme.colors.background,
+                          ? theme.primary 
+                          : theme.background,
                       }}
                     >
                       <Text style={{
-                        fontSize: 14,
-                        color: selectedYear === year ? '#fff' : theme.colors.text,
-                        fontWeight: selectedYear === year ? '600' : '400',
+                        ...getTypographyStyle('sm'),
+                        color: selectedYear === year ? '#fff' : theme.text,
+                        fontWeight: selectedYear === year ? 'semibold' : '400',
                       }}>
                         {year}
                       </Text>
@@ -618,7 +731,7 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
           <View style={{ flexDirection: 'row', marginBottom: 8 }}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
               <View key={index} style={{ width: '14.28%', alignItems: 'center', padding: 4 }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>
+                <Text style={{ ...getTypographyStyle('xs'), fontWeight: 'semibold', color: theme.textSecondary }}>
                   {day}
                 </Text>
               </View>
@@ -635,18 +748,18 @@ function DatePickerModal({ visible, onClose, onSelectDate, theme, title, minDate
             marginTop: 20,
             paddingTop: 16,
             borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
+            borderTopColor: theme.border,
           }}>
             <Pressable
               onPress={onClose}
               style={{
                 padding: 12,
                 borderRadius: 8,
-                backgroundColor: theme.colors.background,
+                backgroundColor: theme.background,
                 alignItems: 'center',
               }}
             >
-              <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
+              <Text style={{ color: theme.text, fontWeight: 'semibold' }}>
                 Cancel
               </Text>
             </Pressable>

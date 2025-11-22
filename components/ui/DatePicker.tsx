@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius, typography } from '@/constants/designTokens';
+import { spacing, borderRadius, typography } from '@/constants/designSystem';
 import { useTheme } from '@/hooks/useTheme';
 
 interface DatePickerProps {
@@ -59,7 +59,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         <Text style={{
           fontSize: typography.sizes.sm,
           fontWeight: 'bold',
-          color: theme.colors.text,
+          color: theme.text,
           marginBottom: spacing.sm
         }}>
           {label}
@@ -74,11 +74,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderColor: theme.border,
           borderRadius: borderRadius.md,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.md,
-          backgroundColor: disabled ? theme.colors.background : theme.colors.surface,
+          backgroundColor: disabled ? theme.background : theme.surface,
           opacity: disabled ? 0.6 : 1,
         }}
       >
@@ -86,11 +86,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           <Ionicons
             name="calendar-outline"
             size={20}
-            color={value ? theme.colors.text : theme.colors.textSecondary}
+            color={value ? theme.text : theme.textSecondary}
           />
           <Text style={{
             fontSize: typography.sizes.base,
-            color: value ? theme.colors.text : theme.colors.textSecondary,
+            color: value ? theme.text : theme.textSecondary,
           }}>
             {formatDate(value)}
           </Text>
@@ -107,7 +107,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               <Ionicons
                 name="close-circle"
                 size={20}
-                color={theme.colors.textSecondary}
+                color={theme.textSecondary}
               />
             </Pressable>
           )}
@@ -115,7 +115,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           <Ionicons
             name="chevron-down"
             size={16}
-            color={theme.colors.textSecondary}
+            color={theme.textSecondary}
           />
         </View>
       </Pressable>

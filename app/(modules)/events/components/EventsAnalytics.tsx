@@ -151,7 +151,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.totalLeads.toString()}
             subtitle={`${analyticsData.pendingLeads} pending`}
             trend={analyticsData.totalLeads > 0 ? 'up' : 'neutral'}
-            color={theme.primary}
+            icon="people-outline"
+            gradientColors={[theme.primary, designSystem.baseColors.purple[600]]}
           />
           
           <KPICard
@@ -159,7 +160,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={formatPercentage(analyticsData.conversionRate)}
             subtitle={`${analyticsData.convertedLeads} converted`}
             trend={analyticsData.conversionRate > 50 ? 'up' : analyticsData.conversionRate > 25 ? 'neutral' : 'down'}
-            color={designSystem.baseColors.success[500]}
+            icon="trending-up"
+            gradientColors={[designSystem.baseColors.success[500], designSystem.baseColors.success[600]]}
           />
           
           <KPICard
@@ -167,18 +169,19 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.onlineLeads.toString()}
             subtitle={`${analyticsData.offlineLeads} offline`}
             trend={analyticsData.onlineLeads > analyticsData.offlineLeads ? 'up' : 'neutral'}
-            color={designSystem.baseColors.info[500]}
+            icon="globe-outline"
+            gradientColors={[designSystem.baseColors.info[500], designSystem.baseColors.info[600]]}
           />
         </View>
 
         {/* Conversion Funnel Chart */}
         <View style={[styles.chartContainer, { marginTop: spacing[4] }]}>
           <ConversionFunnelChart
-            data={[
-              { stage: 'Total Leads', value: analyticsData.totalLeads },
-              { stage: 'Pending', value: analyticsData.pendingLeads },
-              { stage: 'Converted', value: analyticsData.convertedLeads },
-            ]}
+            data={{
+              total: analyticsData.totalLeads,
+              pending: analyticsData.pendingLeads,
+              converted: analyticsData.convertedLeads,
+            }}
           />
         </View>
       </View>
@@ -200,7 +203,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={formatCurrency(analyticsData.totalRevenue)}
             subtitle={`${events.length} events`}
             trend={analyticsData.totalRevenue > 0 ? 'up' : 'neutral'}
-            color={designSystem.baseColors.success[500]}
+            icon="cash-outline"
+            gradientColors={[designSystem.baseColors.success[500], designSystem.baseColors.success[600]]}
           />
           
           <KPICard
@@ -208,7 +212,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.activeEvents.toString()}
             subtitle={`${analyticsData.plannedEvents} planned`}
             trend={analyticsData.activeEvents > 0 ? 'up' : 'neutral'}
-            color={designSystem.baseColors.warning[500]}
+            icon="calendar-outline"
+            gradientColors={[designSystem.baseColors.warning[500], designSystem.baseColors.warning[600]]}
           />
           
           <KPICard
@@ -216,7 +221,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.completedEvents.toString()}
             subtitle={`${analyticsData.cancelledEvents} cancelled`}
             trend={analyticsData.completedEvents > analyticsData.cancelledEvents ? 'up' : 'neutral'}
-            color={theme.primary}
+            icon="checkmark-circle-outline"
+            gradientColors={[theme.primary, designSystem.baseColors.purple[600]]}
           />
         </View>
 
@@ -224,10 +230,10 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
         <View style={[styles.chartContainer, { marginTop: spacing[4] }]}>
           <EventStatusPieChart
             data={[
-              { status: 'planned', count: analyticsData.plannedEvents },
-              { status: 'in-progress', count: analyticsData.activeEvents },
-              { status: 'completed', count: analyticsData.completedEvents },
-              { status: 'cancelled', count: analyticsData.cancelledEvents },
+              { status: 'Planned', count: analyticsData.plannedEvents, color: designSystem.baseColors.info[500] },
+              { status: 'In Progress', count: analyticsData.activeEvents, color: designSystem.baseColors.warning[500] },
+              { status: 'Completed', count: analyticsData.completedEvents, color: designSystem.baseColors.success[500] },
+              { status: 'Cancelled', count: analyticsData.cancelledEvents, color: designSystem.baseColors.error[500] },
             ]}
           />
         </View>
@@ -250,7 +256,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.totalClients.toString()}
             subtitle="Active clients"
             trend={analyticsData.totalClients > 0 ? 'up' : 'neutral'}
-            color={theme.primary}
+            icon="briefcase-outline"
+            gradientColors={[theme.primary, designSystem.baseColors.purple[600]]}
           />
           
           <KPICard
@@ -258,7 +265,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.b2bClients.toString()}
             subtitle={`${formatPercentage((analyticsData.b2bClients / Math.max(analyticsData.totalClients, 1)) * 100)} of total`}
             trend={analyticsData.b2bClients > analyticsData.b2cClients ? 'up' : 'neutral'}
-            color={designSystem.baseColors.purple[500]}
+            icon="business-outline"
+            gradientColors={[designSystem.baseColors.purple[500], designSystem.baseColors.purple[600]]}
           />
           
           <KPICard
@@ -266,7 +274,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             value={analyticsData.b2cClients.toString()}
             subtitle={`${formatPercentage((analyticsData.b2cClients / Math.max(analyticsData.totalClients, 1)) * 100)} of total`}
             trend={analyticsData.b2cClients > 0 ? 'up' : 'neutral'}
-            color={designSystem.baseColors.info[500]}
+            icon="person-outline"
+            gradientColors={[designSystem.baseColors.info[500], designSystem.baseColors.info[600]]}
           />
         </View>
 
@@ -274,9 +283,9 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
         <View style={[styles.chartContainer, { marginTop: spacing[4] }]}>
           <ClientSegmentChart
             data={[
-              { segment: 'B2B', count: analyticsData.b2bClients },
-              { segment: 'B2C', count: analyticsData.b2cClients },
-              { segment: 'B2G', count: analyticsData.b2gClients },
+              { category: 'B2B', count: analyticsData.b2bClients, icon: 'business-outline' },
+              { category: 'B2C', count: analyticsData.b2cClients, icon: 'person-outline' },
+              { category: 'B2G', count: analyticsData.b2gClients, icon: 'briefcase-outline' },
             ]}
           />
         </View>

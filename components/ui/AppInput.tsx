@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, ViewStyle, TextStyle, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useThemeStore } from "@/store/themeStore";
-import { spacing, borderRadius, borderWidth, iconSizes } from "@/constants/designTokens";
-import { getTypographyStyle } from "@/utils/styleHelpers";
+import { useTheme } from "@/hooks/useTheme";
+import { designSystem } from "@/constants/designSystem";
 
 type AppInputProps = {
   label?: string;
@@ -40,43 +39,46 @@ export default function AppInput({
   numberOfLines = 1,
   style,
 }: AppInputProps) {
-  const { colors } = useThemeStore();
+  const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
   const containerStyle: ViewStyle = {
-    marginVertical: spacing.sm,
+    marginVertical: designSystem.spacing[2],
   };
 
   const labelStyle: TextStyle = {
-    ...getTypographyStyle('sm', 'medium'),
-    color: colors.text,
-    marginBottom: spacing.xs,
+    fontSize: designSystem.typography.sizes.sm,
+    fontWeight: '500',
+    color: theme.text,
+    marginBottom: designSystem.spacing[1],
   };
 
   const inputContainerStyle: ViewStyle = {
     flexDirection: 'row',
     alignItems: multiline ? 'flex-start' : 'center',
-    backgroundColor: colors.surface,
-    borderWidth: borderWidth.medium,
-    borderColor: error ? '#EF4444' : isFocused ? colors.primary : colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: multiline ? spacing.md : spacing.sm,
-    gap: spacing.sm,
+    backgroundColor: theme.surface,
+    borderWidth: 1.5,
+    borderColor: error ? theme.error : isFocused ? theme.primary : theme.border,
+    borderRadius: designSystem.borderRadius.md,
+    paddingHorizontal: designSystem.spacing[3],
+    paddingVertical: multiline ? designSystem.spacing[3] : designSystem.spacing[2],
+    gap: designSystem.spacing[2],
   };
 
   const inputStyle: TextStyle = {
     flex: 1,
-    ...getTypographyStyle('base', 'regular'),
-    color: colors.text,
+    fontSize: designSystem.typography.sizes.base,
+    fontWeight: '400',
+    color: theme.text,
     minHeight: multiline ? numberOfLines * 20 : undefined,
   };
 
   const messageStyle: TextStyle = {
-    ...getTypographyStyle('xs', 'regular'),
-    color: error ? '#EF4444' : colors.textSecondary,
-    marginTop: spacing.xs,
-    marginLeft: spacing.xs,
+    fontSize: designSystem.typography.sizes.xs,
+    fontWeight: '400',
+    color: error ? theme.error : theme.textSecondary,
+    marginTop: designSystem.spacing[1],
+    marginLeft: designSystem.spacing[1],
   };
 
   return (
@@ -87,9 +89,9 @@ export default function AppInput({
         {leftIcon && (
           <Ionicons 
             name={leftIcon} 
-            size={iconSizes.sm} 
-            color={error ? '#EF4444' : colors.textSecondary}
-            style={{ marginTop: multiline ? spacing.xs : 0 }}
+            size={20} 
+            color={error ? theme.error : theme.textSecondary}
+            style={{ marginTop: multiline ? designSystem.spacing[1] : 0 }}
           />
         )}
         
@@ -97,7 +99,7 @@ export default function AppInput({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder || label}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           editable={!disabled}
@@ -113,9 +115,9 @@ export default function AppInput({
           <Pressable onPress={onRightIconPress} disabled={!onRightIconPress}>
             <Ionicons 
               name={rightIcon} 
-              size={iconSizes.sm} 
-              color={colors.textSecondary}
-              style={{ marginTop: multiline ? spacing.xs : 0 }}
+              size={20} 
+              color={theme.textSecondary}
+              style={{ marginTop: multiline ? designSystem.spacing[1] : 0 }}
             />
           </Pressable>
         )}

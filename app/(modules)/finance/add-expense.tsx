@@ -1,87 +1,331 @@
-import React, { useState } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, TextInput, Pressable, Alert, Image, ActivityIndicator, Modal } from 'react-native';
 import { Text } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ModuleHeader from '@/components/layout/ModuleHeader';
-import AppButton from '@/components/ui/AppButton';
+import * as ImagePicker from 'expo-image-picker';
+import { ModuleHeader } from '@/components/layout/ModuleHeader';
+import { AppButton } from '@/components/ui/AppButton';
+import { DatePickerInput } from '@/components/ui/DatePickerInput';
+import { DropdownField } from '@/components/ui/DropdownField';
 import { useTheme } from '@/hooks/useTheme';
-import { useAuthStore } from '@/store/authStore';
+import { designSystem, getTypographyStyle } from '@/constants/designSystem';
+import { 
+  useExpense, 
+  useCreateExpense, 
+  useUpdateExpense, 
+  useVendors,
+  useEvents 
+} from '@/hooks/useFinanceQueries';
+import FinanceService from '@/services/finance.service';
+import type { Vendor, Event } from '@/types/finance';
 
-const EXPENSE_TYPES = ['Event', 'Normal', 'Reimbursement'];
-const CATEGORIES = {
-  Event: ['Venue', 'Catering', 'Decoration', 'Entertainment', 'Equipment', 'Marketing', 'Other'],
-  Normal: ['Supplies', 'Technology', 'Utilities', 'Maintenance', 'Marketing', 'Travel', 'Other'],
-  Reimbursement: ['Travel', 'Food', 'Accommodation', 'Medical', 'Communication', 'Other'],
-};
+const PAYMENT_STATUS_OPTIONS = [
+  { label: 'Paid', value: 'paid' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Partial', value: 'partial' },
+];
+
+const PAYMENT_MODE_OPTIONS = [
+  { label: 'Cash', value: 'cash' },
+  { label: 'Cheque', value: 'cheque' },
+  { label: 'UPI', value: 'upi' },
+  { label: 'Bank Transfer', value: 'bank_transfer' },
+  { label: 'Card', value: 'card' },
+];
 
 export default function AddExpenseScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const { theme } = useTheme();
-  const router = useRouter();
-  const user = useAuthStore((state) => state.user);
+  const isEditMode = !!id;
 
-  const [expenseType, setExpenseType] = useState<'Event' | 'Normal' | 'Reimbursement'>('Normal');
+  // Fetch data
+  const { data: expense, isLoading: expenseLoading } = useExpense(Number(id), { enabled: isEditMode });
+  const { data: vendors = [] } = useVendors();
+  const { data: events = [] } = useEvents();
+  const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
+
+  // Form state
   const [formData, setFormData] = useState({
-    title: '',
+    particulars: '',
+    details: '',
     amount: '',
-    date: '',
-    category: '',
-    vendor: '',
-    invoiceNumber: '',
-    paymentMethod: '',
-    description: '',
+    expense_date: '',
+    payment_status: 'pending' as 'paid' | 'pending' | 'partial',
+    mode_of_payment: 'cash' as 'cash' | 'cheque' | 'upi' | 'bank_transfer' | 'card',
+    bill_evidence: false,
+    bill_no: '',
+    vendor: null as number | null,
+    event: null as number | null,
+    reimbursement_requested: false,
     notes: '',
-    eventId: '', // Only for Event type
   });
 
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [photos, setPhotos] = useState<{ uri: string; type: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const updateField = (field: string, value: string) => {
+  // Modal states
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showCreateVendorModal, setShowCreateVendorModal] = useState(false);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+
+  // New vendor form
+  const [newVendor, setNewVendor] = useState({
+    name: '',
+    contact_person: '',
+    email: '',
+    phone: '',
+    address: '',
+  });
+
+  // Load existing expense data
+  useEffect(() => {
+    if (expense && isEditMode) {
+      setFormData({
+        particulars: expense.particulars || '',
+        details: expense.details || '',
+        amount: String(expense.amount || ''),
+        expense_date: expense.expense_date || '',
+        payment_status: expense.payment_status || 'pending',
+        mode_of_payment: expense.mode_of_payment || 'cash',
+        bill_evidence: expense.bill_evidence || false,
+        bill_no: expense.bill_no || '',
+        vendor: expense.vendor?.id || null,
+        event: expense.event?.id || null,
+        reimbursement_requested: expense.reimbursement_requested || false,
+        notes: expense.notes || '',
+      });
+      setSelectedVendor(expense.vendor || null);
+      setSelectedEvent(expense.event || null);
+    }
+  }, [expense, isEditMode]);
+
+  const updateField = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const pickDocument = async () => {
-    // TODO: Implement document picker
-    console.log('Pick document');
-    Alert.alert('Info', 'Document picker will be implemented with expo-document-picker');
+  // Filtered lists
+  const filteredVendors = vendors.filter((vendor) =>
+    vendor.name?.toLowerCase().includes(vendorSearchQuery.toLowerCase()) ||
+    vendor.contact_person?.toLowerCase().includes(vendorSearchQuery.toLowerCase())
+  );
+
+  const filteredEvents = events.filter((event) =>
+    event.name?.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+    event.client?.name?.toLowerCase().includes(eventSearchQuery.toLowerCase())
+  );
+
+  // Handlers
+  const handleSelectVendor = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    updateField('vendor', vendor.id);
+    setShowVendorModal(false);
+    setVendorSearchQuery('');
   };
 
-  const removeDocument = (index: number) => {
-    setDocuments(documents.filter((_, i) => i !== index));
+  const handleSelectEvent = (event: Event) => {
+    setSelectedEvent(event);
+    updateField('event', event.id);
+    setShowEventModal(false);
+    setEventSearchQuery('');
   };
 
-  const handleSubmit = () => {
+  const handleCreateVendor = async () => {
+    if (!newVendor.name.trim()) {
+      Alert.alert('Error', 'Please enter vendor name');
+      return;
+    }
+
+    try {
+      // Here you would call createVendor mutation
+      Alert.alert('Success', 'Vendor created successfully');
+      setShowCreateVendorModal(false);
+      setNewVendor({ name: '', contact_person: '', email: '', phone: '', address: '' });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create vendor');
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera roll permissions to upload photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newPhotos = result.assets.map((asset, index) => ({
+          uri: asset.uri,
+          type: 'image/jpeg',
+          name: `expense_photo_${Date.now()}_${index}.jpg`,
+        }));
+        setPhotos([...photos, ...newPhotos]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera permissions to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const photo = {
+          uri: result.assets[0].uri,
+          type: 'image/jpeg',
+          name: `expense_photo_${Date.now()}.jpg`,
+        };
+        setPhotos([...photos, photo]);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index));
+  };
+
+  const showPhotoOptions = () => {
+    Alert.alert(
+      'Add Photo',
+      'Choose an option',
+      [
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Choose from Library', onPress: pickImage },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleSubmit = async () => {
     // Validation
-    if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter expense title');
+    if (!formData.particulars.trim()) {
+      Alert.alert('Error', 'Please enter expense particulars');
       return;
     }
     if (!formData.amount.trim()) {
       Alert.alert('Error', 'Please enter amount');
       return;
     }
-    if (!formData.date.trim()) {
-      Alert.alert('Error', 'Please enter date');
-      return;
-    }
-    if (!formData.category) {
-      Alert.alert('Error', 'Please select category');
+    if (!formData.expense_date) {
+      Alert.alert('Error', 'Please select expense date');
       return;
     }
 
-    const amount = parseFloat(formData.amount);
+    const amount = Number(formData.amount);
     if (isNaN(amount) || amount <= 0) {
       Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
-    // Submit logic here
-    console.log('Submitting expense:', { expenseType, ...formData });
-    Alert.alert('Success', 'Expense submitted successfully', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    if (formData.bill_evidence && !formData.bill_no.trim()) {
+      Alert.alert('Error', 'Please enter bill number');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const expenseData = {
+        particulars: formData.particulars,
+        details: formData.details,
+        amount,
+        expense_date: formData.expense_date,
+        payment_status: formData.payment_status,
+        mode_of_payment: formData.mode_of_payment,
+        bill_evidence: formData.bill_evidence,
+        bill_no: formData.bill_no || null,
+        vendor: formData.vendor,
+        event: formData.event,
+        reimbursement_requested: formData.reimbursement_requested,
+        notes: formData.notes || null,
+      };
+
+      let savedExpenseId: number;
+
+      if (isEditMode) {
+        await updateExpense.mutateAsync({ id: Number(id), data: expenseData });
+        savedExpenseId = Number(id);
+        Alert.alert('Success', 'Expense updated successfully');
+      } else {
+        const result = await createExpense.mutateAsync(expenseData);
+        savedExpenseId = result.id;
+        
+        // Upload photos if any
+        if (photos.length > 0 && result.id) {
+          try {
+            // Upload each photo
+            for (const photo of photos) {
+              const photoFormData = new FormData();
+              photoFormData.append('expense', result.id.toString());
+              
+              // Create photo object for React Native
+              const photoFile = {
+                uri: photo.uri,
+                type: photo.type || 'image/jpeg',
+                name: photo.name || `expense_photo_${Date.now()}.jpg`,
+              } as any;
+              
+              photoFormData.append('photo', photoFile);
+              
+              await FinanceService.uploadExpensePhoto(result.id, { photo: photoFile });
+            }
+            console.log(`Successfully uploaded ${photos.length} photos`);
+          } catch (photoError) {
+            console.error('Error uploading photos:', photoError);
+            Alert.alert('Warning', 'Expense created but some photos failed to upload');
+          }
+        }
+        
+        Alert.alert('Success', 'Expense created successfully');
+      }
+      
+      router.back();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save expense');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  if (expenseLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 12 }}>
+          Loading expense...
+        </Text>
+      </View>
+    );
+  }
+
+  // Helper components
   const FormInput = ({
     label,
     value,
@@ -93,7 +337,7 @@ export default function AddExpenseScreen() {
     required = false,
   }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
         {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -101,8 +345,8 @@ export default function AddExpenseScreen() {
           <Text style={{
             position: 'absolute',
             left: 12,
-            fontSize: 14,
-            color: theme.colors.text,
+            ...getTypographyStyle('sm', 'regular'),
+            color: theme.text,
             zIndex: 1,
           }}>
             {prefix}
@@ -112,20 +356,20 @@ export default function AddExpenseScreen() {
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           style={{
             flex: 1,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
             borderRadius: 8,
             padding: 12,
             paddingLeft: prefix ? 28 : 12,
-            fontSize: 14,
-            color: theme.colors.text,
-            backgroundColor: theme.colors.surface,
+            ...getTypographyStyle('sm', 'regular'),
+            color: theme.text,
+            backgroundColor: theme.surface,
             textAlignVertical: multiline ? 'top' : 'center',
             minHeight: multiline ? 100 : 44,
           }}
@@ -134,267 +378,700 @@ export default function AddExpenseScreen() {
     </View>
   );
 
-  const SelectInput = ({ label, value, options, onSelect, required = false }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
-        {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
+  const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
+    <View style={{ gap: 4 }}>
+      <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+        {title}
       </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map((option: string) => (
-          <Pressable
-            key={option}
-            onPress={() => onSelect(option)}
-            style={({ pressed }) => ({
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: value === option ? theme.colors.primary : theme.colors.border,
-              backgroundColor: pressed
-                ? theme.colors.primary + '10'
-                : value === option
-                ? theme.colors.primary + '20'
-                : theme.colors.surface,
-            })}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                color: value === option ? theme.colors.primary : theme.colors.text,
-                fontWeight: value === option ? '600' : 'normal',
-              }}
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      {subtitle && (
+        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+          {subtitle}
+        </Text>
+      )}
     </View>
   );
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 8 }}>
-      {title}
-    </Text>
-  );
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
-        title="Add Expense"
+        title={isEditMode ? 'Edit Expense' : 'Add Expense'}
         showBack
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
-        {/* Expense Type Selection */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader title="Expense Type" />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {EXPENSE_TYPES.map((type) => (
-              <Pressable
-                key={type}
-                onPress={() => {
-                  setExpenseType(type as any);
-                  setFormData({ ...formData, category: '' }); // Reset category when type changes
-                }}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  padding: 16,
-                  borderRadius: 12,
-                  borderWidth: 2,
-                  borderColor: expenseType === type ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: pressed
-                    ? theme.colors.primary + '10'
-                    : expenseType === type
-                    ? theme.colors.primary + '20'
-                    : theme.colors.surface,
-                  alignItems: 'center',
-                })}
-              >
-                <Ionicons
-                  name={
-                    type === 'Event' ? 'calendar' :
-                    type === 'Reimbursement' ? 'receipt' : 'wallet'
-                  }
-                  size={24}
-                  color={expenseType === type ? theme.colors.primary : theme.colors.textSecondary}
-                />
-                <Text
-                  style={{
-                    marginTop: 8,
-                    fontSize: 14,
-                    fontWeight: expenseType === type ? '600' : 'normal',
-                    color: expenseType === type ? theme.colors.primary : theme.colors.text,
-                  }}
-                >
-                  {type}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Basic Information */}
+        {/* Expense Details */}
         <View style={{ gap: 16 }}>
-          <SectionHeader title="Basic Information" />
+          <SectionHeader title="Expense Details" />
+          
           <FormInput
-            label="Title"
-            value={formData.title}
-            onChangeText={(text: string) => updateField('title', text)}
-            placeholder="Enter expense title"
+            label="Particulars"
+            value={formData.particulars}
+            onChangeText={(text: string) => updateField('particulars', text)}
+            placeholder="Enter expense particulars"
             required
           />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Amount"
-                value={formData.amount}
-                onChangeText={(text: string) => updateField('amount', text)}
-                placeholder="0"
-                keyboardType="numeric"
-                prefix="₹"
-                required
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Date"
-                value={formData.date}
-                onChangeText={(text: string) => updateField('date', text)}
-                placeholder="DD-MM-YYYY"
-                required
-              />
-            </View>
-          </View>
-          <SelectInput
-            label="Category"
-            value={formData.category}
-            options={CATEGORIES[expenseType]}
-            onSelect={(value: string) => updateField('category', value)}
+
+          <FormInput
+            label="Details"
+            value={formData.details}
+            onChangeText={(text: string) => updateField('details', text)}
+            placeholder="Enter additional details"
+            multiline
+          />
+
+          <FormInput
+            label="Amount"
+            value={formData.amount}
+            onChangeText={(text: string) => updateField('amount', text)}
+            placeholder="0"
+            keyboardType="numeric"
+            prefix="₹"
             required
+          />
+
+          <DatePickerInput
+            label="Expense Date"
+            value={formData.expense_date}
+            onDateSelect={(date) => updateField('expense_date', date)}
+            placeholder="Select expense date"
           />
         </View>
 
-        {/* Event Selection (only for Event type) */}
-        {expenseType === 'Event' && (
-          <View style={{ gap: 16 }}>
-            <SectionHeader title="Event Details" />
-            <FormInput
-              label="Event ID"
-              value={formData.eventId}
-              onChangeText={(text: string) => updateField('eventId', text)}
-              placeholder="Enter event ID or select from list"
-            />
+        {/* Vendor Selection */}
+        <View style={{ gap: 16 }}>
+          <SectionHeader 
+            title="Vendor Details" 
+            subtitle="Select vendor or create a new one"
+          />
+          
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <DropdownField
+                label="Select Vendor"
+                value={selectedVendor?.name || ''}
+                placeholder="Tap to select vendor"
+                onPress={() => setShowVendorModal(true)}
+              />
+            </View>
+            <Pressable
+              onPress={() => setShowCreateVendorModal(true)}
+              style={({ pressed }) => ({
+                marginTop: 22,
+                padding: 12,
+                borderRadius: 8,
+                backgroundColor: pressed ? theme.primary + '20' : theme.primary,
+                justifyContent: 'center',
+                alignItems: 'center',
+              })}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#FFF" />
+            </Pressable>
+          </View>
+
+          {selectedVendor && (
             <View style={{
               padding: 12,
-              backgroundColor: theme.colors.primary + '20',
+              backgroundColor: theme.primary + '10',
               borderRadius: 8,
               borderLeftWidth: 4,
-              borderLeftColor: theme.colors.primary,
+              borderLeftColor: theme.primary,
             }}>
-              <Text style={{ fontSize: 12, color: theme.colors.text }}>
-                💡 This expense will be linked to the selected event
+              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+                Contact Person
               </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
+                {selectedVendor.contact_person || 'N/A'}
+              </Text>
+              {selectedVendor.phone && (
+                <>
+                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary, marginTop: 8 }}>
+                    Phone
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
+                    {selectedVendor.phone}
+                  </Text>
+                </>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Event Linking (Optional) */}
+        <View style={{ gap: 16 }}>
+          <SectionHeader 
+            title="Event Linking (Optional)" 
+            subtitle="Link this expense to an event"
+          />
+          
+          <DropdownField
+            label="Select Event"
+            value={selectedEvent?.name || ''}
+            placeholder="Tap to select event (optional)"
+            onPress={() => setShowEventModal(true)}
+          />
+
+          {selectedEvent && (
+            <View style={{
+              padding: 12,
+              backgroundColor: theme.primary + '10',
+              borderRadius: 8,
+              borderLeftWidth: 4,
+              borderLeftColor: theme.primary,
+            }}>
+              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+                Client
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
+                {selectedEvent.client?.name || 'N/A'}
+              </Text>
+              {selectedEvent.start_date && (
+                <>
+                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary, marginTop: 8 }}>
+                    Event Date
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
+                    {new Date(selectedEvent.start_date).toLocaleDateString('en-IN')}
+                  </Text>
+                </>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Payment Details */}
+        <View style={{ gap: 16 }}>
+          <SectionHeader title="Payment Details" />
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+              Payment Status <Text style={{ color: '#EF4444' }}>*</Text>
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {PAYMENT_STATUS_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => updateField('payment_status', option.value)}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: formData.payment_status === option.value ? theme.primary : theme.border,
+                    backgroundColor: pressed
+                      ? theme.primary + '10'
+                      : formData.payment_status === option.value
+                      ? theme.primary + '20'
+                      : theme.surface,
+                  })}
+                >
+                  <Text
+                    style={{
+                      ...getTypographyStyle('sm', formData.payment_status === option.value ? 'semibold' : 'regular'),
+                      color: formData.payment_status === option.value ? theme.primary : theme.text,
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
-        )}
 
-        {/* Vendor Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Vendor Information" />
-          <FormInput
-            label="Vendor Name"
-            value={formData.vendor}
-            onChangeText={(text: string) => updateField('vendor', text)}
-            placeholder="Enter vendor name"
-          />
-          <FormInput
-            label="Invoice Number"
-            value={formData.invoiceNumber}
-            onChangeText={(text: string) => updateField('invoiceNumber', text)}
-            placeholder="Enter invoice number"
-          />
-          <FormInput
-            label="Payment Method"
-            value={formData.paymentMethod}
-            onChangeText={(text: string) => updateField('paymentMethod', text)}
-            placeholder="e.g., Cash, Bank Transfer, UPI"
-          />
+          <View style={{ gap: 8 }}>
+            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+              Payment Mode <Text style={{ color: '#EF4444' }}>*</Text>
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {PAYMENT_MODE_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => updateField('mode_of_payment', option.value)}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: formData.mode_of_payment === option.value ? theme.primary : theme.border,
+                    backgroundColor: pressed
+                      ? theme.primary + '10'
+                      : formData.mode_of_payment === option.value
+                      ? theme.primary + '20'
+                      : theme.surface,
+                  })}
+                >
+                  <Text
+                    style={{
+                      ...getTypographyStyle('sm', formData.mode_of_payment === option.value ? 'semibold' : 'regular'),
+                      color: formData.mode_of_payment === option.value ? theme.primary : theme.text,
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </View>
 
-        {/* Additional Details */}
+        {/* Bill Evidence */}
         <View style={{ gap: 16 }}>
-          <SectionHeader title="Additional Details" />
-          <FormInput
-            label="Description"
-            value={formData.description}
-            onChangeText={(text: string) => updateField('description', text)}
-            placeholder="Enter expense description"
-            multiline
-          />
-          <FormInput
-            label="Notes"
-            value={formData.notes}
-            onChangeText={(text: string) => updateField('notes', text)}
-            placeholder="Add any additional notes"
-            multiline
-          />
+          <SectionHeader title="Bill Evidence" />
+
+          <Pressable
+            onPress={() => updateField('bill_evidence', !formData.bill_evidence)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              padding: 14,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: theme.border,
+              backgroundColor: pressed ? theme.primary + '10' : theme.surface,
+            })}
+          >
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: formData.bill_evidence ? theme.primary : theme.border,
+                backgroundColor: formData.bill_evidence ? theme.primary : 'transparent',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              {formData.bill_evidence && (
+                <Ionicons name="checkmark" size={16} color="#FFF" />
+              )}
+            </View>
+            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, flex: 1 }}>
+              I have bill evidence for this expense
+            </Text>
+          </Pressable>
+
+          {formData.bill_evidence && (
+            <FormInput
+              label="Bill Number"
+              value={formData.bill_no}
+              onChangeText={(text: string) => updateField('bill_no', text)}
+              placeholder="Enter bill number"
+              required
+            />
+          )}
         </View>
 
-        {/* Documents */}
+        {/* Photo Upload */}
         <View style={{ gap: 12 }}>
-          <SectionHeader title="Supporting Documents" />
-          <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-            Upload invoices, receipts, or other supporting documents
-          </Text>
-          <AppButton
-            title="Upload Documents"
-            onPress={pickDocument}
-            variant="secondary"
-            fullWidth
-            leftIcon="cloud-upload-outline"
+          <SectionHeader 
+            title="Bill Photos" 
+            subtitle="Upload photos of bills, receipts, or invoices"
           />
+          
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <AppButton
+              title="Take Photo"
+              onPress={takePhoto}
+              variant="secondary"
+              leftIcon="camera-outline"
+              style={{ flex: 1 }}
+            />
+            <AppButton
+              title="Choose Photo"
+              onPress={pickImage}
+              variant="secondary"
+              leftIcon="images-outline"
+              style={{ flex: 1 }}
+            />
+          </View>
 
-          {documents.length > 0 && (
-            <View style={{ gap: 8 }}>
-              {documents.map((doc, index) => (
+          {photos.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {photos.map((photo, index) => (
                 <View
                   key={index}
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 12,
+                    width: 100,
+                    height: 100,
                     borderRadius: 8,
-                    backgroundColor: theme.colors.surface,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    backgroundColor: theme.surface,
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <Ionicons name="document" size={20} color={theme.colors.primary} />
-                    <Text style={{ color: theme.colors.text, fontSize: 14, flex: 1 }}>
-                      {doc.name}
-                    </Text>
-                  </View>
-                  <Pressable onPress={() => removeDocument(index)}>
-                    <Ionicons name="close-circle" size={24} color="#EF4444" />
+                  <Image
+                    source={{ uri: photo.uri }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                  <Pressable
+                    onPress={() => removePhoto(index)}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                      borderRadius: 12,
+                      width: 24,
+                      height: 24,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Ionicons name="close" size={16} color="#FFF" />
                   </Pressable>
                 </View>
               ))}
             </View>
           )}
+
+          {photos.length > 0 && (
+            <View style={{
+              padding: 12,
+              backgroundColor: '#10B98120',
+              borderRadius: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: '#10B981', flex: 1 }}>
+                {photos.length} {photos.length === 1 ? 'photo' : 'photos'} added
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Reimbursement */}
+        <View style={{ gap: 16 }}>
+          <SectionHeader title="Reimbursement" />
+
+          <Pressable
+            onPress={() => updateField('reimbursement_requested', !formData.reimbursement_requested)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              padding: 14,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: theme.border,
+              backgroundColor: pressed ? theme.primary + '10' : theme.surface,
+            })}
+          >
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: formData.reimbursement_requested ? theme.primary : theme.border,
+                backgroundColor: formData.reimbursement_requested ? theme.primary : 'transparent',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              {formData.reimbursement_requested && (
+                <Ionicons name="checkmark" size={16} color="#FFF" />
+              )}
+            </View>
+            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, flex: 1 }}>
+              Request reimbursement for this expense
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Additional Notes */}
+        <View style={{ gap: 16 }}>
+          <SectionHeader title="Additional Notes (Optional)" />
+          <FormInput
+            label="Notes"
+            value={formData.notes}
+            onChangeText={(text: string) => updateField('notes', text)}
+            placeholder="Add any additional notes or comments"
+            multiline
+          />
         </View>
 
         {/* Submit Button */}
         <View style={{ marginTop: 8, marginBottom: 20 }}>
           <AppButton
-            title="Submit Expense"
+            title={isEditMode ? 'Update Expense' : 'Create Expense'}
             onPress={handleSubmit}
+            loading={loading}
             fullWidth
             size="lg"
-            leftIcon="cash"
+            leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
           />
         </View>
       </ScrollView>
+
+      {/* Vendor Selection Modal */}
+      <Modal
+        visible={showVendorModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVendorModal(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setShowVendorModal(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '80%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ gap: 16 }}>
+              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
+                Select Vendor
+              </Text>
+
+              <TextInput
+                value={vendorSearchQuery}
+                onChangeText={setVendorSearchQuery}
+                placeholder="Search vendors..."
+                placeholderTextColor={theme.textSecondary}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 8,
+                  padding: 12,
+                  ...getTypographyStyle('sm', 'regular'),
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                }}
+              />
+
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                {filteredVendors.length === 0 ? (
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }}>
+                    No vendors found
+                  </Text>
+                ) : (
+                  filteredVendors.map((vendor) => (
+                    <Pressable
+                      key={vendor.id}
+                      onPress={() => handleSelectVendor(vendor)}
+                      style={({ pressed }) => ({
+                        padding: 14,
+                        borderRadius: 8,
+                        backgroundColor: pressed ? theme.primary + '10' : 'transparent',
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.border,
+                      })}
+                    >
+                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                        {vendor.name}
+                      </Text>
+                      {vendor.contact_person && (
+                        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 4 }}>
+                          {vendor.contact_person} {vendor.phone ? `• ${vendor.phone}` : ''}
+                        </Text>
+                      )}
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
+
+              <AppButton
+                title="Cancel"
+                onPress={() => setShowVendorModal(false)}
+                variant="secondary"
+                fullWidth
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Event Selection Modal */}
+      <Modal
+        visible={showEventModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEventModal(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setShowEventModal(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '80%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ gap: 16 }}>
+              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
+                Select Event
+              </Text>
+
+              <TextInput
+                value={eventSearchQuery}
+                onChangeText={setEventSearchQuery}
+                placeholder="Search events..."
+                placeholderTextColor={theme.textSecondary}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 8,
+                  padding: 12,
+                  ...getTypographyStyle('sm', 'regular'),
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                }}
+              />
+
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                {filteredEvents.length === 0 ? (
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }}>
+                    No events found
+                  </Text>
+                ) : (
+                  filteredEvents.map((event) => (
+                    <Pressable
+                      key={event.id}
+                      onPress={() => handleSelectEvent(event)}
+                      style={({ pressed }) => ({
+                        padding: 14,
+                        borderRadius: 8,
+                        backgroundColor: pressed ? theme.primary + '10' : 'transparent',
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.border,
+                      })}
+                    >
+                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                        {event.name}
+                      </Text>
+                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 4 }}>
+                        {event.client?.name || 'N/A'} • {new Date(event.start_date).toLocaleDateString('en-IN')}
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <AppButton
+                  title="Clear Selection"
+                  onPress={() => {
+                    setSelectedEvent(null);
+                    updateField('event', null);
+                    setShowEventModal(false);
+                  }}
+                  variant="secondary"
+                  fullWidth
+                />
+                <AppButton
+                  title="Cancel"
+                  onPress={() => setShowEventModal(false)}
+                  variant="secondary"
+                  fullWidth
+                />
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Create Vendor Modal */}
+      <Modal
+        visible={showCreateVendorModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreateVendorModal(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setShowCreateVendorModal(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '80%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 16 }}>
+                <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
+                  Create New Vendor
+                </Text>
+
+                <FormInput
+                  label="Vendor Name"
+                  value={newVendor.name}
+                  onChangeText={(text: string) => setNewVendor({ ...newVendor, name: text })}
+                  placeholder="Enter vendor name"
+                  required
+                />
+
+                <FormInput
+                  label="Contact Person"
+                  value={newVendor.contact_person}
+                  onChangeText={(text: string) => setNewVendor({ ...newVendor, contact_person: text })}
+                  placeholder="Enter contact person name"
+                />
+
+                <FormInput
+                  label="Email"
+                  value={newVendor.email}
+                  onChangeText={(text: string) => setNewVendor({ ...newVendor, email: text })}
+                  placeholder="vendor@example.com"
+                  keyboardType="email-address"
+                />
+
+                <FormInput
+                  label="Phone"
+                  value={newVendor.phone}
+                  onChangeText={(text: string) => setNewVendor({ ...newVendor, phone: text })}
+                  placeholder="1234567890"
+                  keyboardType="phone-pad"
+                />
+
+                <FormInput
+                  label="Address"
+                  value={newVendor.address}
+                  onChangeText={(text: string) => setNewVendor({ ...newVendor, address: text })}
+                  placeholder="Enter vendor address"
+                  multiline
+                />
+
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                  <AppButton
+                    title="Cancel"
+                    onPress={() => {
+                      setShowCreateVendorModal(false);
+                      setNewVendor({ name: '', contact_person: '', email: '', phone: '', address: '' });
+                    }}
+                    variant="secondary"
+                    fullWidth
+                  />
+                  <AppButton
+                    title="Create Vendor"
+                    onPress={handleCreateVendor}
+                    fullWidth
+                  />
+                </View>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

@@ -2,6 +2,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
+import { designSystem } from "@/constants/designSystem";
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -98,18 +99,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoText: {
-    fontSize: 40,
+    fontSize: designSystem.typography.sizes['4xl'],
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: designSystem.typography.weights.bold,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: designSystem.typography.sizes['2xl'],
+    fontWeight: designSystem.typography.weights.bold,
     color: "#000",
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: designSystem.typography.sizes.base,
     color: "#666",
     textAlign: "center",
   },
@@ -119,11 +120,11 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
-    fontSize: 16,
+    borderRadius: designSystem.borderRadius.md,
+    paddingHorizontal: designSystem.spacing[4],
+    paddingVertical: designSystem.spacing[3],
+    marginBottom: designSystem.spacing[4],
+    fontSize: designSystem.typography.sizes.base,
   },
   button: {
     backgroundColor: "#6D376D",
@@ -136,14 +137,14 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: designSystem.typography.sizes.base,
+    fontWeight: designSystem.typography.weights.semibold,
   },
   footer: {
     alignItems: "center",
   },
   footerText: {
-    fontSize: 14,
+    fontSize: designSystem.typography.sizes.sm,
     color: "#666",
   },
 });

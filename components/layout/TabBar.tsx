@@ -2,6 +2,7 @@ import React from 'react';
 import { View, ScrollView, Pressable, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
 
 export interface Tab {
   key: string;
@@ -20,7 +21,7 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
 
   return (
     <View style={{ 
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.background,
       paddingVertical: 12,
     }}>
       <ScrollView
@@ -45,7 +46,7 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
                   paddingHorizontal: 20,
                   paddingVertical: 12,
                   borderRadius: 12,
-                  backgroundColor: isActive ? theme.colors.primary : theme.colors.surface,
+                  backgroundColor: isActive ? theme.primary : theme.surface,
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -53,13 +54,13 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
                   minWidth: 90,
                   opacity: pressed ? 0.9 : 1,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
-                  shadowColor: isActive ? theme.colors.primary : '#000',
+                  shadowColor: isActive ? theme.primary : '#000',
                   shadowOffset: { width: 0, height: isActive ? 4 : 1 },
                   shadowOpacity: isActive ? 0.4 : 0.08,
                   shadowRadius: isActive ? 8 : 3,
                   elevation: isActive ? 6 : 2,
                   borderWidth: isActive ? 2 : 1,
-                  borderColor: isActive ? theme.colors.primary : (isDark ? '#374151' : '#E5E7EB'),
+                  borderColor: isActive ? theme.primary : (isDark ? '#374151' : '#E5E7EB'),
                 })}
               >
                 {tab.icon && (
@@ -71,15 +72,15 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
                     <Ionicons
                       name={tab.icon}
                       size={24}
-                      color={isActive ? '#FFFFFF' : theme.colors.primary}
+                      color={isActive ? '#FFFFFF' : theme.primary}
                     />
                   </View>
                 )}
                 <Text
                   style={{
-                    color: isActive ? '#FFFFFF' : theme.colors.text,
-                    fontSize: 13,
-                    fontWeight: isActive ? '700' : '600',
+                    color: isActive ? '#FFFFFF' : theme.text,
+                    fontSize: designSystem.typography.sizes.sm,
+                    fontWeight: isActive ? designSystem.typography.weights.bold : designSystem.typography.weights.semibold,
                     textAlign: 'center',
                   }}
                 >

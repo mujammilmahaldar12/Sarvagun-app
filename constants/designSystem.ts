@@ -82,6 +82,18 @@ const chartColors = {
   octonary: '#06B6D4',
 } as const;
 
+// Gradient Colors for UI Elements
+const gradientColors = {
+  blue: ['#3B82F6', '#1D4ED8'],
+  purple: ['#8B5CF6', '#6D28D9'],
+  green: ['#10B981', '#047857'],
+  orange: ['#F59E0B', '#D97706'],
+  pink: ['#EC4899', '#DB2777'],
+  teal: ['#14B8A6', '#0D9488'],
+  red: ['#EF4444', '#DC2626'],
+  indigo: ['#6366F1', '#4F46E5'],
+} as const;
+
 // Status Colors with Semantic Meaning
 const statusColors = {
   // Lead Status
@@ -227,7 +239,9 @@ export const typography = {
 } as const;
 
 // Spacing Scale (4px base unit)
+// Supports both numeric and named keys for backward compatibility
 export const spacing = {
+  // Numeric keys (primary)
   0: 0,
   1: 4,
   2: 8,
@@ -241,6 +255,17 @@ export const spacing = {
   16: 64,
   20: 80,
   24: 96,
+  // Named keys (backward compatibility with designTokens.ts)
+  xs: 4,      // = spacing[1]
+  sm: 8,      // = spacing[2]
+  md: 12,     // = spacing[3]
+  base: 16,   // = spacing[4]
+  lg: 20,     // = spacing[5]
+  xl: 24,     // = spacing[6]
+  '2xl': 32,  // = spacing[8]
+  '3xl': 40,  // = spacing[10]
+  '4xl': 48,  // = spacing[12]
+  '5xl': 64,  // = spacing[16]
 } as const;
 
 // Border Radius Scale
@@ -331,6 +356,38 @@ export type BorderRadiusKey = keyof typeof borderRadius;
 export type ShadowKey = keyof typeof shadows;
 export type IconSizeKey = keyof typeof iconSizes;
 
+// Common Opacities
+export const opacity = {
+  disabled: 0.5,
+  hover: 0.8,
+  pressed: 0.6,
+  overlay: 0.4,
+} as const;
+
+// Touch Target Sizes (minimum 44x44 for accessibility)
+export const touchTarget = {
+  min: 44,
+  comfortable: 48,
+  large: 56,
+} as const;
+
+// Border Widths
+export const borderWidth = {
+  thin: 1,
+  medium: 1.5,
+  thick: 2,
+} as const;
+
+// Elevation Scale (Android)
+export const elevation = {
+  none: 0,
+  sm: 2,
+  md: 4,
+  lg: 6,
+  xl: 8,
+  '2xl': 12,
+} as const;
+
 // Export Design System
 export const designSystem = {
   themes: {
@@ -339,6 +396,7 @@ export const designSystem = {
   },
   baseColors,
   chartColors,
+  gradientColors,
   statusColors,
   typography,
   spacing,
@@ -347,6 +405,67 @@ export const designSystem = {
   duration,
   layout,
   iconSizes,
+  opacity,
+  touchTarget,
+  borderWidth,
+  elevation,
 } as const;
 
 export default designSystem;
+
+// ============================================================================
+// BACKWARD COMPATIBILITY EXPORTS
+// For gradual migration from designTokens.ts and colors.ts
+// All tokens are already exported above as const declarations
+// ============================================================================
+
+// Export COLORS object for backward compatibility with colors.ts
+export const COLORS = {
+  // Brand Colors
+  primary: baseColors.purple[500],
+  primarySoft: '#8A4A8A',
+
+  // Backgrounds
+  backgroundLight: '#F5F3F7',
+  backgroundDark: '#0F0E10',
+
+  // Surfaces
+  surfaceLight: baseColors.neutral[0],
+  surfaceDark: '#1A171D',
+
+  // Text Colors
+  textLight: baseColors.neutral[900],
+  textDark: baseColors.neutral[50],
+
+  // Borders
+  borderLight: '#E3DCE9',
+  borderDark: '#2A242E',
+
+  // Shadows
+  shadowLight: 'rgba(0,0,0,0.10)',
+  shadowDark: 'rgba(255,255,255,0.06)',
+
+  // Analytics & Gradient Colors
+  gradients: gradientColors,
+
+  // Chart Colors
+  charts: chartColors,
+
+  // Status Colors (backward compatible structure)
+  status: {
+    // Leads
+    pending: { bg: '#FEF3C7', text: '#F59E0B', dark: '#92400E' },
+    converted: { bg: '#D1FAE5', text: '#059669', dark: '#064E3B' },
+    rejected: { bg: '#FEE2E2', text: '#DC2626', dark: '#991B1B' },
+    
+    // Events
+    planned: { bg: '#DBEAFE', text: '#2563EB', dark: '#1E3A8A' },
+    inProgress: { bg: '#E0E7FF', text: '#7C3AED', dark: '#5B21B6' },
+    completed: { bg: '#D1FAE5', text: '#059669', dark: '#064E3B' },
+    cancelled: { bg: '#FEE2E2', text: '#DC2626', dark: '#991B1B' },
+    
+    // Sources
+    online: { bg: '#E0E7FF', text: '#6366F1', dark: '#4338CA' },
+    offline: { bg: '#FCE7F3', text: '#DB2777', dark: '#9F1239' },
+  },
+} as const;

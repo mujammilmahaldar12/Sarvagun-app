@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { Chip, AnimatedPressable } from '@/components';
-import { spacing, borderRadius, iconSizes } from '@/constants/designTokens';
+import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
 interface Module {
@@ -88,7 +88,7 @@ export default function ModulesScreen() {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
@@ -96,29 +96,29 @@ export default function ModulesScreen() {
       />
 
       {/* Clean Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
             Modules
           </Text>
 
           {/* Search Bar */}
           <View style={[styles.searchContainer, { 
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.background,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
           }]}>
-            <Ionicons name="search" size={iconSizes.sm} color={theme.colors.textSecondary} />
+            <Ionicons name="search" size={iconSizes.sm} color={theme.textSecondary} />
             <TextInput
               placeholder="Search modules..."
-              placeholderTextColor={theme.colors.textSecondary}
+              placeholderTextColor={theme.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              style={[styles.searchInput, { color: theme.colors.text }]}
+              style={[styles.searchInput, { color: theme.text }]}
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={iconSizes.sm} color={theme.colors.textSecondary} />
+                <Ionicons name="close-circle" size={iconSizes.sm} color={theme.textSecondary} />
               </Pressable>
             )}
           </View>
@@ -144,9 +144,9 @@ export default function ModulesScreen() {
                 style={[
                   styles.categoryChip,
                   {
-                    backgroundColor: isActive ? theme.colors.primary : theme.colors.surface,
+                    backgroundColor: isActive ? theme.primary : theme.surface,
                     borderWidth: 1.5,
-                    borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                    borderColor: isActive ? theme.primary : theme.border,
                   },
                 ]}
                 hapticType="selection"
@@ -156,7 +156,7 @@ export default function ModulesScreen() {
                   style={[
                     styles.categoryText,
                     {
-                      color: isActive ? '#FFFFFF' : theme.colors.text,
+                      color: isActive ? theme.textInverse : theme.text,
                     },
                   ]}
                 >
@@ -169,7 +169,7 @@ export default function ModulesScreen() {
 
         {/* Modules Grid */}
         <View style={styles.modulesSection}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {filteredModules.length} {filteredModules.length === 1 ? 'Module' : 'Modules'} Available
           </Text>
 
@@ -183,7 +183,7 @@ export default function ModulesScreen() {
                   onPress={() => router.push(module.route as any)}
                   style={[
                     styles.moduleCard,
-                    getCardStyle(theme.colors.surface, 'md', 'lg'),
+                    getCardStyle(theme.surface, 'md', 'lg'),
                   ]}
                   hapticType="medium"
                   springConfig="gentle"
@@ -198,7 +198,7 @@ export default function ModulesScreen() {
                     {/* Module Info */}
                     <View style={styles.moduleInfo}>
                       <View style={styles.moduleTitleRow}>
-                        <Text style={[styles.moduleName, { color: theme.colors.text }]}>
+                        <Text style={[styles.moduleName, { color: theme.text }]}>
                           {module.name}
                         </Text>
                         {/* Badge - Active = Purple bg + white text, Others = White bg + primary border */}
@@ -207,24 +207,24 @@ export default function ModulesScreen() {
                             styles.moduleBadge,
                             isActive 
                               ? { backgroundColor: '#8B5CF6' }
-                              : { backgroundColor: theme.colors.surface, borderWidth: 1.5, borderColor: theme.colors.primary }
+                              : { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: theme.primary }
                           ]}>
                             <Text style={[
                               styles.badgeText,
-                              { color: isActive ? '#FFFFFF' : theme.colors.primary }
+                              { color: isActive ? theme.textInverse : theme.primary }
                             ]}>
                               {module.badge}
                             </Text>
                           </View>
                         )}
                       </View>
-                      <Text style={[styles.moduleDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+                      <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
                         {module.description}
                       </Text>
                     </View>
 
                     {/* Arrow Icon */}
-                    <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.colors.textSecondary} />
+                    <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
                   </View>
                 </AnimatedPressable>
               );
@@ -233,11 +233,11 @@ export default function ModulesScreen() {
 
           {filteredModules.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={iconSizes['2xl']} color={theme.colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              <Ionicons name="search-outline" size={iconSizes['2xl']} color={theme.textSecondary} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 No modules found
               </Text>
-              <Text style={[styles.emptySubtext, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
                 Try adjusting your search or filters
               </Text>
             </View>

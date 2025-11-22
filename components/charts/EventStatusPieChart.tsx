@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { COLORS } from '@/constants/colors';
+import { COLORS, designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 interface StatusData {
   status: string;
@@ -21,7 +22,7 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
   return (
     <View
       style={{
-        backgroundColor: theme.colors.surface,
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 20,
         marginBottom: 16,
@@ -32,7 +33,7 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
         elevation: 3,
       }}
     >
-      <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text, marginBottom: 16 }}>
+      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: designSystem.spacing[4] }}>
         Event Status Distribution
       </Text>
 
@@ -41,13 +42,13 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
         <View style={{ 
           alignItems: 'center', 
           padding: 20, 
-          backgroundColor: theme.colors.primary + '10',
+          backgroundColor: theme.primary + '10',
           borderRadius: 12,
         }}>
-          <Text style={{ fontSize: 36, fontWeight: 'bold', color: theme.colors.primary }}>
+          <Text style={{ ...getTypographyStyle('4xl', 'bold'), color: theme.primary }}>
             {total}
           </Text>
-          <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '500' }}>Total Events</Text>
+          <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>Total Events</Text>
         </View>
 
         {/* Status Bars */}
@@ -56,7 +57,7 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
             const percentage = total > 0 ? (item.count / total) * 100 : 0;
 
             return (
-              <View key={index} style={{ gap: 6 }}>
+              <View key={`${item.status}-${index}`} style={{ gap: 6 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <View
@@ -67,18 +68,18 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
                         backgroundColor: item.color,
                       }}
                     />
-                    <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '500' }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
                       {item.status}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary, fontWeight: '600' }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.textSecondary }}>
                     {item.count} ({percentage.toFixed(0)}%)
                   </Text>
                 </View>
                 {/* Progress Bar */}
                 <View style={{ 
                   height: 8, 
-                  backgroundColor: theme.colors.background,
+                  backgroundColor: theme.background,
                   borderRadius: 4,
                   overflow: 'hidden',
                 }}>

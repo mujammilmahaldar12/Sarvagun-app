@@ -101,7 +101,7 @@ export const Button: React.FC<ButtonProps> = ({
         };
       default: // primary
         return {
-          backgroundColor: isDisabled ? theme.primaryDisabled : theme.primary,
+          backgroundColor: isDisabled ? theme.surfaceElevated : theme.primary,
           borderWidth: 0,
           textColor: isDisabled ? theme.textDisabled : theme.textInverse,
         };

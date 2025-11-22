@@ -75,7 +75,7 @@ export default function ProfileScreen() {
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: isDanger ? '#FEE2E2' : theme.colors.primary + '15',
+          backgroundColor: isDanger ? '#FEE2E2' : theme.primary + '15',
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: 14,
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
         <Ionicons
           name={icon}
           size={20}
-          color={isDanger ? '#EF4444' : theme.colors.primary}
+          color={isDanger ? '#EF4444' : theme.primary}
         />
       </View>
 
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
           style={{
             fontSize: 15,
             fontWeight: '500',
-            color: isDanger ? '#EF4444' : theme.colors.text,
+            color: isDanger ? '#EF4444' : theme.text,
             marginBottom: subtitle ? 3 : 0,
           }}
         >
@@ -103,7 +103,7 @@ export default function ProfileScreen() {
           <Text
             style={{
               fontSize: 13,
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
             }}
           >
             {subtitle}
@@ -117,7 +117,7 @@ export default function ProfileScreen() {
           onValueChange={onToggle}
           trackColor={{
             false: isDark ? '#4B5563' : '#D1D5DB',
-            true: theme.colors.primary,
+            true: theme.primary,
           }}
           thumbColor="#FFFFFF"
         />
@@ -127,7 +127,7 @@ export default function ProfileScreen() {
         <Ionicons
           name="chevron-forward"
           size={20}
-          color={theme.colors.textSecondary}
+          color={theme.textSecondary}
         />
       )}
     </Pressable>
@@ -137,17 +137,17 @@ export default function ProfileScreen() {
     <View
       style={{
         height: 1,
-        backgroundColor: theme.colors.border,
+        backgroundColor: theme.border,
         marginLeft: 66,
       }}
     />
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
+        backgroundColor={theme.background}
       />
 
       <ScrollView 
@@ -161,9 +161,9 @@ export default function ProfileScreen() {
             paddingHorizontal: 20,
             paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 56,
             paddingBottom: 20,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
+            borderBottomColor: theme.border,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
                 width: 68,
                 height: 68,
                 borderRadius: 34,
-                backgroundColor: theme.colors.primary,
+                backgroundColor: theme.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 16,
@@ -196,7 +196,7 @@ export default function ProfileScreen() {
                 style={{
                   fontSize: 19,
                   fontWeight: '600',
-                  color: theme.colors.text,
+                  color: theme.text,
                   marginBottom: 5,
                 }}
               >
@@ -205,7 +205,7 @@ export default function ProfileScreen() {
               <Text
                 style={{
                   fontSize: 14,
-                  color: theme.colors.textSecondary,
+                  color: theme.textSecondary,
                   marginBottom: 3,
                 }}
               >
@@ -214,7 +214,7 @@ export default function ProfileScreen() {
               <Text
                 style={{
                   fontSize: 13,
-                  color: theme.colors.textSecondary,
+                  color: theme.textSecondary,
                 }}
               >
                 {user?.designation || 'Employee'}
@@ -232,7 +232,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name="create-outline"
                 size={23}
-                color={theme.colors.primary}
+                color={theme.primary}
               />
             </Pressable>
           </View>
@@ -244,7 +244,7 @@ export default function ProfileScreen() {
             style={{
               fontSize: 13,
               fontWeight: '600',
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               paddingHorizontal: 16,
               paddingTop: 12,
               paddingBottom: 10,
@@ -254,7 +254,7 @@ export default function ProfileScreen() {
           >
             ACCOUNT
           </Text>
-          <View style={{ backgroundColor: theme.colors.surface }}>
+          <View style={{ backgroundColor: theme.surface }}>
             <SettingItem
               icon="person-outline"
               title="Your account"
@@ -277,7 +277,7 @@ export default function ProfileScreen() {
             style={{
               fontSize: 13,
               fontWeight: '600',
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               paddingHorizontal: 16,
               paddingTop: 12,
               paddingBottom: 10,
@@ -287,7 +287,7 @@ export default function ProfileScreen() {
           >
             PREFERENCES
           </Text>
-          <View style={{ backgroundColor: theme.colors.surface }}>
+          <View style={{ backgroundColor: theme.surface }}>
             <SettingItem
               icon="notifications-outline"
               title="Notifications"
@@ -321,7 +321,7 @@ export default function ProfileScreen() {
             style={{
               fontSize: 13,
               fontWeight: '600',
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               paddingHorizontal: 16,
               paddingTop: 12,
               paddingBottom: 10,
@@ -331,7 +331,7 @@ export default function ProfileScreen() {
           >
             APP SETTINGS
           </Text>
-          <View style={{ backgroundColor: theme.colors.surface }}>
+          <View style={{ backgroundColor: theme.surface }}>
             <SettingItem
               icon="language-outline"
               title="Language"
@@ -361,7 +361,7 @@ export default function ProfileScreen() {
             style={{
               fontSize: 13,
               fontWeight: '600',
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               paddingHorizontal: 16,
               paddingTop: 12,
               paddingBottom: 10,
@@ -371,7 +371,7 @@ export default function ProfileScreen() {
           >
             SUPPORT
           </Text>
-          <View style={{ backgroundColor: theme.colors.surface }}>
+          <View style={{ backgroundColor: theme.surface }}>
             <SettingItem
               icon="help-circle-outline"
               title="Help & feedback"
@@ -389,7 +389,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout */}
-        <View style={{ marginTop: 20, backgroundColor: theme.colors.surface }}>
+        <View style={{ marginTop: 20, backgroundColor: theme.surface }}>
           <SettingItem
             icon="log-out-outline"
             title="Logout"
@@ -403,7 +403,7 @@ export default function ProfileScreen() {
           <Text
             style={{
               fontSize: 12,
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               textAlign: 'center',
             }}
           >
@@ -412,7 +412,7 @@ export default function ProfileScreen() {
           <Text
             style={{
               fontSize: 11,
-              color: theme.colors.textSecondary,
+              color: theme.textSecondary,
               textAlign: 'center',
               marginTop: 4,
             }}

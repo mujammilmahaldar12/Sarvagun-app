@@ -1,9 +1,8 @@
 import React from "react";
 import { Text, Pressable, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useThemeStore } from "@/store/themeStore";
-import { spacing, borderRadius, iconSizes, touchTarget, opacity as opacityTokens } from "@/constants/designTokens";
-import { getTypographyStyle, getShadowStyle } from "@/utils/styleHelpers";
+import { useTheme } from "@/hooks/useTheme";
+import { designSystem } from "@/constants/designSystem";
 
 type AppButtonProps = {
   title: string;
@@ -30,7 +29,7 @@ export default function AppButton({
   fullWidth = false,
   style,
 }: AppButtonProps) {
-  const { colors } = useThemeStore();
+  const theme = useTheme();
 
   const isDisabled = disabled || loading;
 
@@ -39,8 +38,8 @@ export default function AppButton({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
-      borderRadius: borderRadius.lg,
+      gap: designSystem.spacing[2],
+      borderRadius: designSystem.borderRadius.lg,
       ...getSizeStyle(),
       opacity: pressed ? 0.9 : 1,
     };
@@ -52,7 +51,7 @@ export default function AppButton({
     if (isDisabled) {
       return {
         ...baseStyle,
-        backgroundColor: colors.border,
+        backgroundColor: theme.border,
         borderWidth: 0,
         opacity: 0.5,
       };
@@ -62,29 +61,32 @@ export default function AppButton({
       case "primary":
         return {
           ...baseStyle,
-          backgroundColor: colors.primary,
+          backgroundColor: theme.primary,
           borderWidth: 0,
-          ...getShadowStyle('md'),
-          // Add subtle depth
-          shadowColor: colors.primary,
-          shadowOpacity: 0.4,
-          shadowRadius: 8,
-          elevation: 5,
+          shadowColor: theme.primary,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 3,
         };
       case "secondary":
         return {
           ...baseStyle,
-          backgroundColor: `${colors.primary}15`,
+          backgroundColor: `${theme.primary}15`,
           borderWidth: 1.5,
-          borderColor: colors.primary,
-          ...getShadowStyle('sm'),
+          borderColor: theme.primary,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 2,
+          elevation: 1,
         };
       case "outline":
         return {
           ...baseStyle,
           backgroundColor: "transparent",
           borderWidth: 2,
-          borderColor: colors.primary,
+          borderColor: theme.primary,
         };
       case "ghost":
         return {
@@ -101,37 +103,40 @@ export default function AppButton({
     switch (size) {
       case "sm":
         return {
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-          minHeight: touchTarget.min,
+          paddingVertical: designSystem.spacing[3],
+          paddingHorizontal: designSystem.spacing[5],
+          minHeight: 44,
         };
       case "lg":
         return {
-          paddingVertical: spacing.xl,
-          paddingHorizontal: spacing['2xl'],
-          minHeight: touchTarget.large,
+          paddingVertical: designSystem.spacing[6],
+          paddingHorizontal: designSystem.spacing[8],
+          minHeight: 56,
         };
       case "md":
       default:
         return {
-          paddingVertical: spacing.lg,
-          paddingHorizontal: spacing.xl,
-          minHeight: touchTarget.comfortable,
+          paddingVertical: designSystem.spacing[5],
+          paddingHorizontal: designSystem.spacing[6],
+          minHeight: 48,
         };
     }
   };
 
   const getTextColor = (): string => {
     if (variant === "primary") {
-      return "#FFFFFF";
+      return theme.textInverse;
     }
-    return colors.primary;
+    return theme.primary;
   };
 
   const getTextStyle = (): TextStyle => {
-    const fontSize = size === "sm" ? "base" : size === "lg" ? "xl" : "lg";
+    const fontSize = size === "sm" ? designSystem.typography.sizes.base : 
+                   size === "lg" ? designSystem.typography.sizes.xl : 
+                   designSystem.typography.sizes.lg;
     return {
-      ...getTypographyStyle(fontSize, "bold"),
+      fontSize,
+      fontWeight: '700',
       color: getTextColor(),
       letterSpacing: 0.3,
     };
@@ -140,11 +145,11 @@ export default function AppButton({
   const getIconSize = (): number => {
     switch (size) {
       case "sm":
-        return iconSizes.xs;
+        return 16;
       case "lg":
-        return iconSizes.md;
+        return 24;
       default:
-        return iconSizes.sm;
+        return 20;
     }
   };
 

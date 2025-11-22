@@ -28,9 +28,9 @@ export default function ModuleHeader({
         paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 60,
         paddingHorizontal: 20,
         paddingBottom: 16,
-        backgroundColor: theme.colors.surface,
+        backgroundColor: theme.surface,
         borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
+        borderBottomColor: theme.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
@@ -48,12 +48,12 @@ export default function ModuleHeader({
                 opacity: pressed ? 0.6 : 1,
               })}
             >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
             </Pressable>
           )}
           <Text
-            className="text-2xl font-bold"
-            style={{ color: theme.colors.text }}
+            className="text-xl font-bold flex-1"
+            style={{ color: theme.text }}
             numberOfLines={1}
           >
             {title}
@@ -69,10 +69,10 @@ export default function ModuleHeader({
                   opacity: pressed ? 0.6 : 1,
                   padding: 8,
                   borderRadius: 10,
-                  backgroundColor: pressed ? `${theme.colors.primary}15` : 'transparent',
+                  backgroundColor: pressed ? theme.primary + '15' : 'transparent',
                 })}
               >
-                <Ionicons name="options-outline" size={22} color={theme.colors.text} />
+                <Ionicons name="options-outline" size={22} color={theme.text} />
               </Pressable>
             )}
           </View>

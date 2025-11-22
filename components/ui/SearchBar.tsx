@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { View, TextInput, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
 
 interface SearchBarProps {
   placeholder?: string;
   onSearch?: (query: string) => void;
   onClear?: () => void;
   autoFocus?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  testID?: string;
 }
 
 export default function SearchBar({
@@ -15,6 +19,9 @@ export default function SearchBar({
   onSearch,
   onClear,
   autoFocus = false,
+  accessibilityLabel,
+  accessibilityHint,
+  testID,
 }: SearchBarProps) {
   const { theme, isDark } = useTheme();
   const [query, setQuery] = useState('');
@@ -45,31 +52,40 @@ export default function SearchBar({
       <Ionicons
         name="search"
         size={20}
-        color={theme.colors.textSecondary}
+        color={theme.textSecondary}
         style={{ marginRight: 8 }}
       />
       <TextInput
         value={query}
         onChangeText={handleChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.textSecondary}
+        placeholderTextColor={theme.textSecondary}
         autoFocus={autoFocus}
+        accessible={true}
+        accessibilityLabel={accessibilityLabel || `Search ${placeholder?.toLowerCase()}`}
+        accessibilityHint={accessibilityHint || "Type to search"}
+        accessibilityRole="search"
+        testID={testID}
         style={{
           flex: 1,
-          fontSize: 15,
-          color: theme.colors.text,
+          fontSize: designSystem.typography.sizes.base,
+          color: theme.text,
           paddingVertical: 0,
         }}
       />
       {query.length > 0 && (
         <Pressable
           onPress={handleClear}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          accessibilityHint="Clears the search input"
           style={({ pressed }) => ({
             opacity: pressed ? 0.6 : 1,
             padding: 4,
           })}
         >
-          <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+          <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
         </Pressable>
       )}
     </View>

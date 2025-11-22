@@ -8,18 +8,21 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeStore } from "@/store/themeStore";
-import { spacing, borderRadius, iconSizes, touchTarget } from "@/constants/designTokens";
+import { designSystem } from "@/constants/designSystem";
 import { getTypographyStyle, getShadowStyle } from "@/utils/styleHelpers";
 import { useHapticFeedback, HapticFeedbackType } from "@/hooks/useHapticFeedback";
 import { SPRING_CONFIGS, SCALE_VALUES, OPACITY_VALUES, SpringConfigType } from "@/utils/animations";
 import RippleEffect from './RippleEffect';
+
+const { spacing, borderRadius, iconSizes } = designSystem;
+const touchTarget = designSystem.layout;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Animated.View);
 
 export interface AnimatedButtonProps {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "outline" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
@@ -34,6 +37,12 @@ export interface AnimatedButtonProps {
   hapticType?: HapticFeedbackType;
   rippleEnabled?: boolean;
   animateOnMount?: boolean;
+  
+  // Accessibility props
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: "button" | "link";
+  testID?: string;
 }
 
 export const AnimatedButton: React.FC<AnimatedButtonProps> = ({ 
@@ -52,6 +61,10 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   hapticType = "medium",
   rippleEnabled = false,
   animateOnMount = false,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole = "button",
+  testID,
 }) => {
   const { colors } = useThemeStore();
   const { triggerHaptic } = useHapticFeedback();
@@ -93,6 +106,11 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   const handlePress = () => {
     if (isDisabled) return;
     onPress();
+  };
+
+  const handleTouchEnd = () => {
+    handlePressOut();
+    handlePress();
   };
 
   const getButtonStyle = (): ViewStyle => {
@@ -151,6 +169,17 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
           backgroundColor: "transparent",
           borderWidth: 0,
         };
+      case "danger":
+        return {
+          ...baseStyle,
+          backgroundColor: colors.error || '#EF4444',
+          borderWidth: 0,
+          ...getShadowStyle('md'),
+          shadowColor: colors.error || '#EF4444',
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          elevation: 5,
+        };
       default:
         return baseStyle;
     }
@@ -160,29 +189,29 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     switch (size) {
       case "sm":
         return {
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-          minHeight: touchTarget.min,
+          paddingVertical: spacing[3],
+          paddingHorizontal: spacing[5],
+          minHeight: 44,
         };
       case "lg":
         return {
-          paddingVertical: spacing.xl,
-          paddingHorizontal: spacing['2xl'],
-          minHeight: touchTarget.large,
+          paddingVertical: spacing[6],
+          paddingHorizontal: spacing[8],
+          minHeight: 56,
         };
       case "md":
       default:
         return {
-          paddingVertical: spacing.lg,
-          paddingHorizontal: spacing.xl,
-          minHeight: touchTarget.comfortable,
+          paddingVertical: spacing[5],
+          paddingHorizontal: spacing[6],
+          minHeight: 48,
         };
     }
   };
 
   const getTextColor = (): string => {
-    if (variant === "primary") {
-      return "#FFFFFF";
+    if (variant === "primary" || variant === "danger") {
+      return colors.textInverse || "#FFFFFF";
     }
     return colors.primary;
   };
@@ -218,6 +247,15 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       onTouchStart={handlePressIn}
       onTouchEnd={handlePressOut}
       onTouchCancel={handlePressOut}
+      accessible={true}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: loading,
+      }}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator size="small" color={getTextColor()} />
@@ -253,9 +291,17 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     <AnimatedPressable
       style={[getButtonStyle(), animatedStyle, style]}
       onTouchStart={handlePressIn}
-      onTouchEnd={handlePressOut}
+      onTouchEnd={handleTouchEnd}
       onTouchCancel={handlePressOut}
-      onTouchMove={handlePress}
+      accessible={true}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: loading,
+      }}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator size="small" color={getTextColor()} />

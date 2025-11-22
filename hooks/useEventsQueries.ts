@@ -1,10 +1,12 @@
 /**
  * Enhanced Events Service with React Query Integration
  * Professional data fetching, caching, and mutation handling
+ * Enhanced with authentication state management
  */
 import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query';
 import { queryKeys, queryClient, cacheUtils } from '../lib/queryClient';
-import eventsService from './events.service';
+import { useAuthStore } from '../store/authStore';
+import eventsService from '../services/events.service';
 import type { Event, Lead, Client, Venue } from '../types/events';
 
 // Types for API responses with pagination
@@ -40,11 +42,14 @@ interface LeadFilters {
 
 // Fetch events with advanced filtering and pagination
 export const useEvents = (filters: EventFilters = {}) => {
+  const { isAuthenticated } = useAuthStore();
+  
   return useQuery({
     queryKey: queryKeys.events.list(filters),
     queryFn: () => eventsService.getEvents(filters),
     placeholderData: (previousData) => previousData,
     staleTime: 2 * 60 * 1000, // 2 minutes for events data
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
 };
 

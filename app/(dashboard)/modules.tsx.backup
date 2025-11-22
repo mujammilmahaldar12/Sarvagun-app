@@ -71,10 +71,10 @@ export default function ModulesScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <View className="flex-1" style={{ backgroundColor: theme.background }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
+        backgroundColor={theme.background}
       />
       
       {/* Header */}
@@ -82,20 +82,20 @@ export default function ModulesScreen() {
         className="px-6 pt-12 pb-6"
         style={{
           paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight! + 16 : 48,
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.surface,
           borderBottomWidth: 1,
           borderBottomColor: isDark ? '#374151' : '#E5E7EB',
         }}
       >
         <Text
           className="text-3xl font-bold mb-2"
-          style={{ color: theme.colors.text }}
+          style={{ color: theme.text }}
         >
           Modules
         </Text>
         <Text
           className="text-base"
-          style={{ color: theme.colors.textSecondary, fontSize: 15 }}
+          style={{ color: theme.textSecondary, fontSize: 15 }}
         >
           Access all ERP modules from here
         </Text>
@@ -119,7 +119,7 @@ export default function ModulesScreen() {
             <View
               className="rounded-2xl p-5 flex-row items-center"
               style={{
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.surface,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.08,
@@ -141,13 +141,13 @@ export default function ModulesScreen() {
               <View className="flex-1">
                 <Text
                   className="text-lg font-bold mb-1"
-                  style={{ color: theme.colors.text }}
+                  style={{ color: theme.text }}
                 >
                   {module.name}
                 </Text>
                 <Text
                   className="text-sm"
-                  style={{ color: theme.colors.textSecondary, fontSize: 14 }}
+                  style={{ color: theme.textSecondary, fontSize: 14 }}
                 >
                   {module.description}
                 </Text>
@@ -157,7 +157,7 @@ export default function ModulesScreen() {
               <Ionicons
                 name="chevron-forward"
                 size={24}
-                color={theme.colors.textSecondary}
+                color={theme.textSecondary}
               />
             </View>
           </Pressable>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { designSystem } from '@/constants/designSystem';
 
 interface ActionButtonProps {
   onPress: () => void;
@@ -31,39 +32,39 @@ export default function ActionButton({
     switch (variant) {
       case 'primary':
         return {
-          background: theme.colors.primary,
-          backgroundPressed: theme.colors.primary + 'dd',
-          text: '#FFFFFF',
+          background: theme.primary,
+          backgroundPressed: theme.primaryPressed,
+          text: theme.textInverse,
         };
       case 'secondary':
         return {
-          background: theme.colors.surface + '20',
-          backgroundPressed: theme.colors.surface + '40',
-          text: theme.colors.text,
+          background: theme.surfaceElevated,
+          backgroundPressed: `${theme.surfaceElevated}80`,
+          text: theme.text,
         };
       case 'danger':
         return {
-          background: '#DC2626',
-          backgroundPressed: '#DC2626dd',
-          text: '#FFFFFF',
+          background: theme.error,
+          backgroundPressed: `${theme.error}dd`,
+          text: theme.textInverse,
         };
       case 'success':
         return {
-          background: '#059669',
-          backgroundPressed: '#059669dd',
-          text: '#FFFFFF',
+          background: theme.success,
+          backgroundPressed: `${theme.success}dd`,
+          text: theme.textInverse,
         };
       case 'warning':
         return {
-          background: '#F59E0B',
-          backgroundPressed: '#F59E0Bdd',
-          text: '#FFFFFF',
+          background: theme.warning,
+          backgroundPressed: `${theme.warning}dd`,
+          text: theme.textInverse,
         };
       default:
         return {
-          background: theme.colors.primary,
-          backgroundPressed: theme.colors.primary + 'dd',
-          text: '#FFFFFF',
+          background: theme.primary,
+          backgroundPressed: theme.primaryPressed,
+          text: theme.textInverse,
         };
     }
   };
@@ -72,35 +73,35 @@ export default function ActionButton({
     switch (size) {
       case 'small':
         return {
-          paddingHorizontal: 8,
-          paddingVertical: 4,
-          borderRadius: 4,
-          fontSize: 11,
-          iconSize: 12,
+          paddingHorizontal: designSystem.spacing[2],
+          paddingVertical: designSystem.spacing[1],
+          borderRadius: designSystem.borderRadius.sm,
+          fontSize: designSystem.typography.sizes.xs,
+          iconSize: designSystem.iconSizes.xs,
         };
       case 'medium':
         return {
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: 6,
-          fontSize: 12,
-          iconSize: 14,
+          paddingHorizontal: designSystem.spacing[3],
+          paddingVertical: designSystem.spacing[1],
+          borderRadius: designSystem.borderRadius.sm,
+          fontSize: designSystem.typography.sizes.xs,
+          iconSize: designSystem.iconSizes.xs,
         };
       case 'large':
         return {
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          borderRadius: 8,
-          fontSize: 14,
-          iconSize: 16,
+          paddingHorizontal: designSystem.spacing[4],
+          paddingVertical: designSystem.spacing[2],
+          borderRadius: designSystem.borderRadius.md,
+          fontSize: designSystem.typography.sizes.sm,
+          iconSize: designSystem.iconSizes.sm,
         };
       default:
         return {
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: 6,
-          fontSize: 12,
-          iconSize: 14,
+          paddingHorizontal: designSystem.spacing[3],
+          paddingVertical: designSystem.spacing[1],
+          borderRadius: designSystem.borderRadius.sm,
+          fontSize: designSystem.typography.sizes.xs,
+          iconSize: designSystem.iconSizes.xs,
         };
     }
   };

@@ -1,135 +1,302 @@
-import React, { useState } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert } from 'react-native';
+/**
+ * Add/Edit Sale Screen
+ * Professional form with event selection, installments management, and validation
+ */
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, ScrollView, TextInput, Pressable, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import AppButton from '@/components/ui/AppButton';
+import DatePickerInput from '@/components/ui/DatePickerInput';
+import DropdownField from '@/components/ui/DropdownField';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useCreateSale, useUpdateSale, useSale } from '@/hooks/useFinanceQueries';
+import { useEvents } from '@/hooks/useEventsQueries';
+import eventsService from '@/services/events.service';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
+import type { Event } from '@/types/events';
+import type { SalesPayment } from '@/types/finance';
 
-const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'UPI', 'Credit Card', 'Cheque'];
-const PAYMENT_TERMS = ['Immediate', 'Net 15', 'Net 30', 'Net 45', 'Net 60', 'Custom'];
+const PAYMENT_STATUS_OPTIONS = [
+  { label: 'Completed', value: 'completed' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Not Yet', value: 'not_yet' },
+];
+
+const PAYMENT_MODE_OPTIONS = [
+  { label: 'Cash', value: 'cash' },
+  { label: 'Cheque', value: 'cheque' },
+  { label: 'UPI', value: 'upi' },
+  { label: 'Bank Transfer', value: 'bank_transfer' },
+];
 
 export default function AddSaleScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const user = useAuthStore((state) => state.user);
+  
+  const saleId = params.id ? Number(params.id) : null;
+  const isEditMode = !!saleId;
+
+  // Mutations
+  const createSaleMutation = useCreateSale();
+  const updateSaleMutation = useUpdateSale();
+  
+  // Fetch existing sale if editing
+  const { data: existingSale, isLoading: loadingSale } = useSale(saleId || 0);
+  
+  // Fetch events for selection
+  const { data: eventsResponse, isLoading: loadingEvents } = useEvents({});
+  const events = useMemo(() => {
+    if (!eventsResponse) return [];
+    return Array.isArray(eventsResponse) ? eventsResponse : eventsResponse.results || [];
+  }, [eventsResponse]);
+
+  // State
+  const [loading, setLoading] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    // Customer Information
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    customerAddress: '',
-    
-    // Product/Service Details
-    productService: '',
-    description: '',
-    quantity: '1',
-    unitPrice: '',
-    
-    // Financial Details
+    eventId: 0,
     amount: '',
-    taxRate: '18',
-    taxAmount: '',
-    totalAmount: '',
-    
-    // Invoice Details
-    invoiceDate: '',
-    dueDate: '',
-    paymentTerms: '',
-    paymentMethod: '',
-    
-    // Additional Details
-    notes: '',
+    discount: '0',
+    date: new Date().toISOString().split('T')[0],
+    payment_status: 'not_yet' as 'completed' | 'pending' | 'not_yet',
   });
 
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [installments, setInstallments] = useState<Array<Partial<SalesPayment>>>([]);
+  const [editingInstallment, setEditingInstallment] = useState<Partial<SalesPayment> | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number>(-1);
 
-  const updateField = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
-    
-    // Auto-calculate amounts
-    if (field === 'amount' || field === 'taxRate') {
-      const amount = parseFloat(field === 'amount' ? value : formData.amount) || 0;
-      const taxRate = parseFloat(field === 'taxRate' ? value : formData.taxRate) || 0;
-      const taxAmount = (amount * taxRate) / 100;
-      const totalAmount = amount + taxAmount;
+  // Load existing sale data in edit mode
+  useEffect(() => {
+    if (isEditMode && existingSale) {
+      const eventObj = typeof existingSale.event === 'object' ? existingSale.event : null;
       
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        taxAmount: taxAmount.toFixed(2),
-        totalAmount: totalAmount.toFixed(2),
-      }));
+      setFormData({
+        eventId: typeof existingSale.event === 'number' ? existingSale.event : existingSale.event?.id || 0,
+        amount: String(existingSale.amount || ''),
+        discount: String(existingSale.discount || '0'),
+        date: existingSale.date || new Date().toISOString().split('T')[0],
+        payment_status: existingSale.payment_status || 'not_yet',
+      });
+      
+      if (eventObj) {
+        setSelectedEvent(eventObj);
+      } else if (existingSale.event) {
+        // Fetch event details if only ID is provided
+        eventsService.getEvent(typeof existingSale.event === 'number' ? existingSale.event : existingSale.event.id)
+          .then(event => setSelectedEvent(event))
+          .catch(console.error);
+      }
+      
+      if (existingSale.payments && existingSale.payments.length > 0) {
+        setInstallments(existingSale.payments.map(p => ({
+          payment_amount: p.payment_amount,
+          payment_date: p.payment_date,
+          mode_of_payment: p.mode_of_payment,
+          notes: p.notes,
+        })));
+      }
     }
+  }, [isEditMode, existingSale]);
+
+  const updateField = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value });
   };
 
-  const calculateFromUnitPrice = () => {
-    const quantity = parseFloat(formData.quantity) || 0;
-    const unitPrice = parseFloat(formData.unitPrice) || 0;
-    const amount = quantity * unitPrice;
-    
-    updateField('amount', amount.toString());
+  // Filter events based on search
+  const filteredEvents = useMemo(() => {
+    if (!eventSearchQuery.trim()) return events;
+    const query = eventSearchQuery.toLowerCase();
+    return events.filter(event =>
+      event.name?.toLowerCase().includes(query) ||
+      event.client?.name?.toLowerCase().includes(query)
+    );
+  }, [events, eventSearchQuery]);
+
+  // Calculate net amount
+  const netAmount = useMemo(() => {
+    const amount = Number(formData.amount) || 0;
+    const discount = Number(formData.discount) || 0;
+    return Math.max(0, amount - discount);
+  }, [formData.amount, formData.discount]);
+
+  // Calculate total received from installments
+  const totalReceived = useMemo(() => {
+    return installments.reduce((sum, inst) => sum + (Number(inst.payment_amount) || 0), 0);
+  }, [installments]);
+
+  // Calculate balance due
+  const balanceDue = useMemo(() => {
+    return Math.max(0, netAmount - totalReceived);
+  }, [netAmount, totalReceived]);
+
+  // Handle event selection
+  const handleSelectEvent = (event: Event) => {
+    setSelectedEvent(event);
+    updateField('eventId', event.id);
+    setShowEventModal(false);
+    setEventSearchQuery('');
   };
 
-  const pickDocument = async () => {
-    // TODO: Implement document picker
-    console.log('Pick document');
-    Alert.alert('Info', 'Document picker will be implemented with expo-document-picker');
+  // Add or update installment
+  const handleSaveInstallment = () => {
+    if (!editingInstallment?.payment_amount || Number(editingInstallment.payment_amount) <= 0) {
+      Alert.alert('Error', 'Please enter a valid payment amount');
+      return;
+    }
+    if (!editingInstallment?.payment_date) {
+      Alert.alert('Error', 'Please select payment date');
+      return;
+    }
+    if (!editingInstallment?.mode_of_payment) {
+      Alert.alert('Error', 'Please select payment mode');
+      return;
+    }
+
+    if (editingIndex >= 0) {
+      // Update existing
+      const updated = [...installments];
+      updated[editingIndex] = editingInstallment;
+      setInstallments(updated);
+    } else {
+      // Add new
+      setInstallments([...installments, editingInstallment]);
+    }
+
+    setEditingInstallment(null);
+    setEditingIndex(-1);
+    setShowPaymentModal(false);
   };
 
-  const removeDocument = (index: number) => {
-    setDocuments(documents.filter((_, i) => i !== index));
+  // Remove installment
+  const handleRemoveInstallment = (index: number) => {
+    Alert.alert(
+      'Remove Payment',
+      'Are you sure you want to remove this payment installment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => setInstallments(installments.filter((_, i) => i !== index)),
+        },
+      ]
+    );
   };
 
-  const handleSubmit = () => {
+  // Open payment modal for new installment
+  const handleAddInstallment = () => {
+    setEditingInstallment({
+      payment_amount: 0,
+      payment_date: new Date().toISOString().split('T')[0],
+      mode_of_payment: 'cash',
+      notes: '',
+    });
+    setEditingIndex(-1);
+    setShowPaymentModal(true);
+  };
+
+  // Open payment modal for editing
+  const handleEditInstallment = (index: number) => {
+    setEditingInstallment({ ...installments[index] });
+    setEditingIndex(index);
+    setShowPaymentModal(true);
+  };
+
+  const handleSubmit = async () => {
     // Validation
-    if (!formData.customerName.trim()) {
-      Alert.alert('Error', 'Please enter customer name');
+    if (!formData.eventId) {
+      Alert.alert('Error', 'Please select an event');
       return;
     }
-    if (!formData.productService.trim()) {
-      Alert.alert('Error', 'Please enter product/service name');
+    if (!formData.amount.trim() || Number(formData.amount) <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount greater than 0');
       return;
     }
-    if (!formData.amount.trim()) {
-      Alert.alert('Error', 'Please enter amount');
+    if (Number(formData.discount) < 0) {
+      Alert.alert('Error', 'Discount cannot be negative');
       return;
     }
-    if (!formData.invoiceDate.trim()) {
-      Alert.alert('Error', 'Please enter invoice date');
+    if (Number(formData.discount) > Number(formData.amount)) {
+      Alert.alert('Error', 'Discount cannot be greater than amount');
+      return;
+    }
+    if (!formData.date) {
+      Alert.alert('Error', 'Please select sale date');
       return;
     }
 
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+    // Validate installments total doesn't exceed net amount
+    if (totalReceived > netAmount) {
+      Alert.alert(
+        'Error',
+        `Total received (₹${totalReceived.toLocaleString('en-IN')}) cannot exceed net amount (₹${netAmount.toLocaleString('en-IN')})`
+      );
       return;
     }
 
-    // Submit logic here
-    console.log('Submitting sale:', formData);
-    Alert.alert('Success', 'Sale created successfully', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    setLoading(true);
+    try {
+      const saleData: any = {
+        event: formData.eventId,
+        amount: Number(formData.amount),
+        discount: Number(formData.discount) || 0,
+        date: formData.date,
+        payment_status: formData.payment_status,
+      };
+
+      // Add payments if any
+      if (installments.length > 0) {
+        saleData.payments = installments.map(inst => ({
+          payment_amount: Number(inst.payment_amount),
+          payment_date: inst.payment_date,
+          mode_of_payment: inst.mode_of_payment,
+          notes: inst.notes || '',
+        }));
+      }
+
+      if (isEditMode && saleId) {
+        await updateSaleMutation.mutateAsync({ id: saleId, data: saleData });
+        Alert.alert('Success', 'Sale updated successfully', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else {
+        await createSaleMutation.mutateAsync(saleData);
+        Alert.alert('Success', 'Sale created successfully', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      }
+    } catch (error: any) {
+      console.error('Error saving sale:', error);
+      Alert.alert('Error', error.message || 'Failed to save sale');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Reusable components
   const FormInput = ({
     label,
     value,
     onChangeText,
     placeholder,
     keyboardType = 'default',
-    multiline = false,
     prefix,
-    suffix,
     required = false,
     editable = true,
   }: any) => (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
         {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -137,8 +304,8 @@ export default function AddSaleScreen() {
           <Text style={{
             position: 'absolute',
             left: 12,
-            fontSize: 14,
-            color: theme.colors.text,
+            ...getTypographyStyle('sm', 'regular'),
+            color: theme.text,
             zIndex: 1,
           }}>
             {prefix}
@@ -148,180 +315,106 @@ export default function AddSaleScreen() {
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
+          placeholderTextColor={theme.textSecondary}
           keyboardType={keyboardType}
-          multiline={multiline}
-          numberOfLines={multiline ? 4 : 1}
           editable={editable}
           style={{
             flex: 1,
             borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor: theme.border,
             borderRadius: 8,
             padding: 12,
-            paddingLeft: prefix ? 28 : 12,
-            paddingRight: suffix ? 40 : 12,
-            fontSize: 14,
-            color: theme.colors.text,
-            backgroundColor: editable ? theme.colors.surface : '#9CA3AF' + '20',
-            textAlignVertical: multiline ? 'top' : 'center',
-            minHeight: multiline ? 100 : 44,
+            paddingLeft: prefix ? 32 : 12,
+            ...getTypographyStyle('sm', 'regular'),
+            color: theme.text,
+            backgroundColor: editable ? theme.surface : theme.border + '40',
+            minHeight: 44,
           }}
         />
-        {suffix && (
-          <Text style={{
-            position: 'absolute',
-            right: 12,
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-          }}>
-            {suffix}
-          </Text>
-        )}
       </View>
     </View>
   );
 
-  const SelectInput = ({ label, value, options, onSelect, required = false }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
-        {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
+  const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
+    <View style={{ gap: 4 }}>
+      <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginTop: 8 }}>
+        {title}
       </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map((option: string) => (
-          <Pressable
-            key={option}
-            onPress={() => onSelect(option)}
-            style={({ pressed }) => ({
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: value === option ? theme.colors.primary : theme.colors.border,
-              backgroundColor: pressed
-                ? theme.colors.primary + '10'
-                : value === option
-                ? theme.colors.primary + '20'
-                : theme.colors.surface,
-            })}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                color: value === option ? theme.colors.primary : theme.colors.text,
-                fontWeight: value === option ? '600' : 'normal',
-              }}
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      {subtitle && (
+        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+          {subtitle}
+        </Text>
+      )}
     </View>
   );
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 8 }}>
-      {title}
-    </Text>
-  );
+  // Loading state
+  if (loadingSale || loadingEvents) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <ModuleHeader title={isEditMode ? 'Edit Sale' : 'Create Sale'} showBack />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 12 }}>
+            Loading...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
-        title="Create Sale"
+        title={isEditMode ? 'Edit Sale' : 'Create Sale'}
         showBack
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
-        {/* Customer Information */}
+        {/* Event Selection */}
         <View style={{ gap: 16 }}>
-          <SectionHeader title="Customer Information" />
-          <FormInput
-            label="Customer Name"
-            value={formData.customerName}
-            onChangeText={(text: string) => updateField('customerName', text)}
-            placeholder="Enter customer name"
+          <SectionHeader title="Event Details" subtitle="Select the event for this sale" />
+          
+          <DropdownField
+            label="Select Event"
+            value={selectedEvent?.name || ''}
+            placeholder="Tap to select event"
+            onPress={() => setShowEventModal(true)}
             required
           />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Email"
-                value={formData.customerEmail}
-                onChangeText={(text: string) => updateField('customerEmail', text)}
-                placeholder="email@example.com"
-                keyboardType="email-address"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Phone"
-                value={formData.customerPhone}
-                onChangeText={(text: string) => updateField('customerPhone', text)}
-                placeholder="1234567890"
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
-          <FormInput
-            label="Address"
-            value={formData.customerAddress}
-            onChangeText={(text: string) => updateField('customerAddress', text)}
-            placeholder="Enter customer address"
-            multiline
-          />
-        </View>
 
-        {/* Product/Service Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Product/Service Details" />
-          <FormInput
-            label="Product/Service Name"
-            value={formData.productService}
-            onChangeText={(text: string) => updateField('productService', text)}
-            placeholder="Enter product or service name"
-            required
-          />
-          <FormInput
-            label="Description"
-            value={formData.description}
-            onChangeText={(text: string) => updateField('description', text)}
-            placeholder="Enter description"
-            multiline
-          />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Quantity"
-                value={formData.quantity}
-                onChangeText={(text: string) => {
-                  updateField('quantity', text);
-                  calculateFromUnitPrice();
-                }}
-                placeholder="1"
-                keyboardType="numeric"
-              />
+          {selectedEvent && (
+            <View style={{
+              padding: 12,
+              backgroundColor: theme.primary + '10',
+              borderRadius: 8,
+              borderLeftWidth: 4,
+              borderLeftColor: theme.primary,
+            }}>
+              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+                Client
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
+                {selectedEvent.client?.name || 'N/A'}
+              </Text>
+              {selectedEvent.start_date && (
+                <>
+                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary, marginTop: 8 }}>
+                    Event Date
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
+                    {new Date(selectedEvent.start_date).toLocaleDateString('en-IN')}
+                  </Text>
+                </>
+              )}
             </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Unit Price"
-                value={formData.unitPrice}
-                onChangeText={(text: string) => {
-                  updateField('unitPrice', text);
-                  calculateFromUnitPrice();
-                }}
-                placeholder="0"
-                keyboardType="numeric"
-                prefix="₹"
-              />
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Financial Details */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Financial Details" />
+          
           <FormInput
             label="Amount"
             value={formData.amount}
@@ -331,129 +424,172 @@ export default function AddSaleScreen() {
             prefix="₹"
             required
           />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Tax Rate"
-                value={formData.taxRate}
-                onChangeText={(text: string) => updateField('taxRate', text)}
-                placeholder="18"
-                keyboardType="numeric"
-                suffix="%"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Tax Amount"
-                value={formData.taxAmount}
-                onChangeText={(text: string) => {}}
-                placeholder="0"
-                keyboardType="numeric"
-                prefix="₹"
-                editable={false}
-              />
-            </View>
-          </View>
+
+          <FormInput
+            label="Discount"
+            value={formData.discount}
+            onChangeText={(text: string) => updateField('discount', text)}
+            placeholder="0"
+            keyboardType="numeric"
+            prefix="₹"
+          />
+
+          {/* Summary Card */}
           <View style={{
             padding: 16,
-            backgroundColor: theme.colors.primary + '20',
-            borderRadius: 8,
-            borderWidth: 2,
-            borderColor: theme.colors.primary,
+            backgroundColor: theme.surface,
+            borderRadius: 12,
+            gap: 12,
+            ...designSystem.shadows.sm,
           }}>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 4 }}>
-              Total Amount
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                Gross Amount
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                ₹{(Number(formData.amount) || 0).toLocaleString('en-IN')}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                Discount
+              </Text>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
+                - ₹{(Number(formData.discount) || 0).toLocaleString('en-IN')}
+              </Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: theme.border }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                Net Amount
+              </Text>
+              <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.primary }}>
+                ₹{netAmount.toLocaleString('en-IN')}
+              </Text>
+            </View>
+          </View>
+
+          <DatePickerInput
+            label="Sale Date"
+            value={formData.date}
+            onDateSelect={(date) => updateField('date', date)}
+            placeholder="Select sale date"
+          />
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+              Payment Status <Text style={{ color: '#EF4444' }}>*</Text>
             </Text>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>
-              ₹{formData.totalAmount || '0'}
-            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {PAYMENT_STATUS_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => updateField('payment_status', option.value)}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: formData.payment_status === option.value ? theme.primary : theme.border,
+                    backgroundColor: pressed
+                      ? theme.primary + '10'
+                      : formData.payment_status === option.value
+                      ? theme.primary + '20'
+                      : theme.surface,
+                  })}
+                >
+                  <Text
+                    style={{
+                      ...getTypographyStyle('sm', formData.payment_status === option.value ? 'semibold' : 'regular'),
+                      color: formData.payment_status === option.value ? theme.primary : theme.text,
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* Invoice Details */}
+        {/* Payment Installments */}
         <View style={{ gap: 16 }}>
-          <SectionHeader title="Invoice Details" />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Invoice Date"
-                value={formData.invoiceDate}
-                onChangeText={(text: string) => updateField('invoiceDate', text)}
-                placeholder="DD-MM-YYYY"
-                required
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Due Date"
-                value={formData.dueDate}
-                onChangeText={(text: string) => updateField('dueDate', text)}
-                placeholder="DD-MM-YYYY"
-              />
-            </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <SectionHeader title="Payment Installments" subtitle="Add multiple payment installments" />
           </View>
-          <SelectInput
-            label="Payment Terms"
-            value={formData.paymentTerms}
-            options={PAYMENT_TERMS}
-            onSelect={(value: string) => updateField('paymentTerms', value)}
-          />
-          <SelectInput
-            label="Payment Method"
-            value={formData.paymentMethod}
-            options={PAYMENT_METHODS}
-            onSelect={(value: string) => updateField('paymentMethod', value)}
-          />
-        </View>
 
-        {/* Additional Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Additional Details" />
-          <FormInput
-            label="Notes"
-            value={formData.notes}
-            onChangeText={(text: string) => updateField('notes', text)}
-            placeholder="Add any additional notes or terms"
-            multiline
-          />
-        </View>
-
-        {/* Documents */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader title="Supporting Documents" />
           <AppButton
-            title="Upload Documents"
-            onPress={pickDocument}
+            title="Add Installment"
+            onPress={handleAddInstallment}
             variant="secondary"
             fullWidth
-            leftIcon="cloud-upload-outline"
+            leftIcon="add-circle-outline"
           />
 
-          {documents.length > 0 && (
+          {installments.length > 0 && (
             <View style={{ gap: 8 }}>
-              {documents.map((doc, index) => (
+              {installments.map((inst, index) => (
                 <View
                   key={index}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: 12,
+                    padding: 14,
                     borderRadius: 8,
-                    backgroundColor: theme.colors.surface,
+                    backgroundColor: theme.surface,
+                    borderWidth: 1,
+                    borderColor: theme.border,
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <Ionicons name="document" size={20} color={theme.colors.primary} />
-                    <Text style={{ color: theme.colors.text, fontSize: 14, flex: 1 }}>
-                      {doc.name}
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                      ₹{Number(inst.payment_amount).toLocaleString('en-IN')}
                     </Text>
+                    <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                      {new Date(inst.payment_date!).toLocaleDateString('en-IN')} • {inst.mode_of_payment}
+                    </Text>
+                    {inst.notes && (
+                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }} numberOfLines={1}>
+                        {inst.notes}
+                      </Text>
+                    )}
                   </View>
-                  <Pressable onPress={() => removeDocument(index)}>
-                    <Ionicons name="close-circle" size={24} color="#EF4444" />
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Pressable onPress={() => handleEditInstallment(index)}>
+                      <Ionicons name="create-outline" size={20} color={theme.primary} />
+                    </Pressable>
+                    <Pressable onPress={() => handleRemoveInstallment(index)}>
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </Pressable>
+                  </View>
                 </View>
               ))}
+
+              {/* Payment Summary */}
+              <View style={{
+                padding: 14,
+                backgroundColor: theme.primary + '10',
+                borderRadius: 8,
+                gap: 8,
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
+                    Total Received
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'bold'), color: '#10B981' }}>
+                    ₹{totalReceived.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
+                    Balance Due
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'bold'), color: balanceDue > 0 ? '#EF4444' : '#10B981' }}>
+                    ₹{balanceDue.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
             </View>
           )}
         </View>
@@ -461,14 +597,232 @@ export default function AddSaleScreen() {
         {/* Submit Button */}
         <View style={{ marginTop: 8, marginBottom: 20 }}>
           <AppButton
-            title="Create Invoice"
+            title={isEditMode ? 'Update Sale' : 'Create Sale'}
             onPress={handleSubmit}
+            loading={loading}
             fullWidth
             size="lg"
-            leftIcon="document-text"
+            leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
           />
         </View>
       </ScrollView>
+
+      {/* Event Selection Modal */}
+      <Modal
+        visible={showEventModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEventModal(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setShowEventModal(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '80%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ gap: 16 }}>
+              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
+                Select Event
+              </Text>
+
+              <TextInput
+                value={eventSearchQuery}
+                onChangeText={setEventSearchQuery}
+                placeholder="Search events..."
+                placeholderTextColor={theme.textSecondary}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 8,
+                  padding: 12,
+                  ...getTypographyStyle('sm', 'regular'),
+                  color: theme.text,
+                  backgroundColor: theme.background,
+                }}
+              />
+
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                {filteredEvents.length === 0 ? (
+                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }}>
+                    No events found
+                  </Text>
+                ) : (
+                  filteredEvents.map((event) => (
+                    <Pressable
+                      key={event.id}
+                      onPress={() => handleSelectEvent(event)}
+                      style={({ pressed }) => ({
+                        padding: 14,
+                        borderRadius: 8,
+                        backgroundColor: pressed ? theme.primary + '10' : 'transparent',
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.border,
+                      })}
+                    >
+                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                        {event.name}
+                      </Text>
+                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 4 }}>
+                        {event.client?.name || 'N/A'} • {new Date(event.start_date).toLocaleDateString('en-IN')}
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
+
+              <AppButton
+                title="Cancel"
+                onPress={() => setShowEventModal(false)}
+                variant="secondary"
+                fullWidth
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Payment Installment Modal */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setShowPaymentModal(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '80%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 16 }}>
+                <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
+                  {editingIndex >= 0 ? 'Edit' : 'Add'} Payment Installment
+                </Text>
+
+                <FormInput
+                  label="Payment Amount"
+                  value={String(editingInstallment?.payment_amount || '')}
+                  onChangeText={(text: string) => 
+                    setEditingInstallment({ ...editingInstallment, payment_amount: Number(text) || 0 })
+                  }
+                  placeholder="0"
+                  keyboardType="numeric"
+                  prefix="₹"
+                  required
+                />
+
+                <DatePickerInput
+                  label="Payment Date"
+                  value={editingInstallment?.payment_date || ''}
+                  onDateSelect={(date) => 
+                    setEditingInstallment({ ...editingInstallment, payment_date: date })
+                  }
+                  placeholder="Select payment date"
+                />
+
+                <View style={{ gap: 8 }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                    Payment Mode <Text style={{ color: '#EF4444' }}>*</Text>
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {PAYMENT_MODE_OPTIONS.map((option) => (
+                      <Pressable
+                        key={option.value}
+                        onPress={() => 
+                          setEditingInstallment({ ...editingInstallment, mode_of_payment: option.value as any })
+                        }
+                        style={({ pressed }) => ({
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: editingInstallment?.mode_of_payment === option.value ? theme.primary : theme.border,
+                          backgroundColor: pressed
+                            ? theme.primary + '10'
+                            : editingInstallment?.mode_of_payment === option.value
+                            ? theme.primary + '20'
+                            : theme.background,
+                        })}
+                      >
+                        <Text
+                          style={{
+                            ...getTypographyStyle('sm', editingInstallment?.mode_of_payment === option.value ? 'semibold' : 'regular'),
+                            color: editingInstallment?.mode_of_payment === option.value ? theme.primary : theme.text,
+                          }}
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={{ gap: 8 }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                    Notes (Optional)
+                  </Text>
+                  <TextInput
+                    value={editingInstallment?.notes || ''}
+                    onChangeText={(text: string) => 
+                      setEditingInstallment({ ...editingInstallment, notes: text })
+                    }
+                    placeholder="Add notes about this payment"
+                    placeholderTextColor={theme.textSecondary}
+                    multiline
+                    numberOfLines={3}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      borderRadius: 8,
+                      padding: 12,
+                      ...getTypographyStyle('sm', 'regular'),
+                      color: theme.text,
+                      backgroundColor: theme.background,
+                      textAlignVertical: 'top',
+                      minHeight: 80,
+                    }}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                  <AppButton
+                    title="Cancel"
+                    onPress={() => {
+                      setShowPaymentModal(false);
+                      setEditingInstallment(null);
+                      setEditingIndex(-1);
+                    }}
+                    variant="secondary"
+                    fullWidth
+                  />
+                  <AppButton
+                    title={editingIndex >= 0 ? 'Update' : 'Add'}
+                    onPress={handleSaveInstallment}
+                    fullWidth
+                  />
+                </View>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

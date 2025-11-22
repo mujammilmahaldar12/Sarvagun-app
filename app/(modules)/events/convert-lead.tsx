@@ -20,6 +20,7 @@ import { Button, FormField } from '@/components';
 import DatePickerInput from '@/components/ui/DatePickerInput';
 import { useTheme } from '@/hooks/useTheme';
 import { spacing, typography, borderRadius } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 import eventsService from '@/services/events.service';
 import type { Lead, Venue, ClientCategory, Organisation } from '@/types/events';
 
@@ -324,7 +325,7 @@ export default function ConvertLeadScreen() {
               borderBottomColor: theme.border,
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
+            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
               {title}
             </Text>
             <Pressable onPress={onClose} android_disableSound={true} style={{ padding: 4 }}>
@@ -336,7 +337,7 @@ export default function ConvertLeadScreen() {
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
             {data.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <Text style={{ fontSize: 16, color: theme.textSecondary }}>
+                <Text style={{ ...getTypographyStyle('base'), color: theme.textSecondary }}>
                   No options available
                 </Text>
               </View>
@@ -363,9 +364,8 @@ export default function ConvertLeadScreen() {
                     >
                       <Text
                         style={{
-                          fontSize: 15,
+                          ...getTypographyStyle('base', isSelected ? 'semibold' : 'regular'),
                           color: isSelected ? theme.primary : theme.text,
-                          fontWeight: isSelected ? '600' : '400',
                         }}
                       >
                         {labelExtractor(item)}
@@ -390,7 +390,7 @@ export default function ConvertLeadScreen() {
           <Text style={{ 
             color: theme.text, 
             marginTop: 16,
-            fontSize: 16 
+            ...getTypographyStyle('base')
           }}>
             Loading lead details...
           </Text>
@@ -425,17 +425,17 @@ export default function ConvertLeadScreen() {
             }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <Ionicons name="person-circle" size={20} color={theme.primary} />
-                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>
+                <Text style={{ color: theme.primary, ...getTypographyStyle('base', 'bold') }}>
                   Converting Lead: {lead.client.name}
                 </Text>
               </View>
               {lead.client.email && (
-                <Text style={{ color: theme.text, fontSize: 13, marginLeft: 28 }}>
+                <Text style={{ color: theme.text, ...getTypographyStyle('sm'), marginLeft: 28 }}>
                   📧 {lead.client.email}
                 </Text>
               )}
               {lead.client.number && (
-                <Text style={{ color: theme.text, fontSize: 13, marginLeft: 28 }}>
+                <Text style={{ color: theme.text, ...getTypographyStyle('sm'), marginLeft: 28 }}>
                   📱 {lead.client.number}
                 </Text>
               )}
@@ -477,9 +477,8 @@ export default function ConvertLeadScreen() {
                     />
                     <Text
                       style={{
-                        fontSize: 14,
+                        ...getTypographyStyle('sm', 'bold'),
                         color: formData.company === company ? theme.primary : theme.text,
-                        fontWeight: '700',
                       }}
                     >
                       {company === 'redmagic events' ? 'RedMagic' : 'Bling Square'}
@@ -574,7 +573,7 @@ export default function ConvertLeadScreen() {
                   })}
                 >
                   <Ionicons name="add-circle" size={20} color={theme.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>Add Day</Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.primary }}>Add Day</Text>
                 </Pressable>
               </View>
 
@@ -592,7 +591,7 @@ export default function ConvertLeadScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Ionicons name="calendar" size={16} color={theme.primary} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
                         Event Day {index + 1}
                       </Text>
                     </View>
@@ -692,7 +691,7 @@ export default function ConvertLeadScreen() {
                     borderBottomColor: theme.border,
                   }}
                 >
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
+                  <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
                     Select Venue
                   </Text>
                   <Pressable onPress={() => setShowVenueModal(false)} style={{ padding: 4 }}>
@@ -721,7 +720,7 @@ export default function ConvertLeadScreen() {
                       onChangeText={setVenueSearchQuery}
                       placeholder="Search venue name or address..."
                       placeholderTextColor={theme.textSecondary}
-                      style={{ flex: 1, fontSize: 15, color: theme.text }}
+                      style={{ flex: 1, ...getTypographyStyle('base', 'regular'), color: theme.text }}
                     />
                   </View>
                 </View>
@@ -731,7 +730,7 @@ export default function ConvertLeadScreen() {
                   {filteredVenues.length === 0 ? (
                     <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                       <Ionicons name="location-outline" size={60} color={theme.textSecondary} />
-                      <Text style={{ fontSize: 16, color: theme.textSecondary, marginTop: 16 }}>
+                      <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, marginTop: 16 }}>
                         No venues found
                       </Text>
                     </View>
@@ -772,22 +771,22 @@ export default function ConvertLeadScreen() {
                             </View>
 
                             <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 4 }}>
+                              <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 4 }}>
                                 {venue.name}
                               </Text>
-                              <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 6 }}>
+                              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 6 }}>
                                 {venue.address}
                               </Text>
                               <View style={{ flexDirection: 'row', gap: 12 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                                   <Ionicons name="people" size={14} color={theme.textSecondary} />
-                                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                                  <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
                                     {venue.capacity}
                                   </Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                                   <Ionicons name="pricetag" size={14} color={theme.textSecondary} />
-                                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                                  <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
                                     {venue.type}
                                   </Text>
                                 </View>

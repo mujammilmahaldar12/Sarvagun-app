@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { spacing, borderRadius } from '../../constants/designTokens';
+import { designSystem } from '../../constants/designSystem';
 import { getTypographyStyle } from '../../utils/styleHelpers';
+
+const { spacing, borderRadius } = designSystem;
 
 interface ChipProps {
   label: string;
@@ -21,7 +23,7 @@ export const Chip: React.FC<ChipProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const chipColor = color || theme.colors.primary;
+  const chipColor = color || theme.primary;
 
   const getVariantStyle = (): ViewStyle => {
     switch (variant) {

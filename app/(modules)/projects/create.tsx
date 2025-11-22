@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius, typography } from '@/constants/designTokens';
+import { spacing, borderRadius, typography } from '@/constants/designSystem';
 import { getShadowStyle } from '@/utils/styleHelpers';
 import { AnimatedPressable, ThemedDatePicker } from '@/components';
 import projectService from '@/services/project.service';

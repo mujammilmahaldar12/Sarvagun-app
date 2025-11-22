@@ -8,11 +8,19 @@ export interface User {
   username: string;
   first_name?: string;
   last_name?: string;
+  full_name?: string; // Computed from first_name + last_name or standalone
+  photo?: string; // Profile photo URL
   
   // Professional hierarchy fields
   category?: 'hr' | 'admin' | 'manager' | 'employee' | 'intern';
   designation?: string;
   department?: string;
+  
+  // Hierarchy & Team structure
+  reports_to?: number; // Manager/Team lead user ID
+  reports_to_name?: string;
+  team_id?: number;
+  team_name?: string;
   
   // Permission system fields
   role?: Role;

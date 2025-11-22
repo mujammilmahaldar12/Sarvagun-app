@@ -19,8 +19,11 @@ export const getToken = async (key: string): Promise<string | null> => {
 
 export const removeToken = async (key: string): Promise<void> => {
   try {
+    console.log(`🗑️ Storage: Removing token '${key}'...`);
     await AsyncStorage.removeItem(key);
+    console.log(`✅ Storage: Token '${key}' removed successfully`);
   } catch (error) {
+    console.log(`❌ Storage: Error removing token '${key}':`, error);
     // Silent error
   }
 };

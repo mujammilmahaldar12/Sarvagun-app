@@ -4,11 +4,16 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useLeaveStatistics } from '@/hooks/useHRQueries';
+import { usePermissions } from '@/store/permissionStore';
+import { LeaveList, LeaveBalanceCard } from '@/components/hr';
 import AppTable, { TableColumn } from '@/components/ui/AppTable';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import type { LeaveFilters } from '@/types/hr';
 
 type TabType = 'staff' | 'reimbursement' | 'leave';
 
@@ -16,6 +21,7 @@ export default function HRScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
+  const permissions = usePermissions();
   const [activeTab, setActiveTab] = useState<TabType>('staff');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -25,9 +31,12 @@ export default function HRScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const tableScrollRef = useRef<any>(null);
 
+  // API hooks
+  const { data: leaveStats } = useLeaveStatistics();
+
   // Check user role for permissions
-  const canManage = ['admin', 'hr'].includes(user?.category || '');
-  const canApprove = ['admin', 'hr', 'manager'].includes(user?.category || '');
+  const canManage = permissions.hasPermission('hr:manage');
+  const canApprove = permissions.hasPermission('leave:approve');
 
   // Async search with debouncing
   useEffect(() => {
@@ -114,7 +123,7 @@ export default function HRScreen() {
               handleApprove(row.id, 'leave');
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Approve</Text>
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>Approve</Text>
           </Pressable>
           <Pressable
             style={{
@@ -128,7 +137,7 @@ export default function HRScreen() {
               handleReject(row.id, 'leave');
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Reject</Text>
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>Reject</Text>
           </Pressable>
         </View>
       ) : null
@@ -170,7 +179,7 @@ export default function HRScreen() {
               handleApprove(row.id, 'reimbursement');
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Approve</Text>
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>Approve</Text>
           </Pressable>
           <Pressable
             style={{
@@ -184,7 +193,7 @@ export default function HRScreen() {
               handleReject(row.id, 'reimbursement');
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Reject</Text>
+            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>Reject</Text>
           </Pressable>
         </View>
       ) : null
@@ -353,10 +362,10 @@ export default function HRScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+    <View className="flex-1" style={{ backgroundColor: theme.background }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.surface}
+        backgroundColor={theme.surface}
       />
 
       {/* Header */}
@@ -374,16 +383,77 @@ export default function HRScreen() {
 
       {/* Content - Fixed flex container */}
       <View style={{ flex: 1 }}>
-        <AppTable
-          data={filteredData}
-          columns={getCurrentColumns()}
-          keyExtractor={(item: any) => item.id.toString()}
-          onRowPress={handleRowPress}
-          searchable={true}
-          searchPlaceholder={`Search ${activeTab}...`}
-          onSearch={handleSearchDebounced}
-          onScroll={handleScroll}
-        />
+        {activeTab === 'leave' ? (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {/* Leave Statistics */}
+            {leaveStats && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 12 }}>
+                  Overview
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                  <StatCard
+                    label="Total Requests"
+                    value={leaveStats.total_requests}
+                    icon="documents"
+                    color="#8B5CF6"
+                    theme={theme}
+                  />
+                  <StatCard
+                    label="Pending"
+                    value={leaveStats.pending_requests}
+                    icon="time"
+                    color="#F59E0B"
+                    theme={theme}
+                  />
+                  <StatCard
+                    label="Approved"
+                    value={leaveStats.approved_requests}
+                    icon="checkmark-circle"
+                    color="#10B981"
+                    theme={theme}
+                  />
+                  <StatCard
+                    label="On Leave Today"
+                    value={leaveStats.employees_on_leave_today}
+                    icon="people"
+                    color="#3B82F6"
+                    theme={theme}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Leave Balance */}
+            {!permissions.hasPermission('leave:view_all') && (
+              <View style={{ marginBottom: 16 }}>
+                <LeaveBalanceCard compact />
+              </View>
+            )}
+
+            {/* Leave List */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 12 }}>
+                Leave Requests
+              </Text>
+              <LeaveList
+                filters={{ status: statusFilter === 'all' ? undefined : statusFilter } as LeaveFilters}
+                showMyLeaves={!permissions.hasPermission('leave:view_all') && !permissions.hasPermission('leave:view_team')}
+              />
+            </View>
+          </ScrollView>
+        ) : (
+          <AppTable
+            data={filteredData}
+            columns={getCurrentColumns()}
+            keyExtractor={(item: any) => item.id.toString()}
+            onRowPress={handleRowPress}
+            searchable={true}
+            searchPlaceholder={`Search ${activeTab}...`}
+            onSearch={handleSearchDebounced}
+            onScroll={handleScroll}
+          />
+        )}
       </View>
 
       {/* Floating Action Buttons */}
@@ -396,9 +466,9 @@ export default function HRScreen() {
               width: 50,
               height: 50,
               borderRadius: 25,
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.surface,
               borderWidth: 2,
-              borderColor: theme.colors.primary,
+              borderColor: theme.primary,
               justifyContent: 'center',
               alignItems: 'center',
               marginBottom: 12,
@@ -410,7 +480,7 @@ export default function HRScreen() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Ionicons name="arrow-up" size={24} color={theme.colors.primary} />
+            <Ionicons name="arrow-up" size={24} color={theme.primary} />
           </Pressable>
         )}
 
@@ -434,18 +504,18 @@ export default function HRScreen() {
         >
           <Pressable
             className="rounded-t-3xl p-6"
-            style={{ backgroundColor: theme.colors.surface }}
+            style={{ backgroundColor: theme.surface }}
             onPress={(e) => e.stopPropagation()}
           >
             <View className="flex-row items-center justify-between mb-6">
               <Text
                 className="text-xl font-bold"
-                style={{ color: theme.colors.text }}
+                style={{ color: theme.text }}
               >
                 Filter by Status
               </Text>
               <Pressable onPress={() => setFilterModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.colors.text} />
+                <Ionicons name="close" size={24} color={theme.text} />
               </Pressable>
             </View>
 
@@ -456,8 +526,8 @@ export default function HRScreen() {
                 style={{
                   backgroundColor:
                     statusFilter === 'all'
-                      ? `${theme.colors.primary}20`
-                      : theme.colors.background,
+                      ? `${theme.primary}20`
+                      : theme.background,
                 }}
                 onPress={() => applyFilter('all')}
               >
@@ -466,8 +536,8 @@ export default function HRScreen() {
                   size={24}
                   color={
                     statusFilter === 'all'
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary
+                      ? theme.primary
+                      : theme.textSecondary
                   }
                 />
                 <Text
@@ -475,8 +545,8 @@ export default function HRScreen() {
                   style={{
                     color:
                       statusFilter === 'all'
-                        ? theme.colors.primary
-                        : theme.colors.text,
+                        ? theme.primary
+                        : theme.text,
                   }}
                 >
                   All {activeTab === 'staff' ? 'Staff' : activeTab}
@@ -491,8 +561,8 @@ export default function HRScreen() {
                     style={{
                       backgroundColor:
                         statusFilter === 'active'
-                          ? `${theme.colors.primary}20`
-                          : theme.colors.background,
+                          ? `${theme.primary}20`
+                          : theme.background,
                     }}
                     onPress={() => applyFilter('active')}
                   >
@@ -501,8 +571,8 @@ export default function HRScreen() {
                       size={24}
                       color={
                         statusFilter === 'active'
-                          ? theme.colors.primary
-                          : theme.colors.textSecondary
+                          ? theme.primary
+                          : theme.textSecondary
                       }
                     />
                     <Text
@@ -510,8 +580,8 @@ export default function HRScreen() {
                       style={{
                         color:
                           statusFilter === 'active'
-                            ? theme.colors.primary
-                            : theme.colors.text,
+                            ? theme.primary
+                            : theme.text,
                       }}
                     >
                       Active
@@ -522,8 +592,8 @@ export default function HRScreen() {
                     style={{
                       backgroundColor:
                         statusFilter === 'inactive'
-                          ? `${theme.colors.primary}20`
-                          : theme.colors.background,
+                          ? `${theme.primary}20`
+                          : theme.background,
                     }}
                     onPress={() => applyFilter('inactive')}
                   >
@@ -532,8 +602,8 @@ export default function HRScreen() {
                       size={24}
                       color={
                         statusFilter === 'inactive'
-                          ? theme.colors.primary
-                          : theme.colors.textSecondary
+                          ? theme.primary
+                          : theme.textSecondary
                       }
                     />
                     <Text
@@ -541,8 +611,8 @@ export default function HRScreen() {
                       style={{
                         color:
                           statusFilter === 'inactive'
-                            ? theme.colors.primary
-                            : theme.colors.text,
+                            ? theme.primary
+                            : theme.text,
                       }}
                     >
                       Inactive
@@ -556,8 +626,8 @@ export default function HRScreen() {
                     style={{
                       backgroundColor:
                         statusFilter === 'pending'
-                          ? `${theme.colors.primary}20`
-                          : theme.colors.background,
+                          ? `${theme.primary}20`
+                          : theme.background,
                     }}
                     onPress={() => applyFilter('pending')}
                   >
@@ -566,8 +636,8 @@ export default function HRScreen() {
                       size={24}
                       color={
                         statusFilter === 'pending'
-                          ? theme.colors.primary
-                          : theme.colors.textSecondary
+                          ? theme.primary
+                          : theme.textSecondary
                       }
                     />
                     <Text
@@ -575,8 +645,8 @@ export default function HRScreen() {
                       style={{
                         color:
                           statusFilter === 'pending'
-                            ? theme.colors.primary
-                            : theme.colors.text,
+                            ? theme.primary
+                            : theme.text,
                       }}
                     >
                       Pending
@@ -587,8 +657,8 @@ export default function HRScreen() {
                     style={{
                       backgroundColor:
                         statusFilter === 'approved'
-                          ? `${theme.colors.primary}20`
-                          : theme.colors.background,
+                          ? `${theme.primary}20`
+                          : theme.background,
                     }}
                     onPress={() => applyFilter('approved')}
                   >
@@ -597,8 +667,8 @@ export default function HRScreen() {
                       size={24}
                       color={
                         statusFilter === 'approved'
-                          ? theme.colors.primary
-                          : theme.colors.textSecondary
+                          ? theme.primary
+                          : theme.textSecondary
                       }
                     />
                     <Text
@@ -606,8 +676,8 @@ export default function HRScreen() {
                       style={{
                         color:
                           statusFilter === 'approved'
-                            ? theme.colors.primary
-                            : theme.colors.text,
+                            ? theme.primary
+                            : theme.text,
                       }}
                     >
                       Approved
@@ -618,8 +688,8 @@ export default function HRScreen() {
                     style={{
                       backgroundColor:
                         statusFilter === 'rejected'
-                          ? `${theme.colors.primary}20`
-                          : theme.colors.background,
+                          ? `${theme.primary}20`
+                          : theme.background,
                     }}
                     onPress={() => applyFilter('rejected')}
                   >
@@ -628,8 +698,8 @@ export default function HRScreen() {
                       size={24}
                       color={
                         statusFilter === 'rejected'
-                          ? theme.colors.primary
-                          : theme.colors.textSecondary
+                          ? theme.primary
+                          : theme.textSecondary
                       }
                     />
                     <Text
@@ -637,8 +707,8 @@ export default function HRScreen() {
                       style={{
                         color:
                           statusFilter === 'rejected'
-                            ? theme.colors.primary
-                            : theme.colors.text,
+                            ? theme.primary
+                            : theme.text,
                       }}
                     >
                       Rejected
@@ -651,12 +721,12 @@ export default function HRScreen() {
             {/* Clear Filters Button */}
             <Pressable
               className="mt-4 p-4 rounded-xl items-center"
-              style={{ backgroundColor: theme.colors.background }}
+              style={{ backgroundColor: theme.background }}
               onPress={clearFilters}
             >
               <Text
                 className="text-base font-semibold"
-                style={{ color: theme.colors.textSecondary }}
+                style={{ color: theme.textSecondary }}
               >
                 Clear All Filters
               </Text>
@@ -664,6 +734,59 @@ export default function HRScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+    </View>
+  );
+}
+
+// Helper component for statistics cards
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+  theme,
+}: {
+  label: string;
+  value: number;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  theme: any;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        minWidth: 150,
+        backgroundColor: theme.surface,
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: `${color}20`,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
+          }}
+        >
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ ...getTypographyStyle('2xl', 'bold'), color: theme.text }}>
+            {value}
+          </Text>
+        </View>
+      </View>
+      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+        {label}
+      </Text>
     </View>
   );
 }

@@ -12,16 +12,19 @@ export { default as FloatingActionButton } from './ui/FloatingActionButton';
 export { default as StatusBadge } from './ui/StatusBadge';
 export type { StatusType } from './ui/StatusBadge';
 export { default as ActionButton } from './ui/ActionButton';
-export { default as PrimaryButton } from './ui/PrimaryButton';
-export { default as AppButton } from './ui/AppButton';
 export { default as AppInput } from './ui/AppInput';
 export { default as KPICard } from './ui/KPICard';
 export { default as DatePicker } from './ui/DatePicker';
 export { default as ThemedDatePicker } from './ui/ThemedDatePicker';
+export { default as DropdownField } from './ui/DropdownField';
 
-// Animated Components
-export { default as AnimatedButton } from './ui/AnimatedButton';
+// Unified Button Component (RECOMMENDED)
+export { AnimatedButton } from './ui/AnimatedButton';
 export type { AnimatedButtonProps } from './ui/AnimatedButton';
+
+// Legacy Button Components (DEPRECATED - Use AnimatedButton instead)
+export { default as PrimaryButton } from './ui/PrimaryButton';
+export { default as AppButton } from './ui/AppButton';
 export { default as AnimatedPressable } from './ui/AnimatedPressable';
 export type { AnimatedPressableProps } from './ui/AnimatedPressable';
 export { default as RippleEffect } from './ui/RippleEffect';
@@ -38,3 +41,8 @@ export { Chip } from './ui/Chip';
 export { BottomSheet } from './ui/BottomSheet';
 export { Toast, useToast } from './ui/Toast';
 export type { ToastType } from './ui/Toast';
+
+// Enhanced Loading & Error States
+export { default as LoadingState } from './ui/LoadingState';
+export { ErrorBoundary, ErrorFallback, InlineError } from './ui/ErrorBoundary';
+export type { ErrorFallbackProps } from './ui/ErrorBoundary';

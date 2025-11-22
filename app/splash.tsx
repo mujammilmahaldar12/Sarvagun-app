@@ -1,9 +1,13 @@
-import { View, Text } from "react-native";
+import React, { View, Text, StyleSheet } from "react-native";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
+import { useTheme } from '@/hooks/useTheme';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { spacing } from '@/constants/designSystem';
 
 export default function Splash() {
+  const { theme } = useTheme();
   const animationRef = useRef(null);
   const [animationError, setAnimationError] = useState(false);
 
@@ -17,20 +21,20 @@ export default function Splash() {
 
   if (animationError) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#6D376D', marginBottom: 10 }}>Sarvagun</Text>
-        <Text style={{ fontSize: 16, color: '#666' }}>ERP System</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.primary }]}>Sarvagun</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>ERP System</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <LottieView
         ref={animationRef}
         autoPlay
         loop={false}
-        style={{ width: "80%", height: "80%" }}
+        style={styles.animation}
         source={require("../assets/animations/sarvagun.json")}
         onAnimationFailure={(error) => {
           if (__DEV__) {
@@ -42,3 +46,22 @@ export default function Splash() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    ...getTypographyStyle('4xl', 'bold'),
+    marginBottom: spacing.sm,
+  },
+  subtitle: {
+    ...getTypographyStyle('lg', 'medium'),
+  },
+  animation: {
+    width: '80%',
+    height: '80%',
+  },
+});

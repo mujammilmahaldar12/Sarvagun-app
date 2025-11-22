@@ -9,6 +9,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import eventsService from '@/services/events.service';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 type TabType = 'info' | 'timeline' | 'documents';
 
@@ -108,7 +109,7 @@ export default function EventDetailScreen() {
         <View style={{ padding: 16, gap: 20 }}>
           {/* Client Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Client Information
             </Text>
             <InfoRow label="Client Name" value={item.client?.name || 'N/A'} />
@@ -125,7 +126,7 @@ export default function EventDetailScreen() {
 
           {/* Lead Details */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Lead Details
             </Text>
             <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
@@ -144,7 +145,7 @@ export default function EventDetailScreen() {
         <View style={{ padding: 16, gap: 20 }}>
           {/* Event Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Event Information
             </Text>
             <InfoRow label="Event Name" value={item.name} />
@@ -156,7 +157,7 @@ export default function EventDetailScreen() {
 
           {/* Client Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Client Information
             </Text>
             <InfoRow label="Client Name" value={item.client?.name || 'N/A'} />
@@ -166,7 +167,7 @@ export default function EventDetailScreen() {
 
           {/* Venue Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Venue Information
             </Text>
             <InfoRow label="Venue" value={item.venue?.name || 'N/A'} />
@@ -178,7 +179,7 @@ export default function EventDetailScreen() {
 
           {/* Financial Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Financial Information
             </Text>
             <InfoRow label="Total Budget" value={item.total_budget ? `₹${item.total_budget.toLocaleString('en-IN')}` : 'N/A'} />
@@ -187,10 +188,10 @@ export default function EventDetailScreen() {
           {/* Additional Details */}
           {item.active_days?.length > 0 && (
             <View style={{ gap: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
                 Active Days
               </Text>
-              <Text style={{ fontSize: 14, color: theme.colors.text }}>
+              <Text style={{ fontSize: 14, color: theme.text }}>
                 {item.active_days.map((day: any) => 
                   new Date(day.date).toLocaleDateString('en-IN')
                 ).join(', ')}
@@ -204,7 +205,7 @@ export default function EventDetailScreen() {
         <View style={{ padding: 16, gap: 20 }}>
           {/* Client Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Client Information
             </Text>
             <InfoRow label="Name" value={item.name} />
@@ -216,7 +217,7 @@ export default function EventDetailScreen() {
 
           {/* Category & Organisation */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Classification
             </Text>
             {item.category?.length > 0 && (
@@ -233,7 +234,7 @@ export default function EventDetailScreen() {
         <View style={{ padding: 16, gap: 20 }}>
           {/* Venue Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Venue Information
             </Text>
             <InfoRow label="Name" value={item.name} />
@@ -243,7 +244,7 @@ export default function EventDetailScreen() {
 
           {/* Contact Information */}
           <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
               Contact Information
             </Text>
             <InfoRow label="Contact Person" value={item.contact_person || 'N/A'} />
@@ -258,7 +259,7 @@ export default function EventDetailScreen() {
 
   const renderTimelineTab = () => (
     <View style={{ padding: 16 }}>
-      <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
+      <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 20 }}>
         Timeline coming soon
       </Text>
     </View>
@@ -266,7 +267,7 @@ export default function EventDetailScreen() {
 
   const renderDocumentsTab = () => (
     <View style={{ padding: 16 }}>
-      <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 20 }}>
+      <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 20 }}>
         Documents coming soon
       </Text>
     </View>
@@ -274,11 +275,11 @@ export default function EventDetailScreen() {
 
   const InfoRow = ({ label, value, multiline = false }: { label: string; value: React.ReactNode; multiline?: boolean }) => (
     <View style={{ flexDirection: multiline ? 'column' : 'row', gap: multiline ? 4 : 8 }}>
-      <Text style={{ fontSize: 14, color: theme.colors.textSecondary, width: multiline ? undefined : 120 }}>
+      <Text style={{ fontSize: 14, color: theme.textSecondary, width: multiline ? undefined : 120 }}>
         {label}:
       </Text>
       {typeof value === 'string' || typeof value === 'number' ? (
-        <Text style={{ fontSize: 14, color: theme.colors.text, flex: 1 }}>
+        <Text style={{ fontSize: 14, color: theme.text, flex: 1 }}>
           {value}
         </Text>
       ) : (
@@ -295,8 +296,8 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -317,7 +318,7 @@ export default function EventDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Header */}
       <ModuleHeader
         title={getTitle()}
@@ -335,7 +336,7 @@ export default function EventDetailScreen() {
                 style={({ pressed }) => ({
                   padding: 8,
                   borderRadius: 8,
-                  backgroundColor: pressed ? theme.colors.primary + '20' : theme.colors.primary,
+                  backgroundColor: pressed ? theme.primary + '20' : theme.primary,
                 })}
               >
                 <Ionicons name="arrow-forward" size={20} color="#fff" />

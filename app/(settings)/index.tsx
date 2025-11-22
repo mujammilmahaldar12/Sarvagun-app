@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
 
 type SettingSection = {
   id: string;
@@ -45,7 +47,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            router.replace('/login');
+            router.replace('/(auth)/login');
           },
         },
       ]
@@ -188,10 +190,10 @@ export default function SettingsScreen() {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          padding: 16,
-          backgroundColor: theme.colors.surface,
+          padding: designSystem.spacing.base,
+          backgroundColor: theme.surface,
           borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
+          borderBottomColor: theme.border,
         }}
         activeOpacity={0.7}
       >
@@ -201,26 +203,25 @@ export default function SettingsScreen() {
             height: 40,
             borderRadius: 20,
             backgroundColor: item.isDanger 
-              ? theme.colors.error + '20' 
-              : theme.colors.primary + '20',
+              ? theme.error + '20' 
+              : theme.primary + '20',
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: 12,
+            marginRight: designSystem.spacing.md,
           }}
         >
           <Ionicons
             name={item.icon}
             size={22}
-            color={item.isDanger ? theme.colors.error : theme.colors.primary}
+            color={item.isDanger ? theme.error : theme.primary}
           />
         </View>
 
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontSize: 16,
-              fontWeight: '500',
-              color: item.isDanger ? theme.colors.error : theme.colors.text,
+              ...getTypographyStyle('base', 'medium'),
+              color: item.isDanger ? theme.error : theme.text,
               marginBottom: item.subtitle ? 4 : 0,
             }}
           >
@@ -229,8 +230,8 @@ export default function SettingsScreen() {
           {item.subtitle && (
             <Text
               style={{
-                fontSize: 14,
-                color: theme.colors.textSecondary,
+                ...getTypographyStyle('sm', 'regular'),
+                color: theme.textSecondary,
               }}
             >
               {item.subtitle}
@@ -243,10 +244,10 @@ export default function SettingsScreen() {
             value={item.toggleValue}
             onValueChange={item.onToggle}
             trackColor={{ 
-              false: theme.colors.border, 
-              true: theme.colors.primary 
+              false: theme.border, 
+              true: theme.primary 
             }}
-            thumbColor={theme.colors.surface}
+            thumbColor={theme.surface}
           />
         )}
 
@@ -254,7 +255,7 @@ export default function SettingsScreen() {
           <Ionicons
             name="chevron-forward"
             size={20}
-            color={theme.colors.textSecondary}
+            color={theme.textSecondary}
           />
         )}
       </TouchableOpacity>
@@ -262,7 +263,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="Settings" showBack />
 
       <ScrollView style={{ flex: 1 }}>
@@ -270,9 +271,9 @@ export default function SettingsScreen() {
         <View
           style={{
             padding: 20,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.surface,
             borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
+            borderBottomColor: theme.border,
             marginBottom: 8,
           }}
         >
@@ -282,7 +283,7 @@ export default function SettingsScreen() {
                 width: 72,
                 height: 72,
                 borderRadius: 36,
-                backgroundColor: theme.colors.primary,
+                backgroundColor: theme.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 16,
@@ -290,9 +291,8 @@ export default function SettingsScreen() {
             >
               <Text
                 style={{
-                  fontSize: 28,
-                  fontWeight: 'bold',
-                  color: '#FFFFFF',
+                  ...getTypographyStyle('3xl', 'bold'),
+                  color: theme.textInverse,
                 }}
               >
                 {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
@@ -302,9 +302,8 @@ export default function SettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 20,
-                  fontWeight: '600',
-                  color: theme.colors.text,
+                  ...getTypographyStyle('xl', 'semibold'),
+                  color: theme.text,
                   marginBottom: 4,
                 }}
               >
@@ -312,8 +311,8 @@ export default function SettingsScreen() {
               </Text>
               <Text
                 style={{
-                  fontSize: 14,
-                  color: theme.colors.textSecondary,
+                  ...getTypographyStyle('sm', 'regular'),
+                  color: theme.textSecondary,
                   marginBottom: 2,
                 }}
               >
@@ -321,8 +320,8 @@ export default function SettingsScreen() {
               </Text>
               <Text
                 style={{
-                  fontSize: 14,
-                  color: theme.colors.textSecondary,
+                  ...getTypographyStyle('sm', 'regular'),
+                  color: theme.textSecondary,
                 }}
               >
                 {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
@@ -338,7 +337,7 @@ export default function SettingsScreen() {
               <Ionicons
                 name="create-outline"
                 size={24}
-                color={theme.colors.primary}
+                color={theme.primary}
               />
             </TouchableOpacity>
           </View>
@@ -350,9 +349,8 @@ export default function SettingsScreen() {
             {section.title && (
               <Text
                 style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: theme.colors.textSecondary,
+                  ...getTypographyStyle('sm', 'semibold'),
+                  color: theme.textSecondary,
                   paddingHorizontal: 16,
                   paddingTop: 16,
                   paddingBottom: 8,
@@ -365,10 +363,10 @@ export default function SettingsScreen() {
             )}
             <View
               style={{
-                backgroundColor: theme.colors.surface,
+                backgroundColor: theme.surface,
                 borderTopWidth: 1,
                 borderBottomWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: theme.border,
               }}
             >
               {section.items.map(renderSettingItem)}
@@ -377,11 +375,11 @@ export default function SettingsScreen() {
         ))}
 
         {/* Footer */}
-        <View style={{ padding: 20, alignItems: 'center' }}>
+        <View style={{ padding: designSystem.spacing.lg, alignItems: 'center' }}>
           <Text
             style={{
-              fontSize: 12,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('xs', 'regular'),
+              color: theme.textSecondary,
               textAlign: 'center',
             }}
           >
@@ -389,8 +387,8 @@ export default function SettingsScreen() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
-              color: theme.colors.textSecondary,
+              ...getTypographyStyle('xs', 'regular'),
+              color: theme.textSecondary,
               textAlign: 'center',
               marginTop: 4,
             }}

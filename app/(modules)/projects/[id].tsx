@@ -96,7 +96,7 @@ const ProjectDetailScreen = () => {
           <View style={{ flexDirection: 'row', gap: spacing.base }}>
             <AnimatedPressable onPress={() => Alert.alert('Coming Soon', 'Edit functionality will be available soon')} style={{ flex: 1, backgroundColor: theme.primary, paddingVertical: spacing.md, paddingHorizontal: spacing.base, borderRadius: borderRadius.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
               <Ionicons name="create-outline" size={16} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: typography.sizes.sm }}>Edit Project</Text>
+              <Text style={{ color: theme.textInverse, fontWeight: 'bold', fontSize: typography.sizes.sm }}>Edit Project</Text>
             </AnimatedPressable>
             <AnimatedPressable onPress={() => Alert.alert('Coming Soon', 'Section management will be available soon')} style={{ flex: 1, backgroundColor: `${theme.primary}15`, paddingVertical: spacing.md, paddingHorizontal: spacing.base, borderRadius: borderRadius.md, borderWidth: 1, borderColor: theme.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
               <Ionicons name="add-outline" size={16} color={theme.primary} />

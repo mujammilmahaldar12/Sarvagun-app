@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { borderRadius, spacing } from '../../constants/designTokens';
+import { designSystem } from '../../constants/designSystem';
+
+const { borderRadius, spacing } = designSystem;
 
 interface SkeletonProps {
   width?: number | string;
@@ -49,7 +51,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           width: width as any,
           height,
           borderRadius: radius,
-          backgroundColor: theme.colors.border,
+          backgroundColor: theme.border,
           opacity,
         },
         style,
@@ -67,7 +69,7 @@ interface SkeletonGroupProps {
 export const SkeletonText: React.FC<SkeletonGroupProps> = ({
   count = 3,
   height = 16,
-  spacing: gap = spacing.sm,
+  spacing: gap = spacing[2],
 }) => {
   return (
     <View style={{ gap }}>

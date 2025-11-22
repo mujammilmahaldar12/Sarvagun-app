@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, ListItem, AnimatedPressable, AnimatedButton } from '@/components';
-import { spacing, borderRadius, iconSizes } from '@/constants/designTokens';
+import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
 export default function ProfileScreen() {
@@ -28,7 +28,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            router.replace('/login');
+            router.replace('/(auth)/login');
           },
         },
       ]
@@ -36,7 +36,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
@@ -44,8 +44,8 @@ export default function ProfileScreen() {
       />
 
       {/* Clean Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Profile</Text>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
       </View>
 
       <ScrollView
@@ -54,7 +54,7 @@ export default function ProfileScreen() {
       >
         {/* Profile Header Card */}
         <View style={styles.section}>
-          <View style={[styles.profileCard, getCardStyle(theme.colors.surface, 'md', 'xl')]}>
+          <View style={[styles.profileCard, getCardStyle(theme.surface, 'md', 'xl')]}>
             <View style={styles.profileHeader}>
               <Avatar
                 size={72}
@@ -63,13 +63,13 @@ export default function ProfileScreen() {
                 onlineStatus={true}
               />
               <View style={styles.profileInfo}>
-                <Text style={[styles.userName, { color: theme.colors.text }]}>
+                <Text style={[styles.userName, { color: theme.text }]}>
                   {user?.full_name || 'User Name'}
                 </Text>
-                <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
                   {user?.email || 'user@example.com'}
                 </Text>
-                <Text style={[styles.userRole, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.userRole, { color: theme.textSecondary }]}>
                   {user?.designation || 'Employee'} • {user?.category || 'Staff'}
                 </Text>
               </View>
@@ -80,7 +80,7 @@ export default function ProfileScreen() {
               style={[
                 styles.editProfileButton,
                 { 
-                  backgroundColor: theme.colors.primary,
+                  backgroundColor: theme.primary,
                   borderWidth: 0,
                 },
                 getShadowStyle('sm'),
@@ -96,8 +96,8 @@ export default function ProfileScreen() {
 
         {/* Account Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>ACCOUNT</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
             <ListItem
               title="Your Account"
               description={`${user?.first_name} ${user?.last_name}`}
@@ -122,8 +122,8 @@ export default function ProfileScreen() {
 
         {/* Preferences Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>PREFERENCES</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
             <ListItem
               title="Push Notifications"
               description={notificationsEnabled ? 'Enabled' : 'Disabled'}
@@ -132,8 +132,8 @@ export default function ProfileScreen() {
                 <Switch
                   value={notificationsEnabled}
                   onValueChange={setNotificationsEnabled}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primary + '50' }}
-                  thumbColor={notificationsEnabled ? theme.colors.primary : '#f4f3f4'}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={notificationsEnabled ? theme.primary : '#f4f3f4'}
                 />
               }
             />
@@ -145,8 +145,8 @@ export default function ProfileScreen() {
                 <Switch
                   value={emailNotifications}
                   onValueChange={setEmailNotifications}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primary + '50' }}
-                  thumbColor={emailNotifications ? theme.colors.primary : '#f4f3f4'}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={emailNotifications ? theme.primary : '#f4f3f4'}
                 />
               }
             />
@@ -159,8 +159,8 @@ export default function ProfileScreen() {
                 <Switch
                   value={isDark}
                   onValueChange={toggleTheme}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primary + '50' }}
-                  thumbColor={isDark ? theme.colors.primary : '#f4f3f4'}
+                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
+                  thumbColor={isDark ? theme.primary : '#f4f3f4'}
                 />
               }
             />
@@ -169,8 +169,8 @@ export default function ProfileScreen() {
 
         {/* App Settings Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>APP SETTINGS</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APP SETTINGS</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
             <ListItem
               title="Appearance"
               description="Customize app theme"
@@ -195,8 +195,8 @@ export default function ProfileScreen() {
 
         {/* Support Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>SUPPORT</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.colors.surface, 'md', 'lg')]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SUPPORT</Text>
+          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
             <ListItem
               title="Help Center"
               description="Get help and support"
@@ -225,7 +225,7 @@ export default function ProfileScreen() {
             onPress={handleLogout}
             style={[
               styles.logoutButton,
-              getCardStyle(theme.colors.surface, 'md', 'lg'),
+              getCardStyle(theme.surface, 'md', 'lg'),
               { 
                 borderWidth: 1.5,
                 borderColor: '#EF4444',
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     ...getTypographyStyle('base', 'semibold'),
-    color: '#FFFFFF',
+    color: '#FFFFFF', // Will be overridden inline with theme.textInverse
   },
   sectionTitle: {
     ...getTypographyStyle('xs', 'bold'),

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { getCircularStyle, getTypographyStyle } from '../../utils/styleHelpers';
-import { borderWidth } from '../../constants/designTokens';
+import { borderWidth } from '../../constants/designSystem';
 
 interface AvatarProps {
   size?: number;
@@ -33,14 +33,14 @@ export const Avatar: React.FC<AvatarProps> = ({
   };
 
   const containerStyle: ViewStyle = {
-    ...getCircularStyle(size, theme.colors.primary),
+    ...getCircularStyle(size, theme.primary),
     borderWidth: borderColor ? borderWidth.medium : 0,
     borderColor: borderColor || 'transparent',
   };
 
   const textStyle: TextStyle = {
     ...getTypographyStyle(size > 40 ? 'lg' : 'base', 'semibold'),
-    color: '#FFFFFF',
+    color: '#FFFFFF', // Always white on colored backgrounds
   };
 
   const statusSize = size * 0.25;
@@ -67,7 +67,7 @@ export const Avatar: React.FC<AvatarProps> = ({
               right: statusPosition,
               bottom: statusPosition,
               borderWidth: borderWidth.medium,
-              borderColor: theme.colors.surface,
+              borderColor: theme.surface,
             },
           ]}
         />
