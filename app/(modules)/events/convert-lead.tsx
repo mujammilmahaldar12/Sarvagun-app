@@ -19,7 +19,7 @@ import ModuleHeader from '@/components/layout/ModuleHeader';
 import { Button, FormField } from '@/components';
 import DatePickerInput from '@/components/ui/DatePickerInput';
 import { useTheme } from '@/hooks/useTheme';
-import { spacing, typography, borderRadius } from '@/constants/designSystem';
+import { spacing, typography, borderRadius, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import eventsService from '@/services/events.service';
 import type { Lead, Venue, ClientCategory, Organisation } from '@/types/events';
@@ -616,8 +616,8 @@ export default function ConvertLeadScreen() {
             <Button
               title="Convert to Event"
               onPress={handleSubmit}
-              isLoading={loading}
-              icon="swap-horizontal"
+              loading={loading}
+              leftIcon="swap-horizontal"
               style={{ marginTop: 8 }}
             />
           </ScrollView>
@@ -669,7 +669,7 @@ export default function ConvertLeadScreen() {
 
           {/* Venue Selection Modal */}
           <Modal visible={showVenueModal} animationType="slide" transparent>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={{ flex: 1, backgroundColor: baseColors.neutral[900] + '80' }}>
               <View
                 style={{
                   flex: 1,
@@ -812,7 +812,7 @@ export default function ConvertLeadScreen() {
                 }}>
                   <Button
                     onPress={handleSubmit}
-                    isLoading={loading}
+                    loading={loading}
                     disabled={loading}
                     title={loading ? 'Converting...' : 'Convert Lead to Event'}
                     fullWidth

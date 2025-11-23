@@ -94,13 +94,14 @@ export const Tabs: React.FC<TabsProps> = ({
             flexDirection: 'row',
             alignItems: 'center',
             gap: spacing[2],
-            paddingHorizontal: spacing[5],
+            paddingHorizontal: variant === 'line' ? spacing[6] : spacing[5],
             paddingVertical: spacing[4],
             opacity: tab.disabled ? 0.5 : pressed ? 0.7 : 1,
-            minHeight: 48,
+            minHeight: 52,
             ...(variant === 'pill' && {
               backgroundColor: isActive ? activeColor : 'transparent',
               borderRadius: borderRadius.full,
+              marginHorizontal: spacing[1],
             }),
             ...(variant === 'enclosed' && {
               backgroundColor: isActive ? colors.surface : 'transparent',
@@ -169,10 +170,10 @@ export const Tabs: React.FC<TabsProps> = ({
         <View
           style={{
             width: 1,
-            height: 24,
+            height: 28,
             backgroundColor: colors.border,
             alignSelf: 'center',
-            opacity: 0.5,
+            marginHorizontal: spacing[2],
           }}
         />
       )}

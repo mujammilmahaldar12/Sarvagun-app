@@ -5,7 +5,7 @@
  */
 
 // Base Color Palette
-const baseColors = {
+export const baseColors = {
   // Brand Colors
   purple: {
     50: '#F8F4F9',
@@ -71,7 +71,7 @@ const baseColors = {
 } as const;
 
 // Chart Colors for Analytics
-const chartColors = {
+export const chartColors = {
   primary: '#6D376D',
   secondary: '#8B5CF6',
   tertiary: '#14B8A6',
@@ -83,7 +83,7 @@ const chartColors = {
 } as const;
 
 // Gradient Colors for UI Elements
-const gradientColors = {
+export const gradientColors = {
   blue: ['#3B82F6', '#1D4ED8'],
   purple: ['#8B5CF6', '#6D28D9'],
   green: ['#10B981', '#047857'],
@@ -95,7 +95,7 @@ const gradientColors = {
 } as const;
 
 // Status Colors with Semantic Meaning
-const statusColors = {
+export const statusColors = {
   // Lead Status
   pending: {
     light: { bg: baseColors.warning[50], text: baseColors.warning[600] },
@@ -417,6 +417,60 @@ export default designSystem;
 // BACKWARD COMPATIBILITY EXPORTS
 // For gradual migration from designTokens.ts and colors.ts
 // All tokens are already exported above as const declarations
+// ============================================================================
+// MODULE COLORS - Standardized colors for all modules
+// ============================================================================
+
+export const moduleColors = {
+  hr: { 
+    main: baseColors.info[500],      // #3B82F6
+    light: baseColors.info[50],       // #EFF6FF
+  },
+  events: { 
+    main: '#8B5CF6',                  // Purple
+    light: '#F5F3FF', 
+  },
+  finance: { 
+    main: baseColors.success[500],    // #10B981
+    light: baseColors.success[50],    // #ECFDF5
+  },
+  projects: { 
+    main: baseColors.warning[500],    // #F59E0B
+    light: baseColors.warning[50],    // #FFFBEB
+  },
+  leave: { 
+    main: baseColors.error[500],      // #EF4444
+    light: baseColors.error[50],      // #FEE2E2
+  },
+  attendance: { 
+    main: '#06B6D4',                  // Cyan
+    light: '#ECFEFF', 
+  },
+  clients: { 
+    main: '#EC4899',                  // Pink
+    light: '#FCE7F3', 
+  },
+  tasks: { 
+    main: '#F97316',                  // Orange
+    light: '#FFF7ED', 
+  },
+} as const;
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Get color with alpha transparency
+ * @param color - Hex color code (e.g., '#FF0000')
+ * @param opacity - Opacity value between 0 and 1
+ * @returns Hex color with alpha channel
+ */
+export const getAlphaColor = (color: string, opacity: number): string => {
+  const hex = Math.round(opacity * 255).toString(16).padStart(2, '0');
+  return `${color}${hex}`;
+};
+
 // ============================================================================
 
 // Export COLORS object for backward compatibility with colors.ts

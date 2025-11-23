@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { AnimatedPressable } from '@/components';
-import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
+import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
 interface QuickAction {
@@ -25,7 +25,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Register new team member',
     icon: 'person-add-outline',
     route: '/(modules)/hr/add',
-    color: '#3B82F6',
+    color: moduleColors.hr.main,
     category: 'HR',
   },
   {
@@ -34,7 +34,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Schedule new event',
     icon: 'calendar-outline',
     route: '/(modules)/events/add',
-    color: '#8B5CF6',
+    color: moduleColors.events.main,
     category: 'Events',
   },
   {
@@ -43,7 +43,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Record new expense',
     icon: 'receipt-outline',
     route: '/(modules)/finance/add',
-    color: '#10B981',
+    color: moduleColors.finance.main,
     category: 'Finance',
   },
   {
@@ -52,7 +52,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Start new project',
     icon: 'briefcase-outline',
     route: '/(modules)/projects/add',
-    color: '#F59E0B',
+    color: moduleColors.projects.main,
     category: 'Projects',
   },
   {
@@ -61,7 +61,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Submit leave request',
     icon: 'time-outline',
     route: '/(modules)/leave/add',
-    color: '#EF4444',
+    color: moduleColors.leave.main,
     category: 'Leave',
   },
   {
@@ -70,7 +70,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Check in/out',
     icon: 'finger-print-outline',
     route: '/(modules)/hr/attendance',
-    color: '#06B6D4',
+    color: moduleColors.attendance.main,
     category: 'HR',
   },
   {
@@ -79,7 +79,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Register new client',
     icon: 'people-outline',
     route: '/(modules)/events/clients/add',
-    color: '#EC4899',
+    color: moduleColors.clients.main,
     category: 'Events',
   },
   {
@@ -88,7 +88,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     description: 'Add project task',
     icon: 'list-outline',
     route: '/(modules)/projects/tasks/add',
-    color: '#F97316',
+    color: moduleColors.tasks.main,
     category: 'Projects',
   },
 ];

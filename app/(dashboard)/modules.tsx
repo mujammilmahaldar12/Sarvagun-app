@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { Chip, AnimatedPressable } from '@/components';
-import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
+import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
 interface Module {
@@ -26,7 +26,7 @@ const MODULES: Module[] = [
     description: 'Manage employees, attendance & payroll',
     icon: 'people',
     route: '/(modules)/hr',
-    color: '#3B82F6',
+    color: moduleColors.hr.main,
     category: 'Management',
   },
   {
@@ -35,7 +35,7 @@ const MODULES: Module[] = [
     description: 'Plan & organize company events',
     icon: 'calendar',
     route: '/(modules)/events',
-    color: '#8B5CF6',
+    color: moduleColors.events.main,
     category: 'Operations',
   },
   {
@@ -44,7 +44,7 @@ const MODULES: Module[] = [
     description: 'Track expenses & financial records',
     icon: 'cash',
     route: '/(modules)/finance',
-    color: '#10B981',
+    color: moduleColors.finance.main,
     category: 'Finance',
   },
   {
@@ -53,7 +53,7 @@ const MODULES: Module[] = [
     description: 'Monitor projects & tasks',
     icon: 'briefcase',
     route: '/(modules)/projects',
-    color: '#F59E0B',
+    color: moduleColors.projects.main,
     category: 'Management',
   },
   {
@@ -62,7 +62,7 @@ const MODULES: Module[] = [
     description: 'Apply & approve leave requests',
     icon: 'time',
     route: '/(modules)/leave',
-    color: '#EF4444',
+    color: moduleColors.leave.main,
     category: 'Management',
   },
 ];

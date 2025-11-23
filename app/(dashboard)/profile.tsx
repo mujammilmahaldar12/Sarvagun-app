@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, ListItem, AnimatedPressable, AnimatedButton } from '@/components';
-import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
+import { spacing, borderRadius, iconSizes, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 import { resetOnboardingForTesting } from '@/utils/devUtils';
 
@@ -136,7 +136,7 @@ export default function ProfileScreen() {
               hapticType="medium"
               springConfig="bouncy"
             >
-              <Ionicons name="create-outline" size={iconSizes.sm} color="#FFFFFF" />
+              <Ionicons name="create-outline" size={iconSizes.sm} color={baseColors.neutral[0]} />
               <Text style={styles.editButtonText}>Edit Profile</Text>
             </AnimatedPressable>
           </View>
@@ -187,7 +187,7 @@ export default function ProfileScreen() {
                   value={notificationsEnabled}
                   onValueChange={setNotificationsEnabled}
                   trackColor={{ false: theme.border, true: theme.primary + '50' }}
-                  thumbColor={notificationsEnabled ? theme.primary : '#f4f3f4'}
+                  thumbColor={notificationsEnabled ? theme.primary : theme.surface}
                 />
               }
             />
@@ -200,7 +200,7 @@ export default function ProfileScreen() {
                   value={emailNotifications}
                   onValueChange={setEmailNotifications}
                   trackColor={{ false: theme.border, true: theme.primary + '50' }}
-                  thumbColor={emailNotifications ? theme.primary : '#f4f3f4'}
+                  thumbColor={emailNotifications ? theme.primary : theme.surface}
                 />
               }
             />
@@ -214,7 +214,7 @@ export default function ProfileScreen() {
                   value={isDark}
                   onValueChange={toggleTheme}
                   trackColor={{ false: theme.border, true: theme.primary + '50' }}
-                  thumbColor={isDark ? theme.primary : '#f4f3f4'}
+                  thumbColor={isDark ? theme.primary : theme.surface}
                 />
               }
             />
@@ -270,7 +270,7 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>LOGOUT</Text>
           
           <View style={styles.sliderContainer}>
-            <View style={[styles.sliderTrack, { backgroundColor: '#DC2626' }]}>
+            <View style={[styles.sliderTrack, { backgroundColor: baseColors.error[600] }]}>
               <Animated.Text style={[styles.sliderText, textOpacity]}>
                 Slide to Logout →
               </Animated.Text>
@@ -279,7 +279,7 @@ export default function ProfileScreen() {
             <GestureDetector gesture={panGesture}>
               <Animated.View style={[styles.sliderButton, logoutAnimatedStyle]}>
                 <View style={styles.sliderButtonInner}>
-                  <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+                  <Ionicons name="log-out-outline" size={24} color={baseColors.neutral[0]} />
                 </View>
               </Animated.View>
             </GestureDetector>
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     ...getTypographyStyle('base', 'semibold'),
-    color: '#FFFFFF', // Will be overridden inline with theme.textInverse
+    color: baseColors.neutral[0],
   },
   sectionTitle: {
     ...getTypographyStyle('xs', 'bold'),
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
   sliderText: {
     ...getTypographyStyle('base', 'semibold'),
-    color: '#FFFFFF',
+    color: baseColors.neutral[0],
     letterSpacing: 0.5,
   },
   sliderButton: {
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: baseColors.neutral[0],
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#DC2626',
+    backgroundColor: baseColors.error[600],
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal, StyleSheet, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ModuleHeader from '@/components/layout/ModuleHeader';
-import AppButton from '@/components/ui/AppButton';
+import { ModuleHeader, Button, FormField, FormSection, Chip } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { spacing, borderRadius, baseColors } from '@/constants/designSystem';
+import { getTypographyStyle, getCardStyle, getShadowStyle } from '@/utils/styleHelpers';
 import eventsService from '@/services/events.service';
 import type { ClientCategory, Organisation, Client } from '@/types/events';
 
@@ -179,134 +180,48 @@ export default function AddLeadScreen() {
     }
   };
 
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 4 : 1}
-        style={{
-          borderWidth: 1,
-          borderColor: theme.border,
-          borderRadius: 8,
-          padding: 12,
-          fontSize: 14,
-          color: theme.text,
-          backgroundColor: theme.surface,
-          textAlignVertical: multiline ? 'top' : 'center',
-          minHeight: multiline ? 100 : 44,
-        }}
-      />
-    </View>
-  );
 
-  const SelectInput = ({ label, value, options, onSelect }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map((option: string) => (
-          <Pressable
-            key={option}
-            onPress={() => onSelect(option)}
-            style={({ pressed }) => ({
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: value === option ? theme.primary : theme.border,
-              backgroundColor: pressed
-                ? theme.primary + '10'
-                : value === option
-                ? theme.primary + '20'
-                : theme.surface,
-            })}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                color: value === option ? theme.primary : theme.text,
-                fontWeight: value === option ? '600' : 'normal',
-              }}
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.text, marginTop: 8 }}>
-      {title}
-    </Text>
-  );
+
+
+  // Render helpers removed - using FormSection component from @/components
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader
-        title="Add Lead"
-        showBack
-      />
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ModuleHeader
+          title="Add Lead"
+          showBack
+        />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Client Selection Mode */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader title="Client Selection" />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+        <FormSection title="Client Selection">
+          <View style={styles.modeContainer}>
             <Pressable
               onPress={() => {
                 setClientMode('select');
                 setFormData({ ...formData, clientId: 0, companyName: '', contactPerson: '', phone: '', email: '', address: '', categoryId: 0, organisationId: 0 });
               }}
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingVertical: 16,
-                borderRadius: 12,
-                borderWidth: clientMode === 'select' ? 2 : 1.5,
-                borderColor: clientMode === 'select' ? theme.primary : theme.border,
-                backgroundColor: clientMode === 'select' 
-                  ? theme.primary + '15'
-                  : theme.surface,
-                alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
-                shadowRadius: 3,
-                elevation: 3,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 8,
-                opacity: pressed ? 0.8 : 1,
-              })}
+              style={[styles.modeButton, clientMode === 'select' && styles.modeButtonActive]}
             >
               <Ionicons 
                 name="search-outline" 
                 size={22} 
-                color={theme.primary} 
+                color={baseColors.purple[500]} 
               />
               <Text
-                style={{
-                  fontSize: 15,
-                  color: clientMode === 'select' ? theme.primary : theme.text,
-                  fontWeight: '700',
-                }}
+                style={[
+                  getTypographyStyle('base', 'bold'),
+                  { color: clientMode === 'select' ? baseColors.purple[500] : theme.text }
+                ]}
               >
                 Select Existing
               </Text>
@@ -318,44 +233,24 @@ export default function AddLeadScreen() {
                 setFormData({ ...formData, clientId: 0 });
                 setSelectedClient(null);
               }}
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingVertical: 16,
-                borderRadius: 12,
-                borderWidth: clientMode === 'create' ? 2 : 1.5,
-                borderColor: clientMode === 'create' ? theme.primary : theme.border,
-                backgroundColor: clientMode === 'create'
-                  ? theme.primary + '15'
-                  : theme.surface,
-                alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
-                shadowRadius: 3,
-                elevation: 3,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 8,
-                opacity: pressed ? 0.8 : 1,
-              })}
+              style={[styles.modeButton, clientMode === 'create' && styles.modeButtonActive]}
             >
               <Ionicons 
                 name="add-circle-outline" 
                 size={22} 
-                color={theme.primary} 
+                color={baseColors.purple[500]} 
               />
               <Text
-                style={{
-                  fontSize: 15,
-                  color: clientMode === 'create' ? theme.primary : theme.text,
-                  fontWeight: '700',
-                }}
+                style={[
+                  getTypographyStyle('base', 'bold'),
+                  { color: clientMode === 'create' ? baseColors.purple[500] : theme.text }
+                ]}
               >
                 Create New
               </Text>
             </Pressable>
           </View>
-        </View>
+        </FormSection>
 
         {/* Select Existing Client */}
         {clientMode === 'select' && (
@@ -399,9 +294,8 @@ export default function AddLeadScreen() {
 
         {/* Create New Client */}
         {clientMode === 'create' && (
-          <View style={{ gap: 16 }}>
-            <SectionHeader title="Client Information" />
-            <FormInput
+          <FormSection title="Client Information">
+            <FormField
               label="Company Name *"
               value={formData.companyName}
               onChangeText={(text: string) => updateField('companyName', text)}
@@ -409,47 +303,27 @@ export default function AddLeadScreen() {
             />
             
             {/* Client Category */}
-            <View style={{ gap: 8 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
                 Client Category *
               </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={styles.chipContainer}>
                 {categories.map((category) => (
-                  <Pressable
+                  <Chip
                     key={category.id}
+                    label={category.name}
+                    selected={formData.categoryId === category.id}
                     onPress={() => setFormData({ ...formData, categoryId: category.id, organisationId: 0 })}
-                    style={({ pressed }) => ({
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: formData.categoryId === category.id ? theme.primary : theme.border,
-                      backgroundColor: pressed
-                        ? theme.primary + '10'
-                        : formData.categoryId === category.id
-                        ? theme.primary + '20'
-                        : theme.surface,
-                    })}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: formData.categoryId === category.id ? theme.primary : theme.text,
-                        fontWeight: formData.categoryId === category.id ? '600' : 'normal',
-                      }}
-                    >
-                      {category.name}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
             </View>
 
             {/* Organisation (for B2B/B2G only) - Conditional */}
             {requiresOrganisation() && (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: spacing.sm }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
                   Organisation *
                 </Text>
                 <Pressable
@@ -457,159 +331,123 @@ export default function AddLeadScreen() {
                   style={({ pressed }) => ({
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 4,
-                    padding: 6,
+                    gap: spacing.xs,
+                    padding: spacing.sm,
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.primary} />
-                  <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '600' }}>
+                  <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={baseColors.purple[500]} />
+                  <Text style={[getTypographyStyle('xs', 'semibold'), { color: baseColors.purple[500] }]}>
                     {showOrgInput ? 'Cancel' : 'Add New'}
                   </Text>
                 </Pressable>
               </View>
 
               {showOrgInput ? (
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                   <TextInput
                     value={newOrgName}
                     onChangeText={setNewOrgName}
                     placeholder="Organisation name"
                     placeholderTextColor={theme.textSecondary}
-                    style={{
-                      flex: 1,
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 14,
-                      color: theme.text,
-                      backgroundColor: theme.surface,
-                    }}
+                    style={[
+                      getTypographyStyle('base', 'regular'),
+                      {
+                        flex: 1,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        borderRadius: borderRadius.md,
+                        padding: spacing.md,
+                        color: theme.text,
+                        backgroundColor: theme.surface,
+                      }
+                    ]}
                   />
                   <Pressable
                     onPress={handleAddOrganisation}
                     style={({ pressed }) => ({
-                      backgroundColor: pressed ? theme.primary + 'dd' : theme.primary,
-                      paddingHorizontal: 16,
-                      borderRadius: 8,
+                      backgroundColor: pressed ? baseColors.purple[600] : baseColors.purple[500],
+                      paddingHorizontal: spacing.base,
+                      borderRadius: borderRadius.md,
                       justifyContent: 'center',
                     })}
                   >
-                    <Text style={{ color: theme.textInverse, fontSize: 14, fontWeight: '600' }}>Add</Text>
+                    <Text style={[getTypographyStyle('base', 'semibold'), { color: baseColors.neutral[50] }]}>Add</Text>
                   </Pressable>
                 </View>
               ) : (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                <View style={styles.chipContainer}>
                   {organisations.map((org) => (
-                    <Pressable
+                    <Chip
                       key={org.id}
+                      label={org.name}
+                      selected={formData.organisationId === org.id}
                       onPress={() => setFormData({ ...formData, organisationId: org.id })}
-                      style={({ pressed }) => ({
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: formData.organisationId === org.id ? theme.primary : theme.border,
-                        backgroundColor: pressed
-                          ? theme.primary + '10'
-                          : formData.organisationId === org.id
-                          ? theme.primary + '20'
-                          : theme.surface,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: formData.organisationId === org.id ? theme.primary : theme.text,
-                          fontWeight: formData.organisationId === org.id ? '600' : 'normal',
-                        }}
-                      >
-                        {org.name}
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
                 </View>
               )}
             </View>
           )}
 
-          <SectionHeader title="Contact Information" />
-          <FormInput
-            label="Contact Person *"
-            value={formData.contactPerson}
-            onChangeText={(text: string) => updateField('contactPerson', text)}
-            placeholder="Enter contact person name"
-          />
-          <FormInput
-            label="Phone *"
-            value={formData.phone}
-            onChangeText={(text: string) => updateField('phone', text)}
-            placeholder="Enter phone number"
-            keyboardType="phone-pad"
-          />
-          <FormInput
-            label="Email *"
-            value={formData.email}
-            onChangeText={(text: string) => updateField('email', text)}
-            placeholder="Enter email address"
-            keyboardType="email-address"
-          />
+        </FormSection>
+        )}
 
-          <FormInput
-            label="Address"
-            value={formData.address}
-            onChangeText={(text: string) => updateField('address', text)}
-            placeholder="Enter company address"
-            multiline
-          />
-        </View>
+        {/* Contact Information */}
+        {clientMode === 'create' && (
+          <FormSection title="Contact Information">
+            <FormField
+              label="Contact Person *"
+              value={formData.contactPerson}
+              onChangeText={(text: string) => updateField('contactPerson', text)}
+              placeholder="Enter contact person name"
+            />
+            <FormField
+              label="Phone *"
+              value={formData.phone}
+              onChangeText={(text: string) => updateField('phone', text)}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+            />
+            <FormField
+              label="Email *"
+              value={formData.email}
+              onChangeText={(text: string) => updateField('email', text)}
+              placeholder="Enter email address"
+              keyboardType="email-address"
+            />
+            <FormField
+              label="Address"
+              value={formData.address}
+              onChangeText={(text: string) => updateField('address', text)}
+              placeholder="Enter company address"
+              multiline
+            />
+          </FormSection>
         )}
 
         {/* Lead Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Lead Details" />
-          
+        <FormSection title="Lead Details">
           {/* Source Selection */}
-          <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
               Lead Source *
             </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={styles.modeContainer}>
               <Pressable
                 onPress={() => updateField('source', 'online')}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  paddingVertical: 16,
-                  borderRadius: 12,
-                  borderWidth: formData.source === 'online' ? 2 : 1.5,
-                  borderColor: formData.source === 'online' ? theme.primary : theme.border,
-                  backgroundColor: formData.source === 'online'
-                    ? theme.primary + '15'
-                    : theme.surface,
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  gap: 8,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 3,
-                  elevation: 3,
-                  opacity: pressed ? 0.8 : 1,
-                })}
+                style={[styles.modeButton, formData.source === 'online' && styles.modeButtonActive]}
               >
                 <Ionicons 
                   name="globe-outline" 
                   size={22} 
-                  color={theme.primary} 
+                  color={baseColors.purple[500]} 
                 />
                 <Text
-                  style={{
-                    fontSize: 15,
-                    color: formData.source === 'online' ? theme.primary : theme.text,
-                    fontWeight: '700',
-                  }}
+                  style={[
+                    getTypographyStyle('base', 'bold'),
+                    { color: formData.source === 'online' ? baseColors.purple[500] : theme.text }
+                  ]}
                 >
                   Online
                 </Text>
@@ -617,38 +455,18 @@ export default function AddLeadScreen() {
 
               <Pressable
                 onPress={() => updateField('source', 'offline')}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  paddingVertical: 16,
-                  borderRadius: 12,
-                  borderWidth: formData.source === 'offline' ? 2 : 1.5,
-                  borderColor: formData.source === 'offline' ? theme.primary : theme.border,
-                  backgroundColor: formData.source === 'offline'
-                    ? theme.primary + '15'
-                    : theme.surface,
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  gap: 8,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 3,
-                  elevation: 3,
-                  opacity: pressed ? 0.8 : 1,
-                })}
+                style={[styles.modeButton, formData.source === 'offline' && styles.modeButtonActive]}
               >
                 <Ionicons 
                   name="storefront-outline" 
                   size={22} 
-                  color={theme.primary} 
+                  color={baseColors.purple[500]} 
                 />
                 <Text
-                  style={{
-                    fontSize: 15,
-                    color: formData.source === 'offline' ? theme.primary : theme.text,
-                    fontWeight: '700',
-                  }}
+                  style={[
+                    getTypographyStyle('base', 'bold'),
+                    { color: formData.source === 'offline' ? baseColors.purple[500] : theme.text }
+                  ]}
                 >
                   Offline
                 </Text>
@@ -656,14 +474,14 @@ export default function AddLeadScreen() {
             </View>
           </View>
 
-          <FormInput
+          <FormField
             label="Referral Source (Optional)"
             value={formData.referral}
             onChangeText={(text: string) => updateField('referral', text)}
             placeholder="e.g., John Smith, Google Ads, Instagram"
           />
           
-          <FormInput
+          <FormField
             label="Message / Notes (Optional)"
             value={formData.message}
             onChangeText={(text: string) => updateField('message', text)}
@@ -672,34 +490,24 @@ export default function AddLeadScreen() {
           />
           
           {/* Info Note */}
-          <View style={{
-            backgroundColor: theme.primary + '10',
-            borderLeftWidth: 4,
-            borderLeftColor: theme.primary,
-            padding: 12,
-            borderRadius: 8,
-            flexDirection: 'row',
-            gap: 10,
-            marginTop: 4,
-          }}>
-            <Ionicons name="information-circle" size={20} color={theme.primary} />
+          <View style={styles.infoNote}>
+            <Ionicons name="information-circle" size={20} color={baseColors.purple[500]} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: theme.text, lineHeight: 18 }}>
-                <Text style={{ fontWeight: '700' }}>Note: </Text>
+              <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.text, lineHeight: 18 }]}>
+                <Text style={[getTypographyStyle('sm', 'bold')]}>Note: </Text>
                 Event details (venue, dates, vendors) will be added when converting this lead to an event.
               </Text>
             </View>
           </View>
-        </View>
+        </FormSection>
 
         {/* Submit Button */}
-        <View style={{ marginTop: 16, marginBottom: 24 }}>
-          <AppButton
+        <View style={styles.submitContainer}>
+          <Button
             title={loading ? 'Creating Lead...' : 'Create Lead'}
             onPress={handleSubmit}
             disabled={loading}
             loading={loading}
-            fullWidth
             size="lg"
             leftIcon="checkmark-circle"
           />
@@ -713,7 +521,7 @@ export default function AddLeadScreen() {
         transparent={true}
         onRequestClose={() => setShowClientModal(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: baseColors.neutral[900] + '80', justifyContent: 'flex-end' }}>
           <View style={{
             backgroundColor: theme.background,
             borderTopLeftRadius: 20,
@@ -850,6 +658,70 @@ export default function AddLeadScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+    gap: spacing.xl,
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  modeContainer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: spacing.base,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: baseColors.neutral[300],
+    backgroundColor: baseColors.neutral[50],
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    ...getShadowStyle(2),
+  },
+  modeButtonActive: {
+    borderWidth: 2,
+    borderColor: baseColors.purple[500],
+    backgroundColor: baseColors.purple[50],
+  },
+  infoNote: {
+    backgroundColor: baseColors.purple[50],
+    borderLeftWidth: 4,
+    borderLeftColor: baseColors.purple[500],
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  submitContainer: {
+    marginTop: spacing.base,
+    marginBottom: spacing.xl,
+  },
+});

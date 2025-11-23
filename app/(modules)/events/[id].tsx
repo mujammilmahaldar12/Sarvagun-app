@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { StatusBadge, InfoRow } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { baseColors, spacing } from '@/constants/designSystem';
 import eventsService from '@/services/events.service';
-import { getTypographyStyle } from '@/utils/styleHelpers';
+import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 
 type TabType = 'info' | 'timeline' | 'documents';
 
@@ -106,10 +107,10 @@ export default function EventDetailScreen() {
 
     if (itemType === 'leads') {
       return (
-        <View style={{ padding: 16, gap: 20 }}>
+        <View style={styles.content}>
           {/* Client Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
+          <View style={styles.section}>
+            <Text style={[getTypographyStyle('lg', 'semibold'), { color: theme.text }]}>
               Client Information
             </Text>
             <InfoRow label="Client Name" value={item.client?.name || 'N/A'} />
@@ -125,8 +126,8 @@ export default function EventDetailScreen() {
           </View>
 
           {/* Lead Details */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
+          <View style={styles.section}>
+            <Text style={[getTypographyStyle('lg', 'semibold'), { color: theme.text }]}>
               Lead Details
             </Text>
             <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
@@ -142,10 +143,10 @@ export default function EventDetailScreen() {
       );
     } else if (itemType === 'events') {
       return (
-        <View style={{ padding: 16, gap: 20 }}>
+        <View style={styles.content}>
           {/* Event Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
+          <View style={styles.section}>
+            <Text style={[getTypographyStyle('lg', 'semibold'), { color: theme.text }]}>
               Event Information
             </Text>
             <InfoRow label="Event Name" value={item.name} />
@@ -258,33 +259,18 @@ export default function EventDetailScreen() {
   };
 
   const renderTimelineTab = () => (
-    <View style={{ padding: 16 }}>
-      <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 20 }}>
+    <View style={styles.content}>
+      <Text style={[getTypographyStyle('base', 'regular'), { color: theme.textSecondary, textAlign: 'center', marginTop: spacing.xl }]}>
         Timeline coming soon
       </Text>
     </View>
   );
 
   const renderDocumentsTab = () => (
-    <View style={{ padding: 16 }}>
-      <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 20 }}>
+    <View style={styles.content}>
+      <Text style={[getTypographyStyle('base', 'regular'), { color: theme.textSecondary, textAlign: 'center', marginTop: spacing.xl }]}>
         Documents coming soon
       </Text>
-    </View>
-  );
-
-  const InfoRow = ({ label, value, multiline = false }: { label: string; value: React.ReactNode; multiline?: boolean }) => (
-    <View style={{ flexDirection: multiline ? 'column' : 'row', gap: multiline ? 4 : 8 }}>
-      <Text style={{ fontSize: 14, color: theme.textSecondary, width: multiline ? undefined : 120 }}>
-        {label}:
-      </Text>
-      {typeof value === 'string' || typeof value === 'number' ? (
-        <Text style={{ fontSize: 14, color: theme.text, flex: 1 }}>
-          {value}
-        </Text>
-      ) : (
-        value
-      )}
     </View>
   );
 
@@ -296,7 +282,7 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
@@ -318,13 +304,13 @@ export default function EventDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <ModuleHeader
         title={getTitle()}
         showBack
         rightActions={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={styles.headerActions}>
             {itemType === 'leads' && canManage && item && !item.reject && !item.convert && (
               <Pressable
                 onPress={() => {
@@ -348,10 +334,10 @@ export default function EventDetailScreen() {
                 style={({ pressed }) => ({
                   padding: 8,
                   borderRadius: 8,
-                  backgroundColor: pressed ? '#FEE2E2' : 'transparent',
+                  backgroundColor: pressed ? baseColors.error[100] : 'transparent',
                 })}
               >
-                <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                <Ionicons name="trash-outline" size={24} color={baseColors.error[500]} />
               </Pressable>
             )}
           </View>
@@ -374,3 +360,25 @@ export default function EventDetailScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  content: {
+    padding: spacing.lg,
+    gap: spacing.xl,
+  },
+  section: {
+    gap: spacing.md,
+  },
+});

@@ -1,6 +1,7 @@
 // SkillsDisplay.tsx - Professional Skills Display with Proficiency Levels
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Badge } from '../core/Badge';
 import { Progress } from '../core/Progress';
 import { Card } from '../core/Card';
@@ -37,10 +38,16 @@ export function SkillsDisplay({
     domain: 'Domain Expertise',
   };
 
-  const categoryIcons = {
-    technical: '⚙️',
-    soft: '🤝',
-    domain: '📊',
+  const categoryIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
+    technical: 'code-slash',
+    soft: 'people',
+    domain: 'business',
+  };
+
+  const categoryColors = {
+    technical: '#3b82f6',
+    soft: '#10b981',
+    domain: '#8b5cf6',
   };
 
   if (compact) {
@@ -61,18 +68,25 @@ export function SkillsDisplay({
 
   return (
     <View style={styles.container}>
-      {Object.entries(groupedSkills).map(([category, categorySkills]) => (
-        <Card key={category} style={styles.categoryCard}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryIcon}>{categoryIcons[category as keyof typeof categoryIcons]}</Text>
-            <Text style={[styles.categoryTitle, { color: theme.text }]}>
-              {categoryLabels[category as keyof typeof categoryLabels]}
-            </Text>
-            <Badge 
-              label={`${categorySkills.length}`} 
-              variant="subtle"
-            />
-          </View>
+      {Object.entries(groupedSkills).map(([category, categorySkills]) => {
+        const catColor = categoryColors[category as keyof typeof categoryColors];
+        return (
+          <Card key={category} style={styles.categoryCard}>
+            <View style={[styles.categoryHeader, { backgroundColor: `${catColor}10` }]}>
+              <View style={[styles.categoryIconContainer, { backgroundColor: catColor }]}>
+                <Ionicons 
+                  name={categoryIcons[category]} 
+                  size={18} 
+                  color="#FFF" 
+                />
+              </View>
+              <Text style={[styles.categoryTitle, { color: theme.text }]}>
+                {categoryLabels[category as keyof typeof categoryLabels]}
+              </Text>
+              <View style={[styles.countBadge, { backgroundColor: catColor }]}>
+                <Text style={styles.countText}>{categorySkills.length}</Text>
+              </View>
+            </View>
 
           <View style={styles.skillsList}>
             {categorySkills.map((skill) => (
@@ -108,7 +122,8 @@ export function SkillsDisplay({
             ))}
           </View>
         </Card>
-      ))}
+      );
+      })}
     </View>
   );
 }
@@ -126,46 +141,69 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
   categoryCard: {
-    padding: 16,
+    padding: 0,
+    overflow: 'hidden',
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
+    padding: 14,
+    gap: 10,
   },
-  categoryIcon: {
-    fontSize: 20,
+  categoryIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryTitle: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  countBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  countText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   skillsList: {
-    gap: 16,
+    gap: 14,
+    padding: 14,
+    paddingTop: 0,
   },
   skillItem: {
-    gap: 8,
+    gap: 6,
   },
   skillHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 2,
   },
   skillName: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     flex: 1,
   },
   skillMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   yearsText: {
-    fontSize: 12,
-    fontWeight: '400',
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.7,
   },
   levelBadge: {
     paddingHorizontal: 8,

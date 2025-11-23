@@ -160,6 +160,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
       key: 'name', 
       title: 'Client Name', 
       width: 150,
+      sortable: true,
       render: (value: string, row: ClientRowData) => (
         <View>
           <Text style={[styles.cellTextPrimary, { 
@@ -180,6 +181,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
       key: 'email', 
       title: 'Contact', 
       width: 130,
+      sortable: true,
       render: (value: string, row: ClientRowData) => (
         <View>
           <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={1}>

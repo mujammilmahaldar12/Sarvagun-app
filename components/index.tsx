@@ -58,6 +58,14 @@ export type { CertificationCardProps } from './ui/CertificationCard';
 export { CollaborationTree } from './ui/CollaborationTree';
 export type { CollaborationTreeProps } from './ui/CollaborationTree';
 
+// Events & Module Components
+export { InfoRow } from './ui/InfoRow';
+export { FormSection } from './ui/FormSection';
+export { EventCard } from './ui/EventCard';
+export { LeadCard } from './ui/LeadCard';
+export { VenueCard } from './ui/VenueCard';
+export { ClientCard } from './ui/ClientCard';
+
 // Enhanced Loading & Error States
 export { default as LoadingState } from './ui/LoadingState';
 export { ErrorBoundary, ErrorFallback, InlineError } from './ui/ErrorBoundary';

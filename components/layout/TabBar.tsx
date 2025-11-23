@@ -46,7 +46,7 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
                   paddingHorizontal: 20,
                   paddingVertical: 12,
                   borderRadius: 12,
-                  backgroundColor: isActive ? theme.primary : theme.surface,
+                  backgroundColor: isActive ? theme.primary : (isDark ? theme.surface : '#FFFFFF'),
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -55,12 +55,12 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
                   opacity: pressed ? 0.9 : 1,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                   shadowColor: isActive ? theme.primary : '#000',
-                  shadowOffset: { width: 0, height: isActive ? 4 : 1 },
-                  shadowOpacity: isActive ? 0.4 : 0.08,
-                  shadowRadius: isActive ? 8 : 3,
-                  elevation: isActive ? 6 : 2,
-                  borderWidth: isActive ? 2 : 1,
-                  borderColor: isActive ? theme.primary : (isDark ? '#374151' : '#E5E7EB'),
+                  shadowOffset: { width: 0, height: isActive ? 6 : 2 },
+                  shadowOpacity: isActive ? 0.5 : 0.15,
+                  shadowRadius: isActive ? 10 : 4,
+                  elevation: isActive ? 8 : 3,
+                  borderWidth: isActive ? 0 : 1,
+                  borderColor: isDark ? '#374151' : '#E5E7EB',
                 })}
               >
                 {tab.icon && (

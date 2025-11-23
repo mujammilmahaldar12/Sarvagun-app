@@ -178,6 +178,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       key: 'clientName', 
       title: 'Client Name', 
       width: 140,
+      sortable: true,
       render: (value: string, row: LeadRowData) => (
         <View>
           <Text style={[styles.cellTextPrimary, { color: theme.text }]} numberOfLines={1}>
@@ -195,6 +196,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       key: 'email', 
       title: 'Contact', 
       width: 130,
+      sortable: true,
       render: (value: string, row: LeadRowData) => (
         <View>
           <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={1}>
@@ -212,6 +214,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       key: 'source', 
       title: 'Source', 
       width: 80,
+      sortable: true,
       render: (value: string | undefined) => (
         <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]}>
           {value || 'N/A'}
@@ -222,6 +225,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       key: 'status', 
       title: 'Status', 
       width: 100,
+      sortable: true,
       render: (value: string) => (
         <StatusBadge
           status={value}
@@ -232,6 +236,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       key: 'assignedTo', 
       title: 'Assigned To', 
       width: 100,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={1}>
           {value}
@@ -242,6 +247,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       key: 'createdDate', 
       title: 'Created', 
       width: 90,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellTextSecondary, { 
           color: theme.textSecondary,

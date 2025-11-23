@@ -17,6 +17,9 @@ export default function FloatingActionButton({
   size = 60,
 }: FloatingActionButtonProps) {
   const { theme } = useTheme();
+  
+  const buttonColor = color || theme.primary;
+  const iconColor = '#FFFFFF';
 
   return (
     <Pressable
@@ -28,19 +31,19 @@ export default function FloatingActionButton({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: color || theme.primary,
+        backgroundColor: buttonColor,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-        opacity: pressed ? 0.8 : 1,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        elevation: 10,
+        opacity: pressed ? 0.85 : 1,
         transform: [{ scale: pressed ? 0.95 : 1 }],
       })}
     >
-      <Ionicons name={icon} size={28} color="#FFFFFF" />
+      <Ionicons name={icon} size={28} color={iconColor} />
     </Pressable>
   );
 }

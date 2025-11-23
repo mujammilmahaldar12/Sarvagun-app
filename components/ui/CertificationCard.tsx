@@ -56,6 +56,9 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
 
   const isExpired = certification.expiry_date && isCertificationExpired(certification.expiry_date);
 
+  const validityColor = isExpired ? '#ef4444' : 
+    isCertificationExpiringSoon(certification.expiry_date || '') ? '#f59e0b' : '#10b981';
+
   return (
     <Pressable 
       onPress={handlePress}
@@ -65,6 +68,7 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
         pressed && styles.pressed,
       ]}
     >
+      <View style={[styles.cardWrapper, { borderColor: `${validityColor}30` }]}>
       <Card style={isExpired ? styles.expiredCard : styles.card}>
         {/* Header */}
         <View style={styles.header}>
@@ -152,6 +156,7 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
           </View>
         )}
       </Card>
+      </View>
     </Pressable>
   );
 }
@@ -163,16 +168,21 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
+  cardWrapper: {
+    borderRadius: 14,
+    borderWidth: 3,
+    overflow: 'hidden',
+  },
   card: {
     padding: 16,
   },
   expiredCard: {
     padding: 16,
-    opacity: 0.7,
+    opacity: 0.6,
   },
   header: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 10,
     gap: 12,
   },
   iconContainer: {

@@ -133,8 +133,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
   const columns = [
     { 
       key: 'name', 
-      label: 'Venue Name', 
+      title: 'Venue Name', 
       width: 140,
+      sortable: true,
       render: (value: string, row: VenueRowData) => (
         <View>
           <Text style={[styles.cellTextPrimary, { color: theme.text }]} numberOfLines={1}>
@@ -150,8 +151,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
     },
     { 
       key: 'address', 
-      label: 'Location', 
+      title: 'Location', 
       width: 150,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={2}>
           {value}
@@ -160,8 +162,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
     },
     { 
       key: 'capacity', 
-      label: 'Capacity', 
+      title: 'Capacity', 
       width: 80,
+      sortable: true,
       render: (value?: number) => (
         <Text style={[styles.cellTextSecondary, { 
           color: value && value > 0 ? theme.text : theme.textSecondary,
@@ -173,7 +176,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
     },
     { 
       key: 'contactPerson', 
-      label: 'Contact', 
+      title: 'Contact', 
       width: 120,
       render: (value: string | undefined, row: VenueRowData) => (
         <View>
@@ -197,7 +200,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
     },
     { 
       key: 'facilities', 
-      label: 'Facilities', 
+      title: 'Facilities', 
       width: 120,
       render: (value: string | undefined, row: VenueRowData) => {
         if (!value) {

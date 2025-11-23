@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { moduleColors, getAlphaColor } from '@/constants/designSystem';
 import { useAuthStore } from '@/store/authStore';
 import { useMyProfile, useTeamMembers } from '@/hooks/useHRQueries';
 import { 
@@ -261,15 +262,15 @@ export default function MyProfileScreen() {
               </View>
             )}
             {enhancedProfile.category && (
-              <View style={[styles.customBadge, { backgroundColor: '#10B98115', borderColor: '#10B98130' }]}>
-                <Ionicons name="person-outline" size={14} color="#10B981" />
-                <Text style={[styles.badgeText, { color: '#10B981' }]}>{enhancedProfile.category.toUpperCase()}</Text>
+              <View style={[styles.customBadge, { backgroundColor: getAlphaColor(moduleColors.finance.main, 0.08), borderColor: getAlphaColor(moduleColors.finance.main, 0.19) }]}>
+                <Ionicons name="person-outline" size={14} color={moduleColors.finance.main} />
+                <Text style={[styles.badgeText, { color: moduleColors.finance.main }]}>{enhancedProfile.category.toUpperCase()}</Text>
               </View>
             )}
             {enhancedProfile.team_size > 0 && (
-              <View style={[styles.customBadge, { backgroundColor: '#F5971515', borderColor: '#F5971530' }]}>
-                <Ionicons name="people-outline" size={14} color="#F59715" />
-                <Text style={[styles.badgeText, { color: '#F59715' }]}>Team Lead ({enhancedProfile.team_size})</Text>
+              <View style={[styles.customBadge, { backgroundColor: getAlphaColor(moduleColors.projects.main, 0.08), borderColor: getAlphaColor(moduleColors.projects.main, 0.19) }]}>
+                <Ionicons name="people-outline" size={14} color={moduleColors.projects.main} />
+                <Text style={[styles.badgeText, { color: moduleColors.projects.main }]}>Team Lead ({enhancedProfile.team_size})</Text>
               </View>
             )}
           </View>
@@ -298,8 +299,8 @@ export default function MyProfileScreen() {
             <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             
             <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: '#10B98115' }]}>
-                <Ionicons name="briefcase-outline" size={20} color="#10B981" />
+              <View style={[styles.statIcon, { backgroundColor: getAlphaColor(moduleColors.finance.main, 0.08) }]}>
+                <Ionicons name="briefcase-outline" size={20} color={moduleColors.finance.main} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>
                 {projectStats.projectsCompleted}
@@ -312,8 +313,8 @@ export default function MyProfileScreen() {
             <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             
             <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: '#F5971515' }]}>
-                <Ionicons name="checkmark-circle-outline" size={20} color="#F59715" />
+              <View style={[styles.statIcon, { backgroundColor: getAlphaColor(moduleColors.projects.main, 0.08) }]}>
+                <Ionicons name="checkmark-circle-outline" size={20} color={moduleColors.projects.main} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>
                 {enhancedProfile.attendance_percentage.toFixed(0)}%

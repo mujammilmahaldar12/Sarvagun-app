@@ -162,6 +162,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'eventName', 
       title: 'Event Name', 
       width: 150,
+      sortable: true,
       render: (value: string, row: EventRowData) => (
         <Text 
           style={[styles.cellText, { color: theme.text, fontWeight: designSystem.typography.weights.medium }]}
@@ -175,6 +176,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'clientName', 
       title: 'Client', 
       width: 120,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>
           {value}
@@ -185,6 +187,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'startDate', 
       title: 'Start Date', 
       width: 100,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellText, { color: theme.textSecondary, fontSize: designSystem.typography.sizes.sm }]}>
           {value}
@@ -195,6 +198,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'endDate', 
       title: 'End Date', 
       width: 100,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellText, { color: theme.textSecondary, fontSize: designSystem.typography.sizes.sm }]}>
           {value}
@@ -205,6 +209,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'venue', 
       title: 'Venue', 
       width: 120,
+      sortable: true,
       render: (value: string) => (
         <Text style={[styles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>
           {value}
@@ -215,6 +220,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'status', 
       title: 'Status', 
       width: 100,
+      sortable: true,
       render: (value: string, row: EventRowData) => (
         <StatusBadge 
           status={value}
@@ -225,6 +231,7 @@ const EventsList: React.FC<EventsListProps> = ({
       key: 'budget', 
       title: 'Budget', 
       width: 120,
+      sortable: true,
       render: (value: number) => (
         <Text style={[styles.cellText, { 
           color: value > 0 ? designSystem.baseColors.success[600] : theme.textSecondary,

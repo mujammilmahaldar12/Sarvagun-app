@@ -6,10 +6,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Avatar, Skeleton, SkeletonText, AnimatedPressable } from '@/components';
-import { spacing, borderRadius, iconSizes, typography } from '@/constants/designSystem';
+import { spacing, borderRadius, iconSizes, typography, moduleColors, baseColors } from '@/constants/designSystem';
 import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount } from '@/hooks/useDashboardQueries';
 import { formatDistanceToNow } from 'date-fns';
+
+// Medal colors for leaderboard
+const MEDAL_COLORS = {
+  gold: '#FFD700',
+  silver: '#C0C0C0',
+  bronze: '#CD7F32',
+} as const;
 
 interface Module {
   id: string;
@@ -26,40 +33,40 @@ const MODULES: Module[] = [
     title: 'HR',
     icon: 'people',
     route: '/(modules)/hr',
-    color: '#10B981',
-    bgColor: '#ECFDF5',
+    color: moduleColors.hr.main,
+    bgColor: moduleColors.hr.light,
   },
   {
     id: 'events',
     title: 'Events',
     icon: 'calendar',
     route: '/(modules)/events',
-    color: '#3B82F6',
-    bgColor: '#EFF6FF',
+    color: moduleColors.events.main,
+    bgColor: moduleColors.events.light,
   },
   {
     id: 'finance',
     title: 'Finance',
     icon: 'cash',
     route: '/(modules)/finance',
-    color: '#F59E0B',
-    bgColor: '#FFFBEB',
+    color: moduleColors.finance.main,
+    bgColor: moduleColors.finance.light,
   },
   {
     id: 'projects',
     title: 'Projects',
     icon: 'briefcase',
     route: '/(modules)/projects',
-    color: '#8B5CF6',
-    bgColor: '#F5F3FF',
+    color: moduleColors.projects.main,
+    bgColor: moduleColors.projects.light,
   },
   {
     id: 'leave',
     title: 'Leave',
     icon: 'time',
     route: '/(modules)/leave',
-    color: '#EF4444',
-    bgColor: '#FEE2E2',
+    color: moduleColors.leave.main,
+    bgColor: moduleColors.leave.light,
   },
 ];
 
@@ -455,9 +462,9 @@ export default function HomeScreen() {
           <View style={[styles.leaderboardContainer, getCardStyle(theme.surface, 'md', 'lg')]}>
             {DUMMY_LEADERBOARD.slice(0, 5).map((leader, index) => {
               const getRankColor = (rank: number) => {
-                if (rank === 1) return '#FFD700'; // Gold
-                if (rank === 2) return '#C0C0C0'; // Silver
-                if (rank === 3) return '#CD7F32'; // Bronze
+                if (rank === 1) return MEDAL_COLORS.gold;
+                if (rank === 2) return MEDAL_COLORS.silver;
+                if (rank === 3) return MEDAL_COLORS.bronze;
                 return theme.primary;
               };
 
@@ -529,7 +536,7 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.leaderStatDot} />
                       <View style={styles.leaderStatItem}>
-                        <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color="#10B981" />
+                        <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color={theme.success} />
                         <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
                           {leader.tasksCompleted} tasks
                         </Text>
@@ -576,15 +583,15 @@ export default function HomeScreen() {
   function getActivityColor(type: string): string {
     switch (type) {
       case 'leave':
-        return '#EF4444';
+        return moduleColors.leave.main;
       case 'task':
-        return '#3B82F6';
+        return moduleColors.tasks.main;
       case 'attendance':
-        return '#8B5CF6';
+        return moduleColors.attendance.main;
       case 'event':
-        return '#F59E0B';
+        return moduleColors.events.main;
       case 'project':
-        return '#10B981';
+        return moduleColors.projects.main;
       default:
         return theme.primary;
     }
@@ -648,7 +655,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#EF4444',
+    backgroundColor: baseColors.error[500],
     borderRadius: borderRadius.full,
     minWidth: 18,
     height: 18,
@@ -658,7 +665,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...getTypographyStyle('xs', 'bold'),
-    color: '#FFFFFF', // Will be overridden inline with theme.textInverse
+    color: baseColors.neutral[0],
   },
   scrollContent: {
     paddingTop: spacing.xl,
@@ -701,7 +708,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: '#00000008',
+    borderTopColor: 'rgba(0,0,0,0.03)',
   },
   statItem: {
     flex: 1,
@@ -850,7 +857,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: baseColors.neutral[300],
   },
   leaderScore: {
     alignItems: 'flex-end',

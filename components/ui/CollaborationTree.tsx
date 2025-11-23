@@ -1,6 +1,6 @@
-// CollaborationTree.tsx - Professional Organizational Chart
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+// CollaborationTree.tsx - Clean Team Hierarchy
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { useTheme } from '../../hooks/useTheme';
@@ -18,259 +18,258 @@ export function CollaborationTree({
   currentUser,
   manager,
   teamMembers = [],
-  peers = [],
   topManagement,
 }: CollaborationTreeProps) {
   const theme = useTheme();
+  
+  const [expandedSections, setExpandedSections] = useState({
+    top: true,
+    manager: true,
+    team: true,
+  });
 
-  const EmployeeCard = ({ employee, isYou = false, level }: { employee: Employee; isYou?: boolean; level: 'ceo' | 'manager' | 'you' | 'team' }) => {
-    const cardColor = level === 'ceo' ? '#8B5CF6' : level === 'manager' ? '#3B82F6' : isYou ? theme.primary : '#10B981';
+  const toggle = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const PersonCard = ({ person, role, isYou = false }: { person: Employee; role: string; isYou?: boolean }) => {
+    const roleColors: Record<string, string> = {
+      CEO: '#8B5CF6',
+      Manager: '#3B82F6',
+      You: theme.primary,
+      Team: '#10B981',
+    };
+    const color = roleColors[role];
     
     return (
-      <View style={[styles.card, { borderColor: cardColor, backgroundColor: theme.surface }]}>
-        {isYou && (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: `${theme.primary}10` }]} />
-        )}
-        
-        <View style={styles.cardHeader}>
-          <View style={[styles.roleBadge, { backgroundColor: cardColor }]}>
-            <Ionicons 
-              name={level === 'ceo' ? 'shield' : level === 'manager' ? 'people' : level === 'you' ? 'star' : 'person'} 
-              size={12} 
-              color="#FFF" 
-            />
-          </View>
-        </View>
-
-        <View style={styles.cardBody}>
-          <Avatar
-            name={employee.name}
-            source={employee.profile_picture ? { uri: employee.profile_picture } : undefined}
-            size={isYou ? 60 : 50}
-          />
-          
-          <View style={styles.cardInfo}>
-            <Text style={[styles.cardName, { color: theme.text }, isYou && styles.cardNameHighlight]} numberOfLines={2}>
-              {employee.name}
+      <View style={[styles.card, { backgroundColor: theme.surface, borderLeftColor: color }]}>
+        <Avatar
+          name={person.name}
+          source={person.profile_picture ? { uri: person.profile_picture } : undefined}
+          size={48}
+        />
+        <View style={styles.info}>
+          <View style={styles.row}>
+            <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+              {person.name}
             </Text>
-            <Text style={[styles.cardTitle, { color: theme.textSecondary }]} numberOfLines={1}>
-              {employee.designation}
-            </Text>
-            <View style={[styles.deptBadge, { backgroundColor: `${cardColor}15` }]}>
-              <Text style={[styles.deptText, { color: cardColor }]} numberOfLines={1}>
-                {employee.department}
-              </Text>
-            </View>
             {isYou && (
-              <View style={[styles.youBadge, { backgroundColor: theme.primary }]}>
-                <Text style={styles.youBadgeText}>YOU</Text>
+              <View style={[styles.badge, { backgroundColor: color }]}>
+                <Text style={styles.badgeText}>YOU</Text>
               </View>
             )}
           </View>
+          <Text style={[styles.title, { color: theme.textSecondary }]} numberOfLines={1}>
+            {person.designation}
+          </Text>
+          <Text style={[styles.dept, { color: theme.textSecondary }]} numberOfLines={1}>
+            {person.department}
+          </Text>
+        </View>
+        <View style={[styles.roleIcon, { backgroundColor: color }]}>
+          <Ionicons name={role === 'CEO' ? 'shield' : role === 'Manager' ? 'briefcase' : role === 'You' ? 'star' : 'person'} size={16} color="#FFF" />
         </View>
       </View>
     );
   };
 
-  const Connector = ({ type = 'vertical', width = 2 }: { type?: 'vertical' | 'horizontal'; width?: number }) => (
-    <View style={[
-      type === 'vertical' ? styles.vLine : styles.hLine,
-      { backgroundColor: theme.border, width: type === 'horizontal' ? width : 2 }
-    ]} />
+  const Section = ({ title, icon, color, expanded, onToggle, children }: any) => (
+    <View style={styles.section}>
+      <Pressable onPress={onToggle} style={[styles.sectionHeader, { backgroundColor: `${color}10` }]}>
+        <Ionicons name={expanded ? 'chevron-down' : 'chevron-forward'} size={20} color={color} />
+        <Ionicons name={icon} size={18} color={color} />
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
+      </Pressable>
+      {expanded && <View style={styles.sectionContent}>{children}</View>}
+    </View>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.orgChart}>
-        
-        {/* TOP LEVEL - CEO */}
-        {topManagement && (
-          <View style={styles.level}>
-            <EmployeeCard employee={topManagement} level="ceo" />
-            {manager && <Connector />}
+      
+      {topManagement && (
+        <Section
+          title="Top Management"
+          icon="shield-checkmark"
+          color="#8B5CF6"
+          expanded={expandedSections.top}
+          onToggle={() => toggle('top')}
+        >
+          <View style={styles.withLine}>
+            <View style={[styles.verticalLine, { backgroundColor: '#8B5CF6' }]} />
+            <View style={styles.content}>
+              <PersonCard person={topManagement} role="CEO" />
+            </View>
           </View>
-        )}
+        </Section>
+      )}
 
-        {/* LEVEL 2 - MANAGER */}
-        {manager && (
-          <View style={styles.level}>
-            <EmployeeCard employee={manager} level="manager" />
-            <Connector />
+      {manager && (
+        <Section
+          title="Reports To"
+          icon="arrow-up-circle"
+          color="#3B82F6"
+          expanded={expandedSections.manager}
+          onToggle={() => toggle('manager')}
+        >
+          <View style={styles.withLine}>
+            <View style={[styles.verticalLine, { backgroundColor: '#3B82F6' }]} />
+            <View style={styles.content}>
+              <PersonCard person={manager} role="Manager" />
+            </View>
           </View>
-        )}
+        </Section>
+      )}
 
-        {/* LEVEL 3 - YOU */}
-        <View style={styles.level}>
-          <EmployeeCard employee={currentUser} isYou level="you" />
-          {teamMembers.length > 0 && (
-            <>
-              <Connector />
-              {teamMembers.length > 1 && (
-                <View style={styles.tJunction}>
-                  <Connector type="horizontal" width={(teamMembers.length - 1) * 160} />
-                </View>
-              )}
-            </>
-          )}
-        </View>
-
-        {/* LEVEL 4 - TEAM */}
-        {teamMembers.length > 0 && (
-          <View style={styles.teamLevel}>
-            {teamMembers.map((member) => (
-              <View key={member.id} style={styles.teamMember}>
-                {teamMembers.length > 1 && <Connector />}
-                <EmployeeCard employee={member} level="team" />
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* EMPTY STATE */}
-        {!manager && teamMembers.length === 0 && !topManagement && (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No hierarchy data available
-            </Text>
-          </View>
-        )}
-
+      <View style={[styles.youSection, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}30` }]}>
+        <Text style={[styles.youLabel, { color: theme.primary }]}>YOUR POSITION</Text>
+        <PersonCard person={currentUser} role="You" isYou />
       </View>
+
+      {teamMembers.length > 0 && (
+        <Section
+          title={`Team (${teamMembers.length})`}
+          icon="people"
+          color="#10B981"
+          expanded={expandedSections.team}
+          onToggle={() => toggle('team')}
+        >
+          <View style={styles.withLine}>
+            <View style={[styles.verticalLine, { backgroundColor: '#10B981' }]} />
+            <View style={styles.content}>
+              {teamMembers.map((member, i) => (
+                <View key={member.id}>
+                  <PersonCard person={member} role="Team" />
+                  {i < teamMembers.length - 1 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
+                </View>
+              ))}
+            </View>
+          </View>
+        </Section>
+      )}
+
+      {!manager && !topManagement && teamMembers.length === 0 && (
+        <View style={styles.empty}>
+          <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No team data</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    width: '100%',
-  },
-  orgChart: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  level: {
-    alignItems: 'center',
+    gap: 12,
   },
   
-  // PROFESSIONAL CARD DESIGN
-  card: {
-    width: 140,
+  section: {
+    gap: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+  },
+  sectionContent: {
+    gap: 8,
+  },
+  
+  // YouTube-style vertical line
+  withLine: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingLeft: 4,
+  },
+  verticalLine: {
+    width: 4,
+    borderRadius: 2,
+    opacity: 0.6,
+  },
+  content: {
+    flex: 1,
+    gap: 8,
+  },
+  
+  youSection: {
     borderRadius: 12,
     borderWidth: 2,
     padding: 12,
-    marginVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    gap: 8,
   },
-  cardHeader: {
-    position: 'absolute',
-    top: -8,
-    right: 12,
-    zIndex: 10,
+  youLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
-  roleBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  
+  card: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
+    gap: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderLeftWidth: 3,
   },
-  cardBody: {
+  info: {
+    flex: 1,
+    gap: 3,
+  },
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  cardInfo: {
-    alignItems: 'center',
-    gap: 4,
-    width: '100%',
-  },
-  cardName: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  cardNameHighlight: {
+  name: {
     fontSize: 14,
-    fontWeight: '800',
-  },
-  cardTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  deptBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 2,
-  },
-  deptText: {
-    fontSize: 9,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    flex: 1,
   },
-  youBadge: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 12,
+  title: {
+    fontSize: 13,
+    fontWeight: '500',
   },
-  youBadgeText: {
-    color: '#FFFFFF',
+  dept: {
     fontSize: 11,
+    fontWeight: '500',
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1,
   },
-
-  // CONNECTORS
-  vLine: {
-    width: 2,
-    height: 40,
-    marginVertical: 2,
-  },
-  hLine: {
-    height: 2,
-    marginHorizontal: 2,
-  },
-  tJunction: {
+  roleIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
-  },
-
-  // TEAM LEVEL
-  teamLevel: {
-    flexDirection: 'row',
-    gap: 20,
     justifyContent: 'center',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
   },
-  teamMember: {
-    alignItems: 'center',
+  
+  divider: {
+    height: 1,
+    marginVertical: 8,
   },
-
-  // EMPTY STATE
-  emptyState: {
-    paddingVertical: 60,
+  
+  empty: {
+    padding: 40,
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
   },
 });

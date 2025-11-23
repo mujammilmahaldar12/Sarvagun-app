@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert } from 'react-native';
+import { View, ScrollView, Pressable, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ModuleHeader from '@/components/layout/ModuleHeader';
-import AppButton from '@/components/ui/AppButton';
+import { ModuleHeader, Button, FormField, FormSection, Chip } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { baseColors, spacing, borderRadius } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 
 const EVENT_TYPES = ['Conference', 'Workshop', 'Seminar', 'Launch', 'Training', 'Meeting', 'Other'];
 
@@ -71,141 +72,52 @@ export default function AddEventScreen() {
     ]);
   };
 
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-    prefix,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {prefix && (
-          <Text style={{
-            position: 'absolute',
-            left: 12,
-            fontSize: 14,
-            color: theme.text,
-            zIndex: 1,
-          }}>
-            {prefix}
-          </Text>
-        )}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
-          keyboardType={keyboardType}
-          multiline={multiline}
-          numberOfLines={multiline ? 4 : 1}
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: 8,
-            padding: 12,
-            paddingLeft: prefix ? 28 : 12,
-            fontSize: 14,
-            color: theme.text,
-            backgroundColor: theme.surface,
-            textAlignVertical: multiline ? 'top' : 'center',
-            minHeight: multiline ? 100 : 44,
-          }}
-        />
-      </View>
-    </View>
-  );
-
-  const SelectInput = ({ label, value, options, onSelect }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map((option: string) => (
-          <Pressable
-            key={option}
-            onPress={() => onSelect(option)}
-            style={({ pressed }) => ({
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: value === option ? theme.primary : theme.border,
-              backgroundColor: pressed
-                ? theme.primary + '10'
-                : value === option
-                ? theme.primary + '20'
-                : theme.surface,
-            })}
-          >
-            <Text
-              style={{
-                fontSize: 14,
-                color: value === option ? theme.primary : theme.text,
-                fontWeight: value === option ? '600' : 'normal',
-              }}
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-
-  const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.text, marginTop: 8 }}>
-      {title}
-    </Text>
-  );
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       <ModuleHeader
         title={fromLead ? "Convert Lead to Event" : "Add New Event"}
         showBack
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {fromLead && (
-          <View style={{
-            backgroundColor: theme.primary + '20',
-            padding: 12,
-            borderRadius: 8,
-            borderLeftWidth: 4,
-            borderLeftColor: theme.primary,
-          }}>
-            <Text style={{ color: theme.text, fontSize: 14 }}>
+          <View style={styles.leadBanner}>
+            <Text style={[getTypographyStyle('base', 'regular'), { color: theme.text }]}>
               Creating event from lead #{fromLead}
             </Text>
           </View>
         )}
 
         {/* Event Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Event Information" />
-          <FormInput
+        <FormSection title="Event Information">
+          <FormField
             label="Event Name *"
             value={formData.eventName}
             onChangeText={(text: string) => updateField('eventName', text)}
             placeholder="Enter event name"
           />
-          <SelectInput
-            label="Event Type *"
-            value={formData.eventType}
-            options={EVENT_TYPES}
-            onSelect={(value: string) => updateField('eventType', value)}
-          />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.chipSection}>
+            <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
+              Event Type *
+            </Text>
+            <View style={styles.chipContainer}>
+              {EVENT_TYPES.map((type) => (
+                <Chip
+                  key={type}
+                  label={type}
+                  selected={formData.eventType === type}
+                  onPress={() => updateField('eventType', type)}
+                />
+              ))}
+            </View>
+          </View>
+          <View style={styles.rowFields}>
             <View style={{ flex: 1 }}>
-              <FormInput
+              <FormField
                 label="Start Date *"
                 value={formData.startDate}
                 onChangeText={(text: string) => updateField('startDate', text)}
@@ -213,7 +125,7 @@ export default function AddEventScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <FormInput
+              <FormField
                 label="End Date"
                 value={formData.endDate}
                 onChangeText={(text: string) => updateField('endDate', text)}
@@ -221,37 +133,35 @@ export default function AddEventScreen() {
               />
             </View>
           </View>
-        </View>
+        </FormSection>
 
         {/* Venue Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Venue Information" />
-          <FormInput
+        <FormSection title="Venue Information">
+          <FormField
             label="Venue *"
             value={formData.venue}
             onChangeText={(text: string) => updateField('venue', text)}
             placeholder="Enter venue name"
           />
-          <FormInput
+          <FormField
             label="Venue Address"
             value={formData.venueAddress}
             onChangeText={(text: string) => updateField('venueAddress', text)}
             placeholder="Enter venue address"
             multiline
           />
-          <FormInput
+          <FormField
             label="Expected Attendees"
             value={formData.attendees}
             onChangeText={(text: string) => updateField('attendees', text)}
             placeholder="Enter number of attendees"
             keyboardType="numeric"
           />
-        </View>
+        </FormSection>
 
         {/* Financial Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Financial Information" />
-          <FormInput
+        <FormSection title="Financial Information">
+          <FormField
             label="Budget"
             value={formData.budget}
             onChangeText={(text: string) => updateField('budget', text)}
@@ -259,78 +169,118 @@ export default function AddEventScreen() {
             keyboardType="numeric"
             prefix="₹"
           />
-        </View>
+        </FormSection>
 
         {/* Event Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Event Details" />
-          <FormInput
+        <FormSection title="Event Details">
+          <FormField
             label="Description"
             value={formData.description}
             onChangeText={(text: string) => updateField('description', text)}
             placeholder="Enter event description"
             multiline
           />
-          <FormInput
+          <FormField
             label="Agenda"
             value={formData.agenda}
             onChangeText={(text: string) => updateField('agenda', text)}
             placeholder="Enter event agenda"
             multiline
           />
-        </View>
+        </FormSection>
 
         {/* Documents */}
-        <View style={{ gap: 12 }}>
-          <SectionHeader title="Documents" />
-          <AppButton
+        <FormSection title="Documents">
+          <Button
             title="Upload Documents"
             onPress={pickDocument}
             variant="secondary"
-            fullWidth
             leftIcon="cloud-upload-outline"
           />
 
           {documents.length > 0 && (
-            <View style={{ gap: 8 }}>
+            <View style={styles.documentsContainer}>
               {documents.map((doc, index) => (
-                <View
-                  key={index}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 12,
-                    borderRadius: 8,
-                    backgroundColor: theme.surface,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                <View key={index} style={styles.documentRow}>
+                  <View style={styles.documentInfo}>
                     <Ionicons name="document" size={20} color={theme.primary} />
-                    <Text style={{ color: theme.text, fontSize: 14, flex: 1 }}>
+                    <Text style={[getTypographyStyle('base', 'regular'), { color: theme.text, flex: 1 }]}>
                       {doc.name}
                     </Text>
                   </View>
                   <Pressable onPress={() => removeDocument(index)}>
-                    <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    <Ionicons name="close-circle" size={24} color={baseColors.error[500]} />
                   </Pressable>
                 </View>
               ))}
             </View>
           )}
-        </View>
+        </FormSection>
 
         {/* Submit Button */}
-        <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <AppButton
+        <View style={styles.submitContainer}>
+          <Button
             title="Create Event"
             onPress={handleSubmit}
-            fullWidth
             size="lg"
             leftIcon="calendar"
           />
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: baseColors.neutral[50],
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.base,
+    gap: spacing.lg,
+  },
+  leadBanner: {
+    backgroundColor: baseColors.purple[100],
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: baseColors.purple[500],
+  },
+  chipSection: {
+    gap: spacing.sm,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  rowFields: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  documentsContainer: {
+    gap: spacing.sm,
+  },
+  documentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: baseColors.neutral[100],
+  },
+  documentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  submitContainer: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+});
