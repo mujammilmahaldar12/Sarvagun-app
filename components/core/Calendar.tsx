@@ -75,7 +75,9 @@ export const Calendar: React.FC<CalendarProps> = ({
     
     // Empty cells for days before month starts
     for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
+      days.push(
+        <View key={`empty-${i}`} style={styles.dayCell} />
+      );
     }
 
     // Actual days
@@ -91,43 +93,43 @@ export const Calendar: React.FC<CalendarProps> = ({
       days.push(
         <Pressable
           key={day}
-          onPress={() => !disabled && onSelectDate?.(date)}
+          onPress={() => {
+            if (!disabled && onSelectDate) {
+              onSelectDate(date);
+            }
+          }}
           disabled={disabled}
-          style={({ pressed }) => [
-            styles.dayCell,
-            {
+          style={styles.dayCell}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               backgroundColor: selected
                 ? colors.primary
-                : pressed
-                ? colors.surfaceElevated
                 : 'transparent',
-              borderRadius: borderRadius.md,
-              opacity: disabled ? 0.3 : 1,
-            },
-          ]}
-        >
-          <Text
-            style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: isToday ? typography.weights.bold : typography.weights.regular,
-              color: selected ? colors.textInverse : colors.text,
-              textAlign: 'center',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: isToday && !selected ? 2 : 0,
+              borderColor: colors.primary,
             }}
           >
-            {day}
-          </Text>
-          {isToday && !selected && (
-            <View
+            <Text
               style={{
-                width: 4,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: colors.primary,
-                position: 'absolute',
-                bottom: 4,
+                fontSize: typography.sizes.sm,
+                fontWeight: selected || isToday ? typography.weights.bold : typography.weights.regular,
+                color: selected 
+                  ? colors.textInverse || '#FFFFFF'
+                  : isToday 
+                  ? colors.primary 
+                  : colors.text,
+                textAlign: 'center',
               }}
-            />
-          )}
+            >
+              {day}
+            </Text>
+          </View>
         </Pressable>
       );
     }
@@ -136,35 +138,60 @@ export const Calendar: React.FC<CalendarProps> = ({
   };
 
   return (
-    <View style={{ backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing[4] }}>
+    <View style={{ 
+      backgroundColor: colors.surface, 
+      borderRadius: borderRadius.lg, 
+      padding: spacing[3],
+      width: '100%',
+    }}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={previousMonth}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        <Pressable 
+          onPress={previousMonth}
+          style={{
+            padding: spacing[2],
+            borderRadius: borderRadius.md,
+            backgroundColor: colors.surfaceElevated || colors.surface,
+          }}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        <Text style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.bold, color: colors.text }}>
+        <Text style={{ 
+          fontSize: typography.sizes.lg, 
+          fontWeight: typography.weights.bold, 
+          color: colors.text,
+          textAlign: 'center',
+          flex: 1,
+        }}>
           {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </Text>
-        <Pressable onPress={nextMonth}>
-          <Ionicons name="chevron-forward" size={24} color={colors.text} />
+        <Pressable 
+          onPress={nextMonth}
+          style={{
+            padding: spacing[2],
+            borderRadius: borderRadius.md,
+            backgroundColor: colors.surfaceElevated || colors.surface,
+          }}
+        >
+          <Ionicons name="chevron-forward" size={20} color={colors.text} />
         </Pressable>
       </View>
 
       {/* Day names */}
       <View style={styles.dayNamesRow}>
         {dayNames.map((name) => (
-          <Text
-            key={name}
-            style={{
-              flex: 1,
-              fontSize: typography.sizes.xs,
-              fontWeight: typography.weights.semibold,
-              color: colors.textSecondary,
-              textAlign: 'center',
-            }}
-          >
-            {name}
-          </Text>
+          <View key={name} style={styles.dayNameCell}>
+            <Text
+              style={{
+                fontSize: typography.sizes.xs,
+                fontWeight: typography.weights.bold,
+                color: colors.textSecondary,
+                textAlign: 'center',
+              }}
+            >
+              {name}
+            </Text>
+          </View>
         ))}
       </View>
 
@@ -180,21 +207,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing[4],
+    paddingHorizontal: spacing[2],
   },
   dayNamesRow: {
     flexDirection: 'row',
     marginBottom: spacing[2],
+  },
+  dayNameCell: {
+    width: '14.28%',
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
+    width: '14.28%',
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing[1],
+    padding: 2,
   },
 });
 

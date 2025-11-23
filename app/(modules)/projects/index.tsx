@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { designSystem } from '@/constants/designSystem';
 import { ModuleHeader } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
+import { Select } from '@/components/core/Select';
+import { DatePicker } from '@/components/core/DatePicker';
+import { Calendar } from '@/components/core/Calendar';
 import type { TaskSection, TaskProject, Task } from '@/types/project';
 import { 
   useMyProjects, 
@@ -50,10 +53,12 @@ export default function ProjectsScreen() {
   const [ratingValue, setRatingValue] = useState<'1' | '2' | '3' | '4' | '5'>('5');
   const [ratingFeedback, setRatingFeedback] = useState('');
   
-  // Inline Task Editing
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
-  const [newTaskForSection, setNewTaskForSection] = useState<{[sectionId: number]: boolean}>({});
+  // Task Management States
+  const [editingTask, setEditingTask] = useState<{sectionId: number, taskId: number} | null>(null);
   const [tempTasks, setTempTasks] = useState<{[sectionId: number]: any[]}>({});
+  const [newTaskForSection, setNewTaskForSection] = useState<{[sectionId: number]: boolean}>({});
+  const [showDatePicker, setShowDatePicker] = useState<{taskId: string | number, sectionId: number, currentDate?: string} | null>(null);
+  const [showPriorityPicker, setShowPriorityPicker] = useState<{taskId: string | number, sectionId: number, currentPriority?: string} | null>(null);
 
   const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useMyProjects();
   const { data: sectionsData, refetch: refetchSections } = useSectionsByProject(
@@ -70,6 +75,7 @@ export default function ProjectsScreen() {
   const createSectionMutation = useCreateSection();
   const deleteSectionMutation = useDeleteSection();
   const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
   const updateProjectMutation = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
   const rateTaskMutation = useRateTask();
@@ -82,6 +88,8 @@ export default function ProjectsScreen() {
       setSelectedProject(projectsList[0]);
     }
   }, [projectsList]);
+
+
 
   const toggleSection = (sectionId: number) => {
     setExpandedSections(prev => 
@@ -200,6 +208,8 @@ export default function ProjectsScreen() {
   const handleDeleteProject = () => {
     if (!selectedProject) return;
 
+    console.log('🗑️ Attempting to delete project:', selectedProject.id, selectedProject.project_name);
+
     Alert.alert(
       'Delete Project',
       `Are you sure you want to delete "${selectedProject.project_name}"? This will delete all sections and tasks.`,
@@ -209,15 +219,20 @@ export default function ProjectsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            console.log('🗑️ User confirmed deletion for project ID:', selectedProject.id);
             deleteProjectMutation.mutate(selectedProject.id, {
               onSuccess: () => {
-                setSelectedProject(null);
+                console.log('✅ Project deleted successfully');
+                // Clear selected project and update UI
+                const remainingProjects = projectsList.filter(p => p.id !== selectedProject.id);
+                setSelectedProject(remainingProjects.length > 0 ? remainingProjects[0] : null);
                 setShowProjectDropdown(false);
                 refetchProjects();
-                Alert.alert('Success', 'Project deleted successfully');
+                Alert.alert('✅ Success', 'Project deleted successfully');
               },
-              onError: () => {
-                Alert.alert('Error', 'Failed to delete project');
+              onError: (error) => {
+                console.error('❌ Delete project error:', error);
+                Alert.alert('❌ Error', 'Failed to delete project. Please try again.');
               }
             });
           }
@@ -263,7 +278,7 @@ export default function ProjectsScreen() {
       due_date: new Date().toISOString().split('T')[0],
       status: 'In Progress',
       priority_level: 'P3',
-      comments: '',
+      comments: 'No additional comments', // Ensure non-empty default
       isNew: true
     };
     setTempTasks(prev => ({
@@ -282,15 +297,91 @@ export default function ProjectsScreen() {
         ) || []
       }));
     } else {
-      // Update existing task via API
+      // Update existing task immediately
       const updateData = { [field]: value };
+      
       if (field === 'status' && value === 'Completed') {
         updateData.completed_date = new Date().toISOString();
       }
       
-      // Optimistic update would go here
-      // For now, just refetch after a delay
-      setTimeout(() => refetchSections(), 500);
+      if (field === 'due_date') {
+        updateData[field] = typeof value === 'string' ? value : new Date().toISOString().split('T')[0];
+      }
+      
+      if (field === 'priority') {
+        const priorityId = prioritiesList.find(p => p.level === value)?.id;
+        if (priorityId) {
+          updateData[field] = priorityId;
+        }
+      }
+      
+      updateTaskMutation.mutate({
+        taskId: typeof taskId === 'number' ? taskId : parseInt(taskId),
+        data: updateData
+      }, {
+        onSuccess: () => {
+          refetchSections();
+          console.log('✅ Task updated successfully');
+        },
+        onError: (error) => {
+          console.error('Update task error:', error);
+          Alert.alert('Update Failed', 'Could not update task. Please try again.');
+        }
+      });
+    }
+  };
+
+  const handleTaskTitleUpdate = (sectionId: number, taskId: number, title: string) => {
+    if (!title.trim()) return;
+    
+    updateTaskMutation.mutate({
+      taskId: taskId,
+      data: { task_title: title.trim() }
+    }, {
+      onSuccess: () => {
+        setEditingTask(null);
+        refetchSections();
+        console.log('✅ Task title updated');
+      },
+      onError: (error) => {
+        console.error('Update task error:', error);
+        Alert.alert('Update Failed', 'Could not update task title.');
+      }
+    });
+  };
+
+  const handleTaskSaveByField = async (task: any) => {
+    if (!task.title?.trim() && !task.task_title?.trim()) return;
+    
+    try {
+      if (task.isNew) {
+        const taskData = {
+          task_title: task.title || task.task_title,
+          section: task.section,
+          due_date: task.due_date || new Date().toISOString().split('T')[0],
+          comments: task.comments || 'No additional comments',
+          starred: false
+        };
+        
+        createTaskMutation.mutate(taskData, {
+          onSuccess: () => {
+            // Remove from temp tasks
+            setTempTasks(prev => ({
+              ...prev,
+              [task.section]: prev[task.section]?.filter(t => t.id !== task.id) || []
+            }));
+            
+            // Reset new task flag for section
+            setNewTaskForSection(prev => ({ ...prev, [task.section]: false }));
+            refetchSections();
+          },
+          onError: (error) => {
+            console.error('Failed to save task:', error);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save task:', error);
     }
   };
 
@@ -304,14 +395,24 @@ export default function ProjectsScreen() {
       return;
     }
 
-    createTaskMutation.mutate({
+    // Find the priority ID properly
+    const priorityId = prioritiesList.find(p => p.level === task.priority_level)?.id || 
+                      prioritiesList.find(p => p.level === 'P3')?.id || 
+                      1; // Default fallback
+
+    const taskData = {
       task_title: task.task_title.trim(),
       section: sectionId,
-      due_date: task.due_date,
-      comments: task.comments || '',
-      priority: prioritiesList.find(p => p.level === task.priority_level)?.id || null,
+      due_date: task.due_date || new Date().toISOString().split('T')[0],
+      comments: task.comments || 'No additional comments',
+      priority: priorityId,
       starred: false
-    }, {
+    };
+
+    console.log('📝 Creating task with data:', taskData);
+    console.log('📝 Available priorities:', prioritiesList);
+
+    createTaskMutation.mutate(taskData, {
       onSuccess: () => {
         setTempTasks(prev => ({
           ...prev,
@@ -319,9 +420,19 @@ export default function ProjectsScreen() {
         }));
         setNewTaskForSection(prev => ({ ...prev, [sectionId]: false }));
         refetchSections();
+        // Subtle success feedback without intrusive popup
+        console.log('✅ Task created successfully');
+        // Force refresh to show new task immediately
+        setTimeout(() => refetchSections(), 100);
       },
-      onError: () => {
-        Alert.alert('Error', 'Failed to create task');
+      onError: (error) => {
+        console.error('Create task error:', error);
+        // Remove the failed temp task
+        setTempTasks(prev => ({
+          ...prev,
+          [sectionId]: prev[sectionId]?.filter(t => t.id !== task.id) || []
+        }));
+        Alert.alert('❌ Error', 'Failed to create task. Please check all required fields.');
       }
     });
   };
@@ -636,8 +747,12 @@ export default function ProjectsScreen() {
                       <View style={{width: 40}} />
                     </View>
 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View style={{minWidth: 400}}>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={true}
+                      contentContainerStyle={{ paddingHorizontal: 4 }}
+                    >
+                      <View style={{ minWidth: '100%', width: 600 }}>
                         {/* Existing Tasks */}
                         {section.tasks && section.tasks.map((task: any) => (
                           <View
@@ -645,57 +760,113 @@ export default function ProjectsScreen() {
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              paddingVertical: spacing.xs,
+                              paddingVertical: spacing.sm,
                               paddingHorizontal: spacing.xs,
                               borderBottomWidth: 1,
-                              borderBottomColor: theme.border + '30',
-                              backgroundColor: task.status === 'Completed' ? theme.success + '10' : 'transparent'
+                              borderBottomColor: theme.border + '15',
+                              backgroundColor: task.status === 'Completed' ? theme.success + '08' : theme.background,
+                              marginVertical: 0.5,
+                              borderRadius: 4,
+                              elevation: 0.5,
+                              shadowColor: theme.shadow,
+                              shadowOffset: { width: 0, height: 0.5 },
+                              shadowOpacity: 0.03,
+                              shadowRadius: 1
                             }}
                           >
                             {/* Completion Checkbox */}
                             <TouchableOpacity
-                              style={{width: 30, alignItems: 'center'}}
+                              style={{
+                                width: 30, 
+                                alignItems: 'center',
+                                paddingVertical: 6,
+                                borderRadius: 16,
+                                backgroundColor: task.status === 'Completed' ? theme.success + '12' : 'transparent'
+                              }}
                               onPress={() => handleTaskChange(section.id, task.id, 'status', task.status === 'Completed' ? 'In Progress' : 'Completed')}
+                              activeOpacity={0.7}
                             >
                               <Ionicons 
                                 name={task.status === 'Completed' ? 'checkmark-circle' : 'ellipse-outline'} 
-                                size={20} 
-                                color={task.status === 'Completed' ? theme.success : theme.textSecondary} 
+                                size={22} 
+                                color={task.status === 'Completed' ? theme.success : theme.textTertiary} 
                               />
                             </TouchableOpacity>
 
                             {/* Task Title - Editable */}
-                            <TextInput
-                              style={{
-                                flex: 2,
-                                fontSize: typography.sizes.sm,
-                                color: theme.text,
-                                paddingVertical: spacing.xs,
-                                paddingHorizontal: spacing.sm,
-                                textDecorationLine: task.status === 'Completed' ? 'line-through' : 'none',
-                                opacity: task.status === 'Completed' ? 0.7 : 1
-                              }}
-                              value={task.task_title}
-                              onChangeText={(text) => handleTaskChange(section.id, task.id, 'task_title', text)}
-                              placeholder="Enter task..."
-                              placeholderTextColor={theme.textTertiary}
-                            />
+                            <View style={{ flex: 1, minWidth: 200, maxWidth: 350 }}>
+                              <TextInput
+                                style={{
+                                  width: '100%',
+                                  fontSize: typography.sizes.sm,
+                                  color: task.status === 'Completed' ? theme.textSecondary : theme.text,
+                                  paddingVertical: spacing.sm,
+                                  paddingHorizontal: spacing.sm,
+                                  textDecorationLine: task.status === 'Completed' ? 'line-through' : 'none',
+                                  opacity: task.status === 'Completed' ? 0.6 : 1,
+                                  backgroundColor: 'transparent',
+                                  borderRadius: 6,
+                                  minHeight: 44,
+                                  fontWeight: '400',
+                                  textAlignVertical: 'top',
+                                  borderWidth: 1,
+                                  borderColor: 'transparent'
+                                }}
+                                defaultValue={task.title || task.task_title || ''}
+                                onChangeText={(text) => handleTaskChange(section.id, task.id, 'title', text)}
+                                onBlur={() => {
+                                  // Save on blur
+                                  if (task.isNew && task.title) {
+                                    handleTaskSaveByField(task);
+                                  }
+                                }}
+                                placeholder="Click to edit task title..."
+                                placeholderTextColor={theme.textTertiary + '60'}
+                                multiline
+                                numberOfLines={2}
+
+                              />
+                            </View>
 
                             {/* Due Date - Editable */}
-                            <TextInput
-                              style={{
-                                width: 80,
-                                fontSize: typography.sizes.xs,
-                                color: theme.textSecondary,
-                                paddingVertical: spacing.xs,
-                                paddingHorizontal: spacing.xs,
-                                textAlign: 'center'
-                              }}
-                              value={task.due_date}
-                              onChangeText={(text) => handleTaskChange(section.id, task.id, 'due_date', text)}
-                              placeholder="MM/DD"
-                              placeholderTextColor={theme.textTertiary}
-                            />
+                            <View style={{
+                              width: 85,
+                              alignItems: 'center',
+                              backgroundColor: theme.surface + '40',
+                              borderRadius: 6,
+                              paddingVertical: 3,
+                              borderWidth: 0.5,
+                              borderColor: theme.border + '30'
+                            }}>
+                              <TouchableOpacity
+                                style={{
+                                  backgroundColor: theme.surface + '40',
+                                  borderRadius: 6,
+                                  paddingVertical: spacing.xs,
+                                  paddingHorizontal: spacing.xs,
+                                  minWidth: 70,
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                onPress={() => setShowDatePicker({
+                                  taskId: task.id,
+                                  sectionId: section.id,
+                                  currentDate: task.due_date
+                                })}
+                              >
+                                <Text style={{
+                                  fontSize: typography.sizes.xs,
+                                  color: theme.textSecondary,
+                                  fontWeight: '500',
+                                  textAlign: 'center'
+                                }}>
+                                  {task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                  }) : 'Set Date'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
 
                             {/* Priority Picker */}
                             <TouchableOpacity
@@ -708,6 +879,11 @@ export default function ProjectsScreen() {
                                 paddingVertical: 4,
                                 borderRadius: 4
                               }}
+                              onPress={() => setShowPriorityPicker({
+                                taskId: task.id,
+                                sectionId: section.id,
+                                currentPriority: task.priority_level
+                              })}
                             >
                               <Text style={{
                                 fontSize: typography.sizes.xs,
@@ -756,11 +932,15 @@ export default function ProjectsScreen() {
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              paddingVertical: spacing.xs,
+                              paddingVertical: spacing.sm,
                               paddingHorizontal: spacing.xs,
                               borderBottomWidth: 1,
-                              borderBottomColor: theme.border + '30',
-                              backgroundColor: theme.primary + '05'
+                              borderBottomColor: theme.primary + '20',
+                              backgroundColor: theme.primary + '08',
+                              borderRadius: 4,
+                              marginVertical: 1,
+                              borderLeftWidth: 3,
+                              borderLeftColor: theme.primary + '60'
                             }}
                           >
                             <View style={{width: 30, alignItems: 'center'}}>
@@ -769,43 +949,60 @@ export default function ProjectsScreen() {
 
                             <TextInput
                               style={{
-                                flex: 2,
+                                flex: 1,
+                                minWidth: 200,
+                                maxWidth: 350,
                                 fontSize: typography.sizes.sm,
                                 color: theme.text,
-                                paddingVertical: spacing.xs,
+                                paddingVertical: spacing.sm,
                                 paddingHorizontal: spacing.sm,
-                                borderWidth: 1,
+                                borderWidth: 1.5,
                                 borderColor: theme.primary + '50',
-                                borderRadius: 4,
-                                backgroundColor: theme.background
+                                borderRadius: 8,
+                                backgroundColor: theme.background,
+                                fontWeight: '500',
+                                minHeight: 44,
+                                textAlignVertical: 'top'
                               }}
-                              value={task.task_title}
+                              defaultValue={task.task_title || ''}
                               onChangeText={(text) => handleTaskChange(section.id, task.id, 'task_title', text)}
-                              placeholder="Enter task title..."
-                              placeholderTextColor={theme.textTertiary}
+                              placeholder="Type your task here and press Enter to save..."
+                              placeholderTextColor={theme.textTertiary + '60'}
+                              multiline
+                              numberOfLines={2}
                               autoFocus
                               onBlur={() => handleSaveNewTask(section.id, task)}
                               onSubmitEditing={() => handleSaveNewTask(section.id, task)}
+                              returnKeyType="done"
+                              blurOnSubmit={true}
                             />
 
-                            <TextInput
+                            <TouchableOpacity
                               style={{
-                                width: 80,
-                                fontSize: typography.sizes.xs,
-                                color: theme.textSecondary,
-                                paddingVertical: spacing.xs,
-                                paddingHorizontal: spacing.xs,
-                                textAlign: 'center',
+                                width: 90,
+                                alignItems: 'center',
+                                backgroundColor: theme.surface + '60',
+                                borderRadius: 6,
+                                paddingVertical: 6,
                                 borderWidth: 1,
-                                borderColor: theme.border,
-                                borderRadius: 4,
-                                backgroundColor: theme.background
+                                borderColor: theme.primary + '30'
                               }}
-                              value={task.due_date}
-                              onChangeText={(text) => handleTaskChange(section.id, task.id, 'due_date', text)}
-                              placeholder="YYYY-MM-DD"
-                              placeholderTextColor={theme.textTertiary}
-                            />
+                              onPress={() => setShowDatePicker({ taskId: task.id, sectionId: section.id })}
+                            >
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
+                                <Text style={{
+                                  fontSize: typography.sizes.xs,
+                                  color: theme.textSecondary,
+                                  fontWeight: '500'
+                                }}>
+                                  {task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                  }) : 'Set date'}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
 
                             <View style={{width: 50, alignItems: 'center'}}>
                               <Text style={{fontSize: typography.sizes.xs, color: theme.textSecondary}}>P3</Text>
@@ -826,10 +1023,16 @@ export default function ProjectsScreen() {
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              paddingVertical: spacing.sm,
+                              paddingVertical: spacing.sm + 4,
                               paddingHorizontal: spacing.xs,
-                              opacity: 0.6
+                              backgroundColor: theme.primary + '06',
+                              borderRadius: 8,
+                              marginVertical: 4,
+                              borderWidth: 1.5,
+                              borderColor: theme.primary + '25',
+                              borderStyle: 'dashed'
                             }}
+                            activeOpacity={0.8}
                           >
                             <View style={{width: 30, alignItems: 'center'}}>
                               <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
@@ -938,7 +1141,7 @@ export default function ProjectsScreen() {
               Add Section
             </Text>
             <TextInput
-              value={newSectionName}
+              defaultValue={newSectionName}
               onChangeText={setNewSectionName}
               placeholder="Section name"
               placeholderTextColor={theme.textTertiary}
@@ -1020,7 +1223,7 @@ export default function ProjectsScreen() {
               </Text>
               
               <TextInput
-                value={newTaskTitle}
+                defaultValue={newTaskTitle}
                 onChangeText={setNewTaskTitle}
                 placeholder="Task title *"
                 placeholderTextColor={theme.textTertiary}
@@ -1038,7 +1241,7 @@ export default function ProjectsScreen() {
               />
               
               <TextInput
-                value={newTaskDueDate}
+                defaultValue={newTaskDueDate}
                 onChangeText={setNewTaskDueDate}
                 placeholder="Due date (YYYY-MM-DD) - Optional"
                 placeholderTextColor={theme.textTertiary}
@@ -1114,7 +1317,7 @@ export default function ProjectsScreen() {
               </View>
               
               <TextInput
-                value={newTaskComments}
+                defaultValue={newTaskComments}
                 onChangeText={(text) => setNewTaskComments(text.slice(0, 200))}
                 placeholder="Comments (max 200 characters) - Optional"
                 placeholderTextColor={theme.textTertiary}
@@ -1255,7 +1458,7 @@ export default function ProjectsScreen() {
               Edit Project
             </Text>
             <TextInput
-              value={editProjectName}
+              defaultValue={editProjectName}
               onChangeText={setEditProjectName}
               placeholder="Project name *"
               placeholderTextColor={theme.textTertiary}
@@ -1272,7 +1475,7 @@ export default function ProjectsScreen() {
               }}
             />
             <TextInput
-              value={editProjectDescription}
+              defaultValue={editProjectDescription}
               onChangeText={setEditProjectDescription}
               placeholder="Description - Optional"
               placeholderTextColor={theme.textTertiary}
@@ -1387,7 +1590,7 @@ export default function ProjectsScreen() {
             </View>
             
             <TextInput
-              value={ratingFeedback}
+              defaultValue={ratingFeedback}
               onChangeText={setRatingFeedback}
               placeholder="Feedback (optional)"
               placeholderTextColor={theme.textTertiary}
@@ -1443,6 +1646,337 @@ export default function ProjectsScreen() {
             </View>
           </View>
         </View>
+      )}
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(null)}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: spacing.lg
+          }}>
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              onPress={() => setShowDatePicker(null)}
+              activeOpacity={1}
+            />
+            <View style={{
+              backgroundColor: theme.background,
+              borderRadius: borderRadius.xl,
+              width: '95%',
+              maxWidth: 380,
+              elevation: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+            }}>
+              {/* Header */}
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: spacing.lg,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.border
+              }}>
+                <Text style={{
+                  fontSize: typography.sizes.lg,
+                  fontWeight: '600',
+                  color: theme.text
+                }}>
+                  Select Due Date
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(null)}
+                  style={{
+                    padding: spacing.xs,
+                    borderRadius: borderRadius.sm
+                  }}
+                >
+                  <Ionicons name="close" size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Calendar */}
+              <View style={{ padding: spacing.md }}>
+                <Calendar
+                  selectedDate={showDatePicker.currentDate ? new Date(showDatePicker.currentDate) : new Date()}
+                  onSelectDate={(date: Date) => {
+                    const dateString = date.toISOString().split('T')[0];
+                    handleTaskChange(
+                      showDatePicker.sectionId,
+                      showDatePicker.taskId,
+                      'due_date',
+                      dateString
+                    );
+                    setShowDatePicker(null);
+                  }}
+                  minDate={new Date()}
+                />
+              </View>
+              
+              {/* Quick Actions */}
+              <View style={{
+                flexDirection: 'row',
+                padding: spacing.md,
+                gap: spacing.sm,
+                borderTopWidth: 1,
+                borderTopColor: theme.border
+              }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    padding: spacing.sm,
+                    backgroundColor: theme.primary + '15',
+                    borderRadius: borderRadius.md,
+                    alignItems: 'center'
+                  }}
+                  onPress={() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    handleTaskChange(
+                      showDatePicker.sectionId,
+                      showDatePicker.taskId,
+                      'due_date',
+                      today
+                    );
+                    setShowDatePicker(null);
+                  }}
+                >
+                  <Text style={{ color: theme.primary, fontWeight: '600', fontSize: typography.sizes.sm }}>
+                    Today
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    padding: spacing.sm,
+                    backgroundColor: theme.warning + '15',
+                    borderRadius: borderRadius.md,
+                    alignItems: 'center'
+                  }}
+                  onPress={() => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const dateString = tomorrow.toISOString().split('T')[0];
+                    handleTaskChange(
+                      showDatePicker.sectionId,
+                      showDatePicker.taskId,
+                      'due_date',
+                      dateString
+                    );
+                    setShowDatePicker(null);
+                  }}
+                >
+                  <Text style={{ color: theme.warning, fontWeight: '600', fontSize: typography.sizes.sm }}>
+                    Tomorrow
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    padding: spacing.sm,
+                    backgroundColor: theme.success + '15',
+                    borderRadius: borderRadius.md,
+                    alignItems: 'center'
+                  }}
+                  onPress={() => {
+                    const nextWeek = new Date();
+                    nextWeek.setDate(nextWeek.getDate() + 7);
+                    const dateString = nextWeek.toISOString().split('T')[0];
+                    handleTaskChange(
+                      showDatePicker.sectionId,
+                      showDatePicker.taskId,
+                      'due_date',
+                      dateString
+                    );
+                    setShowDatePicker(null);
+                  }}
+                >
+                  <Text style={{ color: theme.success, fontWeight: '600', fontSize: typography.sizes.sm }}>
+                    Next Week
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Priority Picker Modal */}
+      {showPriorityPicker && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowPriorityPicker(null)}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: spacing.lg
+          }}>
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              onPress={() => setShowPriorityPicker(null)}
+              activeOpacity={1}
+            />
+            <View style={{
+              backgroundColor: theme.background,
+              borderRadius: borderRadius.xl,
+              width: '90%',
+              maxWidth: 350,
+              elevation: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+            }}>
+              {/* Header */}
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: spacing.lg,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.border
+              }}>
+                <Text style={{
+                  fontSize: typography.sizes.lg,
+                  fontWeight: '600',
+                  color: theme.text
+                }}>
+                  Select Priority
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowPriorityPicker(null)}
+                  style={{
+                    padding: spacing.xs,
+                    borderRadius: borderRadius.sm
+                  }}
+                >
+                  <Ionicons name="close" size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Priority Options */}
+              <View style={{ padding: spacing.lg }}>
+                {[
+                  { 
+                    label: 'Critical', 
+                    value: 'P1', 
+                    color: theme.error,
+                    description: 'Urgent - needs immediate attention',
+                    icon: 'alert-circle'
+                  },
+                  { 
+                    label: 'High', 
+                    value: 'P2', 
+                    color: theme.warning,
+                    description: 'Important - complete soon',
+                    icon: 'trending-up'
+                  },
+                  { 
+                    label: 'Medium', 
+                    value: 'P3', 
+                    color: theme.success,
+                    description: 'Normal - regular priority',
+                    icon: 'remove-outline'
+                  },
+                  { 
+                    label: 'Low', 
+                    value: 'P4', 
+                    color: theme.primary,
+                    description: 'Optional - when time permits',
+                    icon: 'trending-down'
+                  }
+                ].map((priority, index) => (
+                  <TouchableOpacity
+                    key={priority.value}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: spacing.md,
+                      backgroundColor: showPriorityPicker?.currentPriority === priority.value 
+                        ? priority.color + '15' 
+                        : 'transparent',
+                      borderRadius: borderRadius.lg,
+                      marginBottom: index < 3 ? spacing.sm : 0,
+                      borderWidth: showPriorityPicker?.currentPriority === priority.value ? 2 : 0,
+                      borderColor: priority.color
+                    }}
+                    onPress={() => {
+                      if (showPriorityPicker) {
+                        handleTaskChange(
+                          showPriorityPicker.sectionId,
+                          showPriorityPicker.taskId,
+                          'priority_level',
+                          priority.value
+                        );
+                      }
+                      setShowPriorityPicker(null);
+                    }}
+                  >
+                    <View style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: borderRadius.lg,
+                      backgroundColor: priority.color + '20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: spacing.md
+                    }}>
+                      <Ionicons name={priority.icon as any} size={20} color={priority.color} />
+                    </View>
+                    
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <Text style={{
+                          fontSize: typography.sizes.base,
+                          fontWeight: '600',
+                          color: priority.color,
+                          marginRight: spacing.xs
+                        }}>
+                          {priority.value}
+                        </Text>
+                        <Text style={{
+                          fontSize: typography.sizes.base,
+                          fontWeight: '500',
+                          color: theme.text
+                        }}>
+                          {priority.label}
+                        </Text>
+                      </View>
+                      <Text style={{
+                        fontSize: typography.sizes.xs,
+                        color: theme.textSecondary,
+                        lineHeight: 16
+                      }}>
+                        {priority.description}
+                      </Text>
+                    </View>
+                    
+                    {showPriorityPicker?.currentPriority === priority.value && (
+                      <Ionicons name="checkmark-circle" size={24} color={priority.color} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
     </SafeAreaView>
   );
