@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
@@ -7,6 +7,8 @@ import { useAuthStore } from '@/store/authStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { designSystem } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
+import { authService } from '@/services/auth.service';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function AccountScreen() {
   const { theme } = useTheme();
@@ -14,17 +16,101 @@ export default function AccountScreen() {
   const { user, setUser } = useAuthStore();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
     lastName: user?.last_name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    department: user?.department || '',
+    phone: user?.mobileno || '',
+    designation: user?.designation || '',
+    address: user?.address || '',
   });
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Profile updated successfully');
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      const profileData = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        mobileno: formData.phone,
+        designation: formData.designation,
+        address: formData.address,
+      };
+
+      const response = await authService.updateProfile(profileData);
+      
+      // Update user in auth store
+      if (response.user) {
+        setUser(response.user);
+      }
+
+      Alert.alert('Success', response.message || 'Profile updated successfully');
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      
+      let errorMessage = 'Failed to update profile';
+      if (error.response?.data?.mobileno) {
+        errorMessage = error.response.data.mobileno[0];
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleChangePhoto = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera roll permission to change photo');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingPhoto(true);
+        
+        const response = await authService.uploadProfilePhoto(result.assets[0].uri);
+        
+        // Update user in auth store
+        if (user && response.photo_url) {
+          const updatedUser: typeof user = { ...user, photo: response.photo_url };
+          setUser(updatedUser);
+        }
+        
+        Alert.alert('Success', 'Profile photo updated successfully');
+      }
+    } catch (error: any) {
+      console.error('Photo upload error:', error);
+      
+      let errorMessage = 'Failed to upload photo';
+      if (error.response?.data?.photo) {
+        errorMessage = error.response.data.photo[0];
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleChangePassword = () => {
@@ -116,11 +202,16 @@ export default function AccountScreen() {
                 setIsEditing(true);
               }
             }}
+            disabled={isSaving}
             style={{ padding: designSystem.spacing.sm }}
           >
-            <Text style={{ color: theme.primary, ...getTypographyStyle('base', 'semibold') }}>
-              {isEditing ? 'Save' : 'Edit'}
-            </Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Text style={{ color: theme.primary, ...getTypographyStyle('base', 'semibold') }}>
+                {isEditing ? 'Save' : 'Edit'}
+              </Text>
+            )}
           </TouchableOpacity>
         }
       />
@@ -153,6 +244,8 @@ export default function AccountScreen() {
           </View>
           {isEditing && (
             <TouchableOpacity
+              onPress={handleChangePhoto}
+              disabled={isUploadingPhoto}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -162,10 +255,16 @@ export default function AccountScreen() {
                 borderRadius: 20,
               }}
             >
-              <Ionicons name="camera-outline" size={18} color={theme.primary} />
-              <Text style={{ marginLeft: 6, color: theme.primary, fontWeight: '600' }}>
-                Change photo
-              </Text>
+              {isUploadingPhoto ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <>
+                  <Ionicons name="camera-outline" size={18} color={theme.primary} />
+                  <Text style={{ marginLeft: 6, color: theme.primary, fontWeight: '600' }}>
+                    Change photo
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -197,13 +296,6 @@ export default function AccountScreen() {
                 icon="person-outline"
               />
               <EditField
-                label="Email"
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                icon="mail-outline"
-                keyboardType="email-address"
-              />
-              <EditField
                 label="Phone"
                 value={formData.phone}
                 onChangeText={(text) => setFormData({ ...formData, phone: text })}
@@ -211,10 +303,16 @@ export default function AccountScreen() {
                 keyboardType="phone-pad"
               />
               <EditField
-                label="Department"
-                value={formData.department}
-                onChangeText={(text) => setFormData({ ...formData, department: text })}
-                icon="business-outline"
+                label="Designation"
+                value={formData.designation}
+                onChangeText={(text) => setFormData({ ...formData, designation: text })}
+                icon="briefcase-outline"
+              />
+              <EditField
+                label="Address"
+                value={formData.address}
+                onChangeText={(text) => setFormData({ ...formData, address: text })}
+                icon="location-outline"
               />
             </>
           ) : (
@@ -230,16 +328,17 @@ export default function AccountScreen() {
               <InfoRow label="First Name" value={user?.first_name || ''} icon="person-outline" />
               <InfoRow label="Last Name" value={user?.last_name || ''} icon="person-outline" />
               <InfoRow label="Email" value={user?.email || ''} icon="mail-outline" />
-              <InfoRow label="Phone" value={user?.phone || 'Not set'} icon="call-outline" />
-              <InfoRow label="Department" value={user?.department || 'Not set'} icon="business-outline" />
+              <InfoRow label="Phone" value={user?.mobileno || 'Not set'} icon="call-outline" />
+              <InfoRow label="Designation" value={user?.designation || 'Not set'} icon="briefcase-outline" />
+              <InfoRow label="Address" value={user?.address || 'Not set'} icon="location-outline" />
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 16 }}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={theme.textSecondary} style={{ marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginBottom: 4 }}>
-                    Role
+                    Category
                   </Text>
                   <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
-                    {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
+                    {user?.category || 'Not set'}
                   </Text>
                 </View>
               </View>

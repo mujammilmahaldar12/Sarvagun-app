@@ -81,4 +81,101 @@ export const authService = {
       throw error;
     }
   },
+
+  // Profile Management
+  getProfile: async () => {
+    try {
+      const response = await api.get('/hr/profile/');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateProfile: async (profileData: {
+    first_name?: string;
+    last_name?: string;
+    designation?: string;
+    gender?: string;
+    dob?: string;
+    address?: string;
+    mobileno?: string;
+  }) => {
+    try {
+      const response = await api.patch('/hr/profile/', profileData);
+      
+      // Update stored user data
+      const updatedUser = response.data.user;
+      await storeToken('user', JSON.stringify(updatedUser));
+      
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  uploadProfilePhoto: async (photoUri: string) => {
+    try {
+      const formData = new FormData();
+      
+      // Extract filename from URI
+      const filename = photoUri.split('/').pop() || 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('photo', {
+        uri: photoUri,
+        name: filename,
+        type,
+      } as any);
+
+      const response = await api.post('/hr/profile/photo/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Update stored user data with new photo URL
+      const userString = await getToken('user');
+      if (userString) {
+        const user = JSON.parse(userString);
+        user.photo = response.data.photo_url;
+        await storeToken('user', JSON.stringify(user));
+      }
+
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Theme Management
+  getThemePreference: async () => {
+    try {
+      const response = await api.get('/hr/profile/theme/');
+      return response.data.theme_preference;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateThemePreference: async (theme: 'light' | 'dark') => {
+    try {
+      const response = await api.post('/hr/profile/theme/', {
+        theme_preference: theme,
+      });
+
+      // Update stored user data with new theme preference
+      const userString = await getToken('user');
+      if (userString) {
+        const user = JSON.parse(userString);
+        user.theme_preference = theme;
+        await storeToken('user', JSON.stringify(user));
+      }
+
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };

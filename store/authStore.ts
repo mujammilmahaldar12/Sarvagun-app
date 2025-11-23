@@ -1,7 +1,8 @@
 ﻿import { create } from "zustand";
 import { authService } from "../services/auth.service";
-import { getToken } from "../utils/storage";
+import { getToken, isFirstTimeUser, markOnboardingComplete } from "../utils/storage";
 import { syncPermissionsWithAuth } from "./permissionStore";
+import { useThemeStore } from "./themeStore";
 import { cacheUtils } from "../lib/queryClient";
 import type { User } from "@/types/user";
 
@@ -11,12 +12,15 @@ type AuthStore = {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  showOnboarding: boolean;
 
   // Actions
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   setUser: (user: User | null) => void;
+  completeOnboarding: () => Promise<void>;
+  checkOnboardingStatus: () => Promise<void>;
 };
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -25,6 +29,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   refreshToken: null,
   isAuthenticated: false,
   isLoading: true,
+  showOnboarding: false,
 
   login: async (username, password) => {
     try {
@@ -32,13 +37,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       
       const response = await authService.login({ username, password });
       
+      // Check if first-time user
+      const isFirstTime = await isFirstTimeUser();
+
       set({
         user: response.user,
         accessToken: response.access,
         refreshToken: response.refresh,
         isAuthenticated: true,
         isLoading: false,
+        showOnboarding: isFirstTime,
       });
+
+      // Initialize theme from user preference
+      if (response.user.theme_preference) {
+        useThemeStore.getState().initializeTheme(response.user.theme_preference);
+      }
 
       // Sync permissions with auth state
       syncPermissionsWithAuth();
@@ -111,6 +125,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           isLoading: false,
         });
 
+        // Initialize theme from stored user preference
+        if (storedUser.theme_preference) {
+          useThemeStore.getState().initializeTheme(storedUser.theme_preference);
+        }
+
         // Sync permissions after loading user
         syncPermissionsWithAuth();
       } else {
@@ -127,5 +146,15 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ user });
     // Sync permissions when user is updated
     syncPermissionsWithAuth();
+  },
+
+  completeOnboarding: async () => {
+    await markOnboardingComplete();
+    set({ showOnboarding: false });
+  },
+
+  checkOnboardingStatus: async () => {
+    const isFirstTime = await isFirstTimeUser();
+    set({ showOnboarding: isFirstTime });
   },
 }));

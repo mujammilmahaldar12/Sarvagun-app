@@ -10,10 +10,10 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.231.38.27:8000/api';
+      return 'http://10.231.38.156:8000/api';
     } else if (Platform.OS === 'ios') {
       // For iOS simulator
-      return 'http://10.231.38.27:8000/api';
+      return 'http://10.231.38.156:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
@@ -40,7 +40,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await AsyncStorage.getItem('access');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -66,7 +66,9 @@ api.interceptors.response.use(
       
       if (status === 401) {
         // Unauthorized - clear token and redirect to login
-        await AsyncStorage.removeItem('auth_token');
+        await AsyncStorage.removeItem('access');
+        await AsyncStorage.removeItem('refresh');
+        await AsyncStorage.removeItem('user');
       }
       
       // Extract error message

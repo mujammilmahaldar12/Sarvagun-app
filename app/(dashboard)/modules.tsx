@@ -28,7 +28,6 @@ const MODULES: Module[] = [
     route: '/(modules)/hr',
     color: '#3B82F6',
     category: 'Management',
-    badge: 'Active',
   },
   {
     id: 'events',
@@ -38,7 +37,6 @@ const MODULES: Module[] = [
     route: '/(modules)/events',
     color: '#8B5CF6',
     category: 'Operations',
-    badge: 'Active',
   },
   {
     id: 'finance',
@@ -48,7 +46,6 @@ const MODULES: Module[] = [
     route: '/(modules)/finance',
     color: '#10B981',
     category: 'Finance',
-    badge: 'Updated',
   },
   {
     id: 'projects',
@@ -58,7 +55,6 @@ const MODULES: Module[] = [
     route: '/(modules)/projects',
     color: '#F59E0B',
     category: 'Management',
-    badge: 'Active',
   },
   {
     id: 'leave',
@@ -68,7 +64,6 @@ const MODULES: Module[] = [
     route: '/(modules)/leave',
     color: '#EF4444',
     category: 'Management',
-    badge: 'Pending',
   },
 ];
 
@@ -174,61 +169,39 @@ export default function ModulesScreen() {
           </Text>
 
           <View style={styles.modulesGrid}>
-            {filteredModules.map((module) => {
-              const isActive = module.badge === 'Active';
-              
-              return (
-                <AnimatedPressable
-                  key={module.id}
-                  onPress={() => router.push(module.route as any)}
-                  style={[
-                    styles.moduleCard,
-                    getCardStyle(theme.surface, 'md', 'lg'),
-                  ]}
-                  hapticType="medium"
-                  springConfig="gentle"
-                  animateOnMount={true}
-                >
-                  <View style={styles.moduleContent}>
-                    {/* Icon Container */}
-                    <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
-                      <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
-                    </View>
-
-                    {/* Module Info */}
-                    <View style={styles.moduleInfo}>
-                      <View style={styles.moduleTitleRow}>
-                        <Text style={[styles.moduleName, { color: theme.text }]}>
-                          {module.name}
-                        </Text>
-                        {/* Badge - Active = Purple bg + white text, Others = White bg + primary border */}
-                        {module.badge && (
-                          <View style={[
-                            styles.moduleBadge,
-                            isActive 
-                              ? { backgroundColor: '#8B5CF6' }
-                              : { backgroundColor: theme.surface, borderWidth: 1.5, borderColor: theme.primary }
-                          ]}>
-                            <Text style={[
-                              styles.badgeText,
-                              { color: isActive ? theme.textInverse : theme.primary }
-                            ]}>
-                              {module.badge}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-                        {module.description}
-                      </Text>
-                    </View>
-
-                    {/* Arrow Icon */}
-                    <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
+            {filteredModules.map((module) => (
+              <AnimatedPressable
+                key={module.id}
+                onPress={() => router.push(module.route as any)}
+                style={[
+                  styles.moduleCard,
+                  getCardStyle(theme.surface, 'md', 'lg'),
+                ]}
+                hapticType="medium"
+                springConfig="gentle"
+                animateOnMount={true}
+              >
+                <View style={styles.moduleContent}>
+                  {/* Icon Container */}
+                  <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
+                    <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
                   </View>
-                </AnimatedPressable>
-              );
-            })}
+
+                  {/* Module Info */}
+                  <View style={styles.moduleInfo}>
+                    <Text style={[styles.moduleName, { color: theme.text }]}>
+                      {module.name}
+                    </Text>
+                    <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
+                      {module.description}
+                    </Text>
+                  </View>
+
+                  {/* Arrow Icon */}
+                  <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
+                </View>
+              </AnimatedPressable>
+            ))}
           </View>
 
           {filteredModules.length === 0 && (
@@ -284,14 +257,14 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.base,
-    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
   },
   categoryChip: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   categoryText: {
     ...getTypographyStyle('sm', 'semibold'),
@@ -326,27 +299,13 @@ const styles = StyleSheet.create({
   moduleInfo: {
     flex: 1,
   },
-  moduleTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
   moduleName: {
     ...getTypographyStyle('base', 'bold'),
-    flex: 1,
+    marginBottom: spacing.xs,
   },
   moduleDescription: {
     ...getTypographyStyle('sm', 'regular'),
     lineHeight: 20,
-  },
-  moduleBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-  },
-  badgeText: {
-    ...getTypographyStyle('xs', 'bold'),
   },
   emptyState: {
     alignItems: 'center',

@@ -3,6 +3,7 @@ import "./global.css";
 import { Slot } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 import React from "react";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/useTheme';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { spacing } from '@/constants/designSystem';
@@ -59,13 +60,15 @@ function ErrorFallback({ error }: { error: any }) {
 
 export default function RootLayout() {
   return (
-    <QueryProvider>
-      <ErrorBoundary>
-        <View style={styles.container}>
-          <Slot />
-        </View>
-      </ErrorBoundary>
-    </QueryProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryProvider>
+        <ErrorBoundary>
+          <View style={styles.container}>
+            <Slot />
+          </View>
+        </ErrorBoundary>
+      </QueryProvider>
+    </GestureHandlerRootView>
   );
 }
 

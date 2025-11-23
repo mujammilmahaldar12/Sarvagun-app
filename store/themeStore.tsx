@@ -1,10 +1,11 @@
 /**
  * Enhanced Theme Store for Sarvagun App
- * Professional theme management with design system integration
+ * Professional theme management with design system integration and backend sync
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { designSystem, type ThemeName, type Theme } from "../constants/designSystem";
+import { authService } from "../services/auth.service";
 
 type ThemeState = {
   mode: ThemeName;
@@ -12,8 +13,9 @@ type ThemeState = {
   isDark: boolean;
   
   // Actions
-  toggleMode: () => void;
-  setMode: (mode: ThemeName) => void;
+  toggleMode: () => Promise<void>;
+  setMode: (mode: ThemeName, syncBackend?: boolean) => Promise<void>;
+  initializeTheme: (userTheme?: 'light' | 'dark') => void;
   
   // Status color helpers
   getStatusColor: (status: string, type?: 'bg' | 'text') => string;
@@ -31,21 +33,54 @@ export const useThemeStore = create<ThemeState>()(
       colors: designSystem.themes.light,
       isDark: false,
 
-      toggleMode: () => {
+      toggleMode: async () => {
         const current = get().mode;
         const next = current === "light" ? "dark" : "light";
+        
+        // Update local state immediately for smooth UX
         set({ 
           mode: next, 
           colors: designSystem.themes[next],
           isDark: next === "dark"
         });
+
+        // Sync with backend
+        try {
+          await authService.updateThemePreference(next);
+        } catch (error) {
+          console.error('Failed to sync theme with backend:', error);
+          // Theme already updated locally, so user experience isn't affected
+        }
       },
 
-      setMode: (mode) => set({ 
-        mode, 
-        colors: designSystem.themes[mode],
-        isDark: mode === "dark"
-      }),
+      setMode: async (mode, syncBackend = true) => {
+        set({ 
+          mode, 
+          colors: designSystem.themes[mode],
+          isDark: mode === "dark"
+        });
+
+        // Optionally sync with backend
+        if (syncBackend) {
+          try {
+            await authService.updateThemePreference(mode);
+          } catch (error) {
+            console.error('Failed to sync theme with backend:', error);
+          }
+        }
+      },
+
+      initializeTheme: (userTheme) => {
+        if (userTheme) {
+          // Load theme from user preferences (from login response)
+          set({ 
+            mode: userTheme, 
+            colors: designSystem.themes[userTheme],
+            isDark: userTheme === "dark"
+          });
+        }
+        // If no userTheme provided, keep the persisted value from storage
+      },
 
       getStatusColor: (status, type = 'bg') => {
         const { statusColors } = designSystem;

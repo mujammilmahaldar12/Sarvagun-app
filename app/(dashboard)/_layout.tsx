@@ -96,25 +96,13 @@ export default function DashboardLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Alerts',
+          title: 'Leaderboard',
           tabBarIcon: ({ color, size, focused }) => (
-            <View>
-              <Ionicons
-                name={focused ? 'notifications' : 'notifications-outline'}
-                size={size}
-                color={color}
-              />
-              {/* Badge for unread notifications */}
-              <View
-                className="absolute -top-1 -right-1"
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: '#EF4444',
-                }}
-              />
-            </View>
+            <Ionicons
+              name={focused ? 'trophy' : 'trophy-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -133,6 +121,12 @@ export default function DashboardLayout() {
       />
       <Tabs.Screen
         name="search"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="my-profile"
         options={{
           href: null,
         }}

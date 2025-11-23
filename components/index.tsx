@@ -18,6 +18,8 @@ export { default as ModuleHeader } from './layout/ModuleHeader';
 export { default as TabBar } from './layout/TabBar';
 export type { Tab } from './layout/TabBar';
 export { default as Header } from './layout/Header';
+export { default as OnboardingTour } from './layout/OnboardingTour';
+export type { OnboardingStep } from './layout/OnboardingTour';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🎨 UI COMPONENTS (Active)
@@ -33,6 +35,7 @@ export { default as KPICard } from './ui/KPICard';
 export { default as DatePicker } from './ui/DatePicker';
 export { default as ThemedDatePicker } from './ui/ThemedDatePicker';
 export { default as DropdownField } from './ui/DropdownField';
+export { default as CelebrationAnimation } from './ui/CelebrationAnimation';
 
 // Standardized UI Components (Professional Design System)
 export { FormField } from './ui/FormField';
@@ -44,6 +47,16 @@ export { Chip } from './ui/Chip';
 export { BottomSheet } from './ui/BottomSheet';
 export { Toast, useToast } from './ui/Toast';
 export type { ToastType } from './ui/Toast';
+
+// Profile & Professional Development Components
+export { ProfileStats } from './ui/ProfileStats';
+export type { ProfileStatsProps } from './ui/ProfileStats';
+export { SkillsDisplay } from './ui/SkillsDisplay';
+export type { SkillsDisplayProps } from './ui/SkillsDisplay';
+export { CertificationCard } from './ui/CertificationCard';
+export type { CertificationCardProps } from './ui/CertificationCard';
+export { CollaborationTree } from './ui/CollaborationTree';
+export type { CollaborationTreeProps } from './ui/CollaborationTree';
 
 // Enhanced Loading & Error States
 export { default as LoadingState } from './ui/LoadingState';
@@ -107,8 +120,3 @@ export { default as AppInput } from './ui/AppInput';
  * Legacy Button.tsx from ui/ folder - replaced by core/Button.tsx
  */
 export { Button as LegacyButton } from './ui/Button';
-
-// Enhanced Loading & Error States
-export { default as LoadingState } from './ui/LoadingState';
-export { ErrorBoundary, ErrorFallback, InlineError } from './ui/ErrorBoundary';
-export type { ErrorFallbackProps } from './ui/ErrorBoundary';

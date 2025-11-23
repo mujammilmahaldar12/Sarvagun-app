@@ -62,3 +62,29 @@ export const removeData = async (key: string): Promise<void> => {
     // Silent error
   }
 };
+
+// First-time user onboarding tracking
+export const isFirstTimeUser = async (): Promise<boolean> => {
+  try {
+    const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+    return hasSeenOnboarding === null;
+  } catch (error) {
+    return true; // Default to showing onboarding if error
+  }
+};
+
+export const markOnboardingComplete = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+  } catch (error) {
+    // Silent error
+  }
+};
+
+export const resetOnboarding = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem('hasSeenOnboarding');
+  } catch (error) {
+    // Silent error
+  }
+};

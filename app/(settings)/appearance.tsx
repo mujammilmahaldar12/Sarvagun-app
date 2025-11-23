@@ -1,16 +1,43 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { useThemeStore } from '@/store/themeStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { designSystem } from '@/constants/designSystem';
 
-type ThemeOption = 'light' | 'dark' | 'auto';
+type ThemeOption = 'light' | 'dark';
 
 export default function AppearanceScreen() {
-  const { theme, isDark } = useTheme();
-  const [selectedTheme, setSelectedTheme] = useState<ThemeOption>('auto');
+  const { theme, isDark, mode } = useTheme();
+  const { toggleMode } = useThemeStore();
+  const [isChangingTheme, setIsChangingTheme] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeOption>(mode);
+
+  useEffect(() => {
+    setSelectedTheme(mode);
+  }, [mode]);
+
+  const handleThemeChange = async (newTheme: ThemeOption) => {
+    if (newTheme === selectedTheme || isChangingTheme) return;
+
+    try {
+      setIsChangingTheme(true);
+      setSelectedTheme(newTheme);
+      
+      // Toggle mode (which now syncs with backend)
+      await toggleMode();
+      
+    } catch (error: any) {
+      console.error('Theme change error:', error);
+      Alert.alert('Error', 'Failed to update theme. Please try again.');
+      // Revert selection on error
+      setSelectedTheme(mode);
+    } finally {
+      setIsChangingTheme(false);
+    }
+  };
 
   const themeOptions: { value: ThemeOption; label: string; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
     {
@@ -24,12 +51,6 @@ export default function AppearanceScreen() {
       label: 'Dark',
       icon: 'moon-outline',
       description: 'Always use dark theme',
-    },
-    {
-      value: 'auto',
-      label: 'Use device theme',
-      icon: 'phone-portrait-outline',
-      description: 'Sync with system settings',
     },
   ];
 
@@ -162,7 +183,8 @@ export default function AppearanceScreen() {
             {themeOptions.map((option, index) => (
               <TouchableOpacity
                 key={option.value}
-                onPress={() => setSelectedTheme(option.value)}
+                onPress={() => handleThemeChange(option.value)}
+                disabled={isChangingTheme}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -172,6 +194,7 @@ export default function AppearanceScreen() {
                   backgroundColor: selectedTheme === option.value 
                     ? theme.primary + '10' 
                     : 'transparent',
+                  opacity: isChangingTheme ? 0.6 : 1,
                 }}
                 activeOpacity={0.7}
               >
@@ -215,13 +238,15 @@ export default function AppearanceScreen() {
                   </Text>
                 </View>
 
-                {selectedTheme === option.value && (
+                {isChangingTheme && selectedTheme === option.value ? (
+                  <ActivityIndicator size="small" color={theme.primary} />
+                ) : selectedTheme === option.value ? (
                   <Ionicons
                     name="checkmark-circle"
                     size={24}
                     color={theme.primary}
                   />
-                )}
+                ) : null}
               </TouchableOpacity>
             ))}
           </View>

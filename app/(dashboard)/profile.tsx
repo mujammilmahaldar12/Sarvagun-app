@@ -2,12 +2,22 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert, Switch, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+  interpolateColor,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, ListItem, AnimatedPressable, AnimatedButton } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
+import { resetOnboardingForTesting } from '@/utils/devUtils';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -16,6 +26,47 @@ export default function ProfileScreen() {
   
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
+
+  // Swipe to logout animation
+  const translateX = useSharedValue(0);
+  const containerWidth = 300; // Fixed width for slider
+  const SWIPE_THRESHOLD = containerWidth - 70; // Leave space for the button
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      // Only allow right swipe, clamp to container bounds
+      translateX.value = Math.max(0, Math.min(event.translationX, SWIPE_THRESHOLD));
+    })
+    .onEnd((event) => {
+      if (translateX.value > SWIPE_THRESHOLD * 0.85) {
+        // Swipe completed - slide to end then logout
+        translateX.value = withTiming(SWIPE_THRESHOLD, { duration: 200 }, () => {
+          runOnJS(performLogout)();
+        });
+      } else {
+        // Reset position with spring
+        translateX.value = withSpring(0, { damping: 15, stiffness: 150 });
+      }
+    });
+
+  const logoutAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const textOpacity = useAnimatedStyle(() => ({
+    opacity: withTiming(translateX.value > 50 ? 0 : 1, { duration: 150 }),
+  }));
+
+  const performLogout = async () => {
+    try {
+      // Let index.tsx handle navigation after state changes
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+      translateX.value = withSpring(0);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -26,10 +77,7 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          },
+          onPress: performLogout,
         },
       ]
     );
@@ -94,28 +142,34 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Account Section */}
+        {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>QUICK ACTIONS</Text>
           <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
             <ListItem
-              title="Your Account"
-              description={`${user?.first_name} ${user?.last_name}`}
-              leftIcon="person-outline"
+              title="My Public Profile"
+              description="View your professional profile"
+              leftIcon="person-circle-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => {
+                console.log('Navigating to my-profile...');
+                router.push('/(dashboard)/my-profile');
+              }}
+            />
+            <ListItem
+              title="Edit Account"
+              description="Update your personal information"
+              leftIcon="create-outline"
+              rightIcon="chevron-forward-outline"
               onPress={() => router.push('/(settings)/account')}
             />
             <ListItem
-              title="Privacy & Security"
-              description="Manage your privacy settings"
-              leftIcon="shield-checkmark-outline"
-              onPress={() => console.log('Privacy')}
-            />
-            <ListItem
-              title="Language"
-              description="English"
-              leftIcon="language-outline"
+              title="Settings"
+              description="Manage app preferences"
+              leftIcon="settings-outline"
+              rightIcon="chevron-forward-outline"
               showDivider={false}
-              onPress={() => console.log('Language')}
+              onPress={() => router.push('/(settings)')}
             />
           </View>
         </View>
@@ -167,31 +221,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* App Settings Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APP SETTINGS</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
-            <ListItem
-              title="Appearance"
-              description="Customize app theme"
-              leftIcon="color-palette-outline"
-              onPress={() => router.push('/(settings)/appearance')}
-            />
-            <ListItem
-              title="Storage"
-              description="Manage app data"
-              leftIcon="cloud-outline"
-              onPress={() => console.log('Storage')}
-            />
-            <ListItem
-              title="Data & Privacy"
-              description="Control your data"
-              leftIcon="lock-closed-outline"
-              showDivider={false}
-              onPress={() => console.log('Data')}
-            />
-          </View>
-        </View>
+
 
         {/* Support Section */}
         <View style={styles.section}>
@@ -201,13 +231,13 @@ export default function ProfileScreen() {
               title="Help Center"
               description="Get help and support"
               leftIcon="help-circle-outline"
-              onPress={() => console.log('Help')}
+              onPress={() => router.push('/(settings)/help-center')}
             />
             <ListItem
               title="Report a Problem"
               description="Let us know about issues"
               leftIcon="alert-circle-outline"
-              onPress={() => console.log('Report')}
+              onPress={() => router.push('/(settings)/report-problem')}
             />
             <ListItem
               title="About"
@@ -219,27 +249,57 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Logout Button */}
+        {/* Developer Tools (Testing Only) */}
+        {__DEV__ && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>DEVELOPER TOOLS</Text>
+            <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
+              <ListItem
+                title="Reset Onboarding Tour"
+                description="Test first-time user experience"
+                leftIcon="refresh-outline"
+                showDivider={false}
+                onPress={resetOnboardingForTesting}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Swipe to Logout - iPhone Style */}
         <View style={styles.section}>
-          <AnimatedPressable
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>LOGOUT</Text>
+          
+          <View style={styles.sliderContainer}>
+            <View style={[styles.sliderTrack, { backgroundColor: '#DC2626' }]}>
+              <Animated.Text style={[styles.sliderText, textOpacity]}>
+                Slide to Logout →
+              </Animated.Text>
+            </View>
+
+            <GestureDetector gesture={panGesture}>
+              <Animated.View style={[styles.sliderButton, logoutAnimatedStyle]}>
+                <View style={styles.sliderButtonInner}>
+                  <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+                </View>
+              </Animated.View>
+            </GestureDetector>
+          </View>
+
+          {/* Alternative Tap to Logout */}
+          <Pressable
             onPress={handleLogout}
-            style={[
-              styles.logoutButton,
-              getCardStyle(theme.surface, 'md', 'lg'),
+            style={({ pressed }) => [
+              styles.tapLogoutButton,
               { 
-                borderWidth: 1.5,
-                borderColor: '#EF4444',
+                borderColor: theme.border,
+                opacity: pressed ? 0.7 : 1,
               },
             ]}
-            hapticType="heavy"
-            springConfig="gentle"
           >
-            <View style={[styles.logoutIconContainer, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="log-out-outline" size={iconSizes.sm} color="#EF4444" />
-            </View>
-            <Text style={[styles.logoutText, { color: '#EF4444' }]}>Logout</Text>
-            <Ionicons name="chevron-forward" size={iconSizes.sm} color="#EF4444" />
-          </AnimatedPressable>
+            <Text style={[styles.tapLogoutText, { color: theme.textSecondary }]}>
+              Or tap here for confirmation
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -313,21 +373,61 @@ const styles = StyleSheet.create({
   sectionCard: {
     overflow: 'hidden',
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
+  sliderContainer: {
+    position: 'relative',
+    height: 60,
+    width: 300,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
   },
-  logoutIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
+  sliderTrack: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  sliderText: {
+    ...getTypographyStyle('base', 'semibold'),
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  sliderButton: {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  sliderButtonInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoutText: {
-    ...getTypographyStyle('base', 'semibold'),
-    flex: 1,
+  tapLogoutButton: {
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  tapLogoutText: {
+    ...getTypographyStyle('xs', 'medium'),
   },
 });

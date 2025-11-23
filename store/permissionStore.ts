@@ -4,7 +4,6 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useAuthStore } from './authStore';
 
 // Permission types
 export type Permission = 
@@ -355,7 +354,10 @@ function isValidRole(role: string): role is Role {
 }
 
 // Connect permissions with auth store
+// This function should be called from authStore after user is loaded
 export const syncPermissionsWithAuth = () => {
+  // Import here to avoid circular dependency
+  const { useAuthStore } = require('./authStore');
   const authStore = useAuthStore.getState();
   const user = authStore.user;
   
