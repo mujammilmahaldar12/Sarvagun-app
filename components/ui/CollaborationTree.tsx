@@ -1,12 +1,10 @@
-// CollaborationTree.tsx - Advanced Organizational Hierarchy Visualization
+// CollaborationTree.tsx - Professional Organizational Chart
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
-import { Badge } from '../core/Badge';
 import { useTheme } from '../../hooks/useTheme';
 import type { Employee } from '../../types/user';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export interface CollaborationTreeProps {
   currentUser: Employee;
@@ -25,362 +23,254 @@ export function CollaborationTree({
 }: CollaborationTreeProps) {
   const theme = useTheme();
 
-  // Render individual employee node with enhanced styling
-  const renderEmployeeNode = (
-    employee: Employee,
-    level: 'top' | 'middle' | 'bottom',
-    isHighlight: boolean = false
-  ) => {
+  const EmployeeCard = ({ employee, isYou = false, level }: { employee: Employee; isYou?: boolean; level: 'ceo' | 'manager' | 'you' | 'team' }) => {
+    const cardColor = level === 'ceo' ? '#8B5CF6' : level === 'manager' ? '#3B82F6' : isYou ? theme.primary : '#10B981';
+    
     return (
-      <View style={styles.nodeContainer}>
-        {isHighlight && (
-          <LinearGradient
-            colors={[`${theme.primary}20`, `${theme.primary}05`]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
+      <View style={[styles.card, { borderColor: cardColor, backgroundColor: theme.surface }]}>
+        {isYou && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: `${theme.primary}10` }]} />
         )}
-        <View 
-          style={[
-            styles.nodeCard,
-            { 
-              backgroundColor: theme.surface,
-              borderColor: isHighlight ? theme.primary : theme.border,
-              borderWidth: isHighlight ? 3 : 1.5,
-            }
-          ]}
-        >
-          <View style={styles.nodeContent}>
-            {/* Avatar with level badge */}
-            <View style={styles.avatarContainer}>
-              <Avatar
-                name={employee.name}
-                size={isHighlight ? 72 : 60}
-                source={employee.profile_picture ? { uri: employee.profile_picture } : undefined}
-              />
-              
-              {/* Level indicator badge */}
-              <View 
-                style={[
-                  styles.levelBadge,
-                  { 
-                    backgroundColor: 
-                      level === 'top' ? '#FFD700' : 
-                      level === 'middle' ? theme.primary : 
-                      '#10b981' 
-                  }
-                ]}
-              >
-                <Text style={styles.levelBadgeText}>
-                  {level === 'top' ? '👑' : level === 'middle' ? '⭐' : '👥'}
-                </Text>
-              </View>
-            </View>
+        
+        <View style={styles.cardHeader}>
+          <View style={[styles.roleBadge, { backgroundColor: cardColor }]}>
+            <Ionicons 
+              name={level === 'ceo' ? 'shield' : level === 'manager' ? 'people' : level === 'you' ? 'star' : 'person'} 
+              size={12} 
+              color="#FFF" 
+            />
+          </View>
+        </View>
 
-            {/* Employee details */}
-            <View style={styles.nodeDetails}>
-              <Text 
-                style={[
-                  styles.nodeName, 
-                  { color: theme.text },
-                  isHighlight && styles.highlightedName
-                ]}
-                numberOfLines={2}
-              >
-                {employee.name}
-              </Text>
-              
-              <Text 
-                style={[styles.nodeDesignation, { color: theme.textSecondary }]}
-                numberOfLines={1}
-              >
-                {employee.designation}
-              </Text>
-              
-              <Text 
-                style={[styles.nodeDepartment, { color: theme.textSecondary }]}
-                numberOfLines={1}
-              >
+        <View style={styles.cardBody}>
+          <Avatar
+            name={employee.name}
+            source={employee.profile_picture ? { uri: employee.profile_picture } : undefined}
+            size={isYou ? 60 : 50}
+          />
+          
+          <View style={styles.cardInfo}>
+            <Text style={[styles.cardName, { color: theme.text }, isYou && styles.cardNameHighlight]} numberOfLines={2}>
+              {employee.name}
+            </Text>
+            <Text style={[styles.cardTitle, { color: theme.textSecondary }]} numberOfLines={1}>
+              {employee.designation}
+            </Text>
+            <View style={[styles.deptBadge, { backgroundColor: `${cardColor}15` }]}>
+              <Text style={[styles.deptText, { color: cardColor }]} numberOfLines={1}>
                 {employee.department}
               </Text>
-
-              {/* "You" badge */}
-              {isHighlight && (
-                <View style={styles.youBadgeContainer}>
-                  <Badge variant="filled" color={theme.primary} size="small">
-                    You
-                  </Badge>
-                </View>
-              )}
             </View>
+            {isYou && (
+              <View style={[styles.youBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.youBadgeText}>YOU</Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
     );
   };
 
-  // Render connecting lines
-  const renderConnector = (type: 'vertical' | 'horizontal') => {
-    const lineColor = theme.border;
-    
-    if (type === 'vertical') {
-      return (
-        <View style={[styles.verticalLine, { backgroundColor: lineColor }]} />
-      );
-    }
-    
-    return (
-      <View style={[styles.horizontalLine, { backgroundColor: lineColor }]} />
-    );
-  };
+  const Connector = ({ type = 'vertical', width = 2 }: { type?: 'vertical' | 'horizontal'; width?: number }) => (
+    <View style={[
+      type === 'vertical' ? styles.vLine : styles.hLine,
+      { backgroundColor: theme.border, width: type === 'horizontal' ? width : 2 }
+    ]} />
+  );
 
-  // Empty state
-  if (!manager && teamMembers.length === 0 && peers.length === 0 && !topManagement) {
-    return (
-      <View style={styles.emptyState}>
-        <Ionicons name="git-network-outline" size={64} color={theme.textSecondary} />
-        <Text style={[styles.emptyText, { color: theme.text }]}>
-          No Team Hierarchy Available
-        </Text>
-        <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-          Team structure will appear here once configured
-        </Text>
-      </View>
-    );
-  }
-
-  // Full organizational hierarchy tree (like the image reference)
   return (
-    <ScrollView 
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.treeContainer}
-    >
-      <View style={styles.hierarchyWrapper}>
+    <View style={styles.container}>
+      <View style={styles.orgChart}>
         
-        {/* LEVEL 1: Top Management - CEO */}
+        {/* TOP LEVEL - CEO */}
         {topManagement && (
-          <>
-            {renderEmployeeNode(topManagement, 'top')}
-            {manager && <View style={[styles.verticalConnector, { backgroundColor: theme.border }]} />}
-          </>
+          <View style={styles.level}>
+            <EmployeeCard employee={topManagement} level="ceo" />
+            {manager && <Connector />}
+          </View>
         )}
 
-        {/* LEVEL 2: Manager */}
+        {/* LEVEL 2 - MANAGER */}
         {manager && (
-          <>
-            {renderEmployeeNode(manager, 'middle')}
-            <View style={[styles.verticalConnector, { backgroundColor: theme.border }]} />
-          </>
+          <View style={styles.level}>
+            <EmployeeCard employee={manager} level="manager" />
+            <Connector />
+          </View>
         )}
 
-        {/* LEVEL 3: Current User (You) */}
-        {renderEmployeeNode(currentUser, 'middle', true)}
-        
-        {/* Connectors to team members */}
-        {teamMembers.length > 0 && (
-          <>
-            <View style={[styles.verticalConnector, { backgroundColor: theme.border }]} />
-            
-            {/* T-connector for multiple team members */}
-            {teamMembers.length > 1 && (
-              <View style={[styles.horizontalConnector, { 
-                backgroundColor: theme.border,
-                width: Math.max((teamMembers.length - 1) * 240, 200)
-              }]} />
-            )}
-          </>
-        )}
-
-        {/* LEVEL 4: Direct Reports (Team Members) - Horizontal Layout */}
-        {teamMembers.length > 0 && (
-          <View style={styles.teamRow}>
-            {teamMembers.map((member, index) => (
-              <View key={member.id} style={styles.teamMemberColumn}>
-                {/* Vertical line from T-connector to each member */}
-                <View style={[styles.branchLine, { backgroundColor: theme.border }]} />
-                
-                {/* Team member node */}
-                {renderEmployeeNode(member, 'bottom')}
-                
-                {/* Department box under team member */}
-                <View style={[styles.verticalConnector, { backgroundColor: theme.border, height: 16 }]} />
-                <View style={[styles.departmentBox, { 
-                  backgroundColor: theme.surface, 
-                  borderColor: theme.border 
-                }]}>
-                  <Text style={[styles.departmentText, { color: theme.text }]} numberOfLines={1}>
-                    {member.department || 'Department'}
-                  </Text>
+        {/* LEVEL 3 - YOU */}
+        <View style={styles.level}>
+          <EmployeeCard employee={currentUser} isYou level="you" />
+          {teamMembers.length > 0 && (
+            <>
+              <Connector />
+              {teamMembers.length > 1 && (
+                <View style={styles.tJunction}>
+                  <Connector type="horizontal" width={(teamMembers.length - 1) * 160} />
                 </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* LEVEL 4 - TEAM */}
+        {teamMembers.length > 0 && (
+          <View style={styles.teamLevel}>
+            {teamMembers.map((member) => (
+              <View key={member.id} style={styles.teamMember}>
+                {teamMembers.length > 1 && <Connector />}
+                <EmployeeCard employee={member} level="team" />
               </View>
             ))}
           </View>
         )}
-        
+
+        {/* EMPTY STATE */}
+        {!manager && teamMembers.length === 0 && !topManagement && (
+          <View style={styles.emptyState}>
+            <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No hierarchy data available
+            </Text>
+          </View>
+        )}
+
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Container styles
-  treeContainer: {
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    minWidth: '100%',
+  container: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    width: '100%',
   },
-  hierarchyWrapper: {
+  orgChart: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  level: {
     alignItems: 'center',
   },
   
-  // Node styles
-  nodeContainer: {
-    position: 'relative',
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginVertical: 8,
-  },
-  nodeCard: {
-    width: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
+  // PROFESSIONAL CARD DESIGN
+  card: {
+    width: 140,
+    borderRadius: 12,
+    borderWidth: 2,
+    padding: 12,
+    marginVertical: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,
   },
-  nodeContent: {
-    padding: 20,
-    gap: 14,
-    alignItems: 'center',
-  },
-  
-  // Avatar styles
-  avatarContainer: {
-    position: 'relative',
-  },
-  levelBadge: {
+  cardHeader: {
     position: 'absolute',
-    bottom: -5,
-    right: -5,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    top: -8,
+    right: 12,
+    zIndex: 10,
+  },
+  roleBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#FFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
     elevation: 4,
   },
-  levelBadgeText: {
-    fontSize: 15,
-  },
-  
-  // Node text styles
-  nodeDetails: {
+  cardBody: {
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  cardInfo: {
+    alignItems: 'center',
+    gap: 4,
     width: '100%',
   },
-  nodeName: {
-    fontSize: 15,
+  cardName: {
+    fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 16,
   },
-  highlightedName: {
-    fontSize: 17,
+  cardNameHighlight: {
+    fontSize: 14,
     fontWeight: '800',
   },
-  nodeDesignation: {
-    fontSize: 13,
+  cardTitle: {
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
-    opacity: 0.9,
   },
-  nodeDepartment: {
-    fontSize: 12,
-    textAlign: 'center',
-    opacity: 0.7,
+  deptBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 2,
   },
-  youBadgeContainer: {
-    marginTop: 8,
-  },
-  
-  // Connector styles (proper T-shape like the image)
-  verticalConnector: {
-    width: 3,
-    height: 50,
-    borderRadius: 1.5,
-    marginVertical: 0,
-  },
-  horizontalConnector: {
-    height: 3,
-    borderRadius: 1.5,
-    marginVertical: -1.5,
-  },
-  branchLine: {
-    width: 3,
-    height: 50,
-    borderRadius: 1.5,
-  },
-  
-  // Team members row (horizontal layout like the image)
-  teamRow: {
-    flexDirection: 'row',
-    gap: 80,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    marginTop: 0,
-  },
-  teamMemberColumn: {
-    alignItems: 'center',
-  },
-  
-  // Department boxes under team members
-  departmentBox: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 2,
-    minWidth: 140,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  departmentText: {
-    fontSize: 12,
+  deptText: {
+    fontSize: 9,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  
-  // Empty state
+  youBadge: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  youBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+
+  // CONNECTORS
+  vLine: {
+    width: 2,
+    height: 40,
+    marginVertical: 2,
+  },
+  hLine: {
+    height: 2,
+    marginHorizontal: 2,
+  },
+  tJunction: {
+    alignItems: 'center',
+  },
+
+  // TEAM LEVEL
+  teamLevel: {
+    flexDirection: 'row',
+    gap: 20,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+  },
+  teamMember: {
+    alignItems: 'center',
+  },
+
+  // EMPTY STATE
   emptyState: {
-    padding: 60,
+    paddingVertical: 60,
     alignItems: 'center',
     gap: 16,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptySubtext: {
-    fontSize: 15,
-    textAlign: 'center',
-    opacity: 0.7,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

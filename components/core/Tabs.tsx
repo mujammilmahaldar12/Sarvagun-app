@@ -79,36 +79,38 @@ export const Tabs: React.FC<TabsProps> = ({
 
   const renderTab = (tab: Tab, index: number) => {
     const isActive = activeTab === tab.key;
+    const showSeparator = variant === 'line' && index < tabs.length - 1;
 
     return (
-      <Pressable
-        key={tab.key}
-        onPress={() => handleTabPress(tab)}
-        disabled={tab.disabled}
-        onLayout={(event) => {
-          const { x, width } = event.nativeEvent.layout;
-          handleTabLayout(tab.key, x, width);
-        }}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing[2],
-          paddingHorizontal: spacing[4],
-          paddingVertical: spacing[3],
-          opacity: tab.disabled ? 0.5 : pressed ? 0.7 : 1,
-          ...(variant === 'pill' && {
-            backgroundColor: isActive ? activeColor : 'transparent',
-            borderRadius: borderRadius.full,
-          }),
-          ...(variant === 'enclosed' && {
-            backgroundColor: isActive ? colors.surface : 'transparent',
-            borderRadius: borderRadius.md,
-            borderWidth: 1,
-            borderColor: isActive ? activeColor : colors.border,
-            marginRight: index < tabs.length - 1 ? spacing[2] : 0,
-          }),
-        })}
-      >
+      <React.Fragment key={tab.key}>
+        <Pressable
+          onPress={() => handleTabPress(tab)}
+          disabled={tab.disabled}
+          onLayout={(event) => {
+            const { x, width } = event.nativeEvent.layout;
+            handleTabLayout(tab.key, x, width);
+          }}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing[2],
+            paddingHorizontal: spacing[5],
+            paddingVertical: spacing[4],
+            opacity: tab.disabled ? 0.5 : pressed ? 0.7 : 1,
+            minHeight: 48,
+            ...(variant === 'pill' && {
+              backgroundColor: isActive ? activeColor : 'transparent',
+              borderRadius: borderRadius.full,
+            }),
+            ...(variant === 'enclosed' && {
+              backgroundColor: isActive ? colors.surface : 'transparent',
+              borderRadius: borderRadius.md,
+              borderWidth: 1,
+              borderColor: isActive ? activeColor : colors.border,
+              marginRight: index < tabs.length - 1 ? spacing[2] : 0,
+            }),
+          })}
+        >
         {tab.icon && (
           <Ionicons
             name={tab.icon}
@@ -161,6 +163,20 @@ export const Tabs: React.FC<TabsProps> = ({
           </View>
         )}
       </Pressable>
+      
+      {/* Vertical Separator */}
+      {showSeparator && (
+        <View
+          style={{
+            width: 1,
+            height: 24,
+            backgroundColor: colors.border,
+            alignSelf: 'center',
+            opacity: 0.5,
+          }}
+        />
+      )}
+      </React.Fragment>
     );
   };
 
@@ -188,8 +204,8 @@ export const Tabs: React.FC<TabsProps> = ({
                 indicatorStyle,
                 {
                   position: 'absolute',
-                  bottom: 0,
-                  height: 3,
+                  bottom: -2,
+                  height: 4,
                   backgroundColor: activeColor,
                   borderRadius: borderRadius.full,
                 },
@@ -203,9 +219,9 @@ export const Tabs: React.FC<TabsProps> = ({
       {variant === 'line' && (
         <View
           style={{
-            height: 1,
+            height: 2,
             backgroundColor: colors.border,
-            marginTop: -1,
+            opacity: 0.3,
           }}
         />
       )}

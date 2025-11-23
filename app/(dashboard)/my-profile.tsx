@@ -223,18 +223,27 @@ export default function MyProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
         }
       >
-        {/* Profile Header */}
+        {/* Profile Header - Enhanced */}
         <View style={[styles.profileHeader, { backgroundColor: theme.surface }]}>
-          <Avatar
-            size={100}
-            source={enhancedProfile.photo ? { uri: enhancedProfile.photo } : undefined}
-            name={enhancedProfile.full_name}
-            onlineStatus={'is_active' in enhancedProfile ? enhancedProfile.is_active : 
-                        ('status' in enhancedProfile && enhancedProfile.status === 'active')}
-          />
+          <View style={styles.avatarSection}>
+            <View style={[styles.avatarRing, { borderColor: theme.primary }]}>
+              <Avatar
+                size={110}
+                source={enhancedProfile.photo ? { uri: enhancedProfile.photo } : undefined}
+                name={enhancedProfile.full_name}
+                onlineStatus={'is_active' in enhancedProfile ? enhancedProfile.is_active : 
+                            ('status' in enhancedProfile && enhancedProfile.status === 'active')}
+              />
+            </View>
+          </View>
           
           <Text style={[styles.profileName, { color: theme.text }]}>
             {enhancedProfile.full_name || 'User Name'}
@@ -246,25 +255,22 @@ export default function MyProfileScreen() {
           
           <View style={styles.profileBadges}>
             {enhancedProfile.department && (
-              <Badge label={enhancedProfile.department} variant="filled" status="info" />
+              <View style={[styles.customBadge, { backgroundColor: `${theme.primary}15`, borderColor: `${theme.primary}30` }]}>
+                <Ionicons name="briefcase-outline" size={14} color={theme.primary} />
+                <Text style={[styles.badgeText, { color: theme.primary }]}>{enhancedProfile.department}</Text>
+              </View>
             )}
             {enhancedProfile.category && (
-              <Badge
-                label={enhancedProfile.category.toUpperCase()}
-                variant="filled"
-                status={
-                  enhancedProfile.category === 'manager' || enhancedProfile.category === 'hr'
-                    ? 'success'
-                    : 'info'
-                }
-              />
+              <View style={[styles.customBadge, { backgroundColor: '#10B98115', borderColor: '#10B98130' }]}>
+                <Ionicons name="person-outline" size={14} color="#10B981" />
+                <Text style={[styles.badgeText, { color: '#10B981' }]}>{enhancedProfile.category.toUpperCase()}</Text>
+              </View>
             )}
             {enhancedProfile.team_size > 0 && (
-              <Badge
-                label={`Team Lead (${enhancedProfile.team_size})`}
-                variant="filled"
-                status="warning"
-              />
+              <View style={[styles.customBadge, { backgroundColor: '#F5971515', borderColor: '#F5971530' }]}>
+                <Ionicons name="people-outline" size={14} color="#F59715" />
+                <Text style={[styles.badgeText, { color: '#F59715' }]}>Team Lead ({enhancedProfile.team_size})</Text>
+              </View>
             )}
           </View>
 
@@ -275,31 +281,44 @@ export default function MyProfileScreen() {
             </Text>
           )}
 
-          {/* Quick Stats */}
-          <View style={styles.quickStats}>
-            <View style={styles.quickStatItem}>
-              <Text style={[styles.quickStatValue, { color: theme.text }]}>
+          {/* Quick Stats - Redesigned */}
+          <View style={[styles.quickStatsGrid, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <View style={styles.statItem}>
+              <View style={[styles.statIcon, { backgroundColor: `${theme.primary}15` }]}>
+                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+              </View>
+              <Text style={[styles.statValue, { color: theme.text }]}>
                 {formatTenure(enhancedProfile.tenureMonths)}
               </Text>
-              <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
                 Tenure
               </Text>
             </View>
-            <View style={[styles.quickStatDivider, { backgroundColor: theme.border }]} />
-            <View style={styles.quickStatItem}>
-              <Text style={[styles.quickStatValue, { color: theme.text }]}>
+            
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            
+            <View style={styles.statItem}>
+              <View style={[styles.statIcon, { backgroundColor: '#10B98115' }]}>
+                <Ionicons name="briefcase-outline" size={20} color="#10B981" />
+              </View>
+              <Text style={[styles.statValue, { color: theme.text }]}>
                 {projectStats.projectsCompleted}
               </Text>
-              <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
                 Projects
               </Text>
             </View>
-            <View style={[styles.quickStatDivider, { backgroundColor: theme.border }]} />
-            <View style={styles.quickStatItem}>
-              <Text style={[styles.quickStatValue, { color: theme.text }]}>
+            
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            
+            <View style={styles.statItem}>
+              <View style={[styles.statIcon, { backgroundColor: '#F5971515' }]}>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#F59715" />
+              </View>
+              <Text style={[styles.statValue, { color: theme.text }]}>
                 {enhancedProfile.attendance_percentage.toFixed(0)}%
               </Text>
-              <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
                 Attendance
               </Text>
             </View>
@@ -307,7 +326,7 @@ export default function MyProfileScreen() {
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabsContainer}>
+        <View style={[styles.tabsContainer, { backgroundColor: theme.surface }]}>
           <Tabs
             tabs={[
               { key: 'overview', label: 'Overview' },
@@ -471,57 +490,100 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing['3xl'],
     paddingHorizontal: spacing.lg,
+  },
+  avatarSection: {
+    marginBottom: spacing.base,
+  },
+  avatarRing: {
+    borderWidth: 4,
+    borderRadius: 999,
+    padding: 4,
   },
   profileName: {
     ...getTypographyStyle('2xl', 'bold'),
-    marginTop: spacing.base,
+    marginTop: spacing.lg,
     textAlign: 'center',
   },
   profileDesignation: {
     ...getTypographyStyle('base', 'medium'),
     marginTop: spacing.xs,
     textAlign: 'center',
+    opacity: 0.8,
   },
   profileBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.base,
+    marginTop: spacing.lg,
     justifyContent: 'center',
+  },
+  customBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   profileBio: {
     ...getTypographyStyle('sm', 'regular'),
     textAlign: 'center',
-    marginTop: spacing.base,
-    lineHeight: 20,
-    paddingHorizontal: spacing.base,
+    marginTop: spacing.lg,
+    lineHeight: 22,
+    paddingHorizontal: spacing.xl,
+    opacity: 0.8,
   },
-  quickStats: {
+  quickStatsGrid: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.xl,
+    marginTop: spacing['2xl'],
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.base,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  quickStatItem: {
+  statItem: {
     flex: 1,
     alignItems: 'center',
+    gap: spacing.xs,
   },
-  quickStatValue: {
-    ...getTypographyStyle('xl', 'bold'),
+  statIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
   },
-  quickStatLabel: {
-    ...getTypographyStyle('xs', 'medium'),
-    marginTop: spacing.xs,
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 24,
   },
-  quickStatDivider: {
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    opacity: 0.7,
+  },
+  statDivider: {
     width: 1,
-    height: 40,
+    height: 50,
   },
   tabsContainer: {
     paddingHorizontal: spacing.lg,
-    marginTop: spacing.base,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
   },
   tabContent: {
     paddingTop: spacing.base,
