@@ -11,7 +11,7 @@ import { designSystem } from '@/constants/designSystem';
 const { spacing, typography, borderRadius } = designSystem;
 
 interface CalendarProps {
-  selectedDate?: Date;
+  selectedDate?: Date | null;
   onSelectDate?: (date: Date) => void;
   minDate?: Date;
   maxDate?: Date;

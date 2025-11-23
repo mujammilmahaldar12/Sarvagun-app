@@ -8,8 +8,7 @@ import { View, ActivityIndicator, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AppTable from '@/components/ui/AppTable';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { Table, type TableColumn, Badge, Button } from '@/components';
 import ActionButton from '@/components/ui/ActionButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTheme } from '@/hooks/useTheme';
@@ -227,8 +226,10 @@ const LeadsList: React.FC<LeadsListProps> = ({
       width: 100,
       sortable: true,
       render: (value: string) => (
-        <StatusBadge
-          status={value}
+        <Badge
+          label={value}
+          status={value as any}
+          size="sm"
         />
       ),
     },
@@ -359,30 +360,16 @@ const LeadsList: React.FC<LeadsListProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Statistics Summary */}
-      {statistics && (
-        <View style={[styles.summary, { 
-          backgroundColor: theme.surface, 
-          borderColor: theme.border,
-          marginHorizontal: spacing[4],
-          marginBottom: spacing[4],
-        }]}>
-          <Text style={[styles.summaryText, { color: theme.text }]}>
-            {processedLeads.length} leads
-            {statistics.conversion_rate > 0 && ` • ${statistics.conversion_rate.toFixed(1)}% conversion rate`}
-            {selectedStatus !== 'all' && ` • ${selectedStatus} status`}
-            {searchQuery && ` • filtered`}
-          </Text>
-        </View>
-      )}
-
       {/* Leads Table */}
-      <AppTable
+      <Table
         data={processedLeads}
         columns={columns}
         keyExtractor={(item) => `lead-${item.id}`}
         loading={loading || refreshing}
         emptyMessage="No leads found"
+        searchable={true}
+        searchPlaceholder="Search leads..."
+        exportable={user?.category === 'admin' || user?.category === 'hr'}
       />
     </View>
   );

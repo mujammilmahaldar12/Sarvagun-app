@@ -127,12 +127,22 @@ export const Table = <T extends any>({
     if (!column?.sortable && !sortable) return;
 
     if (sortColumn === columnKey) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      // Cycle: asc → desc → none
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+        onSort?.(columnKey, 'desc');
+      } else {
+        // Reset to no sort
+        setSortColumn(null);
+        setSortDirection('asc');
+        onSort?.(columnKey, 'asc');
+      }
     } else {
+      // First click: set to asc
       setSortColumn(columnKey);
       setSortDirection('asc');
+      onSort?.(columnKey, 'asc');
     }
-    onSort?.(columnKey, sortDirection === 'asc' ? 'desc' : 'asc');
   };
 
   // Handle selection
@@ -213,11 +223,12 @@ export const Table = <T extends any>({
       >
         <Text
           style={{
-            fontSize: typography.sizes.sm,
+            fontSize: typography.sizes.xs,
             color: colors.text,
             textAlign: column.align || 'left',
           }}
-          numberOfLines={2}
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
           {String(value ?? '-')}
         </Text>
@@ -229,54 +240,47 @@ export const Table = <T extends any>({
   const TableRow = ({ item, index }: { item: T; index: number }) => {
     const rowKey = keyExtractor(item, index);
     const isSelected = selectedRows.has(rowKey);
-    const opacity = useSharedValue(0);
-
-    React.useEffect(() => {
-      opacity.value = withTiming(1, { duration: 300 });
-    }, []);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      opacity: opacity.value,
-    }));
 
     return (
-      <Animated.View style={animatedStyle} entering={FadeIn.delay(index * 50)}>
-        <Pressable
-          onPress={() => onRowPress?.(item, index)}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            paddingHorizontal: spacing[4],
-            paddingVertical: spacing[3],
-            backgroundColor: isSelected
-              ? `${colors.primary}15`
-              : pressed
-              ? `${colors.primary}08`
-              : index % 2 === 0
-              ? colors.background
-              : colors.surface,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-          })}
-        >
-          {selectable && (
-            <Pressable onPress={() => handleSelectRow(rowKey)} style={{ width: 40, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name={isSelected ? 'checkbox' : 'square-outline'} size={24} color={colors.primary} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: spacing[2],
+          paddingVertical: spacing[3],
+          minHeight: 50,
+          backgroundColor: isSelected
+            ? `${colors.primary}15`
+            : index % 2 === 0
+            ? colors.background
+            : colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        {selectable && (
+          <View style={{ width: 40, flexShrink: 0, justifyContent: 'center', alignItems: 'center' }}>
+            <Pressable onPress={() => handleSelectRow(rowKey)}>
+              <Ionicons name={isSelected ? 'checkbox' : 'square-outline'} size={20} color={colors.primary} />
             </Pressable>
-          )}
-          {columns.map((column) => (
-            <View
-              key={column.key}
-              style={{
-                width: columnWidths[column.key] || column.width || 120,
-                paddingHorizontal: spacing[2],
-                justifyContent: 'center',
-              }}
-            >
-              {renderCell(item, column, index)}
-            </View>
-          ))}
-        </Pressable>
-      </Animated.View>
+          </View>
+        )}
+        {columns.map((column) => (
+          <Pressable
+            key={column.key}
+            onPress={() => onRowPress?.(item, index)}
+            style={{
+              width: column.width || 120,
+              flexShrink: 0,
+              flexGrow: 0,
+              paddingHorizontal: spacing[2],
+              justifyContent: 'center',
+            }}
+          >
+            {renderCell(item, column, index)}
+          </Pressable>
+        ))}
+      </View>
     );
   };
 
@@ -336,47 +340,62 @@ export const Table = <T extends any>({
       )}
 
       {/* Table */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flex: 1 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} bounces={false}>
+        <View>
           {/* Header */}
           <View
             style={{
               flexDirection: 'row',
-              paddingHorizontal: spacing[4],
+              alignItems: 'center',
+              paddingHorizontal: spacing[2],
               paddingVertical: spacing[3],
+              minHeight: 50,
               backgroundColor: colors.surfaceElevated,
               borderBottomWidth: 2,
               borderBottomColor: colors.primary,
             }}
           >
             {selectable && (
-              <Pressable onPress={handleSelectAll} style={{ width: 40, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons
-                  name={selectedRows.size === paginatedData.length ? 'checkbox' : selectedRows.size > 0 ? 'remove' : 'square-outline'}
-                  size={24}
-                  color={colors.primary}
-                />
-              </Pressable>
+              <View style={{ width: 40, flexShrink: 0, justifyContent: 'center', alignItems: 'center' }}>
+                <Pressable onPress={handleSelectAll}>
+                  <Ionicons
+                    name={selectedRows.size === paginatedData.length ? 'checkbox' : selectedRows.size > 0 ? 'remove' : 'square-outline'}
+                    size={20}
+                    color={colors.primary}
+                  />
+                </Pressable>
+              </View>
             )}
             {columns.map((column) => (
               <Pressable
                 key={column.key}
                 onPress={() => handleSort(column.key)}
                 style={{
-                  width: columnWidths[column.key] || column.width || 120,
+                  width: column.width || 120,
+                  flexShrink: 0,
+                  flexGrow: 0,
                   paddingHorizontal: spacing[2],
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: spacing[1],
                 }}
               >
-                <Text style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.bold, color: colors.text, flex: 1 }}>
+                <Text 
+                  style={{ 
+                    fontSize: typography.sizes.xs, 
+                    fontWeight: typography.weights.bold, 
+                    color: colors.text,
+                    flex: 1,
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {column.title}
                 </Text>
                 {(column.sortable || sortable) && (
                   <Ionicons
                     name={sortColumn === column.key ? (sortDirection === 'asc' ? 'chevron-up' : 'chevron-down') : 'swap-vertical'}
-                    size={16}
+                    size={14}
                     color={sortColumn === column.key ? colors.primary : colors.textSecondary}
                   />
                 )}

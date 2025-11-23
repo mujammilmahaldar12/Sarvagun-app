@@ -7,7 +7,7 @@ import React, { useMemo } from 'react';
 import { View, ActivityIndicator, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import AppTable from '@/components/ui/AppTable';
+import { Table, type TableColumn, Badge, Button } from '@/components';
 import ActionButton from '@/components/ui/ActionButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Chip } from '@/components/ui/Chip';
@@ -356,31 +356,16 @@ const ClientsList: React.FC<ClientsListProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Summary Header */}
-      <View style={[styles.summary, { 
-        backgroundColor: theme.surface, 
-        borderColor: theme.border,
-        marginHorizontal: spacing[4],
-        marginBottom: spacing[4],
-      }]}>
-        <Text style={[styles.summaryText, { color: theme.text }]}>
-          {processedClients.length} clients
-          {selectedCategory && ` • filtered by category`}
-          {searchQuery && ` • filtered by search`}
-        </Text>
-        <Text style={[styles.summarySubtext, { color: theme.textSecondary }]}>
-          {processedClients.filter(c => c.isActive).length} active • {' '}
-          {processedClients.filter(c => c.bookingsCount > 0).length} with bookings
-        </Text>
-      </View>
-
       {/* Clients Table */}
-      <AppTable
+      <Table
         data={processedClients}
         columns={columns}
         keyExtractor={(item) => `client-${item.id}`}
         loading={loading || refreshing}
         emptyMessage="No clients found"
+        searchable={true}
+        searchPlaceholder="Search clients..."
+        exportable={user?.category === 'admin' || user?.category === 'hr'}
       />
     </View>
   );

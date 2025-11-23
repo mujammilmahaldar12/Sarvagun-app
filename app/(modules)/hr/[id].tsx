@@ -8,7 +8,7 @@ import { useLeave, useUpdateLeaveStatus, useDeleteLeave } from '@/hooks/useHRQue
 import { usePermissions } from '@/store/permissionStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { Badge } from '@/components';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { designSystem } from '@/constants/designSystem';
 import hrService from '@/services/hr.service';

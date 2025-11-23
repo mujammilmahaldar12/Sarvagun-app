@@ -132,13 +132,19 @@ export default function HomeScreen() {
   const { theme, isDark } = useTheme();
   
   // Fetch real data from backend
-  const { data: currentUser, isLoading: userLoading, error: userError, refetch: refetchUser } = useCurrentUser();
+  // Use auth store directly since backend endpoints not fully implemented
+  const user = useAuthStore((state) => state.user);
+  // const { data: currentUser, isLoading: userLoading, error: userError, refetch: refetchUser } = useCurrentUser();
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();
   const { data: recentActivities = [], isLoading: activitiesLoading } = useRecentActivities(5);
   const { data: activeProjectsCount, refetch: refetchProjects } = useActiveProjectsCount();
   const { mutate: refreshDashboard, isPending: isRefreshing } = useRefreshDashboard();
 
   const [notificationCount] = useState(0);
+  
+  // Use auth store user as fallback
+  const currentUser = user;
+  const userLoading = false;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -149,10 +155,10 @@ export default function HomeScreen() {
 
   const onRefresh = React.useCallback(() => {
     refreshDashboard();
-    refetchUser();
+    // refetchUser();
     refetchLeave();
     refetchProjects();
-  }, [refreshDashboard, refetchUser, refetchLeave, refetchProjects]);
+  }, [refreshDashboard, refetchLeave, refetchProjects]);
 
   // Loading state
   const isLoading = userLoading;
@@ -173,15 +179,17 @@ export default function HomeScreen() {
                     : (displayUser as any)?.username || 'User');
   const fullName = capitalizeName(rawName);
   
-  // Real leave balance calculation
-  const totalLeaves = leaveBalance?.annual_leave_available || 0;
+  // Real leave balance calculation - handle different response types
+  const totalLeaves = (leaveBalance as any)?.annual_leave_available || 
+                     (leaveBalance as any)?.total || 
+                     0;
   const leaveDays = totalLeaves;
   
   // Attendance - will be real when backend provides it
   const attendancePercentage = 95;
   
   // Active projects from backend
-  const activeProjects = activeProjectsCount ?? 3;
+  const activeProjects = activeProjectsCount ?? 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

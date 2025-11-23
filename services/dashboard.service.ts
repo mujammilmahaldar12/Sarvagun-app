@@ -48,13 +48,13 @@ class DashboardService {
     try {
       const response = await api.get<any>('/hr/auth/me/');
       
-      // Construct dashboard data from user data
-      const userData = response.data;
+      // API interceptor returns data directly, so response is the user data
+      const userData = response || {};
       
       return {
         user: {
           id: userData.id || 0,
-          full_name: userData.full_name || '',
+          full_name: userData.full_name || userData.username || '',
           email: userData.email || '',
           designation: userData.designation || '',
           category: userData.category || '',
@@ -73,7 +73,26 @@ class DashboardService {
       };
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
-      throw error;
+      // Return default data instead of throwing
+      return {
+        user: {
+          id: 0,
+          full_name: 'User',
+          email: '',
+          designation: '',
+          category: '',
+        },
+        stats: {
+          attendance_percentage: 0,
+          leave_balance: 0,
+          active_projects: 0,
+          pending_tasks: 0,
+          total_leaves_taken: 0,
+          total_working_days: 0,
+        },
+        recent_activities: [],
+        notifications_count: 0,
+      };
     }
   }
 
@@ -128,13 +147,17 @@ class DashboardService {
    */
   async getActiveProjectsCount(): Promise<number> {
     try {
-      const response = await api.get<{ results: any[] }>('/project_management/projects/', {
-        params: { status: 'in_progress,planning' }
-      });
-      return response.data.results?.length || 0;
+      const response = await api.get<any[]>('/project_management/projects/my_projects/');
+      // Response is already the data array due to API interceptor
+      const projects = Array.isArray(response) ? response : [];
+      // Filter for active projects (not completed or on hold)
+      const activeProjects = projects.filter((p: any) => 
+        p.status !== 'Completed' && p.status !== 'On Hold'
+      );
+      return activeProjects.length;
     } catch (error) {
       console.warn('Projects endpoint not available');
-      return 3; // Temporary default
+      return 0;
     }
   }
 

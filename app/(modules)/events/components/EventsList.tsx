@@ -8,9 +8,7 @@ import { View, ActivityIndicator, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AppTable from '@/components/ui/AppTable';
-import StatusBadge from '@/components/ui/StatusBadge';
-import ActionButton from '@/components/ui/ActionButton';
+import { Table, type TableColumn, Badge, Button } from '@/components';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTheme } from '@/hooks/useTheme';
 import { useEvents } from '@/store/eventsStore';
@@ -156,63 +154,96 @@ const EventsList: React.FC<EventsListProps> = ({
     }
   };
 
-  // Table configuration
-  const columns = [
+  // Table configuration - Optimized columns with fixed widths
+  const columns: TableColumn<EventRowData>[] = [
     { 
       key: 'eventName', 
-      title: 'Event Name', 
+      title: 'Event', 
       width: 150,
       sortable: true,
       render: (value: string, row: EventRowData) => (
         <Text 
-          style={[styles.cellText, { color: theme.text, fontWeight: designSystem.typography.weights.medium }]}
-          numberOfLines={2}
+          style={[styles.cellText, { 
+            color: theme.text, 
+            fontWeight: designSystem.typography.weights.semibold,
+            fontSize: designSystem.typography.sizes.sm 
+          }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
-          {value}
+          {value || 'Untitled Event'}
         </Text>
       ),
     },
     { 
       key: 'clientName', 
       title: 'Client', 
-      width: 120,
+      width: 110,
       sortable: true,
       render: (value: string) => (
-        <Text style={[styles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>
-          {value}
+        <Text 
+          style={[styles.cellText, { 
+            color: theme.text,
+            fontSize: designSystem.typography.sizes.sm 
+          }]} 
+          numberOfLines={1} 
+          ellipsizeMode="tail"
+        >
+          {value || 'N/A'}
         </Text>
       ),
     },
     { 
       key: 'startDate', 
-      title: 'Start Date', 
-      width: 100,
+      title: 'Start', 
+      width: 90,
       sortable: true,
       render: (value: string) => (
-        <Text style={[styles.cellText, { color: theme.textSecondary, fontSize: designSystem.typography.sizes.sm }]}>
-          {value}
+        <Text 
+          style={[styles.cellText, { 
+            color: theme.text,
+            fontSize: 11,
+            fontWeight: designSystem.typography.weights.medium 
+          }]} 
+          numberOfLines={1}
+        >
+          {value || 'N/A'}
         </Text>
       ),
     },
     { 
       key: 'endDate', 
-      title: 'End Date', 
-      width: 100,
+      title: 'End', 
+      width: 90,
       sortable: true,
       render: (value: string) => (
-        <Text style={[styles.cellText, { color: theme.textSecondary, fontSize: designSystem.typography.sizes.sm }]}>
-          {value}
+        <Text 
+          style={[styles.cellText, { 
+            color: theme.text,
+            fontSize: 11,
+            fontWeight: designSystem.typography.weights.medium 
+          }]} 
+          numberOfLines={1}
+        >
+          {value || 'N/A'}
         </Text>
       ),
     },
     { 
       key: 'venue', 
       title: 'Venue', 
-      width: 120,
+      width: 110,
       sortable: true,
       render: (value: string) => (
-        <Text style={[styles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>
-          {value}
+        <Text 
+          style={[styles.cellText, { 
+            color: theme.text,
+            fontSize: designSystem.typography.sizes.sm 
+          }]} 
+          numberOfLines={1} 
+          ellipsizeMode="tail"
+        >
+          {value || 'TBD'}
         </Text>
       ),
     },
@@ -222,22 +253,29 @@ const EventsList: React.FC<EventsListProps> = ({
       width: 100,
       sortable: true,
       render: (value: string, row: EventRowData) => (
-        <StatusBadge 
-          status={value}
+        <Badge 
+          label={value || 'planned'}
+          status={value as any}
+          size="sm"
         />
       ),
     },
     { 
       key: 'budget', 
       title: 'Budget', 
-      width: 120,
+      width: 100,
       sortable: true,
+      align: 'right' as const,
       render: (value: number) => (
-        <Text style={[styles.cellText, { 
-          color: value > 0 ? designSystem.baseColors.success[600] : theme.textSecondary,
-          fontWeight: value > 0 ? designSystem.typography.weights.medium : designSystem.typography.weights.regular,
-          fontSize: designSystem.typography.sizes.sm
-        }]}>
+        <Text 
+          style={[styles.cellText, { 
+            color: value > 0 ? designSystem.baseColors.success[600] : theme.textSecondary,
+            fontWeight: value > 0 ? designSystem.typography.weights.medium : designSystem.typography.weights.regular,
+            fontSize: designSystem.typography.sizes.xs,
+            textAlign: 'right',
+          }]}
+          numberOfLines={1}
+        >
           {value > 0 ? formatCurrency(value) : 'Not set'}
         </Text>
       ),
@@ -245,37 +283,26 @@ const EventsList: React.FC<EventsListProps> = ({
     {
       key: 'actions',
       title: 'Actions',
-      width: 120,
+      width: 100,
       render: (value: any, row: EventRowData) => (
         <View style={styles.actionsContainer}>
-          <ActionButton
-            icon="eye-outline"
-            title="View"
+          <Button
+            title=""
+            leftIcon="eye-outline"
             onPress={() => handleEventDetails(row.id)}
-            variant="secondary"
-            size="small"
+            variant="ghost"
+            size="sm"
           />
           
           {canEditEvents && (
-            <>
-              <ActionButton
-                icon="create-outline"
-                title="Edit"
-                onPress={() => handleEditEvent(row.id)}
-                variant="secondary"
-                size="small"
-                accessibilityLabel={`Edit event ${row.eventName}`}
-              />
-              
-              <ActionButton
-                icon="trash-outline"
-                title="Delete"
-                onPress={() => handleDeleteEvent(row.id)}
-                variant="danger"
-                size="small"
-                accessibilityLabel={`Delete event ${row.eventName}`}
-              />
-            </>
+            <Button
+              title=""
+              leftIcon="create-outline"
+              onPress={() => handleEditEvent(row.id)}
+              variant="ghost"
+              size="sm"
+              accessibilityLabel={`Edit event ${row.eventName}`}
+            />
           )}
         </View>
       ),
@@ -332,27 +359,16 @@ const EventsList: React.FC<EventsListProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Summary Header */}
-      <View style={[styles.summary, { 
-        backgroundColor: theme.surface, 
-        borderColor: theme.border,
-        marginHorizontal: spacing[4],
-        marginBottom: spacing[4],
-      }]}>
-        <Text style={[styles.summaryText, { color: theme.text }]}>
-          {processedEvents.length} events
-          {selectedStatus !== 'all' && ` • ${selectedStatus} status`}
-          {searchQuery && ` • filtered`}
-        </Text>
-      </View>
-
       {/* Events Table */}
-      <AppTable
+      <Table
         data={processedEvents}
         columns={columns}
         keyExtractor={(item) => `event-${item.id}`}
         loading={loading || refreshing}
         emptyMessage="No events found"
+        searchable={true}
+        searchPlaceholder="Search events..."
+        exportable={user?.category === 'admin' || user?.category === 'hr'}
       />
     </View>
   );

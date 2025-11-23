@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AppTable, { TableColumn } from '@/components/ui/AppTable';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { Table, type TableColumn, Badge } from '@/components';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useExpenses, useDeleteExpense } from '@/hooks/useFinanceQueries';
@@ -145,9 +144,10 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
       title: 'Status',
       width: 100,
       render: (row) => (
-        <StatusBadge 
-          status={row.payment_status} 
-          type={row.payment_status === 'paid' ? 'completed' : row.payment_status === 'pending' ? 'pending' : 'cancelled'}
+        <Badge 
+          label={row.payment_status}
+          status={row.payment_status === 'paid' ? 'success' : row.payment_status === 'pending' ? 'pending' : 'cancelled'}
+          size="sm"
         />
       ),
     },
@@ -268,7 +268,7 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
   }
 
   return (
-    <AppTable
+    <Table
       data={processedExpenses}
       columns={columns}
       keyExtractor={(row) => row.id.toString()}

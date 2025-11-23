@@ -66,14 +66,29 @@ export function useRecentActivities(limit: number = 10) {
  * Hook to fetch current user profile
  */
 export function useCurrentUser() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   return useQuery({
     queryKey: dashboardKeys.user(),
-    queryFn: () => hrService.getMyProfile(),
+    queryFn: async () => {
+      try {
+        const profile = await hrService.getMyProfile();
+        // Ensure we return a valid object
+        if (!profile) {
+          return user || { id: 0, full_name: '', email: '', category: '' };
+        }
+        return profile;
+      } catch (error) {
+        // If endpoint doesn't exist, return user from auth store
+        console.warn('User profile endpoint not available, using auth store data');
+        return user || { id: 0, full_name: '', email: '', category: '' };
+      }
+    },
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 10, // 10 minutes
-    retry: 2,
+    retry: 1,
+    // Always return user data even if query fails
+    placeholderData: user || { id: 0, full_name: '', email: '', category: '' },
   });
 }
 
@@ -85,9 +100,18 @@ export function useLeaveBalance() {
 
   return useQuery({
     queryKey: ['leave', 'balance'],
-    queryFn: () => hrService.getLeaveBalance(),
+    queryFn: async () => {
+      try {
+        const balance = await hrService.getLeaveBalance();
+        return balance;
+      } catch (error) {
+        console.warn('Leave balance not available:', error);
+        return { casual: 0, sick: 0, earned: 0, total: 0 };
+      }
+    },
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   });
 }
 
@@ -113,20 +137,33 @@ export function useActiveProjectsCount() {
 
   return useQuery({
     queryKey: ['projects', 'active', 'count'],
-    queryFn: () => dashboardService.getActiveProjectsCount(),
+    queryFn: async () => {
+      try {
+        const count = await dashboardService.getActiveProjectsCount();
+        return count;
+      } catch (error) {
+        console.warn('Projects endpoint not available');
+        return 0;
+      }
+    },
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   });
 }
 
 /**
  * Hook to refresh dashboard data
+ * DISABLED: Backend endpoints not fully available
  */
 export function useRefreshDashboard() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => dashboardService.refresh(),
+    mutationFn: async () => {
+      // Just invalidate queries without calling backend
+      return Promise.resolve();
+    },
     onSuccess: () => {
       // Invalidate all dashboard queries
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });

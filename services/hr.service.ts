@@ -112,9 +112,13 @@ class HRService {
   async getLeaveBalance(employeeId?: number): Promise<LeaveBalance> {
     try {
       const response = await api.get<{ results: LeaveBalance[] }>('/leave_management/leave-balances/');
+      // API interceptor returns data directly, so response is the data object
+      const data: any = response;
+      const results = data?.results || [];
+      
       // Return first balance (current user's balance)
-      if (response.data.results && response.data.results.length > 0) {
-        return response.data.results[0];
+      if (results && results.length > 0) {
+        return results[0];
       }
       throw new Error('No leave balance found');
     } catch (error) {
@@ -212,7 +216,8 @@ class HRService {
    */
   async getMyProfile(): Promise<Employee> {
     const response = await api.get<Employee>('/hr/auth/me/');
-    return response.data;
+    // API interceptor returns data directly
+    return response as any;
   }
 
   /**

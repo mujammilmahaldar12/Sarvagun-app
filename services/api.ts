@@ -10,10 +10,9 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.231.38.156:8000/api';
+      return 'http://10.231.38.41:8000/api';
     } else if (Platform.OS === 'ios') {
-      // For iOS simulator
-      return 'http://10.231.38.156:8000/api';
+      return 'http://10.231.38.41:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
@@ -57,7 +56,8 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    return response;
+    // Return only the data, not the full response object
+    return response.data;
   },
   async (error) => {
     if (error.response) {

@@ -136,7 +136,22 @@ class EventsService {
     page?: number;
     page_size?: number;
   }) {
-    return await apiClient.get<any>('/events/events/', { params });
+    try {
+      const response = await apiClient.get<any>('/events/events/', { params });
+      
+      // Debug: Log API response structure
+      console.log('📊 Events API Response:', {
+        total: response?.length || 0,
+        isArray: Array.isArray(response),
+        firstEvent: response?.[0],
+        fields: response?.[0] ? Object.keys(response[0]) : [],
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Error fetching events:', error);
+      throw error;
+    }
   }
 
   /**

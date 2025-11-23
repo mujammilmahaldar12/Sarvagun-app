@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AppTable, { TableColumn } from '@/components/ui/AppTable';
+import { Table, type TableColumn } from '@/components';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useVendors, useDeleteVendor } from '@/hooks/useFinanceQueries';
@@ -222,7 +222,7 @@ export default function VendorsList({ searchQuery = '' }: VendorsListProps) {
   }
 
   return (
-    <AppTable
+    <Table
       data={processedVendors}
       columns={columns}
       keyExtractor={(row) => row.id.toString()}

@@ -7,7 +7,7 @@ import React, { useMemo } from 'react';
 import { View, ActivityIndicator, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import AppTable from '@/components/ui/AppTable';
+import { Table, type TableColumn, Button } from '@/components';
 import ActionButton from '@/components/ui/ActionButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTheme } from '@/hooks/useTheme';
@@ -234,7 +234,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
     },
     {
       key: 'actions',
-      label: 'Actions',
+      title: 'Actions',
       width: 100,
       render: (value: any, row: VenueRowData) => (
         <View style={styles.actionsContainer}>
@@ -328,31 +328,16 @@ const VenuesList: React.FC<VenuesListProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Summary Header */}
-      <View style={[styles.summary, { 
-        backgroundColor: theme.surface, 
-        borderColor: theme.border,
-        marginHorizontal: spacing[4],
-        marginBottom: spacing[4],
-      }]}>
-        <Text style={[styles.summaryText, { color: theme.text }]}>
-          {processedVenues.length} venues
-          {searchQuery && ` • filtered by search`}
-        </Text>
-        <Text style={[styles.summarySubtext, { color: theme.textSecondary }]}>
-          {processedVenues.filter(v => v.capacity && v.capacity > 0).length} with capacity • {' '}
-          {processedVenues.filter(v => v.contactPerson || v.contactPhone).length} with contact info
-        </Text>
-      </View>
-
       {/* Venues Table */}
-      <AppTable
+      <Table
         data={processedVenues}
         columns={columns}
         keyExtractor={(item) => `venue-${item.id}`}
         loading={loading || refreshing}
         emptyMessage="No venues found"
-        style={{ backgroundColor: theme.background }}
+        searchable={true}
+        searchPlaceholder="Search venues..."
+        exportable={user?.category === 'admin' || user?.category === 'hr'}
       />
     </View>
   );

@@ -15,8 +15,9 @@ const { spacing, typography, borderRadius } = designSystem;
 
 interface DatePickerProps {
   label?: string;
-  value?: Date;
-  onChange: (date: Date) => void;
+  value?: Date | null;
+  onChange?: (date: Date | null) => void;
+  onDateChange?: (date: Date | null) => void;
   placeholder?: string;
   minDate?: Date;
   maxDate?: Date;
@@ -30,6 +31,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   label,
   value,
   onChange,
+  onDateChange,
   placeholder = 'Select date',
   minDate,
   maxDate,
@@ -40,7 +42,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 }) => {
   const { colors } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(value);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(value || null);
 
   const formatDate = (date: Date): string => {
     if (format === 'short') {
@@ -67,13 +69,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   const handleConfirm = () => {
     if (selectedDate) {
-      onChange(selectedDate);
+      onChange?.(selectedDate);
+      onDateChange?.(selectedDate);
       setIsOpen(false);
     }
   };
 
   const handleCancel = () => {
-    setSelectedDate(value);
+    setSelectedDate(value || null);
     setIsOpen(false);
   };
 

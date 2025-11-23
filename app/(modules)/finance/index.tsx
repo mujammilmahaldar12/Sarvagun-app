@@ -8,10 +8,9 @@ import { View, ScrollView, Pressable, Modal, Alert, Platform, RefreshControl } f
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Input, FAB } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import FloatingActionButton from '@/components/ui/FloatingActionButton';
-import SearchBar from '@/components/ui/SearchBar';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { getTypographyStyle } from '@/utils/styleHelpers';
@@ -217,10 +216,11 @@ export default function FinanceManagementScreen() {
       {/* Search Bar - Show for all tabs except analytics */}
       {activeTab !== 'analytics' && (
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-          <SearchBar
+          <Input
             value={searchQuery}
             onChangeText={handleSearchChange}
             placeholder={`Search ${activeTab}...`}
+            variant="search"
           />
         </View>
       )}
@@ -295,9 +295,11 @@ export default function FinanceManagementScreen() {
 
       {/* Floating Action Button - Hide for analytics tab */}
       {activeTab !== 'analytics' && canManage && (
-        <View style={{ position: 'absolute', right: 20, bottom: Platform.OS === 'ios' ? 100 : 80 }}>
-          <FloatingActionButton onPress={handleAddNew} />
-        </View>
+        <FAB
+          icon="add"
+          onPress={handleAddNew}
+          position="bottom-right"
+        />
       )}
 
       {/* Filter Modal */}

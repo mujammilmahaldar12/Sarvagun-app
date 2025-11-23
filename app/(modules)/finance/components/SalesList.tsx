@@ -2,11 +2,9 @@ import React, { useMemo } from 'react';
 import { View, Text, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AppTable from '@/components/ui/AppTable';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { Table, type TableColumn, Badge, Button } from '@/components';
 import { EmptyState } from '@/components/ui/EmptyState';
 import LoadingState from '@/components/ui/LoadingState';
-import ActionButton from '@/components/ui/ActionButton';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useSales, useDeleteSale } from '@/hooks/useFinanceQueries';
@@ -227,7 +225,7 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
       title: 'Status',
       sortable: true,
       width: 120,
-      render: (value: string) => <StatusBadge status={value} />,
+      render: (value: string) => <Badge label={value} status={value as any} size="sm" />,
     },
     {
       key: 'paymentsCount',
@@ -267,26 +265,24 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
       width: 180,
       render: (_: any, row: SaleRowData) => (
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <ActionButton
-            icon="create-outline"
-            title="Edit"
+          <Button
+            iconName="create-outline"
             onPress={(e: any) => {
               e?.stopPropagation?.();
               handleEdit(row);
             }}
-            variant="secondary"
-            size="small"
+            variant="ghost"
+            size="sm"
           />
           {canDelete && (
-            <ActionButton
-              icon="trash-outline"
-              title="Delete"
+            <Button
+              iconName="trash-outline"
               onPress={(e: any) => {
                 e?.stopPropagation?.();
                 handleDelete(row);
               }}
-              variant="danger"
-              size="small"
+              variant="ghost"
+              size="sm"
             />
           )}
         </View>
@@ -332,7 +328,7 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
   // Main render
   return (
     <View style={{ flex: 1 }}>
-      <AppTable
+      <Table
         data={processedSales}
         columns={columns}
         keyExtractor={(item) => item.id.toString()}

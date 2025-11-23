@@ -1,199 +1,190 @@
-// Project Management Types
+// Project Management & Task Tracker Types
 
-export interface User {
+export type TaskStatus = 'In Progress' | 'Completed';
+export type ProjectStatus = 'On Track' | 'At Risk' | 'Off Track' | 'On Hold' | 'Completed';
+export type PriorityLevel = 'P1' | 'P2' | 'P3' | 'P4';
+export type UserRole = 'admin' | 'lead' | 'intern';
+
+// Priority
+export interface Priority {
   id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  photo?: string;
-  role: 'admin' | 'team_lead' | 'intern' | 'employee';
-  designation?: string;
-  team_lead_id?: number;
+  level: PriorityLevel;
+  description: string;
 }
 
-export interface Project {
+// Task Project
+export interface TaskProject {
   id: number;
-  title: string;
-  description?: string;
-  created_by: User;
-  assigned_to: User[]; // Interns assigned to this project
-  team_lead: User;
-  start_date: string;
-  end_date?: string;
-  status: 'planning' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  progress_percentage: number;
-  created_at: string;
-  updated_at: string;
-  sections: ProjectSection[];
+  created_by: number;
+  created_by_name: string;
+  project_name: string;
+  description: string;
+  created_date: string;
+  status: ProjectStatus;
+  priority: number | null;
+  priority_level: string | null;
+  starred: boolean;
+  sections_count: number;
+  tasks_count: number;
 }
 
-export interface ProjectSection {
+// Task Section
+export interface TaskSection {
   id: number;
-  project_id: number;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'completed' | 'blocked';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  task_count?: number;
-  completed_task_count?: number;
-  due_date?: string;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-  tasks: Task[];
+  project: number;
+  project_name: string;
+  section_name: string;
+  created_date: string;
+  priority: number | null;
+  priority_level: string | null;
+  starred: boolean;
+  tasks_count: number;
+  tasks?: Task[];
 }
 
-export interface Task {
-  id: number;
-  section_id: number;
-  title: string;
-  description?: string;
-  assigned_to: User;
-  created_by: User;
-  due_date?: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'todo' | 'in_progress' | 'completed' | 'blocked';
-  estimated_hours?: number;
-  actual_hours?: number;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-  comments: TaskComment[];
-  ratings: TaskRating[];
-}
-
-export interface TaskComment {
-  id: number;
-  task_id: number;
-  user: User;
-  comment: string;
-  created_at: string;
-}
-
+// Task Rating
 export interface TaskRating {
   id: number;
-  task_id: number;
-  rated_by: User; // Team lead or admin
-  rating: 1 | 2 | 3 | 4 | 5; // Star rating
-  feedback?: string;
+  rating_from: number;
+  rating_from_name: string;
+  rating_from_designation: string;
+  rating_from_category: string;
+  task: number;
+  task_title: string;
+  task_user: string;
+  rating: '1' | '2' | '3' | '4' | '5';
+  feedback: string;
   created_at: string;
 }
 
-export interface TeamMember {
+// User Rating (for current user's rating on a task)
+export interface UserRating {
   id: number;
-  user: User;
-  team_lead: User;
-  active_projects: Project[];
+  rating: string;
+  feedback: string;
+  created_at: string;
+}
+
+// Task
+export interface Task {
+  id: number;
+  task_title: string;
+  user: number;
+  user_name: string;
+  user_designation: string;
+  section: number;
+  section_name: string;
+  project_name: string;
+  project_id: number;
+  completed_date: string | null;
+  status: TaskStatus;
+  priority: number | null;
+  priority_level: string | null;
+  starred: boolean;
+  date_of_entry: string;
+  due_date: string;
+  comments: string;
+  average_rating: number | null;
+  rating_count: number;
+  user_rating: UserRating | null;
+}
+
+// Task Statistics
+export interface TaskStatistics {
   total_tasks: number;
   completed_tasks: number;
-  average_rating: number;
-}
-
-// API Request/Response Types
-export interface CreateProjectRequest {
-  title: string;
-  description?: string;
-  assigned_to: number[]; // User IDs
-  start_date: string;
-  end_date?: string;
-  priority: Project['priority'];
-}
-
-export interface CreateSectionRequest {
-  project_id: number;
-  title: string;
-  description?: string;
-}
-
-export interface CreateTaskRequest {
-  section_id: number;
-  title: string;
-  description?: string;
-  assigned_to: number; // User ID
-  due_date?: string;
-  priority: Task['priority'];
-  estimated_hours?: number;
-}
-
-export interface UpdateTaskRequest {
-  title?: string;
-  description?: string;
-  due_date?: string;
-  priority?: Task['priority'];
-  status?: Task['status'];
-  actual_hours?: number;
-}
-
-export interface RateTaskRequest {
-  task_id: number;
-  rating: TaskRating['rating'];
-  feedback?: string;
-}
-
-// Filter and Sort Types
-export interface ProjectFilters {
-  status?: Project['status'][];
-  priority?: Project['priority'][];
-  assigned_to?: number[];
-  search?: string;
-}
-
-export interface TaskFilters {
-  status?: Task['status'][];
-  priority?: Task['priority'][];
-  assigned_to?: number[];
-  search?: string;
-}
-
-export type ProjectSortBy = 'created_at' | 'title' | 'priority' | 'progress' | 'due_date';
-export type TaskSortBy = 'created_at' | 'title' | 'priority' | 'due_date' | 'status';
-
-// Component Props Types
-export interface ProjectCardProps {
-  project: Project;
-  onPress: (project: Project) => void;
-  showActions?: boolean;
-}
-
-export interface SectionCardProps {
-  section: ProjectSection;
-  onPress?: (section: ProjectSection) => void;
-  onAddTask?: (sectionId: number) => void;
-  showActions?: boolean;
-}
-
-export interface TaskCardProps {
-  task: Task;
-  onPress?: (task: Task) => void;
-  onStatusChange?: (taskId: number, status: Task['status']) => void;
-  onRate?: (taskId: number) => void;
-  showRating?: boolean;
-  isEditable?: boolean;
-}
-
-export interface TeamMemberSidebarProps {
-  isVisible: boolean;
-  onClose: () => void;
-  onSelectMember: (member: TeamMember) => void;
-  selectedMemberId?: number;
-}
-
-// Statistics Types
-export interface ProjectStats {
-  total_projects: number;
-  active_projects: number;
-  completed_projects: number;
+  in_progress_tasks: number;
   overdue_tasks: number;
-  total_team_members: number;
+  average_rating: number | null;
+  rated_tasks_count: number;
+  user_role: UserRole;
 }
 
-export interface UserStats {
+// Department Overview (for leads/admin)
+export interface DepartmentOverview {
+  department_name: string;
+  total_members: number;
   total_tasks: number;
   completed_tasks: number;
   pending_tasks: number;
   average_rating: number;
-  total_hours: number;
+}
+
+// Create/Update DTOs
+export interface CreateTaskDTO {
+  task_title: string;
+  section: number;
+  due_date: string;
+  priority?: number;
+  comments?: string;
+  starred?: boolean;
+}
+
+export interface UpdateTaskDTO {
+  task_title?: string;
+  section?: number;
+  due_date?: string;
+  priority?: number;
+  comments?: string;
+  starred?: boolean;
+  status?: TaskStatus;
+  completed_date?: string;
+}
+
+export interface CreateProjectDTO {
+  project_name: string;
+  description?: string;
+  priority?: number;
+  starred?: boolean;
+  status?: ProjectStatus;
+}
+
+export interface UpdateProjectDTO {
+  project_name?: string;
+  description?: string;
+  priority?: number;
+  starred?: boolean;
+  status?: ProjectStatus;
+}
+
+export interface CreateSectionDTO {
+  project: number;
+  section_name: string;
+  priority?: number;
+  starred?: boolean;
+}
+
+export interface UpdateSectionDTO {
+  section_name?: string;
+  priority?: number;
+  starred?: boolean;
+}
+
+export interface CreateRatingDTO {
+  task: number;
+  rating: '1' | '2' | '3' | '4' | '5';
+  feedback?: string;
+}
+
+export interface RateTaskDTO {
+  task_id: number;
+  rating: '1' | '2' | '3' | '4' | '5';
+  feedback?: string;
+}
+
+// Filter types
+export interface TaskFilters {
+  status?: TaskStatus;
+  project_id?: number;
+  section_id?: number;
+  priority?: number;
+  starred?: boolean;
+  user_id?: number;
+  search?: string;
+}
+
+export interface ProjectFilters {
+  status?: ProjectStatus;
+  starred?: boolean;
+  search?: string;
 }

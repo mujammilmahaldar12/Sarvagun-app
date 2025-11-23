@@ -10,6 +10,30 @@
 export { Button } from './core/Button';
 export type { ButtonProps, IconAnimationType } from './core/Button';
 
+// Core Input Components
+export { Input } from './core/Input';
+export type { InputProps } from './core/Input';
+
+// Core Table Components
+export { Table } from './core/Table';
+export type { TableColumn, TableProps } from './core/Table';
+
+// Core Form Components
+export { Select } from './core/Select';
+export type { SelectProps, SelectOption } from './core/Select';
+
+export { Badge } from './core/Badge';
+export type { BadgeProps } from './core/Badge';
+
+export { FAB } from './core/FAB';
+export type { FABProps } from './core/FAB';
+
+export { DatePicker } from './core/DatePicker';
+export type { DatePickerProps } from './core/DatePicker';
+
+export { Calendar } from './core/Calendar';
+export type { CalendarProps } from './core/Calendar';
+
 // ═══════════════════════════════════════════════════════════════════
 // 📐 LAYOUT COMPONENTS
 // ═══════════════════════════════════════════════════════════════════
@@ -26,13 +50,11 @@ export type { OnboardingStep } from './layout/OnboardingTour';
 // ═══════════════════════════════════════════════════════════════════
 
 export { default as AppTable } from './ui/AppTable';
-export type { TableColumn } from './ui/AppTable';
 export { default as SearchBar } from './ui/SearchBar';
 export { default as FloatingActionButton } from './ui/FloatingActionButton';
 export { default as StatusBadge } from './ui/StatusBadge';
 export type { StatusType } from './ui/StatusBadge';
 export { default as KPICard } from './ui/KPICard';
-export { default as DatePicker } from './ui/DatePicker';
 export { default as ThemedDatePicker } from './ui/ThemedDatePicker';
 export { default as DropdownField } from './ui/DropdownField';
 export { default as CelebrationAnimation } from './ui/CelebrationAnimation';

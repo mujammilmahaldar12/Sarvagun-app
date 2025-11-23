@@ -161,28 +161,31 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const currentSize = sizeConfig[size];
 
+  // Safe color with fallback
+  const safeColor = badgeColor || colors.primary || '#3B82F6';
+
   // Variant styles
   const getVariantStyle = () => {
     switch (variant) {
       case 'filled':
         return {
-          backgroundColor: badgeColor,
+          backgroundColor: safeColor,
           borderWidth: 0,
         };
       case 'outlined':
         return {
           backgroundColor: 'transparent',
           borderWidth: 1.5,
-          borderColor: badgeColor,
+          borderColor: safeColor,
         };
       case 'subtle':
         return {
-          backgroundColor: `${badgeColor}20`,
+          backgroundColor: `${safeColor}20`,
           borderWidth: 0,
         };
       case 'status':
         return {
-          backgroundColor: `${badgeColor}15`,
+          backgroundColor: `${safeColor}15`,
           borderWidth: 0,
         };
       case 'dot':
@@ -192,7 +195,7 @@ export const Badge: React.FC<BadgeProps> = ({
         };
       default:
         return {
-          backgroundColor: `${badgeColor}20`,
+          backgroundColor: `${safeColor}20`,
           borderWidth: 0,
         };
     }
@@ -200,7 +203,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const getTextColor = () => {
     if (variant === 'filled') return '#FFFFFF';
-    return badgeColor;
+    return safeColor;
   };
 
   // Dot variant
@@ -212,7 +215,7 @@ export const Badge: React.FC<BadgeProps> = ({
             width: size === 'xs' ? 6 : size === 'sm' ? 8 : size === 'md' ? 10 : 12,
             height: size === 'xs' ? 6 : size === 'sm' ? 8 : size === 'md' ? 10 : 12,
             borderRadius: borderRadius.full,
-            backgroundColor: badgeColor,
+            backgroundColor: safeColor,
           }}
         />
       </Animated.View>

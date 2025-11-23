@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import FloatingActionButton from '@/components/ui/FloatingActionButton';
+import { FAB } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useEventsStore } from '@/store/eventsStore';
@@ -22,7 +22,6 @@ import EventsList from './components/EventsList';
 import LeadsList from './components/LeadsList';
 import ClientsList from './components/ClientsList';
 import VenuesList from './components/VenuesList';
-import EventsFilters from './components/EventsFilters';
 
 type TabType = 'analytics' | 'leads' | 'events' | 'clients' | 'venues';
 
@@ -327,19 +326,6 @@ export default function EventManagementScreen() {
         onTabChange={handleTabChange}
       />
 
-      {/* Filters */}
-      {activeTab !== 'analytics' && (
-        <EventsFilters
-          activeTab={activeTab}
-          searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          selectedStatus={selectedStatus}
-          onStatusChange={handleStatusChange}
-          selectedCategory={selectedCategory}
-          onCategoryChange={handleCategoryChange}
-        />
-      )}
-
       {/* Content */}
       <ScrollView
         style={styles.content}
@@ -358,9 +344,10 @@ export default function EventManagementScreen() {
 
       {/* Floating Action Button */}
       {fabConfig && (
-        <FloatingActionButton
+        <FAB
           icon={fabConfig.icon}
           onPress={fabConfig.onPress}
+          position="bottom-right"
         />
       )}
 

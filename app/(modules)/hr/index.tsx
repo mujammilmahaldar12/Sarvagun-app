@@ -7,11 +7,9 @@ import { useAuthStore } from '@/store/authStore';
 import { useLeaveStatistics } from '@/hooks/useHRQueries';
 import { usePermissions } from '@/store/permissionStore';
 import { LeaveList, LeaveBalanceCard } from '@/components/hr';
-import AppTable, { TableColumn } from '@/components/ui/AppTable';
+import { Input, Table, type TableColumn, Badge, FAB } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import FloatingActionButton from '@/components/ui/FloatingActionButton';
-import StatusBadge from '@/components/ui/StatusBadge';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import type { LeaveFilters } from '@/types/hr';
 
@@ -89,7 +87,7 @@ export default function HRScreen() {
       key: 'status', 
       title: 'Status',
       width: 100,
-      render: (value) => <StatusBadge status={value} type={value === 'Active' ? 'active' : 'inactive'} />
+      render: (value) => <Badge label={value} status={value === 'Active' ? 'active' : 'inactive'} size="sm" />
     },
   ];
 
@@ -103,7 +101,7 @@ export default function HRScreen() {
       key: 'status', 
       title: 'Status',
       width: 100,
-      render: (value) => <StatusBadge status={value} />
+      render: (value) => <Badge label={value} status={value as any} size="sm" />
     },
     ...(canApprove ? [{
       key: 'actions',
@@ -159,7 +157,7 @@ export default function HRScreen() {
       key: 'status', 
       title: 'Status',
       width: 100,
-      render: (value) => <StatusBadge status={value} />
+      render: (value) => <Badge label={value} status={value} size="sm" />
     },
     ...(canApprove ? [{
       key: 'actions',
@@ -443,7 +441,7 @@ export default function HRScreen() {
             </View>
           </ScrollView>
         ) : (
-          <AppTable
+          <Table
             data={filteredData}
             columns={getCurrentColumns()}
             keyExtractor={(item: any) => item.id.toString()}
@@ -486,7 +484,11 @@ export default function HRScreen() {
 
         {/* Add New Button */}
         {(canManage || activeTab !== 'staff') && (
-          <FloatingActionButton onPress={handleAddNew} />
+          <FAB
+            icon="add"
+            onPress={handleAddNew}
+            position="bottom-right"
+          />
         )}
       </View>
 
