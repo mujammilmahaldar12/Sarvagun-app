@@ -5,20 +5,60 @@ import { storeToken, getToken, removeToken } from '../utils/storage';
 export const authService = {
   login: async (credentials: { username: string; password: string }) => {
     try {
+      console.log('🔐 Auth Service: Attempting login...');
       const response = await api.post('/hr/auth/login/', {
         username: credentials.username,
         password: credentials.password,
       });
       
-      const { access, refresh, user } = response.data;
+      console.log('📡 Auth Service: Login API successful, response:', {
+        hasResponse: !!response,
+        responseType: typeof response,
+        hasData: !!response?.data,
+        dataType: typeof response?.data,
+        responseKeys: response ? Object.keys(response) : [],
+        dataKeys: response?.data ? Object.keys(response.data) : [],
+        fullResponse: response,
+      });
+      
+      // Handle different response structures
+      let responseData;
+      if (response && response.data) {
+        responseData = response.data;
+      } else if (response && typeof response === 'object' && (response as any).access) {
+        // Direct response without .data wrapper
+        responseData = response as any;
+      } else {
+        console.log('❌ Auth Service: Unexpected response structure:', response);
+        throw new Error('Invalid response structure from login API');
+      }
+      
+      const { access, refresh, user } = responseData;
+      
+      console.log('💾 Auth Service: Extracting tokens...', {
+        hasAccess: !!access,
+        hasRefresh: !!refresh,
+        hasUser: !!user,
+        accessLength: access?.length,
+        refreshLength: refresh?.length,
+        userEmail: user?.email,
+        responseDataKeys: Object.keys(responseData),
+      });
+      
+      if (!access || !refresh || !user) {
+        console.log('❌ Auth Service: Missing required fields in response');
+        throw new Error('Missing access token, refresh token, or user data');
+      }
       
       // Store tokens safely
       await storeToken('access', access);
       await storeToken('refresh', refresh);
       await storeToken('user', JSON.stringify(user));
       
+      console.log('✅ Auth Service: Tokens stored successfully');
       return { access, refresh, user };
     } catch (error) {
+      console.log('❌ Auth Service: Login error:', error);
       throw error;
     }
   },

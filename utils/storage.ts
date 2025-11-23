@@ -3,16 +3,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Safe token storage utilities
 export const storeToken = async (key: string, value: string): Promise<void> => {
   try {
+    console.log(`💾 Storage: Storing token '${key}'...`, { length: value?.length });
     await AsyncStorage.setItem(key, value);
+    console.log(`✅ Storage: Token '${key}' stored successfully`);
   } catch (error) {
+    console.log(`❌ Storage: Error storing token '${key}':`, error);
     // Silent error - don't crash the app
   }
 };
 
 export const getToken = async (key: string): Promise<string | null> => {
   try {
-    return await AsyncStorage.getItem(key);
+    const value = await AsyncStorage.getItem(key);
+    console.log(`🔍 Storage: Retrieved token '${key}':`, { 
+      found: !!value, 
+      length: value?.length,
+      preview: value?.substring(0, 20) + '...' 
+    });
+    return value;
   } catch (error) {
+    console.log(`❌ Storage: Error retrieving token '${key}':`, error);
     return null;
   }
 };

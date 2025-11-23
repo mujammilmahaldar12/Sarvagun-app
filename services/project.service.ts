@@ -68,7 +68,37 @@ class ProjectService {
    * Get tasks by section
    */
   async getTasksBySection(sectionId: number): Promise<Task[]> {
-    return api.get<Task[]>(`/project_management/tasks/by_section/?section_id=${sectionId}`);
+    try {
+      console.log('🔍 Project Service: Fetching tasks for section:', sectionId);
+      const response = await api.get<Task[]>(`/project_management/tasks/by_section/?section_id=${sectionId}`);
+      console.log('📡 Project Service: Tasks response:', {
+        response,
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        hasData: !!(response as any)?.data,
+      });
+
+      // Handle response based on structure
+      let tasks;
+      if (Array.isArray(response)) {
+        tasks = response;
+      } else if ((response as any)?.data && Array.isArray((response as any).data)) {
+        tasks = (response as any).data;
+      } else {
+        console.log('❌ Project Service: Unexpected tasks response structure');
+        tasks = [];
+      }
+
+      console.log('✅ Project Service: Processed tasks:', {
+        count: tasks.length,
+        tasks: tasks.slice(0, 2), // Log first 2 tasks for debugging
+      });
+
+      return tasks;
+    } catch (error) {
+      console.log('❌ Project Service: Error fetching tasks:', error);
+      throw error;
+    }
   }
 
   /**
@@ -175,7 +205,39 @@ class ProjectService {
    * Get only current user's projects
    */
   async getMyProjects(): Promise<TaskProject[]> {
-    return api.get<TaskProject[]>('/project_management/projects/my_projects/');
+    try {
+      console.log('🔍 Project Service: Fetching my projects...');
+      const response = await api.get<TaskProject[]>('/project_management/projects/my_projects/');
+      console.log('📡 Project Service: Raw response:', {
+        response,
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        hasData: !!(response as any)?.data,
+        dataType: typeof (response as any)?.data,
+        fullResponse: response,
+      });
+
+      // Handle response based on structure
+      let projects;
+      if (Array.isArray(response)) {
+        projects = response;
+      } else if ((response as any)?.data && Array.isArray((response as any).data)) {
+        projects = (response as any).data;
+      } else {
+        console.log('❌ Project Service: Unexpected response structure');
+        projects = [];
+      }
+
+      console.log('✅ Project Service: Processed projects:', {
+        count: projects.length,
+        projects: projects.slice(0, 2), // Log first 2 projects for debugging
+      });
+
+      return projects;
+    } catch (error) {
+      console.log('❌ Project Service: Error fetching projects:', error);
+      throw error;
+    }
   }
 
   /**
@@ -219,7 +281,38 @@ class ProjectService {
    * Get sections by project
    */
   async getSectionsByProject(projectId: number): Promise<TaskSection[]> {
-    return api.get<TaskSection[]>(`/project_management/sections/by_project/?project_id=${projectId}`);
+    try {
+      console.log('🔍 Project Service: Fetching sections for project:', projectId);
+      const response = await api.get<TaskSection[]>(`/project_management/sections/by_project/?project_id=${projectId}`);
+      console.log('📡 Project Service: Sections response:', {
+        response,
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        hasData: !!(response as any)?.data,
+        dataType: typeof (response as any)?.data,
+      });
+
+      // Handle response based on structure
+      let sections;
+      if (Array.isArray(response)) {
+        sections = response;
+      } else if ((response as any)?.data && Array.isArray((response as any).data)) {
+        sections = (response as any).data;
+      } else {
+        console.log('❌ Project Service: Unexpected sections response structure');
+        sections = [];
+      }
+
+      console.log('✅ Project Service: Processed sections:', {
+        count: sections.length,
+        sections: sections.slice(0, 2), // Log first 2 sections for debugging
+      });
+
+      return sections;
+    } catch (error) {
+      console.log('❌ Project Service: Error fetching sections:', error);
+      throw error;
+    }
   }
 
   /**

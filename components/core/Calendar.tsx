@@ -63,11 +63,10 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   const isDateSelected = (date: Date) => {
     if (!selectedDate) return false;
-    return (
-      date.getDate() === selectedDate.getDate() &&
-      date.getMonth() === selectedDate.getMonth() &&
-      date.getFullYear() === selectedDate.getFullYear()
-    );
+    // Compare dates in local timezone to avoid timezone issues
+    const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const selectedLocal = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    return dateLocal.getTime() === selectedLocal.getTime();
   };
 
   const renderDays = () => {
@@ -85,17 +84,21 @@ export const Calendar: React.FC<CalendarProps> = ({
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
       const disabled = isDateDisabled(date);
       const selected = isDateSelected(date);
+      const today = new Date();
       const isToday =
-        day === new Date().getDate() &&
-        currentMonth.getMonth() === new Date().getMonth() &&
-        currentMonth.getFullYear() === new Date().getFullYear();
+        day === today.getDate() &&
+        currentMonth.getMonth() === today.getMonth() &&
+        currentMonth.getFullYear() === today.getFullYear();
 
       days.push(
         <Pressable
           key={day}
           onPress={() => {
             if (!disabled && onSelectDate) {
-              onSelectDate(date);
+              // Create date in local timezone to avoid timezone issues
+              const localDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0);
+              console.log('Calendar: Clicking day', day, 'created date:', localDate);
+              onSelectDate(localDate);
             }
           }}
           disabled={disabled}

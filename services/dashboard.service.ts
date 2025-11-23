@@ -147,16 +147,40 @@ class DashboardService {
    */
   async getActiveProjectsCount(): Promise<number> {
     try {
+      console.log('🔍 Dashboard Service: Fetching active projects count...');
       const response = await api.get<any[]>('/project_management/projects/my_projects/');
-      // Response is already the data array due to API interceptor
-      const projects = Array.isArray(response) ? response : [];
+      console.log('📡 Dashboard Service: Projects response:', {
+        response,
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        hasData: !!(response as any)?.data,
+      });
+
+      // Handle different response structures
+      let projects;
+      if (Array.isArray(response)) {
+        projects = response;
+      } else if ((response as any)?.data && Array.isArray((response as any).data)) {
+        projects = (response as any).data;
+      } else {
+        console.log('❌ Dashboard Service: Unexpected response structure');
+        projects = [];
+      }
+
+      console.log('📊 Dashboard Service: Projects data:', {
+        totalProjects: projects.length,
+        projects: projects.slice(0, 2),
+      });
+      
       // Filter for active projects (not completed or on hold)
       const activeProjects = projects.filter((p: any) => 
         p.status !== 'Completed' && p.status !== 'On Hold'
       );
+      
+      console.log('✅ Dashboard Service: Active projects count:', activeProjects.length);
       return activeProjects.length;
     } catch (error) {
-      console.warn('Projects endpoint not available');
+      console.log('❌ Dashboard Service: Projects endpoint error:', error);
       return 0;
     }
   }

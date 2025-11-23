@@ -56,8 +56,8 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Return only the data, not the full response object
-    return response.data;
+    // Return the full response object so services can access response.data
+    return response;
   },
   async (error) => {
     if (error.response) {

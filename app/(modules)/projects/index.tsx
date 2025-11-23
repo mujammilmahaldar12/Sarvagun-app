@@ -68,6 +68,25 @@ export default function ProjectsScreen() {
   const { data: priorities } = usePriorities();
   const user = useAuthStore((state) => state.user);
 
+  // Debug logging for projects data
+  console.log('🔍 Projects Debug:', {
+    projects,
+    projectsType: typeof projects,
+    isArray: Array.isArray(projects),
+    projectsLength: Array.isArray(projects) ? projects.length : 'not array',
+    isLoading: projectsLoading,
+  });
+
+  // Debug logging for sections data
+  console.log('🔍 Sections Debug:', {
+    sectionsData,
+    sectionsType: typeof sectionsData,
+    isArray: Array.isArray(sectionsData),
+    sectionsLength: Array.isArray(sectionsData) ? sectionsData.length : 'not array',
+    selectedProject: selectedProject?.id,
+    selectedProjectName: (selectedProject as any)?.name || (selectedProject as any)?.project_name,
+  });
+
   const projectsList = Array.isArray(projects) ? projects : [];
   const sectionsList = Array.isArray(sectionsData) ? sectionsData : [];
   const prioritiesList = Array.isArray(priorities) ? priorities : [];

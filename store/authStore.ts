@@ -33,13 +33,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   login: async (username, password) => {
     try {
+      console.log('🔐 Starting login process...');
       set({ isLoading: true });
       
       const response = await authService.login({ username, password });
+      console.log('✅ Login API successful, received tokens');
       
       // Check if first-time user
       const isFirstTime = await isFirstTimeUser();
+      console.log('👤 First time user check:', isFirstTime);
 
+      // Update store state
       set({
         user: response.user,
         accessToken: response.access,
@@ -49,16 +53,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         showOnboarding: isFirstTime,
       });
 
+      console.log('💾 Auth store updated with user data');
+
       // Initialize theme from user preference
       if (response.user.theme_preference) {
         useThemeStore.getState().initializeTheme(response.user.theme_preference);
+        console.log('🎨 Theme initialized:', response.user.theme_preference);
       }
 
       // Sync permissions with auth state
       syncPermissionsWithAuth();
+      console.log('🔒 Permissions synced');
 
+      console.log('🎉 Login process complete');
       return true;
     } catch (error: any) {
+      console.log('❌ Login error:', error);
       set({ isLoading: false });
       return false;
     }
@@ -113,10 +123,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         hasAccessToken: !!accessToken,
         hasRefreshToken: !!refreshToken,
         hasStoredUser: !!storedUser,
+        accessTokenLength: accessToken?.length,
+        refreshTokenLength: refreshToken?.length,
+        storedUserEmail: storedUser?.email,
       });
 
       if (accessToken && storedUser) {
         console.log('✅ User found, restoring session');
+        console.log('👤 Restored user:', {
+          id: storedUser.id,
+          email: storedUser.email,
+          name: storedUser.first_name + ' ' + storedUser.last_name,
+        });
+        
         set({
           user: storedUser,
           accessToken,
@@ -128,12 +147,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         // Initialize theme from stored user preference
         if (storedUser.theme_preference) {
           useThemeStore.getState().initializeTheme(storedUser.theme_preference);
+          console.log('🎨 Theme restored:', storedUser.theme_preference);
         }
 
         // Sync permissions after loading user
         syncPermissionsWithAuth();
+        console.log('🔒 Permissions synced for restored session');
       } else {
-        console.log('❌ No valid session found');
+        console.log('❌ No valid session found - missing:', {
+          accessToken: !accessToken ? 'access token' : null,
+          storedUser: !storedUser ? 'stored user' : null,
+        });
         set({ isLoading: false });
       }
     } catch (error) {
