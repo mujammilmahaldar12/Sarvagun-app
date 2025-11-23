@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { designSystem } from '@/constants/designSystem';
 import { ModuleHeader } from '@/components';
@@ -12,6 +12,7 @@ import { Calendar } from '@/components/core/Calendar';
 import type { TaskSection, TaskProject, Task } from '@/types/project';
 import { 
   useMyProjects, 
+  useTeamMemberProjects,
   useSectionsByProject,
   useCreateTask,
   useUpdateTask,
@@ -30,6 +31,13 @@ const { spacing, borderRadius, typography } = designSystem;
 
 export default function ProjectsScreen() {
   const { theme } = useTheme();
+  const params = useLocalSearchParams();
+  
+  // Team lead context from navigation params
+  const teamMemberId = params.teamMemberId as string;
+  const teamMemberName = params.teamMemberName as string;
+  const isTeamLead = params.isTeamLead === 'true';
+  
   const [selectedProject, setSelectedProject] = useState<TaskProject | null>(null);
   const [expandedSections, setExpandedSections] = useState<number[]>([]);
   const [showAddSection, setShowAddSection] = useState(false);
@@ -60,7 +68,13 @@ export default function ProjectsScreen() {
   const [showDatePicker, setShowDatePicker] = useState<{taskId: string | number, sectionId: number, currentDate?: string} | null>(null);
   const [showPriorityPicker, setShowPriorityPicker] = useState<{taskId: string | number, sectionId: number, currentPriority?: string} | null>(null);
 
-  const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useMyProjects();
+  // Use team member projects if in team lead mode, otherwise use my projects
+  const { data: myProjects, isLoading: myProjectsLoading, refetch: refetchMyProjects } = useMyProjects();
+  const { data: teamMemberProjects, isLoading: teamMemberProjectsLoading, refetch: refetchTeamMemberProjects } = useTeamMemberProjects(teamMemberId);
+  
+  const projects = isTeamLead && teamMemberId ? teamMemberProjects : myProjects;
+  const projectsLoading = isTeamLead && teamMemberId ? teamMemberProjectsLoading : myProjectsLoading;
+  const refetchProjects = isTeamLead && teamMemberId ? refetchTeamMemberProjects : refetchMyProjects;
   const { data: sectionsData, refetch: refetchSections } = useSectionsByProject(
     selectedProject?.id || 0,
     !!selectedProject
@@ -510,7 +524,9 @@ export default function ProjectsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Task Tracker" />
+      <ModuleHeader 
+        title={isTeamLead && teamMemberName ? `${teamMemberName}'s Tasks` : "Task Tracker"} 
+      />
       
       <ScrollView style={{ flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
         {/* Project Dropdown Selector */}

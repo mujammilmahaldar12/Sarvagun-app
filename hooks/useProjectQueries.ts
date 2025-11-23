@@ -59,6 +59,14 @@ export const priorityKeys = {
   all: ['priorities'] as const,
 };
 
+export const teamKeys = {
+  all: ['team'] as const,
+  members: () => [...teamKeys.all, 'members'] as const,
+  tasks: () => [...teamKeys.all, 'tasks'] as const,
+  projects: () => [...teamKeys.all, 'projects'] as const,
+  rateableUsers: () => [...teamKeys.all, 'rateable-users'] as const,
+};
+
 // ==================== Task Queries ====================
 
 export function useTasks(filters?: TaskFilters) {
@@ -371,5 +379,48 @@ export function usePriorities() {
     queryKey: priorityKeys.all,
     queryFn: () => projectService.getPriorities(),
     staleTime: Infinity, // Priorities rarely change
+  });
+}
+
+// ==================== Team Lead Queries ====================
+
+export function useTeamMembers() {
+  return useQuery({
+    queryKey: teamKeys.members(),
+    queryFn: () => projectService.getTeamMembers(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useTeamTasks() {
+  return useQuery({
+    queryKey: teamKeys.tasks(),
+    queryFn: () => projectService.getTeamTasks(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+export function useTeamProjects() {
+  return useQuery({
+    queryKey: teamKeys.projects(),
+    queryFn: () => projectService.getTeamProjects(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useTeamMemberProjects(memberId?: string) {
+  return useQuery({
+    queryKey: [...teamKeys.projects(), 'member', memberId],
+    queryFn: () => memberId ? projectService.getTeamMemberProjects(memberId) : Promise.resolve([]),
+    enabled: !!memberId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useRateableUsers() {
+  return useQuery({
+    queryKey: teamKeys.rateableUsers(),
+    queryFn: () => projectService.getRateableUsers(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

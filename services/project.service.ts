@@ -346,10 +346,55 @@ class ProjectService {
   // ==================== Priorities ====================
 
   /**
-   * Get all priorities
+   * Get priorities
    */
   async getPriorities(): Promise<Priority[]> {
     return api.get<Priority[]>('/project_management/priorities/');
+  }
+
+  // ==================== Team Lead Functionality ====================
+
+  /**
+   * Get team members for team lead
+   */
+  async getTeamMembers(): Promise<any[]> {
+    return api.get<any[]>('/team/members/');
+  }
+
+  /**
+   * Get team members' tasks for rating
+   */
+  async getTeamTasks(): Promise<Task[]> {
+    return api.get<Task[]>('/team/tasks/');
+  }
+
+  /**
+   * Get rateable users (team members for team lead)
+   */
+  async getRateableUsers(): Promise<any[]> {
+    return api.get<any[]>('/team/rateable-users/');
+  }
+
+  /**
+   * Get team projects
+   */
+  async getTeamProjects(): Promise<TaskProject[]> {
+    return api.get<TaskProject[]>('/team/projects/');
+  }
+
+  /**
+   * Get projects for a specific team member
+   */
+  async getTeamMemberProjects(memberId: string): Promise<TaskProject[]> {
+    console.log(`🔍 ProjectService.getTeamMemberProjects for member: ${memberId}`);
+    const result = await api.get<TaskProject[]>(`/team/members/${memberId}/projects/`);
+    console.log(`📋 Team member projects result:`, {
+      type: typeof result,
+      isArray: Array.isArray(result),
+      length: Array.isArray(result) ? result.length : 'not array',
+      result: result
+    });
+    return result;
   }
 }
 

@@ -106,4 +106,36 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+// Create wrapper methods that extract data from response
+const apiWrapper = {
+  get: async <T>(url: string): Promise<T> => {
+    console.log(`🌐 API GET: ${url}`);
+    const response = await api.get<T>(url);
+    console.log(`📦 API Response for ${url}:`, {
+      status: response.status,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
+      length: Array.isArray(response.data) ? response.data.length : 'not array',
+      data: response.data
+    });
+    return response.data;
+  },
+  post: async <T>(url: string, data?: any): Promise<T> => {
+    const response = await api.post<T>(url, data);
+    return response.data;
+  },
+  put: async <T>(url: string, data?: any): Promise<T> => {
+    const response = await api.put<T>(url, data);
+    return response.data;
+  },
+  patch: async <T>(url: string, data?: any): Promise<T> => {
+    const response = await api.patch<T>(url, data);
+    return response.data;
+  },
+  delete: async <T>(url: string): Promise<T> => {
+    const response = await api.delete<T>(url);
+    return response.data;
+  }
+};
+
+export default apiWrapper;

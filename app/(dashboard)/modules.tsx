@@ -65,6 +65,16 @@ const MODULES: Module[] = [
     color: moduleColors.leave.main,
     category: 'Management',
   },
+  {
+    id: 'team',
+    name: 'Team Lead Dashboard',
+    description: 'Manage & rate team members tasks',
+    icon: 'people-circle',
+    route: '/(modules)/team',
+    color: moduleColors.projects.main,
+    category: 'Management',
+    badge: 'Lead',
+  },
 ];
 
 const CATEGORIES = ['All', 'Management', 'Operations', 'Finance'];
