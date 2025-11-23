@@ -113,7 +113,9 @@ export default function ProjectsScreen() {
   const deleteProjectMutation = useDeleteProject();
   const rateTaskMutation = useRateTask();
   
+  // Check if user can rate tasks (admin, manager, or team lead viewing team member tasks)
   const isLeadOrAdmin = user?.category === 'admin' || user?.category === 'manager';
+  const canRateTasks = isLeadOrAdmin || (isTeamLead && teamMemberId);
 
   // Auto-select first project
   useEffect(() => {
@@ -276,8 +278,14 @@ export default function ProjectsScreen() {
 
   const handleRateTask = (task: any) => {
     setSelectedTaskForRating(task);
-    setRatingValue('5');
-    setRatingFeedback('');
+    // Pre-fill with existing rating if available
+    if (task.user_rating) {
+      setRatingValue(task.user_rating.rating.toString());
+      setRatingFeedback(task.user_rating.feedback || '');
+    } else {
+      setRatingValue('5');
+      setRatingFeedback('');
+    }
     setShowRating(true);
   };
 
@@ -497,7 +505,12 @@ export default function ProjectsScreen() {
             No projects found
           </Text>
           <TouchableOpacity
-            onPress={() => router.push('/projects/create-project')}
+            onPress={() => {
+              const createUrl = isTeamLead && teamMemberId 
+                ? `/projects/create-project?teamMemberId=${teamMemberId}&teamMemberName=${encodeURIComponent(teamMemberName)}&isTeamLead=true`
+                : '/projects/create-project';
+              router.push(createUrl);
+            }}
             style={{
               backgroundColor: theme.primary,
               paddingHorizontal: spacing.xl,
@@ -950,12 +963,31 @@ export default function ProjectsScreen() {
                             </View>
 
                             {/* Rating Button */}
-                            <View style={{width: 40, alignItems: 'center'}}>
-                              {isLeadOrAdmin && task.status === 'Completed' && (
+                            <View style={{width: 60, alignItems: 'center'}}>
+                              {task.average_rating ? (
+                                <View style={{alignItems: 'center'}}>
+                                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 2}}>
+                                    <Ionicons name="star" size={14} color={theme.warning} />
+                                    <Text style={{fontSize: typography.sizes.xs, color: theme.text, fontWeight: '600'}}>
+                                      {task.average_rating.toFixed(1)}
+                                    </Text>
+                                  </View>
+                                  {task.user_rating?.feedback && (
+                                    <Ionicons name="chatbox" size={10} color={theme.primary} style={{marginBottom: 2}} />
+                                  )}
+                                  {canRateTasks && task.status === 'Completed' && (
+                                    <TouchableOpacity onPress={() => handleRateTask(task)}>
+                                      <Text style={{fontSize: typography.sizes.xs, color: theme.primary}}>
+                                        {task.user_rating ? 'Edit' : 'Rate'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                              ) : canRateTasks && task.status === 'Completed' ? (
                                 <TouchableOpacity onPress={() => handleRateTask(task)}>
                                   <Ionicons name="star-outline" size={16} color={theme.warning} />
                                 </TouchableOpacity>
-                              )}
+                              ) : null}
                             </View>
                           </View>
                         ))}
@@ -1445,7 +1477,12 @@ export default function ProjectsScreen() {
         
         {/* Create Project FAB */}
         <TouchableOpacity
-          onPress={() => router.push('/projects/create-project')}
+          onPress={() => {
+            const createUrl = isTeamLead && teamMemberId 
+              ? `/projects/create-project?teamMemberId=${teamMemberId}&teamMemberName=${encodeURIComponent(teamMemberName)}&isTeamLead=true`
+              : '/projects/create-project';
+            router.push(createUrl);
+          }}
           style={{
             width: 56,
             height: 56,
@@ -1592,7 +1629,7 @@ export default function ProjectsScreen() {
               color: theme.text,
               marginBottom: spacing.sm
             }}>
-              Rate Task
+              {selectedTaskForRating?.user_rating ? 'Edit Rating' : 'Rate Task'}
             </Text>
             <Text style={{
               fontSize: typography.sizes.sm,
