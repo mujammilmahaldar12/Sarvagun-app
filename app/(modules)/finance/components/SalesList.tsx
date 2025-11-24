@@ -1,15 +1,20 @@
+/**
+ * SalesList Component
+ * Professional sales list with filtering and actions
+ * Following Events module pattern
+ */
 import React, { useMemo } from 'react';
-import { View, Text, Alert, Pressable } from 'react-native';
+import { View, ActivityIndicator, Alert } from 'react-native';
+import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Table, type TableColumn, Badge, Button } from '@/components';
+import { Table, type TableColumn, Badge } from '@/components';
 import { EmptyState } from '@/components/ui/EmptyState';
-import LoadingState from '@/components/ui/LoadingState';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useSales, useDeleteSale } from '@/hooks/useFinanceQueries';
-import { getTypographyStyle } from '@/utils/styleHelpers';
-import type { SaleRowData } from '@/types/finance';
+import { designSystem } from '@/constants/designSystem';
+import type { Sale } from '@/types/finance';
 
 interface SalesListProps {
   searchQuery?: string;
@@ -17,28 +22,48 @@ interface SalesListProps {
   refreshing?: boolean;
 }
 
-export default function SalesList({ searchQuery, selectedStatus, refreshing }: SalesListProps) {
-  const { theme } = useTheme();
+interface SaleRowData {
+  id: number;
+  eventName: string;
+  clientName: string;
+  date: string;
+  amount: number;
+  netAmount: number;
+  status: string;
+  createdBy: string | number;
+}
+
+const SalesList: React.FC<SalesListProps> = ({
+  searchQuery = '',
+  selectedStatus = 'all',
+  refreshing = false,
+}) => {
+  const { theme, spacing } = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   
-  // Fetch sales data
-  const { data: salesResponse, isLoading, error, refetch } = useSales({ 
-    status: selectedStatus !== 'all' ? selectedStatus : undefined,
-    search: searchQuery 
-  });
-  
+  const { data: salesResponse, isLoading, error, refetch } = useSales({});
   const deleteSaleMutation = useDeleteSale();
 
   // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
+  const canEdit = canManage;
   const canDelete = canManage;
 
-  // Extract sales array from response
+  // Extract sales array from response - Handle multiple response formats
   const sales = useMemo(() => {
     if (!salesResponse) return [];
-    // Handle both array response and paginated response
-    return Array.isArray(salesResponse) ? salesResponse : salesResponse.results || [];
+    
+    // Handle direct array response (when pagination is disabled)
+    if (Array.isArray(salesResponse)) return salesResponse;
+    
+    // Handle paginated response with results key
+    if (salesResponse && typeof salesResponse === 'object' && 'results' in salesResponse) {
+      return Array.isArray((salesResponse as any).results) ? (salesResponse as any).results : [];
+    }
+    
+    // Fallback
+    return [];
   }, [salesResponse]);
 
   // Process and filter sales data
@@ -73,28 +98,38 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
     // Transform to table row data
     return filtered.map(sale => {
       // Calculate totals
-      const totalReceived = sale.payments?.reduce((sum, payment) => 
+      const totalReceived = sale.payments?.reduce((sum: number, payment: any) => 
         sum + Number(payment.payment_amount || 0), 0
       ) || 0;
       const netAmount = Number(sale.amount || 0) - Number(sale.discount || 0);
       const balanceDue = netAmount - totalReceived;
 
-      const eventName = typeof sale.event === 'object' && sale.event?.name 
-        ? sale.event.name 
-        : sale.event_name || 'N/A';
+      // Get event name - handles three cases: object with name, event_name string, or just ID
+      let eventName = '-';
+      if (typeof sale.event === 'object' && sale.event?.name) {
+        eventName = sale.event.name;
+      } else if (sale.event_name) {
+        eventName = sale.event_name;
+      } else if (sale.event && typeof sale.event === 'number') {
+        eventName = `Event #${sale.event}`;
+      }
+      
+      // Extract client and venue information from nested event object
+      const eventObj = typeof sale.event === 'object' ? sale.event : null;
+      const clientName = eventObj?.client?.name || (eventObj?.name ? eventObj.name : '-');
+      const clientContact = eventObj?.client?.number || eventObj?.client?.email || '-';
+      const venueName = eventObj?.venue?.name || '-';
+      const venueAddress = eventObj?.venue?.address || '-';
 
       return {
-        id: sale.id,
-        eventName,
-        amount: Number(sale.amount || 0),
-        discount: Number(sale.discount || 0),
-        netAmount,
-        totalReceived,
-        balanceDue,
+        id: sale.id || 0,
+        eventName: eventName || '-',
+        clientName: clientName || '-',
         date: new Date(sale.date).toLocaleDateString('en-IN'),
-        payment_status: sale.payment_status,
-        createdBy: sale.created_by_name || 'N/A',
-        paymentsCount: sale.payments?.length || 0,
+        amount: Number(sale.amount || 0),
+        netAmount,
+        status: sale.payment_status || 'not_yet',
+        createdBy: sale.created_by || '-',
       };
     });
   }, [sales, searchQuery, selectedStatus]);
@@ -138,74 +173,74 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
     });
   };
 
-  // Define table columns
-  const columns = [
+  // Format currency
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Handle sale actions
+  const handleSaleDetails = (saleId: number) => {
+    router.push(`/(modules)/finance/${saleId}` as any);
+  };
+
+  const handleEditSale = (saleId: number) => {
+    router.push({
+      pathname: '/(modules)/finance/add-sale',
+      params: { id: saleId },
+    } as any);
+  };
+
+  const handleDeleteSale = async (saleId: number) => {
+    Alert.alert(
+      'Delete Sale',
+      'Are you sure you want to delete this sale? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteSaleMutation.mutateAsync(saleId);
+              Alert.alert('Success', 'Sale deleted successfully');
+            } catch (error) {
+              console.error('Error deleting sale:', error);
+              Alert.alert(
+                'Error',
+                error instanceof Error ? error.message : 'Failed to delete sale'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Define table columns - EXACTLY like Events module
+  const columns: TableColumn<SaleRowData>[] = [
     {
       key: 'eventName',
-      title: 'Event Name',
+      title: 'Event',
       sortable: true,
       width: 180,
       render: (value: string) => (
-        <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }} numberOfLines={2}>
+        <Text style={{ fontSize: 14, color: theme.text, fontWeight: '500' }} numberOfLines={2}>
           {value}
         </Text>
       ),
     },
     {
-      key: 'amount',
-      title: 'Amount',
+      key: 'clientName',
+      title: 'Client',
       sortable: true,
-      width: 120,
-      render: (value: number) => (
-        <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-          ₹{value.toLocaleString('en-IN')}
-        </Text>
-      ),
-    },
-    {
-      key: 'discount',
-      title: 'Discount',
-      sortable: true,
-      width: 100,
-      render: (value: number) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
-          ₹{value.toLocaleString('en-IN')}
-        </Text>
-      ),
-    },
-    {
-      key: 'netAmount',
-      title: 'Net Amount',
-      sortable: true,
-      width: 130,
-      render: (value: number) => (
-        <Text style={{ ...getTypographyStyle('sm', 'bold'), color: theme.primary }}>
-          ₹{value.toLocaleString('en-IN')}
-        </Text>
-      ),
-    },
-    {
-      key: 'totalReceived',
-      title: 'Received',
-      sortable: true,
-      width: 120,
-      render: (value: number) => (
-        <Text style={{ ...getTypographyStyle('sm', 'medium'), color: '#10B981' }}>
-          ₹{value.toLocaleString('en-IN')}
-        </Text>
-      ),
-    },
-    {
-      key: 'balanceDue',
-      title: 'Balance',
-      sortable: true,
-      width: 120,
-      render: (value: number) => (
-        <Text style={{ 
-          ...getTypographyStyle('sm', 'semibold'), 
-          color: value > 0 ? '#EF4444' : '#10B981' 
-        }}>
-          ₹{value.toLocaleString('en-IN')}
+      width: 150,
+      render: (value: string) => (
+        <Text style={{ fontSize: 14, color: theme.text }} numberOfLines={1}>
+          {value}
         </Text>
       ),
     },
@@ -215,84 +250,95 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
       sortable: true,
       width: 110,
       render: (value: string) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
+        <Text style={{ fontSize: 14, color: theme.text }}>
           {value}
         </Text>
       ),
     },
     {
-      key: 'payment_status',
+      key: 'netAmount',
+      title: 'Net Amount',
+      sortable: true,
+      width: 130,
+      render: (value: number) => (
+        <Text style={{ fontSize: 14, color: theme.primary, fontWeight: '600' }}>
+          {formatCurrency(value)}
+        </Text>
+      ),
+    },
+    {
+      key: 'status',
       title: 'Status',
       sortable: true,
       width: 120,
-      render: (value: string) => <Badge label={value} status={value as any} size="sm" />,
-    },
-    {
-      key: 'paymentsCount',
-      title: 'Payments',
-      sortable: true,
-      width: 100,
-      render: (value: number) => (
-        <View style={{
-          paddingHorizontal: 10,
-          paddingVertical: 4,
-          borderRadius: 12,
-          backgroundColor: theme.primary + '20',
-          alignItems: 'center',
-          alignSelf: 'flex-start',
-        }}>
-          <Text style={{ ...getTypographyStyle('xs', 'semibold'), color: theme.primary }}>
-            {value} {value === 1 ? 'payment' : 'payments'}
-          </Text>
-        </View>
-      ),
-    },
-    {
-      key: 'createdBy',
-      title: 'Created By',
-      sortable: true,
-      width: 140,
       render: (value: string) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
-          {value}
-        </Text>
+        <Badge
+          label={
+            value === 'completed' ? 'Completed' :
+            value === 'pending' ? 'Pending' :
+            value === 'not_yet' ? 'New' :
+            value
+          }
+          status={value as any}
+          size="sm"
+        />
       ),
     },
-    ...(canManage ? [{
+  ];
+
+  // Add actions column if user has permissions
+  if (canEdit || canDelete) {
+    columns.push({
       key: 'actions',
       title: 'Actions',
-      sortable: false,
-      width: 180,
+      width: 100,
       render: (_: any, row: SaleRowData) => (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button
-            iconName="create-outline"
-            onPress={(e: any) => {
-              e?.stopPropagation?.();
-              handleEdit(row);
-            }}
-            variant="ghost"
-            size="sm"
-          />
-          {canDelete && (
-            <Button
-              iconName="trash-outline"
-              onPress={(e: any) => {
-                e?.stopPropagation?.();
-                handleDelete(row);
+        <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+          {canEdit && (
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 6,
+                backgroundColor: theme.primary + '15',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
-              variant="ghost"
-              size="sm"
-            />
+              onTouchEnd={() => handleEditSale(row.id)}
+            >
+              <Ionicons name="create-outline" size={18} color={theme.primary} />
+            </View>
+          )}
+          {canDelete && (
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 6,
+                backgroundColor: '#EF444415',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onTouchEnd={() => handleDeleteSale(row.id)}
+            >
+              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            </View>
           )}
         </View>
       ),
-    }] : []),
-  ];
+    });
+  }
 
   // Loading state
-  if (isLoading && !refreshing) {
-    return <LoadingState type="card" items={5} />;
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={{ marginTop: 12, fontSize: 14, color: theme.textSecondary }}>
+          Loading sales...
+        </Text>
+      </View>
+    );
   }
 
   // Error state
@@ -325,15 +371,17 @@ export default function SalesList({ searchQuery, selectedStatus, refreshing }: S
     );
   }
 
-  // Main render
+  // Main render - EXACTLY like Events module
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, paddingHorizontal: 0, paddingVertical: 0 }}>
       <Table
         data={processedSales}
         columns={columns}
         keyExtractor={(item) => item.id.toString()}
-        onRowPress={handleRowPress}
+        onRowPress={(row) => handleSaleDetails(row.id)}
       />
     </View>
   );
-}
+};
+
+export default SalesList;

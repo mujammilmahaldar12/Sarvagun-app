@@ -3,8 +3,8 @@ import { getToken, storeToken, removeToken } from "../../utils/storage";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__ 
-  ? "http://10.231.38.135:8000/api"  // Your PC's current local IP
-  : "https://your-production-api.com/api";  // Production
+  ? "http://10.231.38.209:8000/api"  // Your PC's current local IP
+  : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
 export const api = axios.create({

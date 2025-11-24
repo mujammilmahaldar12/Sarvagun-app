@@ -206,7 +206,7 @@ export default function QuickAddScreen() {
 
                 {/* Icon Container */}
                 <View style={[styles.iconContainer, { backgroundColor: action.color + '15' }]}>
-                  <Ionicons name={action.icon} size={iconSizes.xl} color={action.color} />
+                  <Ionicons name={action.icon} size={iconSizes.xl + 6} color={action.color} />
                 </View>
 
                 {/* Action Details */}
@@ -320,8 +320,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
+    width: 72,
+    height: 72,
     borderRadius: borderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',

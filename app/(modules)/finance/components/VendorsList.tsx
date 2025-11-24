@@ -29,33 +29,26 @@ export default function VendorsList({ searchQuery = '' }: VendorsListProps) {
   const processedVendors = useMemo(() => {
     let filtered = [...vendors];
 
-    // Apply search filter
+    // Apply search filter - match backend field names
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (vendor) =>
           vendor.name?.toLowerCase().includes(query) ||
-          vendor.contact_person?.toLowerCase().includes(query) ||
-          vendor.email?.toLowerCase().includes(query) ||
-          vendor.phone?.toLowerCase().includes(query)
+          vendor.contact_number?.toLowerCase().includes(query) ||
+          vendor.email?.toLowerCase().includes(query)
       );
     }
 
-    // Transform to row data
-    return filtered.map(
-      (vendor): VendorRowData => ({
-        id: vendor.id,
-        name: vendor.name || 'N/A',
-        contact_person: vendor.contact_person || 'N/A',
-        email: vendor.email || 'N/A',
-        phone: vendor.phone || 'N/A',
-        address: vendor.address || 'N/A',
-        gst_number: vendor.gst_number || 'N/A',
-        pan_number: vendor.pan_number || 'N/A',
-        bank_details: vendor.bank_details || 'N/A',
-        created_by: vendor.created_by ? `${vendor.created_by.first_name} ${vendor.created_by.last_name}` : 'N/A',
-      })
-    );
+    // Transform to row data - map vendor fields to match backend schema
+    return filtered.map((vendor): VendorRowData => ({
+      id: vendor.id || 0,
+      name: vendor.name || '-',
+      organization_name: vendor.organization_name || '-',
+      category: vendor.category || '-',
+      contact_number: vendor.contact_number || '-',
+      email: vendor.email || '-',
+    }));
   }, [vendors, searchQuery]);
 
   const handleDelete = (id: number) => {
@@ -92,12 +85,22 @@ export default function VendorsList({ searchQuery = '' }: VendorsListProps) {
       ),
     },
     {
-      key: 'contact_person',
-      title: 'Contact Person',
+      key: 'organization_name',
+      title: 'Organization',
       width: 150,
       render: (row) => (
         <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }} numberOfLines={1}>
-          {row.contact_person}
+          {row.organization_name}
+        </Text>
+      ),
+    },
+    {
+      key: 'contact_number',
+      title: 'Contact Number',
+      width: 130,
+      render: (row) => (
+        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
+          {row.contact_number}
         </Text>
       ),
     },
@@ -112,52 +115,12 @@ export default function VendorsList({ searchQuery = '' }: VendorsListProps) {
       ),
     },
     {
-      key: 'phone',
-      title: 'Phone',
-      width: 120,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-          {row.phone}
-        </Text>
-      ),
-    },
-    {
-      key: 'gst_number',
-      title: 'GST Number',
+      key: 'category',
+      title: 'Category',
       width: 150,
       render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }} numberOfLines={1}>
-          {row.gst_number}
-        </Text>
-      ),
-    },
-    {
-      key: 'pan_number',
-      title: 'PAN Number',
-      width: 120,
-      render: (row) => (
         <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-          {row.pan_number}
-        </Text>
-      ),
-    },
-    {
-      key: 'address',
-      title: 'Address',
-      width: 200,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }} numberOfLines={2}>
-          {row.address}
-        </Text>
-      ),
-    },
-    {
-      key: 'created_by',
-      title: 'Created By',
-      width: 130,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-          {row.created_by}
+          {row.category}
         </Text>
       ),
     },

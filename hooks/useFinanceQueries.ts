@@ -138,7 +138,18 @@ export const useSale = (saleId: number) => {
 export const useSalePayments = (saleId: number) => {
   return useQuery({
     queryKey: financeQueryKeys.sales.payments(saleId),
-    queryFn: () => financeService.getSalePayments(saleId),
+    queryFn: async () => {
+      try {
+        return await financeService.getSalePayments(saleId);
+      } catch (error: any) {
+        // Return empty array on 404 if endpoint doesn't exist
+        if (error?.response?.status === 404) {
+          console.warn('Sale payments endpoint not available, returning empty array');
+          return [];
+        }
+        throw error;
+      }
+    },
     enabled: !!saleId,
     staleTime: 2 * 60 * 1000,
   });
@@ -310,7 +321,7 @@ export const useExpensePhotos = (expenseId: number) => {
     queryKey: [...financeQueryKeys.expenses.detail(expenseId), 'photos'],
     queryFn: async () => {
       const expense = await financeService.getExpense(expenseId);
-      return expense.expense_photos || [];
+      return expense.photos || [];
     },
     enabled: !!expenseId,
     staleTime: 5 * 60 * 1000,

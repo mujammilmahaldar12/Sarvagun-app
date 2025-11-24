@@ -105,34 +105,40 @@ export const gradientColors = {
 export const statusColors = {
   // Lead Status
   pending: {
-    light: { bg: baseColors.warning[50], text: baseColors.warning[600] },
-    dark: { bg: baseColors.warning[900], text: baseColors.warning[100] },
+    light: { bg: baseColors.warning[50], text: baseColors.warning[600], icon: baseColors.warning[600], border: baseColors.warning[500] },
+    dark: { bg: baseColors.warning[900], text: baseColors.warning[100], icon: baseColors.warning[300], border: baseColors.warning[600] },
   },
   converted: {
-    light: { bg: baseColors.success[50], text: baseColors.success[600] },
-    dark: { bg: baseColors.success[900], text: baseColors.success[100] },
+    light: { bg: baseColors.success[50], text: baseColors.success[600], icon: baseColors.success[600], border: baseColors.success[500] },
+    dark: { bg: baseColors.success[900], text: baseColors.success[100], icon: baseColors.success[300], border: baseColors.success[600] },
   },
   rejected: {
-    light: { bg: baseColors.error[50], text: baseColors.error[600] },
-    dark: { bg: baseColors.error[900], text: baseColors.error[100] },
+    light: { bg: baseColors.error[50], text: baseColors.error[600], icon: baseColors.error[600], border: baseColors.error[500] },
+    dark: { bg: baseColors.error[900], text: baseColors.error[100], icon: baseColors.error[300], border: baseColors.error[600] },
   },
   
   // Event Status
   planned: {
-    light: { bg: baseColors.info[50], text: baseColors.info[600] },
-    dark: { bg: baseColors.info[900], text: baseColors.info[100] },
+    light: { bg: baseColors.info[50], text: baseColors.info[600], icon: baseColors.info[600], border: baseColors.info[500] },
+    dark: { bg: baseColors.info[900], text: baseColors.info[100], icon: baseColors.info[300], border: baseColors.info[600] },
   },
   inProgress: {
-    light: { bg: baseColors.purple[100], text: baseColors.purple[600] },
-    dark: { bg: baseColors.purple[800], text: baseColors.purple[200] },
+    light: { bg: baseColors.purple[100], text: baseColors.purple[600], icon: baseColors.purple[600], border: baseColors.purple[500] },
+    dark: { bg: baseColors.purple[800], text: baseColors.purple[200], icon: baseColors.purple[300], border: baseColors.purple[600] },
   },
   completed: {
-    light: { bg: baseColors.success[50], text: baseColors.success[600] },
-    dark: { bg: baseColors.success[900], text: baseColors.success[100] },
+    light: { bg: baseColors.success[50], text: baseColors.success[600], icon: baseColors.success[600], border: baseColors.success[500] },
+    dark: { bg: baseColors.success[900], text: baseColors.success[100], icon: baseColors.success[300], border: baseColors.success[600] },
   },
   cancelled: {
-    light: { bg: baseColors.error[50], text: baseColors.error[600] },
-    dark: { bg: baseColors.error[900], text: baseColors.error[100] },
+    light: { bg: baseColors.error[50], text: baseColors.error[600], icon: baseColors.error[600], border: baseColors.error[500] },
+    dark: { bg: baseColors.error[900], text: baseColors.error[100], icon: baseColors.error[300], border: baseColors.error[600] },
+  },
+
+  // Leave Status (comprehensive for all leave request states)
+  approved: {
+    light: { bg: baseColors.success[50], text: baseColors.success[600], icon: baseColors.success[600], border: baseColors.success[500] },
+    dark: { bg: baseColors.success[900], text: baseColors.success[100], icon: baseColors.success[300], border: baseColors.success[600] },
   },
 } as const;
 
@@ -476,6 +482,53 @@ export const moduleColors = {
 export const getAlphaColor = (color: string, opacity: number): string => {
   const hex = Math.round(opacity * 255).toString(16).padStart(2, '0');
   return `${color}${hex}`;
+};
+
+/**
+ * Get status color based on status and theme mode
+ * @param status - Status key (e.g., 'pending', 'approved', 'rejected')
+ * @param isDark - Whether dark mode is enabled
+ * @returns Status color object with bg, text, icon, and border colors
+ */
+export const getStatusColor = (status: string, isDark: boolean) => {
+  const statusKey = status.toLowerCase() as keyof typeof statusColors;
+  const color = statusColors[statusKey];
+  
+  if (!color) {
+    // Fallback to pending if status not found
+    return isDark ? statusColors.pending.dark : statusColors.pending.light;
+  }
+  
+  return isDark ? color.dark : color.light;
+};
+
+/**
+ * Get opacity color from design system
+ * @param baseColor - Base color hex code
+ * @param opacityValue - Opacity level ('low', 'medium', 'high') or numeric (0-1)
+ * @returns Color with opacity applied
+ */
+export const getOpacityColor = (
+  baseColor: string,
+  opacityValue: 'low' | 'medium' | 'high' | number = 'medium'
+): string => {
+  let opacityNum: number;
+  
+  switch (opacityValue) {
+    case 'low':
+      opacityNum = 0.1;
+      break;
+    case 'medium':
+      opacityNum = 0.3;
+      break;
+    case 'high':
+      opacityNum = 0.6;
+      break;
+    default:
+      opacityNum = opacityValue;
+  }
+  
+  return getAlphaColor(baseColor, opacityNum);
 };
 
 // ============================================================================

@@ -321,6 +321,10 @@ export interface ExpensesAnalytics {
 export interface SaleRowData {
   id: number;
   eventName: string;
+  clientName: string;
+  clientContact: string;
+  venueName: string;
+  venueAddress: string;
   amount: number;
   discount: number;
   netAmount: number;
@@ -336,6 +340,10 @@ export interface ExpenseRowData {
   id: number;
   particulars: string;
   eventName?: string;
+  clientName?: string;
+  clientContact?: string;
+  venueName?: string;
+  venueAddress?: string;
   vendorName?: string;
   amount: number;
   expense_date: string;

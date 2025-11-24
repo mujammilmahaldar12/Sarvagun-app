@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ModuleHeader } from '@/components/layout/ModuleHeader';
-import { AppButton } from '@/components/ui/AppButton';
+import ModuleHeader from '@/components/layout/ModuleHeader';
+import { Input } from '@/components/core/Input';
+import { Select } from '@/components/core/Select';
+import { Button } from '@/components/core/Button';
 import { useTheme } from '@/hooks/useTheme';
-import { designSystem, getTypographyStyle } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 import { useVendor, useCreateVendor, useUpdateVendor } from '@/hooks/useFinanceQueries';
+import type { SelectOption } from '@/components/core/Select';
+
+// Vendor categories matching backend
+const VENDOR_CATEGORIES: SelectOption[] = [
+  { label: 'Equipment Supplier', value: 'Equipment Supplier' },
+  { label: 'Service Provider', value: 'Service Provider' },
+  { label: 'Venue Partner', value: 'Venue Partner' },
+  { label: 'Catering', value: 'Catering' },
+  { label: 'Transportation', value: 'Transportation' },
+  { label: 'Decoration', value: 'Decoration' },
+  { label: 'Other', value: 'Other' },
+];
 
 export default function AddVendorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -14,21 +28,20 @@ export default function AddVendorScreen() {
   const isEditMode = !!id;
 
   // Fetch vendor data if editing
-  const { data: vendor, isLoading: vendorLoading } = useVendor(Number(id), { enabled: isEditMode });
+  const { data: vendor, isLoading: vendorLoading } = useVendor(isEditMode ? Number(id) : 0);
   const createVendor = useCreateVendor();
   const updateVendor = useUpdateVendor();
 
-  // Form state
+  // Form state - matching backend schema
   const [formData, setFormData] = useState({
     name: '',
-    contact_person: '',
+    organization_name: '',
+    contact_number: '',
     email: '',
-    phone: '',
     address: '',
-    gst_number: '',
-    pan_number: '',
-    bank_details: '',
-    notes: '',
+    gstin: '',
+    category: 'Equipment Supplier',
+    comments: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -38,14 +51,13 @@ export default function AddVendorScreen() {
     if (vendor && isEditMode) {
       setFormData({
         name: vendor.name || '',
-        contact_person: vendor.contact_person || '',
+        organization_name: vendor.organization_name || '',
+        contact_number: vendor.contact_number || '',
         email: vendor.email || '',
-        phone: vendor.phone || '',
         address: vendor.address || '',
-        gst_number: vendor.gst_number || '',
-        pan_number: vendor.pan_number || '',
-        bank_details: vendor.bank_details || '',
-        notes: vendor.notes || '',
+        gstin: vendor.gstin || '',
+        category: vendor.category || 'Equipment Supplier',
+        comments: vendor.comments || '',
       });
     }
   }, [vendor, isEditMode]);
@@ -61,8 +73,18 @@ export default function AddVendorScreen() {
       return;
     }
 
+    if (!formData.contact_number.trim()) {
+      Alert.alert('Error', 'Please enter contact number');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      Alert.alert('Error', 'Please enter email');
+      return;
+    }
+
     // Email validation
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
@@ -71,15 +93,14 @@ export default function AddVendorScreen() {
 
     try {
       const vendorData = {
-        name: formData.name,
-        contact_person: formData.contact_person || null,
-        email: formData.email || null,
-        phone: formData.phone || null,
-        address: formData.address || null,
-        gst_number: formData.gst_number || null,
-        pan_number: formData.pan_number || null,
-        bank_details: formData.bank_details || null,
-        notes: formData.notes || null,
+        name: formData.name.trim(),
+        organization_name: formData.organization_name.trim() || '',
+        contact_number: formData.contact_number.trim(),
+        email: formData.email.trim(),
+        address: formData.address.trim() || '',
+        gstin: formData.gstin.trim() || '',
+        category: formData.category,
+        comments: formData.comments.trim() || '',
       };
 
       if (isEditMode) {
@@ -109,41 +130,7 @@ export default function AddVendorScreen() {
     );
   }
 
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-    required = false,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-        {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 4 : 1}
-        style={{
-          borderWidth: 1,
-          borderColor: theme.border,
-          borderRadius: 8,
-          padding: 12,
-          ...getTypographyStyle('sm', 'regular'),
-          color: theme.text,
-          backgroundColor: theme.surface,
-          textAlignVertical: multiline ? 'top' : 'center',
-          minHeight: multiline ? 100 : 44,
-        }}
-      />
-    </View>
-  );
+  // No longer need custom components - using core components
 
   const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
     <View style={{ gap: 4 }}>
@@ -170,48 +157,63 @@ export default function AddVendorScreen() {
         <View style={{ gap: 16 }}>
           <SectionHeader title="Basic Information" />
           
-          <FormInput
+          <Input
             label="Vendor Name"
             value={formData.name}
             onChangeText={(text: string) => updateField('name', text)}
             placeholder="Enter vendor name"
             required
+            leftIcon="business-outline"
           />
 
-          <FormInput
-            label="Contact Person"
-            value={formData.contact_person}
-            onChangeText={(text: string) => updateField('contact_person', text)}
-            placeholder="Enter contact person name"
+          <Input
+            label="Organization Name"
+            value={formData.organization_name}
+            onChangeText={(text: string) => updateField('organization_name', text)}
+            placeholder="Enter organization name"
+            leftIcon="briefcase-outline"
           />
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Email"
-                value={formData.email}
-                onChangeText={(text: string) => updateField('email', text)}
-                placeholder="vendor@example.com"
-                keyboardType="email-address"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Phone"
-                value={formData.phone}
-                onChangeText={(text: string) => updateField('phone', text)}
-                placeholder="1234567890"
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
+          <Input
+            label="Contact Number"
+            value={formData.contact_number}
+            onChangeText={(text: string) => updateField('contact_number', text)}
+            placeholder="Enter contact number"
+            keyboardType="phone-pad"
+            required
+            leftIcon="call-outline"
+          />
 
-          <FormInput
+          <Input
+            label="Email"
+            value={formData.email}
+            onChangeText={(text: string) => updateField('email', text)}
+            placeholder="vendor@example.com"
+            keyboardType="email-address"
+            required
+            leftIcon="mail-outline"
+          />
+
+          <Input
             label="Address"
             value={formData.address}
             onChangeText={(text: string) => updateField('address', text)}
             placeholder="Enter vendor address"
             multiline
+            leftIcon="location-outline"
+          />
+        </View>
+
+        {/* Category */}
+        <View style={{ gap: 16 }}>
+          <SectionHeader title="Category" />
+          <Select
+            label="Category"
+            value={formData.category}
+            onChange={(value: string) => updateField('category', value)}
+            options={VENDOR_CATEGORIES}
+            placeholder="Select category"
+            required
           />
         </View>
 
@@ -219,56 +221,35 @@ export default function AddVendorScreen() {
         <View style={{ gap: 16 }}>
           <SectionHeader 
             title="Tax Information" 
-            subtitle="GST and PAN details for invoicing"
+            subtitle="GST details for invoicing"
           />
           
-          <FormInput
+          <Input
             label="GST Number"
-            value={formData.gst_number}
-            onChangeText={(text: string) => updateField('gst_number', text.toUpperCase())}
+            value={formData.gstin}
+            onChangeText={(text: string) => updateField('gstin', text.toUpperCase())}
             placeholder="22AAAAA0000A1Z5"
-          />
-
-          <FormInput
-            label="PAN Number"
-            value={formData.pan_number}
-            onChangeText={(text: string) => updateField('pan_number', text.toUpperCase())}
-            placeholder="ABCDE1234F"
-          />
-        </View>
-
-        {/* Banking Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader 
-            title="Banking Information (Optional)" 
-            subtitle="Bank details for payments"
-          />
-          
-          <FormInput
-            label="Bank Details"
-            value={formData.bank_details}
-            onChangeText={(text: string) => updateField('bank_details', text)}
-            placeholder="Enter account number, IFSC, bank name"
-            multiline
+            leftIcon="receipt-outline"
           />
         </View>
 
         {/* Additional Notes */}
         <View style={{ gap: 16 }}>
-          <SectionHeader title="Additional Notes (Optional)" />
+          <SectionHeader title="Comments (Optional)" />
           
-          <FormInput
-            label="Notes"
-            value={formData.notes}
-            onChangeText={(text: string) => updateField('notes', text)}
-            placeholder="Add any additional notes about the vendor"
+          <Input
+            label="Comments"
+            value={formData.comments}
+            onChangeText={(text: string) => updateField('comments', text)}
+            placeholder="Add any additional comments about the vendor"
             multiline
+            leftIcon="chatbox-outline"
           />
         </View>
 
         {/* Submit Button */}
         <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <AppButton
+          <Button
             title={isEditMode ? 'Update Vendor' : 'Create Vendor'}
             onPress={handleSubmit}
             loading={loading}

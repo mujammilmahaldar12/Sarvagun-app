@@ -1074,7 +1074,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: spacing.xs,
-    ...getShadowStyle(1),
+    ...getShadowStyle('sm'),
   },
   modeButtonActive: {
     borderWidth: 2,

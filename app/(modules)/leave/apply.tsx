@@ -20,7 +20,7 @@ import { LeaveBalanceCard } from '@/components/hr';
 import { Button, Card } from '@/components';
 import { MultiDatePicker } from '@/components/core';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import { spacing, borderRadius } from '@/constants/designSystem';
+import { spacing, borderRadius, getOpacityColor, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 import { format } from 'date-fns';
 import type { LeaveType, ShiftType } from '@/types/hr';
@@ -35,7 +35,7 @@ const SHIFT_TYPES: { value: ShiftType; label: string; description: string }[] = 
 
 export default function ApplyLeaveScreen() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
 
   // API hooks
@@ -95,41 +95,39 @@ export default function ApplyLeaveScreen() {
   };
 
   const handleSubmit = async () => {
+    console.log('🔵 Submit button clicked!');
+    console.log('🔍 Form state:', {
+      leaveType,
+      selectedDates: selectedDates.length,
+      reason: reason.length,
+      isSubmitting,
+    });
+
     // Validation
     if (!leaveType) {
+      console.log('❌ Validation failed: No leave type');
       Alert.alert('Validation Error', 'Please select a leave type');
       return;
     }
 
     if (selectedDates.length === 0) {
+      console.log('❌ Validation failed: No dates selected');
       Alert.alert('Validation Error', 'Please select at least one date');
       return;
     }
 
     if (!reason.trim()) {
+      console.log('❌ Validation failed: No reason');
       Alert.alert('Validation Error', 'Please provide a reason for leave');
       return;
     }
 
+    console.log('✅ Validation passed!');
+
     const totalDays = calculateTotalDays();
     const availableBalance = getAvailableBalance();
 
-    // Check balance
-    if (totalDays > availableBalance) {
-      Alert.alert(
-        'Insufficient Balance',
-        `You only have ${availableBalance} days available for ${leaveType}. Requested: ${totalDays} days.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Apply Anyway',
-            onPress: () => submitLeave(),
-          },
-        ]
-      );
-      return;
-    }
-
+    // Allow applying even without balance (removed balance check)
     submitLeave();
   };
 
@@ -138,41 +136,64 @@ export default function ApplyLeaveScreen() {
     const fromDate = format(sortedDates[0], 'yyyy-MM-dd');
     const toDate = format(sortedDates[sortedDates.length - 1], 'yyyy-MM-dd');
 
-    try {
-      createLeave(
-        {
-          leave_type: leaveType as LeaveType,
-          from_date: fromDate,
-          to_date: toDate,
-          shift_type: shiftType,
-          reason: reason.trim(),
-          // Store selected dates in reason or custom field
-          // Backend should handle multiple date selection
-        },
-        {
-          onSuccess: () => {
+    console.log('🚀 Submitting leave:', {
+      leave_type: leaveType,
+      from_date: fromDate,
+      to_date: toDate,
+      shift_type: shiftType,
+      reason: reason.trim(),
+      dates_count: selectedDates.length,
+    });
+
+    createLeave(
+      {
+        leave_type: leaveType as LeaveType,
+        from_date: fromDate,
+        to_date: toDate,
+        shift_type: shiftType,
+        reason: reason.trim(),
+      },
+      {
+        onSuccess: (data) => {
+          console.log('✅ Leave submitted successfully:', data);
+          console.log('📢 Showing success alert...');
+          
+          // Use setTimeout to ensure alert shows after state updates
+          setTimeout(() => {
             Alert.alert(
-              'Success',
-              'Your leave application has been submitted successfully!',
+              '✅ Success',
+              `Your leave application for ${selectedDates.length} day(s) has been submitted successfully! Your manager will review it soon.`,
               [
                 {
-                  text: 'OK',
-                  onPress: () => router.back(),
+                  text: 'View Leaves',
+                  onPress: () => {
+                    console.log('📍 Navigating back...');
+                    router.back();
+                  },
+                },
+                {
+                  text: 'Apply Another',
+                  style: 'cancel',
+                  onPress: () => {
+                    // Reset form
+                    setLeaveType('');
+                    setSelectedDates([]);
+                    setReason('');
+                  },
                 },
               ]
             );
-          },
-          onError: (error: any) => {
-            Alert.alert(
-              'Error',
-              error.message || 'Failed to submit leave application. Please try again.'
-            );
-          },
-        }
-      );
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong');
-    }
+          }, 100);
+        },
+        onError: (error: any) => {
+          console.error('❌ Leave submission error:', error);
+          Alert.alert(
+            '❌ Error',
+            error.message || 'Failed to submit leave application. Please try again.'
+          );
+        },
+      }
+    );
   };
 
   const summary = generateSummary();
@@ -188,8 +209,6 @@ export default function ApplyLeaveScreen() {
       <ModuleHeader
         title="Apply Leave"
         showBack={true}
-        onBackPress={() => router.back()}
-        backgroundColor={theme.surface}
       />
 
       <KeyboardAvoidingView
@@ -233,20 +252,19 @@ export default function ApplyLeaveScreen() {
                   <Pressable
                     key={type}
                     onPress={() => setLeaveType(type)}
+                    accessibilityLabel={`Select ${type}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                     style={[
                       styles.optionCard,
                       {
-                        backgroundColor: isSelected ? theme.primary + '15' : theme.surface,
+                        backgroundColor: isSelected ? getOpacityColor(theme.primary, 0.15) : theme.surface,
                         borderColor: isSelected ? theme.primary : theme.border,
                       }
                     ]}
                   >
                     <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: isSelected ? '600' : '400',
-                        color: isSelected ? theme.primary : theme.text,
-                      }}
+                      style={[getTypographyStyle('sm', isSelected ? 'semibold' : 'medium'), { color: isSelected ? theme.primary : theme.text }]}
                     >
                       {type}
                     </Text>
@@ -256,51 +274,7 @@ export default function ApplyLeaveScreen() {
             </View>
           </View>
 
-          {/* Shift Type Selection */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Shift Type <Text style={{ color: '#EF4444' }}>*</Text>
-            </Text>
-            <View style={styles.shiftTypesContainer}>
-              {SHIFT_TYPES.map((shift) => {
-                const isSelected = shiftType === shift.value;
-                return (
-                  <Pressable
-                    key={shift.value}
-                    onPress={() => setShiftType(shift.value)}
-                    style={[
-                      styles.shiftTypeCard,
-                      {
-                        backgroundColor: isSelected ? theme.primary + '15' : theme.surface,
-                        borderColor: isSelected ? theme.primary : theme.border,
-                      }
-                    ]}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Ionicons
-                        name={isSelected ? 'radio-button-on' : 'radio-button-off'}
-                        size={20}
-                        color={isSelected ? theme.primary : theme.textSecondary}
-                      />
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: isSelected ? '600' : '500',
-                          color: isSelected ? theme.primary : theme.text,
-                          marginLeft: 8,
-                        }}
-                      >
-                        {shift.label}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 12, color: theme.textSecondary, marginLeft: 28 }}>
-                      {shift.description}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+
 
           {/* Date Selection with Multi-Date Picker */}
           <View style={styles.section}>
@@ -331,15 +305,17 @@ export default function ApplyLeaveScreen() {
                 </Text>
                 <View style={styles.selectedDatesList}>
                   {[...selectedDates].sort((a, b) => a.getTime() - b.getTime()).map((date, index) => (
-                    <View key={date.getTime()} style={[styles.selectedDateChip, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}>
-                      <Text style={{ fontSize: 13, fontWeight: '500', color: theme.primary }}>
+                    <View key={date.getTime()} style={[styles.selectedDateChip, { backgroundColor: getOpacityColor(theme.primary, 0.15), borderColor: theme.primary }]}>
+                      <Text style={[getTypographyStyle('xs', 'medium'), { color: theme.primary }]}>
                         {format(date, 'MMM dd')}
                       </Text>
                       <Pressable
                         onPress={() => setSelectedDates(prev => prev.filter(d => d.getTime() !== date.getTime()))}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityLabel={`Remove ${format(date, 'MMM dd')}`}
+                        accessibilityRole="button"
                       >
-                        <Ionicons name="close-circle" size={18} color={theme.primary} />
+                        <Ionicons name="close-circle" size={iconSizes.xs} color={theme.primary} />
                       </Pressable>
                     </View>
                   ))}
@@ -378,48 +354,46 @@ export default function ApplyLeaveScreen() {
               <Card variant="elevated" shadow="md" padding="lg">
                 <Text style={[styles.summaryTitle, { color: theme.text }]}>Leave Summary</Text>
                 
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Leave Type:</Text>
                   <Text style={[styles.summaryValue, { color: theme.text }]}>{summary.leaveType}</Text>
                 </View>
 
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Shift Type:</Text>
                   <Text style={[styles.summaryValue, { color: theme.text }]}>
-                    {SHIFT_TYPES.find(s => s.value === summary.shiftType)?.label}
+                    Full Day
                   </Text>
                 </View>
 
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Total Days:</Text>
-                  <Text style={[styles.summaryValue, { color: theme.primary, fontWeight: '700' }]}>
+                  <Text style={[getTypographyStyle('sm', 'bold'), { color: theme.primary }]}>
                     {summary.totalDays} {summary.totalDays === 1 ? 'day' : 'days'}
                   </Text>
                 </View>
 
-                <View style={styles.summaryRow}>
+                <View style={[styles.summaryRow, { borderBottomColor: theme.border }]}>
                   <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Available Balance:</Text>
-                  <Text style={[styles.summaryValue, { color: summary.willExceedBalance ? '#EF4444' : '#10B981', fontWeight: '700' }]}>
+                  <Text style={[getTypographyStyle('sm', 'bold'), { color: '#10B981' }]}>
                     {summary.availableBalance} days
                   </Text>
                 </View>
 
-                {summary.willExceedBalance && (
-                  <View style={[styles.warningBox, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
-                    <Ionicons name="warning" size={20} color="#F59E0B" />
-                    <Text style={{ fontSize: 13, color: '#92400E', marginLeft: 8, flex: 1 }}>
-                      You don't have sufficient balance. This request may require special approval.
-                    </Text>
-                  </View>
-                )}
+                <View style={[styles.warningBox, { backgroundColor: getOpacityColor('#3B82F6', 0.15), borderColor: '#3B82F6' }]}>
+                  <Ionicons name="information-circle" size={iconSizes.md} color="#3B82F6" />
+                  <Text style={[getTypographyStyle('xs', 'medium'), { color: '#1E40AF', marginLeft: spacing.md, flex: 1 }]}>
+                    You can apply for leave even if balance is low. Approval depends on manager.
+                  </Text>
+                </View>
 
-                <View style={styles.summaryDatesSection}>
-                  <Text style={[styles.summaryLabel, { color: theme.textSecondary, marginBottom: 8 }]}>
+                <View style={[styles.summaryDatesSection, { borderTopColor: theme.border }]}>
+                  <Text style={[styles.summaryLabel, { color: theme.textSecondary, marginBottom: spacing.sm }]}>
                     Selected Dates:
                   </Text>
                   <View style={styles.summaryDatesList}>
                     {summary.dates.map((date, index) => (
-                      <Text key={date.getTime()} style={[styles.summaryDateItem, { color: theme.text }]}>
+                      <Text key={date.getTime()} style={[getTypographyStyle('sm', 'regular'), { color: theme.text }]}>
                         {format(date, 'MMM dd, yyyy')}
                         {index < summary.dates.length - 1 && ', '}
                       </Text>
@@ -433,13 +407,22 @@ export default function ApplyLeaveScreen() {
           {/* Submit Button */}
           <View style={styles.section}>
             <Button
-              title={isSubmitting ? 'Submitting...' : 'Submit Leave Request'}
-              onPress={handleSubmit}
+              title={isSubmitting ? 'Submitting Leave...' : 'Submit Leave Application'}
+              onPress={() => {
+                console.log('🟢 Button onPress triggered!');
+                handleSubmit();
+              }}
               disabled={isSubmitting || !leaveType || selectedDates.length === 0 || !reason.trim()}
-              size="lg"
-              variant="primary"
-              leftIcon={isSubmitting ? undefined : 'send'}
+              loading={isSubmitting}
+              size="md"
+              leftIcon="paper-plane"
+              accessibilityLabel={isSubmitting ? 'Submitting leave application' : 'Submit leave application'}
             />
+            
+            {/* Debug Info */}
+            <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: spacing.sm, textAlign: 'center' }]}>
+              Debug: Type={leaveType ? '✓' : '✗'} | Dates={selectedDates.length} | Reason={reason.trim() ? '✓' : '✗'} | Submitting={isSubmitting ? 'Yes' : 'No'}
+            </Text>
           </View>
 
           {/* Bottom Spacing */}
@@ -536,7 +519,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   summaryLabel: {
     ...getTypographyStyle('sm', 'medium'),
@@ -553,10 +535,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.base,
   },
   summaryDatesSection: {
-    marginTop: spacing.base,
-    paddingTop: spacing.base,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   summaryDatesList: {
     flexDirection: 'row',

@@ -1,24 +1,23 @@
 /**
- * Add/Edit Sale Screen
- * Professional form with event selection, installments management, and validation
+ * Add/Edit Sale Screen - UPDATED WITH CORE COMPONENTS
+ * Matches event management patterns
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import AppButton from '@/components/ui/AppButton';
-import DatePickerInput from '@/components/ui/DatePickerInput';
-import DropdownField from '@/components/ui/DropdownField';
+import { Input } from '@/components/core/Input';
+import { Select } from '@/components/core/Select';
+import { Button } from '@/components/core/Button';
+import { DatePicker } from '@/components/core/DatePicker';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useCreateSale, useUpdateSale, useSale } from '@/hooks/useFinanceQueries';
 import { useEvents } from '@/hooks/useEventsQueries';
-import eventsService from '@/services/events.service';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { designSystem } from '@/constants/designSystem';
-import type { Event } from '@/types/events';
 import type { SalesPayment } from '@/types/finance';
 
 const PAYMENT_STATUS_OPTIONS = [
@@ -50,22 +49,15 @@ export default function AddSaleScreen() {
   // Fetch existing sale if editing
   const { data: existingSale, isLoading: loadingSale } = useSale(saleId || 0);
   
-  // Fetch events for selection
-  const { data: eventsResponse, isLoading: loadingEvents } = useEvents({});
-  const events = useMemo(() => {
-    if (!eventsResponse) return [];
-    return Array.isArray(eventsResponse) ? eventsResponse : eventsResponse.results || [];
-  }, [eventsResponse]);
+  // Fetch all events for selection
+  const { data: eventsData, isLoading: loadingEvents } = useEvents();
 
   // State
   const [loading, setLoading] = useState(false);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [eventSearchQuery, setEventSearchQuery] = useState('');
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    eventId: 0,
+    event: '',
     amount: '',
     discount: '0',
     date: new Date().toISOString().split('T')[0],
@@ -76,27 +68,27 @@ export default function AddSaleScreen() {
   const [editingInstallment, setEditingInstallment] = useState<Partial<SalesPayment> | null>(null);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
 
+  // Convert events to select options
+  const eventOptions = useMemo(() => {
+    if (!eventsData?.results) return [];
+    return eventsData.results.map((event: any) => ({
+      label: `${event.name}${event.client?.name ? ` - ${event.client.name}` : ''}`,
+      value: event.id,
+    }));
+  }, [eventsData]);
+
   // Load existing sale data in edit mode
   useEffect(() => {
     if (isEditMode && existingSale) {
       const eventObj = typeof existingSale.event === 'object' ? existingSale.event : null;
       
       setFormData({
-        eventId: typeof existingSale.event === 'number' ? existingSale.event : existingSale.event?.id || 0,
+        event: eventObj?.id ? String(eventObj.id) : existingSale.event ? String(existingSale.event) : '',
         amount: String(existingSale.amount || ''),
         discount: String(existingSale.discount || '0'),
         date: existingSale.date || new Date().toISOString().split('T')[0],
         payment_status: existingSale.payment_status || 'not_yet',
       });
-      
-      if (eventObj) {
-        setSelectedEvent(eventObj);
-      } else if (existingSale.event) {
-        // Fetch event details if only ID is provided
-        eventsService.getEvent(typeof existingSale.event === 'number' ? existingSale.event : existingSale.event.id)
-          .then(event => setSelectedEvent(event))
-          .catch(console.error);
-      }
       
       if (existingSale.payments && existingSale.payments.length > 0) {
         setInstallments(existingSale.payments.map(p => ({
@@ -112,16 +104,6 @@ export default function AddSaleScreen() {
   const updateField = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
-
-  // Filter events based on search
-  const filteredEvents = useMemo(() => {
-    if (!eventSearchQuery.trim()) return events;
-    const query = eventSearchQuery.toLowerCase();
-    return events.filter(event =>
-      event.name?.toLowerCase().includes(query) ||
-      event.client?.name?.toLowerCase().includes(query)
-    );
-  }, [events, eventSearchQuery]);
 
   // Calculate net amount
   const netAmount = useMemo(() => {
@@ -139,14 +121,6 @@ export default function AddSaleScreen() {
   const balanceDue = useMemo(() => {
     return Math.max(0, netAmount - totalReceived);
   }, [netAmount, totalReceived]);
-
-  // Handle event selection
-  const handleSelectEvent = (event: Event) => {
-    setSelectedEvent(event);
-    updateField('eventId', event.id);
-    setShowEventModal(false);
-    setEventSearchQuery('');
-  };
 
   // Add or update installment
   const handleSaveInstallment = () => {
@@ -215,7 +189,7 @@ export default function AddSaleScreen() {
 
   const handleSubmit = async () => {
     // Validation
-    if (!formData.eventId) {
+    if (!formData.event) {
       Alert.alert('Error', 'Please select an event');
       return;
     }
@@ -248,7 +222,7 @@ export default function AddSaleScreen() {
     setLoading(true);
     try {
       const saleData: any = {
-        event: formData.eventId,
+        event: Number(formData.event),
         amount: Number(formData.amount),
         discount: Number(formData.discount) || 0,
         date: formData.date,
@@ -285,56 +259,6 @@ export default function AddSaleScreen() {
   };
 
   // Reusable components
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    prefix,
-    required = false,
-    editable = true,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-        {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {prefix && (
-          <Text style={{
-            position: 'absolute',
-            left: 12,
-            ...getTypographyStyle('sm', 'regular'),
-            color: theme.text,
-            zIndex: 1,
-          }}>
-            {prefix}
-          </Text>
-        )}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
-          keyboardType={keyboardType}
-          editable={editable}
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: 8,
-            padding: 12,
-            paddingLeft: prefix ? 32 : 12,
-            ...getTypographyStyle('sm', 'regular'),
-            color: theme.text,
-            backgroundColor: editable ? theme.surface : theme.border + '40',
-            minHeight: 44,
-          }}
-        />
-      </View>
-    </View>
-  );
-
   const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
     <View style={{ gap: 4 }}>
       <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginTop: 8 }}>
@@ -349,7 +273,7 @@ export default function AddSaleScreen() {
   );
 
   // Loading state
-  if (loadingSale || loadingEvents) {
+  if (loadingSale) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <ModuleHeader title={isEditMode ? 'Edit Sale' : 'Create Sale'} showBack />
@@ -373,65 +297,41 @@ export default function AddSaleScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
         {/* Event Selection */}
         <View style={{ gap: 16 }}>
-          <SectionHeader title="Event Details" subtitle="Select the event for this sale" />
+          <SectionHeader title="Event Details" />
           
-          <DropdownField
-            label="Select Event"
-            value={selectedEvent?.name || ''}
-            placeholder="Tap to select event"
-            onPress={() => setShowEventModal(true)}
+          <Select
+            label="Event"
+            placeholder="Select an event"
+            value={formData.event}
+            onChange={(value) => updateField('event', value)}
+            options={eventOptions}
             required
+            searchable
+            disabled={loadingEvents}
           />
-
-          {selectedEvent && (
-            <View style={{
-              padding: 12,
-              backgroundColor: theme.primary + '10',
-              borderRadius: 8,
-              borderLeftWidth: 4,
-              borderLeftColor: theme.primary,
-            }}>
-              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                Client
-              </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
-                {selectedEvent.client?.name || 'N/A'}
-              </Text>
-              {selectedEvent.start_date && (
-                <>
-                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary, marginTop: 8 }}>
-                    Event Date
-                  </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
-                    {new Date(selectedEvent.start_date).toLocaleDateString('en-IN')}
-                  </Text>
-                </>
-              )}
-            </View>
-          )}
         </View>
 
         {/* Financial Details */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Financial Details" />
           
-          <FormInput
+          <Input
             label="Amount"
             value={formData.amount}
             onChangeText={(text: string) => updateField('amount', text)}
             placeholder="0"
             keyboardType="numeric"
-            prefix="₹"
+            leftIcon="cash-outline"
             required
           />
 
-          <FormInput
+          <Input
             label="Discount"
             value={formData.discount}
             onChangeText={(text: string) => updateField('discount', text)}
             placeholder="0"
             keyboardType="numeric"
-            prefix="₹"
+            leftIcon="pricetag-outline"
           />
 
           {/* Summary Card */}
@@ -469,11 +369,11 @@ export default function AddSaleScreen() {
             </View>
           </View>
 
-          <DatePickerInput
+          <DatePicker
             label="Sale Date"
-            value={formData.date}
-            onDateSelect={(date) => updateField('date', date)}
-            placeholder="Select sale date"
+            value={formData.date ? new Date(formData.date) : new Date()}
+            onChange={(date) => updateField('date', date.toISOString().split('T')[0])}
+            mode="single"
           />
 
           <View style={{ gap: 8 }}>
@@ -518,11 +418,10 @@ export default function AddSaleScreen() {
             <SectionHeader title="Payment Installments" subtitle="Add multiple payment installments" />
           </View>
 
-          <AppButton
+          <Button
             title="Add Installment"
             onPress={handleAddInstallment}
             variant="secondary"
-            fullWidth
             leftIcon="add-circle-outline"
           />
 
@@ -596,98 +495,14 @@ export default function AddSaleScreen() {
 
         {/* Submit Button */}
         <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <AppButton
+          <Button
             title={isEditMode ? 'Update Sale' : 'Create Sale'}
             onPress={handleSubmit}
             loading={loading}
-            fullWidth
-            size="lg"
             leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
           />
         </View>
       </ScrollView>
-
-      {/* Event Selection Modal */}
-      <Modal
-        visible={showEventModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowEventModal(false)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
-          onPress={() => setShowEventModal(false)}
-        >
-          <Pressable
-            style={{
-              backgroundColor: theme.surface,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 20,
-              maxHeight: '80%',
-            }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={{ gap: 16 }}>
-              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
-                Select Event
-              </Text>
-
-              <TextInput
-                value={eventSearchQuery}
-                onChangeText={setEventSearchQuery}
-                placeholder="Search events..."
-                placeholderTextColor={theme.textSecondary}
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 8,
-                  padding: 12,
-                  ...getTypographyStyle('sm', 'regular'),
-                  color: theme.text,
-                  backgroundColor: theme.background,
-                }}
-              />
-
-              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-                {filteredEvents.length === 0 ? (
-                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }}>
-                    No events found
-                  </Text>
-                ) : (
-                  filteredEvents.map((event) => (
-                    <Pressable
-                      key={event.id}
-                      onPress={() => handleSelectEvent(event)}
-                      style={({ pressed }) => ({
-                        padding: 14,
-                        borderRadius: 8,
-                        backgroundColor: pressed ? theme.primary + '10' : 'transparent',
-                        borderBottomWidth: 1,
-                        borderBottomColor: theme.border,
-                      })}
-                    >
-                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                        {event.name}
-                      </Text>
-                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 4 }}>
-                        {event.client?.name || 'N/A'} • {new Date(event.start_date).toLocaleDateString('en-IN')}
-                      </Text>
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
-
-              <AppButton
-                title="Cancel"
-                onPress={() => setShowEventModal(false)}
-                variant="secondary"
-                fullWidth
-              />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
 
       {/* Payment Installment Modal */}
       <Modal
@@ -716,7 +531,7 @@ export default function AddSaleScreen() {
                   {editingIndex >= 0 ? 'Edit' : 'Add'} Payment Installment
                 </Text>
 
-                <FormInput
+                <Input
                   label="Payment Amount"
                   value={String(editingInstallment?.payment_amount || '')}
                   onChangeText={(text: string) => 
@@ -724,17 +539,17 @@ export default function AddSaleScreen() {
                   }
                   placeholder="0"
                   keyboardType="numeric"
-                  prefix="₹"
+                  leftIcon="cash-outline"
                   required
                 />
 
-                <DatePickerInput
+                <DatePicker
                   label="Payment Date"
-                  value={editingInstallment?.payment_date || ''}
-                  onDateSelect={(date) => 
-                    setEditingInstallment({ ...editingInstallment, payment_date: date })
+                  value={editingInstallment?.payment_date ? new Date(editingInstallment.payment_date) : new Date()}
+                  onChange={(date) => 
+                    setEditingInstallment({ ...editingInstallment, payment_date: date.toISOString().split('T')[0] })
                   }
-                  placeholder="Select payment date"
+                  mode="single"
                 />
 
                 <View style={{ gap: 8 }}>
@@ -774,35 +589,19 @@ export default function AddSaleScreen() {
                   </View>
                 </View>
 
-                <View style={{ gap: 8 }}>
-                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                    Notes (Optional)
-                  </Text>
-                  <TextInput
-                    value={editingInstallment?.notes || ''}
-                    onChangeText={(text: string) => 
-                      setEditingInstallment({ ...editingInstallment, notes: text })
-                    }
-                    placeholder="Add notes about this payment"
-                    placeholderTextColor={theme.textSecondary}
-                    multiline
-                    numberOfLines={3}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      borderRadius: 8,
-                      padding: 12,
-                      ...getTypographyStyle('sm', 'regular'),
-                      color: theme.text,
-                      backgroundColor: theme.background,
-                      textAlignVertical: 'top',
-                      minHeight: 80,
-                    }}
-                  />
-                </View>
+                <Input
+                  label="Notes (Optional)"
+                  value={editingInstallment?.notes || ''}
+                  onChangeText={(text: string) => 
+                    setEditingInstallment({ ...editingInstallment, notes: text })
+                  }
+                  placeholder="Add notes about this payment"
+                  multiline
+                  leftIcon="document-text-outline"
+                />
 
                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                  <AppButton
+                  <Button
                     title="Cancel"
                     onPress={() => {
                       setShowPaymentModal(false);
@@ -810,12 +609,12 @@ export default function AddSaleScreen() {
                       setEditingIndex(-1);
                     }}
                     variant="secondary"
-                    fullWidth
+                    style={{ flex: 1 }}
                   />
-                  <AppButton
+                  <Button
                     title={editingIndex >= 0 ? 'Update' : 'Add'}
                     onPress={handleSaveInstallment}
-                    fullWidth
+                    style={{ flex: 1 }}
                   />
                 </View>
               </View>

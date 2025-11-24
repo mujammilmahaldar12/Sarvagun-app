@@ -10,9 +10,9 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.231.38.135:8000/api';
+      return 'http://10.231.38.209:8000/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://10.231.38.135:8000/api';
+      return 'http://10.231.38.209:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
@@ -43,12 +43,27 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      
+      // Detailed logging for debugging
+      console.log(`🔍 REQUEST DETAILS:`, {
+        method: config.method?.toUpperCase(),
+        baseURL: config.baseURL,
+        url: config.url,
+        fullURL: `${config.baseURL}${config.url}`,
+        hasToken: !!token,
+        headers: {
+          Authorization: config.headers.Authorization ? 'Bearer ***' : 'None',
+          'Content-Type': config.headers['Content-Type'],
+        },
+        dataType: typeof config.data,
+      });
     } catch (error) {
-      // Silent error
+      console.error('❌ Request interceptor error:', error);
     }
     return config;
   },
   (error) => {
+    console.error('❌ Request config error:', error);
     return Promise.reject(error);
   }
 );
@@ -96,9 +111,19 @@ api.interceptors.response.use(
       error.message = errorMessage;
     } else if (error.request) {
       // Request was made but no response received
+      console.error('❌ NETWORK ERROR DETAILS:', {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullURL: `${error.config?.baseURL}${error.config?.url}`,
+        method: error.config?.method,
+        timeout: error.config?.timeout,
+        errorCode: error.code,
+        errorMessage: error.message,
+      });
       error.message = 'Network error - Please check your connection';
     } else {
       // Something else happened
+      console.error('❌ UNKNOWN ERROR:', error);
       error.message = error.message || 'An unexpected error occurred';
     }
     
@@ -121,7 +146,13 @@ const apiWrapper = {
     return response.data;
   },
   post: async <T>(url: string, data?: any): Promise<T> => {
+    console.log(`📤 API POST: ${url}`);
+    console.log(`📦 Request data:`, JSON.stringify(data, null, 2));
     const response = await api.post<T>(url, data);
+    console.log(`✅ API POST Response for ${url}:`, {
+      status: response.status,
+      data: response.data
+    });
     return response.data;
   },
   put: async <T>(url: string, data?: any): Promise<T> => {

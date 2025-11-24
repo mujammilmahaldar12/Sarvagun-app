@@ -117,7 +117,9 @@ export const useMyLeaves = (filters?: LeaveFilters) => {
   return useQuery({
     queryKey: hrQueryKeys.myLeaves(filters),
     queryFn: () => hrService.getMyLeaves(filters),
-    staleTime: 1 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    enabled: false, // Disable until backend endpoint exists
   });
 };
 
@@ -162,6 +164,8 @@ export const useLeaveStatistics = () => {
     queryKey: hrQueryKeys.leaveStatistics(),
     queryFn: () => hrService.getLeaveStatistics(),
     staleTime: 5 * 60 * 1000,
+    retry: false,
+    enabled: false, // Disable until backend endpoint exists
   });
 };
 

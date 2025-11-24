@@ -48,31 +48,112 @@ class HRService {
   }
 
   /**
+   * Get leave types from backend
+   */
+  async getLeaveTypes(): Promise<any[]> {
+    try {
+      const response = await api.get<{ results: any[] }>('/leave_management/leave-types/');
+      const data: any = response;
+      return data?.results || data || [];
+    } catch (error) {
+      console.warn('⚠️ Could not fetch leave types:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get leave type ID by name
+   */
+  async getLeaveTypeId(leaveTypeName: string): Promise<number | null> {
+    try {
+      const leaveTypes = await this.getLeaveTypes();
+      console.log('📋 Available leave types:', leaveTypes);
+      
+      // Try to find exact match
+      const leaveType = leaveTypes.find((lt: any) => 
+        lt.name === leaveTypeName || lt.leave_type === leaveTypeName
+      );
+      
+      if (leaveType) {
+        console.log(`✅ Found leave type ID for "${leaveTypeName}": ${leaveType.id}`);
+        return leaveType.id;
+      }
+      
+      console.warn(`⚠️ Leave type "${leaveTypeName}" not found in backend`);
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting leave type ID:', error);
+      return null;
+    }
+  }
+
+  /**
    * Create a new leave request
    * Supports document upload (medical certificates, etc.)
    */
   async createLeave(data: CreateLeaveRequest): Promise<LeaveRequest> {
-    const formData = new FormData();
+    console.log('📤 Creating leave request:', data);
     
-    formData.append('leave_type', data.leave_type);
-    formData.append('from_date', data.from_date);
-    formData.append('to_date', data.to_date);
-    formData.append('shift_type', data.shift_type);
-    formData.append('reason', data.reason);
-
-    // Add documents if provided
-    if (data.documents && data.documents.length > 0) {
-      data.documents.forEach((doc, index) => {
-        formData.append(`documents[${index}]`, doc);
+    // First, get the leave type ID
+    const leaveTypeId = await this.getLeaveTypeId(data.leave_type);
+    if (!leaveTypeId) {
+      throw new Error(`Leave type "${data.leave_type}" not found. Please contact administrator.`);
+    }
+    
+    // Get the user's leave balance to get the balance ID
+    let leaveBalanceId: number | undefined;
+    try {
+      const balanceData = await this.getLeaveBalance();
+      leaveBalanceId = balanceData.id;
+      console.log('📊 Got leave balance ID:', leaveBalanceId);
+    } catch (error) {
+      console.warn('⚠️ Could not fetch leave balance, continuing without it');
+    }
+    
+    // Generate leave_dates array from date range
+    const leaveDates = [];
+    const startDate = new Date(data.from_date);
+    const endDate = new Date(data.to_date);
+    
+    // Create date entries for each day in the range
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+      leaveDates.push({
+        date: date.toISOString().split('T')[0], // YYYY-MM-DD format
+        starttime: data.shift_type === 'second_half' ? '14:00:00' : '09:00:00',
+        endtime: data.shift_type === 'first_half' ? '13:00:00' : '18:00:00',
+        is_holiday: false,
+        leave_comment: data.reason
       });
     }
 
-    const response = await api.post<LeaveRequest>('/leave_management/leaves/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
+    // Prepare payload matching backend serializer - use numeric leave_type ID
+    const payload: any = {
+      leave_type: leaveTypeId,  // ✅ Send as numeric ID, not string
+      leave_dates: leaveDates,
+      reason: data.reason,
+    };
+    
+    // Add leave_balances if we have it
+    if (leaveBalanceId) {
+      payload.leave_balances = leaveBalanceId;
+    }
+
+    console.log('📦 Sending payload:', JSON.stringify(payload, null, 2));
+
+    // Try the enhanced-leaves endpoint (correct endpoint from backend URLs)
+    try {
+      const response = await api.post<LeaveRequest>('/leave_management/enhanced-leaves/', payload);
+      console.log('✅ Leave created successfully:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Leave creation failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
   }
 
   /**
@@ -187,8 +268,17 @@ class HRService {
    * Get my leave requests
    */
   async getMyLeaves(params?: LeaveFilters): Promise<LeaveResponse> {
-    const response = await api.get<LeaveResponse>('/leave_management/leaves/my/', { params });
-    return response.data;
+    try {
+      const response = await api.get<LeaveResponse>('/leave_management/leaves/my/', { params });
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        // Fallback to hr/leaves/ endpoint filtered by user
+        const response = await api.get<LeaveResponse>('/hr/leaves/', { params });
+        return response.data;
+      }
+      throw error;
+    }
   }
 
   // ============================================================================

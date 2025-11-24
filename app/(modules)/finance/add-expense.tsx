@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert, Image, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, Pressable, Alert, Image, ActivityIndicator, Modal } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { ModuleHeader } from '@/components/layout/ModuleHeader';
-import { AppButton } from '@/components/ui/AppButton';
-import { DatePickerInput } from '@/components/ui/DatePickerInput';
-import { DropdownField } from '@/components/ui/DropdownField';
+import ModuleHeader from '@/components/layout/ModuleHeader';
+import { Input } from '@/components/core/Input';
+import { Select } from '@/components/core/Select';
+import { Button } from '@/components/core/Button';
+import { DatePicker } from '@/components/core/DatePicker';
 import { useTheme } from '@/hooks/useTheme';
-import { designSystem, getTypographyStyle } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 import { 
   useExpense, 
   useCreateExpense, 
@@ -20,13 +21,15 @@ import {
 import FinanceService from '@/services/finance.service';
 import type { Vendor, Event } from '@/types/finance';
 
-const PAYMENT_STATUS_OPTIONS = [
+import type { SelectOption } from '@/components/core/Select';
+
+const PAYMENT_STATUS_OPTIONS: SelectOption[] = [
   { label: 'Paid', value: 'paid' },
   { label: 'Pending', value: 'pending' },
   { label: 'Partial', value: 'partial' },
 ];
 
-const PAYMENT_MODE_OPTIONS = [
+const PAYMENT_MODE_OPTIONS: SelectOption[] = [
   { label: 'Cash', value: 'cash' },
   { label: 'Cheque', value: 'cheque' },
   { label: 'UPI', value: 'upi' },
@@ -35,9 +38,11 @@ const PAYMENT_MODE_OPTIONS = [
 ];
 
 export default function AddExpenseScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; eventId?: string }>();
+  const { id, eventId: eventIdParam } = params;
   const { theme } = useTheme();
   const isEditMode = !!id;
+  const eventIdFromParam = eventIdParam ? Number(eventIdParam) : null;
 
   // Fetch data
   const { data: expense, isLoading: expenseLoading } = useExpense(Number(id), { enabled: isEditMode });
@@ -82,6 +87,17 @@ export default function AddExpenseScreen() {
     phone: '',
     address: '',
   });
+
+  // Auto-select event if eventId param is provided (from navigation)
+  useEffect(() => {
+    if (eventIdFromParam && !isEditMode && !selectedEvent && events.length > 0) {
+      const event = events.find((e: any) => e.id === eventIdFromParam);
+      if (event) {
+        setSelectedEvent(event as any);
+        updateField('event', event.id);
+      }
+    }
+  }, [eventIdFromParam, events, isEditMode, selectedEvent]);
 
   // Load existing expense data
   useEffect(() => {
@@ -261,8 +277,8 @@ export default function AddExpenseScreen() {
         mode_of_payment: formData.mode_of_payment,
         bill_evidence: formData.bill_evidence,
         bill_no: formData.bill_no || null,
-        vendor: formData.vendor,
-        event: formData.event,
+        vendor_id: formData.vendor,
+        event_id: formData.event,
         reimbursement_requested: formData.reimbursement_requested,
         notes: formData.notes || null,
       };
@@ -326,57 +342,6 @@ export default function AddExpenseScreen() {
   }
 
   // Helper components
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-    prefix,
-    required = false,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-        {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {prefix && (
-          <Text style={{
-            position: 'absolute',
-            left: 12,
-            ...getTypographyStyle('sm', 'regular'),
-            color: theme.text,
-            zIndex: 1,
-          }}>
-            {prefix}
-          </Text>
-        )}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
-          keyboardType={keyboardType}
-          multiline={multiline}
-          numberOfLines={multiline ? 4 : 1}
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: 8,
-            padding: 12,
-            paddingLeft: prefix ? 28 : 12,
-            ...getTypographyStyle('sm', 'regular'),
-            color: theme.text,
-            backgroundColor: theme.surface,
-            textAlignVertical: multiline ? 'top' : 'center',
-            minHeight: multiline ? 100 : 44,
-          }}
-        />
-      </View>
-    </View>
-  );
 
   const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
     <View style={{ gap: 4 }}>
@@ -403,36 +368,38 @@ export default function AddExpenseScreen() {
         <View style={{ gap: 16 }}>
           <SectionHeader title="Expense Details" />
           
-          <FormInput
+          <Input
             label="Particulars"
             value={formData.particulars}
             onChangeText={(text: string) => updateField('particulars', text)}
             placeholder="Enter expense particulars"
             required
+            leftIcon="document-text-outline"
           />
 
-          <FormInput
+          <Input
             label="Details"
             value={formData.details}
             onChangeText={(text: string) => updateField('details', text)}
             placeholder="Enter additional details"
             multiline
+            leftIcon="reader-outline"
           />
 
-          <FormInput
+          <Input
             label="Amount"
             value={formData.amount}
             onChangeText={(text: string) => updateField('amount', text)}
             placeholder="0"
             keyboardType="numeric"
-            prefix="₹"
             required
+            leftIcon="cash-outline"
           />
 
-          <DatePickerInput
+          <DatePicker
             label="Expense Date"
             value={formData.expense_date}
-            onDateSelect={(date) => updateField('expense_date', date)}
+            onChange={(date) => updateField('expense_date', date)}
             placeholder="Select expense date"
           />
         </View>
@@ -542,75 +509,23 @@ export default function AddExpenseScreen() {
         <View style={{ gap: 16 }}>
           <SectionHeader title="Payment Details" />
 
-          <View style={{ gap: 8 }}>
-            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-              Payment Status <Text style={{ color: '#EF4444' }}>*</Text>
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {PAYMENT_STATUS_OPTIONS.map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() => updateField('payment_status', option.value)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: formData.payment_status === option.value ? theme.primary : theme.border,
-                    backgroundColor: pressed
-                      ? theme.primary + '10'
-                      : formData.payment_status === option.value
-                      ? theme.primary + '20'
-                      : theme.surface,
-                  })}
-                >
-                  <Text
-                    style={{
-                      ...getTypographyStyle('sm', formData.payment_status === option.value ? 'semibold' : 'regular'),
-                      color: formData.payment_status === option.value ? theme.primary : theme.text,
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          <Select
+            label="Payment Status"
+            value={formData.payment_status}
+            onChange={(value: string) => updateField('payment_status', value)}
+            options={PAYMENT_STATUS_OPTIONS}
+            placeholder="Select payment status"
+            required
+          />
 
-          <View style={{ gap: 8 }}>
-            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-              Payment Mode <Text style={{ color: '#EF4444' }}>*</Text>
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {PAYMENT_MODE_OPTIONS.map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() => updateField('mode_of_payment', option.value)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: formData.mode_of_payment === option.value ? theme.primary : theme.border,
-                    backgroundColor: pressed
-                      ? theme.primary + '10'
-                      : formData.mode_of_payment === option.value
-                      ? theme.primary + '20'
-                      : theme.surface,
-                  })}
-                >
-                  <Text
-                    style={{
-                      ...getTypographyStyle('sm', formData.mode_of_payment === option.value ? 'semibold' : 'regular'),
-                      color: formData.mode_of_payment === option.value ? theme.primary : theme.text,
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          <Select
+            label="Payment Mode"
+            value={formData.mode_of_payment}
+            onChange={(value: string) => updateField('mode_of_payment', value)}
+            options={PAYMENT_MODE_OPTIONS}
+            placeholder="Select payment mode"
+            required
+          />
         </View>
 
         {/* Bill Evidence */}
@@ -670,14 +585,14 @@ export default function AddExpenseScreen() {
           />
           
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <AppButton
+            <Button
               title="Take Photo"
               onPress={takePhoto}
               variant="secondary"
               leftIcon="camera-outline"
               style={{ flex: 1 }}
             />
-            <AppButton
+            <Button
               title="Choose Photo"
               onPress={pickImage}
               variant="secondary"
@@ -785,18 +700,19 @@ export default function AddExpenseScreen() {
         {/* Additional Notes */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Additional Notes (Optional)" />
-          <FormInput
+          <Input
             label="Notes"
             value={formData.notes}
             onChangeText={(text: string) => updateField('notes', text)}
             placeholder="Add any additional notes or comments"
             multiline
+            leftIcon="document-outline"
           />
         </View>
 
         {/* Submit Button */}
         <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <AppButton
+          <Button
             title={isEditMode ? 'Update Expense' : 'Create Expense'}
             onPress={handleSubmit}
             loading={loading}
@@ -880,7 +796,7 @@ export default function AddExpenseScreen() {
                 )}
               </ScrollView>
 
-              <AppButton
+              <Button
                 title="Cancel"
                 onPress={() => setShowVendorModal(false)}
                 variant="secondary"
@@ -963,7 +879,7 @@ export default function AddExpenseScreen() {
               </ScrollView>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <AppButton
+                <Button
                   title="Clear Selection"
                   onPress={() => {
                     setSelectedEvent(null);
@@ -973,7 +889,7 @@ export default function AddExpenseScreen() {
                   variant="secondary"
                   fullWidth
                 />
-                <AppButton
+                <Button
                   title="Cancel"
                   onPress={() => setShowEventModal(false)}
                   variant="secondary"
@@ -1012,47 +928,52 @@ export default function AddExpenseScreen() {
                   Create New Vendor
                 </Text>
 
-                <FormInput
+                <Input
                   label="Vendor Name"
                   value={newVendor.name}
                   onChangeText={(text: string) => setNewVendor({ ...newVendor, name: text })}
                   placeholder="Enter vendor name"
                   required
+                  leftIcon="business-outline"
                 />
 
-                <FormInput
+                <Input
                   label="Contact Person"
                   value={newVendor.contact_person}
                   onChangeText={(text: string) => setNewVendor({ ...newVendor, contact_person: text })}
                   placeholder="Enter contact person name"
+                  leftIcon="person-outline"
                 />
 
-                <FormInput
+                <Input
                   label="Email"
                   value={newVendor.email}
                   onChangeText={(text: string) => setNewVendor({ ...newVendor, email: text })}
                   placeholder="vendor@example.com"
                   keyboardType="email-address"
+                  leftIcon="mail-outline"
                 />
 
-                <FormInput
+                <Input
                   label="Phone"
                   value={newVendor.phone}
                   onChangeText={(text: string) => setNewVendor({ ...newVendor, phone: text })}
                   placeholder="1234567890"
                   keyboardType="phone-pad"
+                  leftIcon="call-outline"
                 />
 
-                <FormInput
+                <Input
                   label="Address"
                   value={newVendor.address}
                   onChangeText={(text: string) => setNewVendor({ ...newVendor, address: text })}
                   placeholder="Enter vendor address"
                   multiline
+                  leftIcon="location-outline"
                 />
 
                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                  <AppButton
+                  <Button
                     title="Cancel"
                     onPress={() => {
                       setShowCreateVendorModal(false);
@@ -1061,7 +982,7 @@ export default function AddExpenseScreen() {
                     variant="secondary"
                     fullWidth
                   />
-                  <AppButton
+                  <Button
                     title="Create Vendor"
                     onPress={handleCreateVendor}
                     fullWidth

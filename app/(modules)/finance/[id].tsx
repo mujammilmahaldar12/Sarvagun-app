@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ModuleHeader } from '@/components/layout/ModuleHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
+import ModuleHeader from '@/components/layout/ModuleHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useSale, useSalePayments, useDeleteSale } from '@/hooks/useFinanceQueries';
 import { useTheme } from '@/hooks/useTheme';
-import { designSystem, getTypographyStyle } from '@/constants/designSystem';
+import { designSystem } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SaleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useTheme();
-  const { hasPermission } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const [refreshing, setRefreshing] = useState(false);
 
-  const canManage = hasPermission('Finance', 'manage_all_finance');
-  const canEdit = hasPermission('Finance', 'edit_finance');
-  const canDelete = hasPermission('Finance', 'delete_finance');
+  const canManage = user?.category === 'hr' || user?.category === 'admin';
+  const canEdit = canManage;
+  const canDelete = canManage;
 
   // Fetch sale data
   const { data: sale, isLoading, error, refetch } = useSale(Number(id));
@@ -113,132 +113,7 @@ export default function SaleDetailScreen() {
   };
 
   const renderInfoTab = () => {
-    if (!sale) return null;
-
-    if (false) {
-      return (
-        <View style={{ padding: 16, gap: 20 }}>
-          {/* Expense Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Expense Information
-            </Text>
-            <InfoRow label="Type" value={
-              <View style={{
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 4,
-                backgroundColor: 
-                  item.expenseType === 'Event' ? '#DBEAFE' :
-                  item.expenseType === 'Reimbursement' ? '#FEF3C7' : '#E5E7EB',
-              }}>
-                <Text style={{
-                  ...getTypographyStyle('xs', 'semibold'),
-                  color: 
-                    item.expenseType === 'Event' ? '#1E40AF' :
-                    item.expenseType === 'Reimbursement' ? '#92400E' : '#374151',
-                }}>
-                  {item.expenseType}
-                </Text>
-              </View>
-            } />
-            <InfoRow label="Title" value={item.title} />
-            <InfoRow label="Amount" value={`₹${item.amount?.toLocaleString('en-IN')}`} />
-            <InfoRow label="Category" value={item.category} />
-            <InfoRow label="Date" value={item.date} />
-            <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
-          </View>
-
-          {/* Vendor Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Vendor Information
-            </Text>
-            <InfoRow label="Vendor" value={item.vendor} />
-            <InfoRow label="Invoice Number" value={item.invoiceNumber} />
-            <InfoRow label="Payment Method" value={item.paymentMethod || 'Not specified'} />
-          </View>
-
-          {/* Submission Details */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Submission Details
-            </Text>
-            <InfoRow label="Submitted By" value={item.submittedBy} />
-            <InfoRow label="Submitted Date" value={item.submittedDate} />
-            {item.approvedBy && <InfoRow label="Approved By" value={item.approvedBy} />}
-            {item.approvedDate && <InfoRow label="Approved Date" value={item.approvedDate} />}
-          </View>
-
-          {/* Additional Details */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Additional Details
-            </Text>
-            <InfoRow label="Description" value={item.description} multiline />
-            {item.notes && <InfoRow label="Notes" value={item.notes} multiline />}
-          </View>
-        </View>
-      );
-    } else {
-      return (
-        <View style={{ padding: 16, gap: 20 }}>
-          {/* Invoice Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Invoice Information
-            </Text>
-            <InfoRow label="Invoice Number" value={item.invoiceNumber} />
-            <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
-            <InfoRow label="Invoice Date" value={item.date} />
-            <InfoRow label="Due Date" value={item.dueDate} />
-          </View>
-
-          {/* Customer Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Customer Information
-            </Text>
-            <InfoRow label="Customer Name" value={item.customerName} />
-            <InfoRow label="Email" value={item.customerEmail} />
-            <InfoRow label="Phone" value={item.customerPhone} />
-            <InfoRow label="Address" value={item.customerAddress} multiline />
-          </View>
-
-          {/* Product/Service Details */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Product/Service Details
-            </Text>
-            <InfoRow label="Product/Service" value={item.productService} />
-            <InfoRow label="Description" value={item.description} multiline />
-          </View>
-
-          {/* Financial Details */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Financial Details
-            </Text>
-            <InfoRow label="Amount" value={`₹${item.amount?.toLocaleString('en-IN')}`} />
-            <InfoRow label="Tax Amount" value={`₹${item.taxAmount?.toLocaleString('en-IN')}`} />
-            <InfoRow label="Total Amount" value={`₹${item.totalAmount?.toLocaleString('en-IN')}`} />
-            {item.paidAmount > 0 && <InfoRow label="Paid Amount" value={`₹${item.paidAmount?.toLocaleString('en-IN')}`} />}
-            {item.paymentMethod && <InfoRow label="Payment Method" value={item.paymentMethod} />}
-            {item.paidDate && <InfoRow label="Paid Date" value={item.paidDate} />}
-          </View>
-
-          {/* Additional Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
-              Additional Information
-            </Text>
-            <InfoRow label="Sales Person" value={item.salesPerson} />
-            <InfoRow label="Terms" value={item.terms} multiline />
-            {item.notes && <InfoRow label="Notes" value={item.notes} multiline />}
-          </View>
-        </View>
-      );
-    }
+    return null; // Placeholder for future expansion
   };
 
   const renderDocumentsTab = () => (
@@ -254,7 +129,7 @@ export default function SaleDetailScreen() {
       <ModuleHeader
         title={sale ? `Sale #${sale.id}` : 'Sale Details'}
         showBack
-        rightAction={
+        rightActions={
           (canManage || canEdit || canDelete) ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(canManage || canEdit) && (
@@ -290,7 +165,7 @@ export default function SaleDetailScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, gap: 16 }}
         refreshControl={
-          <ScrollView.RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
         {/* Header Card */}
@@ -311,10 +186,23 @@ export default function SaleDetailScreen() {
                 #{sale.id}
               </Text>
             </View>
-            <StatusBadge
-              status={sale.payment_status || 'pending'}
-              label={sale.payment_status?.toUpperCase() || 'PENDING'}
-            />
+            <View style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 6,
+              backgroundColor: 
+                sale.payment_status === 'completed' ? '#DBEAFE' :
+                sale.payment_status === 'pending' ? '#FEF3C7' : '#E0E7FF',
+            }}>
+              <Text style={{
+                ...getTypographyStyle('xs', 'semibold'),
+                color:
+                  sale.payment_status === 'completed' ? '#1E40AF' :
+                  sale.payment_status === 'pending' ? '#92400E' : '#3730A3',
+              }}>
+                {sale.payment_status?.toUpperCase() || 'PENDING'}
+              </Text>
+            </View>
           </View>
 
           <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 12 }} />
@@ -354,7 +242,7 @@ export default function SaleDetailScreen() {
                 Created By
               </Text>
               <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                {sale.created_by?.first_name} {sale.created_by?.last_name}
+                {sale.created_by_name || 'N/A'}
               </Text>
             </View>
           </View>
@@ -542,10 +430,10 @@ export default function SaleDetailScreen() {
           }}
         >
           <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-            Created: {new Date(sale.created_at).toLocaleString('en-IN')}
+            Sale Date: {new Date(sale.date).toLocaleDateString('en-IN')}
           </Text>
           <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-            Last Updated: {new Date(sale.updated_at).toLocaleString('en-IN')}
+            Created By: {sale.created_by_name || 'N/A'}
           </Text>
         </View>
       </ScrollView>

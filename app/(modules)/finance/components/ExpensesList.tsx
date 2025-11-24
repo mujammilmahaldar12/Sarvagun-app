@@ -24,21 +24,34 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
   const canEdit = canManage;
   const canDelete = canManage;
 
-  const { data: expenses = [], isLoading, error } = useExpenses();
+  const { data: expensesResponse, isLoading, error } = useExpenses();
   const deleteExpense = useDeleteExpense();
 
+  // Extract expenses array from response
+  const expenses = useMemo(() => {
+    if (!expensesResponse) return [];
+    // Handle both array response and paginated response
+    return Array.isArray(expensesResponse) ? expensesResponse : (expensesResponse as any).results || [];
+  }, [expensesResponse]);
+
   const processedExpenses = useMemo(() => {
-    let filtered = [...expenses];
+    if (!Array.isArray(expenses)) return [];
+    let filtered = expenses.filter(expense => expense && expense.id);
 
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (expense) =>
-          expense.particulars?.toLowerCase().includes(query) ||
-          expense.vendor?.name?.toLowerCase().includes(query) ||
-          expense.event?.name?.toLowerCase().includes(query) ||
-          expense.mode_of_payment?.toLowerCase().includes(query)
+        (expense) => {
+          const vendorName = typeof expense.vendor === 'object' ? expense.vendor?.name : '';
+          const eventName = typeof expense.event === 'object' ? expense.event?.name : '';
+          return (
+            expense.particulars?.toLowerCase().includes(query) ||
+            vendorName?.toLowerCase().includes(query) ||
+            eventName?.toLowerCase().includes(query) ||
+            expense.mode_of_payment?.toLowerCase().includes(query)
+          );
+        }
       );
     }
 
@@ -49,19 +62,53 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
 
     // Transform to row data
     return filtered.map(
-      (expense): ExpenseRowData => ({
-        id: expense.id,
-        particulars: expense.particulars || 'N/A',
-        vendor: expense.vendor?.name || 'N/A',
-        event: expense.event?.name || 'N/A',
-        amount: expense.amount || 0,
-        expense_date: expense.expense_date,
-        payment_status: expense.payment_status || 'pending',
-        mode_of_payment: expense.mode_of_payment || 'N/A',
-        bill_evidence: expense.bill_evidence,
-        photos_count: expense.expense_photos?.length || 0,
-        created_by: expense.created_by ? `${expense.created_by.first_name} ${expense.created_by.last_name}` : 'N/A',
-      })
+      (expense): ExpenseRowData => {
+        // Extract client and venue information from nested event object
+        const eventObj = typeof expense.event === 'object' ? expense.event : null;
+        const vendorObj = typeof expense.vendor === 'object' ? expense.vendor : null;
+        
+        // Get event name - handles three cases: object with name, event_name string, or just ID
+        let eventName = '-';
+        if (typeof expense.event === 'object' && expense.event?.name) {
+          eventName = expense.event.name;
+        } else if (expense.event_name) {
+          eventName = expense.event_name;
+        } else if (expense.event && typeof expense.event === 'number') {
+          eventName = `Event #${expense.event}`;
+        }
+        
+        // Get vendor name - handles object vs ID
+        let vendorName = '-';
+        if (typeof expense.vendor === 'object' && expense.vendor?.name) {
+          vendorName = expense.vendor.name;
+        } else if (expense.vendor_name) {
+          vendorName = expense.vendor_name;
+        } else if (expense.vendor && typeof expense.vendor === 'number') {
+          vendorName = `Vendor #${expense.vendor}`;
+        }
+        
+        const clientName = eventObj?.client?.name || (eventObj?.name ? eventObj.name : '-');
+        const clientContact = eventObj?.client?.number || eventObj?.client?.email || '-';
+        const venueName = eventObj?.venue?.name || '-';
+        const venueAddress = eventObj?.venue?.address || '-';
+        
+        return {
+          id: expense.id,
+          particulars: expense.particulars || '-',
+          vendorName: vendorName,
+          eventName: eventName,
+          clientName,
+          clientContact,
+          venueName,
+          venueAddress,
+          amount: expense.amount || 0,
+          expense_date: expense.expense_date,
+          payment_status: expense.payment_status || 'pending',
+          mode_of_payment: expense.mode_of_payment || '-',
+          bill_evidence: expense.bill_evidence,
+          createdBy: '-',
+        };
+      }
     );
   }, [expenses, searchQuery, filterStatus]);
 
@@ -99,22 +146,32 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
       ),
     },
     {
-      key: 'vendor',
-      title: 'Vendor',
-      width: 140,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }} numberOfLines={1}>
-          {row.vendor}
-        </Text>
-      ),
-    },
-    {
-      key: 'event',
+      key: 'eventName',
       title: 'Event',
       width: 150,
       render: (row) => (
         <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }} numberOfLines={1}>
-          {row.event}
+          {row.eventName}
+        </Text>
+      ),
+    },
+    {
+      key: 'expense_date',
+      title: 'Date',
+      width: 110,
+      render: (row) => (
+        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+          {new Date(row.expense_date).toLocaleDateString('en-IN')}
+        </Text>
+      ),
+    },
+    {
+      key: 'clientName',
+      title: 'Client',
+      width: 150,
+      render: (row) => (
+        <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }} numberOfLines={2}>
+          {row.clientName || 'N/A'}
         </Text>
       ),
     },
@@ -130,16 +187,6 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
       ),
     },
     {
-      key: 'expense_date',
-      title: 'Date',
-      width: 110,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-          {new Date(row.expense_date).toLocaleDateString('en-IN')}
-        </Text>
-      ),
-    },
-    {
       key: 'payment_status',
       title: 'Status',
       width: 100,
@@ -151,63 +198,7 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
         />
       ),
     },
-    {
-      key: 'mode_of_payment',
-      title: 'Payment Mode',
-      width: 130,
-      render: (row) => (
-        <View
-          style={{
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 6,
-            backgroundColor: theme.primary + '15',
-          }}
-        >
-          <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.primary }}>
-            {(row.mode_of_payment || 'N/A').replace('_', ' ').toUpperCase()}
-          </Text>
-        </View>
-      ),
-    },
-    {
-      key: 'bill_evidence',
-      title: 'Bill',
-      width: 80,
-      render: (row) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Ionicons
-            name={row.bill_evidence ? 'checkmark-circle' : 'close-circle'}
-            size={18}
-            color={row.bill_evidence ? '#10B981' : '#EF4444'}
-          />
-          {row.photos_count > 0 && (
-            <View
-              style={{
-                backgroundColor: theme.primary,
-                borderRadius: 10,
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-              }}
-            >
-              <Text style={{ ...getTypographyStyle('xs', 'bold'), color: '#FFF' }}>
-                {row.photos_count}
-              </Text>
-            </View>
-          )}
-        </View>
-      ),
-    },
-    {
-      key: 'created_by',
-      title: 'Created By',
-      width: 130,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-          {row.created_by}
-        </Text>
-      ),
-    },
+
   ];
 
   // Add actions column if user has permission
@@ -215,13 +206,17 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
     columns.push({
       key: 'actions',
       title: 'Actions',
-      width: 100,
+      width: 140,
       render: (row) => (
-        <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+        <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
           {(canManage || canEdit) && (
             <Pressable
               onPress={() => router.push(`/(modules)/finance/add-expense?id=${row.id}`)}
-              style={{ padding: 4 }}
+              style={({ pressed }) => ({
+                padding: 6,
+                borderRadius: 6,
+                backgroundColor: pressed ? theme.primary + '20' : 'transparent',
+              })}
             >
               <Ionicons name="create-outline" size={20} color={theme.primary} />
             </Pressable>
@@ -229,7 +224,11 @@ export default function ExpensesList({ searchQuery = '', filterStatus }: Expense
           {(canManage || canDelete) && (
             <Pressable
               onPress={() => handleDelete(row.id)}
-              style={{ padding: 4 }}
+              style={({ pressed }) => ({
+                padding: 6,
+                borderRadius: 6,
+                backgroundColor: pressed ? '#EF444420' : 'transparent',
+              })}
             >
               <Ionicons name="trash-outline" size={20} color="#EF4444" />
             </Pressable>

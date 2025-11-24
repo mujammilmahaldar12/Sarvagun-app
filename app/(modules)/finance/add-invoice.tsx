@@ -1,23 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ModuleHeader } from '@/components/layout/ModuleHeader';
-import { AppButton } from '@/components/ui/AppButton';
-import { DatePickerInput } from '@/components/ui/DatePickerInput';
-import { DropdownField } from '@/components/ui/DropdownField';
+import ModuleHeader from '@/components/layout/ModuleHeader';
+import { Input } from '@/components/core/Input';
+import { Select } from '@/components/core/Select';
+import { Button } from '@/components/core/Button';
+import { DatePicker } from '@/components/core/DatePicker';
 import { useTheme } from '@/hooks/useTheme';
-import { designSystem, getTypographyStyle } from '@/constants/designSystem';
+import { getTypographyStyle } from '@/utils/styleHelpers';
 import { 
   useInvoice, 
   useCreateInvoice, 
-  useUpdateInvoice,
-  useEvents 
+  useUpdateInvoice
 } from '@/hooks/useFinanceQueries';
-import type { Event, InvoiceItem } from '@/types/finance';
+import { useEvents } from '@/hooks/useEventsQueries';
+import type { InvoiceItem } from '@/types/finance';
+import type { SelectOption } from '@/components/core/Select';
 
-const INVOICE_STATUS_OPTIONS = [
+const INVOICE_STATUS_OPTIONS: SelectOption[] = [
   { label: 'Draft', value: 'draft' },
   { label: 'Sent', value: 'sent' },
   { label: 'Paid', value: 'paid' },
@@ -492,7 +494,7 @@ export default function AddInvoiceScreen() {
             <SectionHeader title="Invoice Items" subtitle="Add products or services" />
           </View>
 
-          <AppButton
+          <Button
             title="Add Item"
             onPress={handleAddItem}
             variant="secondary"
@@ -610,7 +612,7 @@ export default function AddInvoiceScreen() {
 
         {/* Submit Button */}
         <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <AppButton
+          <Button
             title={isEditMode ? 'Update Invoice' : 'Create Invoice'}
             onPress={handleSubmit}
             loading={loading}
@@ -693,7 +695,7 @@ export default function AddInvoiceScreen() {
               </ScrollView>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <AppButton
+                <Button
                   title="Clear Selection"
                   onPress={() => {
                     setSelectedEvent(null);
@@ -703,7 +705,7 @@ export default function AddInvoiceScreen() {
                   variant="secondary"
                   fullWidth
                 />
-                <AppButton
+                <Button
                   title="Cancel"
                   onPress={() => setShowEventModal(false)}
                   variant="secondary"
@@ -797,7 +799,7 @@ export default function AddInvoiceScreen() {
                 )}
 
                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                  <AppButton
+                  <Button
                     title="Cancel"
                     onPress={() => {
                       setShowItemModal(false);
@@ -807,7 +809,7 @@ export default function AddInvoiceScreen() {
                     variant="secondary"
                     fullWidth
                   />
-                  <AppButton
+                  <Button
                     title={editingIndex >= 0 ? 'Update' : 'Add'}
                     onPress={handleSaveItem}
                     fullWidth
@@ -821,3 +823,4 @@ export default function AddInvoiceScreen() {
     </View>
   );
 }
+

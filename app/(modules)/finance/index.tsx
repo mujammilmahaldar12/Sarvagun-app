@@ -20,13 +20,12 @@ import { designSystem } from '@/constants/designSystem';
 import FinanceAnalytics from './components/FinanceAnalytics';
 import SalesList from './components/SalesList';
 import ExpensesList from './components/ExpensesList';
-import InvoicesList from './components/InvoicesList';
 import VendorsList from './components/VendorsList';
 
 // Hooks for data fetching
 import { useSales, useExpenses, financeCacheUtils } from '@/hooks/useFinanceQueries';
 
-type TabType = 'analytics' | 'sales' | 'expenses' | 'invoices' | 'vendors';
+type TabType = 'analytics' | 'sales' | 'expenses' | 'vendors';
 
 export default function FinanceManagementScreen() {
   const { theme } = useTheme();
@@ -90,14 +89,6 @@ export default function FinanceManagementScreen() {
           />
         );
       
-      case 'invoices':
-        return (
-          <InvoicesList
-            searchQuery={searchQuery}
-            filterStatus={selectedStatus !== 'all' ? selectedStatus : undefined}
-          />
-        );
-      
       case 'vendors':
         return (
           <VendorsList
@@ -119,13 +110,8 @@ export default function FinanceManagementScreen() {
       case 'expenses':
         router.push('/(modules)/finance/add-expense' as any);
         break;
-      case 'invoices':
-        // router.push('/(modules)/finance/add-invoice' as any);
-        Alert.alert('Coming Soon', 'Invoice creation will be available soon');
-        break;
       case 'vendors':
-        // router.push('/(modules)/finance/add-vendor' as any);
-        Alert.alert('Coming Soon', 'Vendor creation will be available soon');
+        router.push('/(modules)/finance/add-vendor' as any);
         break;
     }
   };
@@ -135,7 +121,6 @@ export default function FinanceManagementScreen() {
     { key: 'analytics', label: 'Analytics', icon: 'analytics' as const },
     { key: 'sales', label: 'Sales', icon: 'trending-up' as const },
     { key: 'expenses', label: 'Expenses', icon: 'wallet' as const },
-    { key: 'invoices', label: 'Invoices', icon: 'document-text' as const },
     { key: 'vendors', label: 'Vendors', icon: 'people' as const },
   ];
 
@@ -144,20 +129,20 @@ export default function FinanceManagementScreen() {
     switch (activeTab) {
       case 'sales':
         return [
-          { label: 'All Status', value: 'all' },
-          { label: 'Completed', value: 'completed' },
-          { label: 'Pending', value: 'pending' },
-          { label: 'Not Yet', value: 'not_yet' },
+          { label: 'All Sales', value: 'all', icon: 'list' as const },
+          { label: 'New', value: 'not_yet', icon: 'add-circle' as const, color: '#3B82F6' },
+          { label: 'Pending', value: 'pending', icon: 'time' as const, color: '#F59E0B' },
+          { label: 'Completed', value: 'completed', icon: 'checkmark-circle' as const, color: '#10B981' },
         ];
       case 'expenses':
         return [
-          { label: 'All Status', value: 'all' },
-          { label: 'Paid', value: 'paid' },
-          { label: 'Not Paid', value: 'not_paid' },
-          { label: 'Partial Paid', value: 'partial_paid' },
+          { label: 'All Expenses', value: 'all', icon: 'list' as const },
+          { label: 'Paid', value: 'paid', icon: 'checkmark-circle' as const, color: '#10B981' },
+          { label: 'Not Paid', value: 'not_paid', icon: 'close-circle' as const, color: '#EF4444' },
+          { label: 'Partial Paid', value: 'partial_paid', icon: 'time' as const, color: '#F59E0B' },
         ];
       default:
-        return [{ label: 'All Status', value: 'all' }];
+        return [{ label: 'All', value: 'all', icon: 'list' as const }];
     }
   };
 
@@ -213,77 +198,7 @@ export default function FinanceManagementScreen() {
         onTabChange={(key) => setActiveTab(key as TabType)}
       />
 
-      {/* Search Bar - Show for all tabs except analytics */}
-      {activeTab !== 'analytics' && (
-        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-          <Input
-            value={searchQuery}
-            onChangeText={handleSearchChange}
-            placeholder={`Search ${activeTab}...`}
-            variant="search"
-          />
-        </View>
-      )}
-
       {/* Summary Cards - Only show for sales and expenses tabs */}
-      {(activeTab === 'sales' || activeTab === 'expenses') && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0 }}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-        >
-          <View style={{
-            backgroundColor: theme.surface,
-            padding: 16,
-            borderRadius: 12,
-            minWidth: 140,
-            borderLeftWidth: 4,
-            borderLeftColor: theme.primary,
-          }}>
-            <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginBottom: 4 }}>
-              Total {summaryTotals.label}
-            </Text>
-            <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.text }}>
-              ₹{summaryTotals.total.toLocaleString('en-IN')}
-            </Text>
-          </View>
-          
-          <View style={{
-            backgroundColor: theme.surface,
-            padding: 16,
-            borderRadius: 12,
-            minWidth: 140,
-            borderLeftWidth: 4,
-            borderLeftColor: '#F59E0B',
-          }}>
-            <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginBottom: 4 }}>
-              Pending
-            </Text>
-            <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.text }}>
-              ₹{summaryTotals.pending.toLocaleString('en-IN')}
-            </Text>
-          </View>
-          
-          <View style={{
-            backgroundColor: theme.surface,
-            padding: 16,
-            borderRadius: 12,
-            minWidth: 140,
-            borderLeftWidth: 4,
-            borderLeftColor: '#10B981',
-          }}>
-            <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginBottom: 4 }}>
-              {activeTab === 'expenses' ? 'Paid' : 'Completed'}
-            </Text>
-            <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.text }}>
-              ₹{summaryTotals.completed.toLocaleString('en-IN')}
-            </Text>
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Content with Pull-to-Refresh */}
       <ScrollView
         style={{ flex: 1 }}
         refreshControl={
@@ -330,7 +245,7 @@ export default function FinanceManagementScreen() {
 
               {/* Status Filter */}
               <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginBottom: 10 }}>
-                Status
+                Filter by Status
               </Text>
               <View style={{ gap: 10, marginBottom: 20 }}>
                 {getStatusOptions().map((option) => (
@@ -338,21 +253,29 @@ export default function FinanceManagementScreen() {
                     key={option.value}
                     onPress={() => setSelectedStatus(option.value)}
                     style={({ pressed }) => ({
-                      padding: 12,
-                      borderRadius: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 14,
+                      borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: selectedStatus === option.value ? theme.primary : theme.border,
+                      borderColor: selectedStatus === option.value ? (option.color || theme.primary) : theme.border,
                       backgroundColor: pressed
-                        ? theme.primary + '10'
+                        ? (option.color || theme.primary) + '10'
                         : selectedStatus === option.value
-                        ? theme.primary + '20'
-                        : 'transparent',
+                        ? (option.color || theme.primary) + '15'
+                        : theme.background,
                     })}
                   >
+                    <Ionicons
+                      name={selectedStatus === option.value ? 'checkmark-circle' : option.icon}
+                      size={22}
+                      color={selectedStatus === option.value ? (option.color || theme.primary) : theme.textSecondary}
+                      style={{ marginRight: 12 }}
+                    />
                     <Text
                       style={{
-                        color: selectedStatus === option.value ? theme.primary : theme.text,
-                        fontWeight: selectedStatus === option.value ? '600' : 'normal',
+                        ...getTypographyStyle('base', 'semibold'),
+                        color: selectedStatus === option.value ? (option.color || theme.primary) : theme.text,
                       }}
                     >
                       {option.label}

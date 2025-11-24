@@ -6,6 +6,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLeaveBalance } from '../../hooks/useHRQueries';
+import { useTheme } from '../../hooks/useTheme';
+import { spacing, borderRadius, shadows, getOpacityColor, iconSizes } from '../../constants/designSystem';
+import { getTypographyStyle } from '../../utils/styleHelpers';
 import type { LeaveBalance } from '../../types/hr';
 
 interface LeaveBalanceCardProps {
@@ -27,16 +30,18 @@ export const LeaveBalanceCard: React.FC<LeaveBalanceCardProps> = ({
   employeeId,
   compact = false,
 }) => {
+  const { theme, isDark } = useTheme();
   const { data: balance, isLoading, error } = useLeaveBalance(employeeId);
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Time off balances</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Time off balances</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[getTypographyStyle('xs', 'medium'), { color: theme.textSecondary, marginTop: spacing.md }]}>Loading...</Text>
         </View>
       </View>
     );
@@ -44,12 +49,12 @@ export const LeaveBalanceCard: React.FC<LeaveBalanceCardProps> = ({
 
   if (error || !balance) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Time off balances</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Time off balances</Text>
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
+          <Text style={[styles.errorText, { color: theme.error }]}>
             {error ? 'Failed to load balances' : 'No balance data available'}
           </Text>
         </View>
@@ -106,9 +111,9 @@ export const LeaveBalanceCard: React.FC<LeaveBalanceCardProps> = ({
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Time off balances</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Time off balances</Text>
       </View>
       
       <View style={styles.balanceList}>
@@ -117,6 +122,8 @@ export const LeaveBalanceCard: React.FC<LeaveBalanceCardProps> = ({
             key={leave.type}
             {...leave}
             compact={compact}
+            theme={theme}
+            isDark={isDark}
           />
         ))}
       </View>
@@ -126,6 +133,8 @@ export const LeaveBalanceCard: React.FC<LeaveBalanceCardProps> = ({
 
 interface LeaveBalanceItemProps extends LeaveTypeData {
   compact: boolean;
+  theme?: any;
+  isDark?: boolean;
 }
 
 const LeaveBalanceItem: React.FC<LeaveBalanceItemProps> = ({
@@ -137,31 +146,39 @@ const LeaveBalanceItem: React.FC<LeaveBalanceItemProps> = ({
   planned,
   available,
   compact,
+  theme,
+  isDark,
 }) => {
   const usedPercentage = total > 0 ? (used / total) * 100 : 0;
   const plannedPercentage = total > 0 ? (planned / total) * 100 : 0;
   const availablePercentage = total > 0 ? (available / total) * 100 : 0;
 
+  const usedColor = isDark ? '#94A3B8' : '#6B7280';
+  const plannedColor = isDark ? '#CBD5E1' : '#D1D5DB';
+  const progressBgColor = isDark ? '#374151' : '#F3F4F6';
+  const textColor = theme?.text || '#1F2937';
+  const secondaryTextColor = theme?.textSecondary || '#6B7280';
+
   return (
-    <View style={styles.balanceItem}>
+    <View style={[styles.balanceItem, { borderBottomColor: theme?.border || '#F3F4F6' }]}>
       <View style={styles.balanceHeader}>
         <View style={styles.balanceTypeContainer}>
           <Text style={styles.balanceIcon}>{icon}</Text>
           <Text style={[styles.balanceType, { color }]}>{type}</Text>
         </View>
-        <Text style={styles.balanceValue}>{available}d</Text>
+        <Text style={[styles.balanceValue, { color: textColor }]}>{available}d</Text>
       </View>
 
       {!compact && (
         <>
           <View style={styles.progressBarContainer}>
-            <View style={styles.progressBar}>
+            <View style={[styles.progressBar, { backgroundColor: progressBgColor }]}>
               {/* Used */}
               {used > 0 && (
                 <View
                   style={[
                     styles.progressSegment,
-                    { width: `${usedPercentage}%`, backgroundColor: '#94A3B8' },
+                    { width: `${usedPercentage}%`, backgroundColor: usedColor },
                   ]}
                 />
               )}
@@ -170,7 +187,7 @@ const LeaveBalanceItem: React.FC<LeaveBalanceItemProps> = ({
                 <View
                   style={[
                     styles.progressSegment,
-                    { width: `${plannedPercentage}%`, backgroundColor: '#CBD5E1' },
+                    { width: `${plannedPercentage}%`, backgroundColor: plannedColor },
                   ]}
                 />
               )}
@@ -188,18 +205,18 @@ const LeaveBalanceItem: React.FC<LeaveBalanceItemProps> = ({
 
           <View style={styles.balanceDetails}>
             <View style={styles.balanceDetailItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#94A3B8' }]} />
-              <Text style={styles.balanceDetailText}>Used: {used}d</Text>
+              <View style={[styles.legendDot, { backgroundColor: usedColor }]} />
+              <Text style={[styles.balanceDetailText, { color: secondaryTextColor }]}>Used: {used}d</Text>
             </View>
             {planned > 0 && (
               <View style={styles.balanceDetailItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#CBD5E1' }]} />
-                <Text style={styles.balanceDetailText}>Planned: {planned}d</Text>
+                <View style={[styles.legendDot, { backgroundColor: plannedColor }]} />
+                <Text style={[styles.balanceDetailText, { color: secondaryTextColor }]}>Planned: {planned}d</Text>
               </View>
             )}
             <View style={styles.balanceDetailItem}>
               <View style={[styles.legendDot, { backgroundColor: color }]} />
-              <Text style={styles.balanceDetailText}>Available: {available}d / {total}d</Text>
+              <Text style={[styles.balanceDetailText, { color: secondaryTextColor }]}>Available: {available}d / {total}d</Text>
             </View>
           </View>
         </>
@@ -210,10 +227,10 @@ const LeaveBalanceItem: React.FC<LeaveBalanceItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginVertical: 8,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -226,10 +243,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   loadingContainer: {
-    padding: 40,
+    padding: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -239,7 +255,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#EF4444',
     textAlign: 'center',
   },
   balanceList: {
@@ -248,7 +263,6 @@ const styles = StyleSheet.create({
   balanceItem: {
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -271,14 +285,12 @@ const styles = StyleSheet.create({
   balanceValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
   },
   progressBarContainer: {
     marginVertical: 8,
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#F3F4F6',
     borderRadius: 4,
     flexDirection: 'row',
     overflow: 'hidden',
@@ -304,7 +316,6 @@ const styles = StyleSheet.create({
   },
   balanceDetailText: {
     fontSize: 13,
-    color: '#6B7280',
   },
 });
 

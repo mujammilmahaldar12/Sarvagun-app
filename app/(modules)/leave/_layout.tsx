@@ -10,9 +10,10 @@ export default function LeaveLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="apply" />
-      <Stack.Screen name="[id]" />
-      <Stack.Screen name="calendar" />
       <Stack.Screen name="history" />
+      <Stack.Screen name="calendar" />
+      <Stack.Screen name="balance" />
+      <Stack.Screen name="[id]" />
     </Stack>
   );
 }
