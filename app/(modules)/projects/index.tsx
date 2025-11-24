@@ -17,6 +17,7 @@ import {
   useCreateTask,
   useUpdateTask,
   useCompleteTask,
+  useDeleteTask,
   useCreateSection,
   useDeleteSection,
   useUpdateProject,
@@ -108,6 +109,7 @@ export default function ProjectsScreen() {
   const createSectionMutation = useCreateSection();
   const deleteSectionMutation = useDeleteSection();
   const createTaskMutation = useCreateTask();
+  const deleteTaskMutation = useDeleteTask();
   const updateTaskMutation = useUpdateTask();
   const updateProjectMutation = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
@@ -244,36 +246,22 @@ export default function ProjectsScreen() {
     if (!selectedProject) return;
 
     console.log('🗑️ Attempting to delete project:', selectedProject.id, selectedProject.project_name);
-
-    Alert.alert(
-      'Delete Project',
-      `Are you sure you want to delete "${selectedProject.project_name}"? This will delete all sections and tasks.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            console.log('🗑️ User confirmed deletion for project ID:', selectedProject.id);
-            deleteProjectMutation.mutate(selectedProject.id, {
-              onSuccess: () => {
-                console.log('✅ Project deleted successfully');
-                // Clear selected project and update UI
-                const remainingProjects = projectsList.filter(p => p.id !== selectedProject.id);
-                setSelectedProject(remainingProjects.length > 0 ? remainingProjects[0] : null);
-                setShowProjectDropdown(false);
-                refetchProjects();
-                Alert.alert('✅ Success', 'Project deleted successfully');
-              },
-              onError: (error) => {
-                console.error('❌ Delete project error:', error);
-                Alert.alert('❌ Error', 'Failed to delete project. Please try again.');
-              }
-            });
-          }
-        }
-      ]
-    );
+    console.log('🗑️ DIRECTLY CALLING DELETE MUTATION');
+    
+    deleteProjectMutation.mutate(selectedProject.id, {
+      onSuccess: () => {
+        console.log('✅ Project deleted successfully');
+        // Clear selected project and update UI
+        const remainingProjects = projectsList.filter(p => p.id !== selectedProject.id);
+        setSelectedProject(remainingProjects.length > 0 ? remainingProjects[0] : null);
+        setShowProjectDropdown(false);
+        refetchProjects();
+      },
+      onError: (error) => {
+        console.error('❌ Delete project error:', error);
+        console.error('❌ Error details:', JSON.stringify(error));
+      }
+    });
   };
 
   const handleRateTask = (task: any) => {
@@ -339,22 +327,33 @@ export default function ProjectsScreen() {
       }));
     } else {
       // Update existing task immediately
-      const updateData = { [field]: value };
+      const updateData: any = {};
       
       if (field === 'status' && value === 'Completed') {
+        updateData.status = value;
         updateData.completed_date = new Date().toISOString();
-      }
-      
-      if (field === 'due_date') {
-        updateData[field] = typeof value === 'string' ? value : new Date().toISOString().split('T')[0];
-      }
-      
-      if (field === 'priority') {
-        const priorityId = prioritiesList.find(p => p.level === value)?.id;
-        if (priorityId) {
-          updateData[field] = priorityId;
+      } else if (field === 'due_date') {
+        updateData.due_date = typeof value === 'string' ? value : new Date().toISOString().split('T')[0];
+      } else if (field === 'priority_level') {
+        // Convert priority_level (P1, P2, P3) to priority ID
+        console.log('🔄 Converting priority_level to priority ID:', value);
+        const priorityObj = prioritiesList.find(p => p.level === value);
+        if (priorityObj) {
+          console.log('✅ Found priority:', priorityObj);
+          updateData.priority = priorityObj.id;
+        } else {
+          console.error('❌ Priority not found:', value);
+          return;
         }
+      } else if (field === 'task_title' || field === 'title') {
+        updateData.task_title = value;
+      } else if (field === 'comments') {
+        updateData.comments = value;
+      } else {
+        updateData[field] = value;
       }
+      
+      console.log('📤 Sending update to backend:', { taskId, updateData });
       
       updateTaskMutation.mutate({
         taskId: typeof taskId === 'number' ? taskId : parseInt(taskId),
@@ -362,10 +361,11 @@ export default function ProjectsScreen() {
       }, {
         onSuccess: () => {
           refetchSections();
-          console.log('✅ Task updated successfully');
+          console.log('✅ Task updated successfully:', field, value);
         },
         onError: (error) => {
-          console.error('Update task error:', error);
+          console.error('❌ Update task error:', error);
+          console.error('Failed to update field:', field, 'with value:', value);
           Alert.alert('Update Failed', 'Could not update task. Please try again.');
         }
       });
@@ -460,11 +460,8 @@ export default function ProjectsScreen() {
           [sectionId]: prev[sectionId]?.filter(t => t.id !== task.id) || []
         }));
         setNewTaskForSection(prev => ({ ...prev, [sectionId]: false }));
-        refetchSections();
-        // Subtle success feedback without intrusive popup
         console.log('✅ Task created successfully');
-        // Force refresh to show new task immediately
-        setTimeout(() => refetchSections(), 100);
+        refetchSections();
       },
       onError: (error) => {
         console.error('Create task error:', error);
@@ -727,35 +724,21 @@ export default function ProjectsScreen() {
                   </View>
                   
                   <View style={{flexDirection: 'row', alignItems: 'center', gap: spacing.sm}}>
-                    {/* Add Task Button */}
-                    <TouchableOpacity
-                      onPress={() => handleAddTask(section.id)}
-                      style={{
-                        backgroundColor: theme.primary + '20',
-                        padding: spacing.xs,
-                        borderRadius: borderRadius.md
-                      }}
-                    >
-                      <Ionicons name="add-circle" size={24} color={theme.primary} />
-                    </TouchableOpacity>
-                    
                     {/* Delete Section Button */}
                     <TouchableOpacity
                       onPress={() => {
-                        Alert.alert(
-                          'Delete Section',
-                          'Are you sure you want to delete this section?',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Delete',
-                              style: 'destructive',
-                              onPress: () => deleteSectionMutation.mutate(section.id, {
-                                onSuccess: () => refetchSections()
-                              })
-                            }
-                          ]
-                        );
+                        console.log('🗑️ Deleting section:', section.id, section.section_name);
+                        console.log('🗑️ DIRECTLY CALLING DELETE MUTATION');
+                        deleteSectionMutation.mutate(section.id, {
+                          onSuccess: () => {
+                            console.log('✅ Section deleted successfully:', section.id);
+                            refetchSections();
+                          },
+                          onError: (error) => {
+                            console.error('❌ Delete section error:', error);
+                            console.error('❌ Error details:', JSON.stringify(error));
+                          }
+                        });
                       }}
                       style={{
                         backgroundColor: theme.error + '20',
@@ -777,24 +760,6 @@ export default function ProjectsScreen() {
                 {/* Excel-like Task Table */}
                 {expandedSections.includes(section.id) && (
                   <View style={{marginTop: spacing.md}}>
-                    {/* Table Header */}
-                    <View style={{
-                      flexDirection: 'row',
-                      backgroundColor: theme.surface,
-                      paddingVertical: spacing.sm,
-                      paddingHorizontal: spacing.xs,
-                      borderRadius: borderRadius.sm
-                    }}>
-                      <View style={{width: 30, alignItems: 'center'}}>
-                        <Ionicons name="checkmark-circle-outline" size={16} color={theme.textSecondary} />
-                      </View>
-                      <Text style={{flex: 2, fontSize: typography.sizes.xs, color: theme.textSecondary, fontWeight: '600'}}>Task</Text>
-                      <Text style={{width: 80, fontSize: typography.sizes.xs, color: theme.textSecondary, fontWeight: '600'}}>Due Date</Text>
-                      <Text style={{width: 50, fontSize: typography.sizes.xs, color: theme.textSecondary, fontWeight: '600'}}>Priority</Text>
-                      <Text style={{width: 70, fontSize: typography.sizes.xs, color: theme.textSecondary, fontWeight: '600'}}>Status</Text>
-                      <View style={{width: 40}} />
-                    </View>
-
                     <ScrollView 
                       horizontal 
                       showsHorizontalScrollIndicator={true}
@@ -962,6 +927,29 @@ export default function ProjectsScreen() {
                               </View>
                             </View>
 
+                            {/* Delete Task Button */}
+                            <View style={{width: 35, alignItems: 'center'}}>
+                              <TouchableOpacity 
+                                  onPress={() => {
+                                    console.log('🗑️ Deleting task:', task.id, task.task_title);
+                                    console.log('🗑️ DIRECTLY CALLING DELETE MUTATION');
+                                    deleteTaskMutation.mutate(task.id, {
+                                      onSuccess: () => {
+                                        console.log('✅ Task deleted successfully:', task.id);
+                                        refetchSections();
+                                      },
+                                      onError: (error) => {
+                                        console.error('❌ Delete task error:', error);
+                                        console.error('❌ Error details:', JSON.stringify(error));
+                                      }
+                                    });
+                                  }}
+                                  style={{padding: spacing.xs}}
+                                >
+                                  <Ionicons name="trash-outline" size={16} color={theme.error} />
+                                </TouchableOpacity>
+                            </View>
+
                             {/* Rating Button */}
                             <View style={{width: 60, alignItems: 'center'}}>
                               {task.average_rating ? (
@@ -975,7 +963,7 @@ export default function ProjectsScreen() {
                                   {task.user_rating?.feedback && (
                                     <Ionicons name="chatbox" size={10} color={theme.primary} style={{marginBottom: 2}} />
                                   )}
-                                  {canRateTasks && task.status === 'Completed' && (
+                                  {canRateTasks && task.status === 'Completed' && task.user !== user?.id && (
                                     <TouchableOpacity onPress={() => handleRateTask(task)}>
                                       <Text style={{fontSize: typography.sizes.xs, color: theme.primary}}>
                                         {task.user_rating ? 'Edit' : 'Rate'}
@@ -983,7 +971,7 @@ export default function ProjectsScreen() {
                                     </TouchableOpacity>
                                   )}
                                 </View>
-                              ) : canRateTasks && task.status === 'Completed' ? (
+                              ) : canRateTasks && task.status === 'Completed' && task.user !== user?.id ? (
                                 <TouchableOpacity onPress={() => handleRateTask(task)}>
                                   <Ionicons name="star-outline" size={16} color={theme.warning} />
                                 </TouchableOpacity>
@@ -1038,7 +1026,6 @@ export default function ProjectsScreen() {
                               multiline
                               numberOfLines={2}
                               autoFocus
-                              onBlur={() => handleSaveNewTask(section.id, task)}
                               onSubmitEditing={() => handleSaveNewTask(section.id, task)}
                               returnKeyType="done"
                               blurOnSubmit={true}

@@ -10,9 +10,9 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.231.38.95:8000/api';
+      return 'http://10.231.38.135:8000/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://10.231.38.95:8000/api';
+      return 'http://10.231.38.135:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
@@ -133,7 +133,12 @@ const apiWrapper = {
     return response.data;
   },
   delete: async <T>(url: string): Promise<T> => {
+    console.log(`🗑️ API DELETE: ${url}`);
     const response = await api.delete<T>(url);
+    console.log(`✅ API DELETE Response for ${url}:`, {
+      status: response.status,
+      data: response.data
+    });
     return response.data;
   }
 };
