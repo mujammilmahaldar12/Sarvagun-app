@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert, Switch, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert, Switch, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -22,10 +22,12 @@ import { resetOnboardingForTesting } from '@/utils/devUtils';
 export default function ProfileScreen() {
   const router = useRouter();
   const { theme, isDark, toggleTheme } = useTheme();
-  const { user, logout } = useAuthStore();
-  
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
+  const { user, logout, isAuthenticated } = useAuthStore();
+
+  // Don't render if not authenticated - avoid any router calls here
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   // Swipe to logout animation
   const translateX = useSharedValue(0);
@@ -57,15 +59,10 @@ export default function ProfileScreen() {
     opacity: withTiming(translateX.value > 50 ? 0 : 1, { duration: 150 }),
   }));
 
-  const performLogout = async () => {
-    try {
-      // Let index.tsx handle navigation after state changes
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-      Alert.alert('Error', 'Failed to logout. Please try again.');
-      translateX.value = withSpring(0);
-    }
+  const performLogout = () => {
+    // Just clear state - don't await, don't navigate here
+    // Let the app's routing system handle navigation
+    useAuthStore.getState().logout();
   };
 
   const handleLogout = () => {
@@ -77,7 +74,10 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: performLogout,
+          onPress: () => {
+            performLogout();
+            translateX.value = withSpring(0);
+          },
         },
       ]
     );
@@ -112,14 +112,18 @@ export default function ProfileScreen() {
               />
               <View style={styles.profileInfo}>
                 <Text style={[styles.userName, { color: theme.text }]}>
-                  {user?.full_name || 'User Name'}
+                  {user?.full_name || user?.first_name || user?.username}
                 </Text>
                 <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-                  {user?.email || 'user@example.com'}
+                  {user?.email}
                 </Text>
-                <Text style={[styles.userRole, { color: theme.textSecondary }]}>
-                  {user?.designation || 'Employee'} • {user?.category || 'Staff'}
-                </Text>
+                {(user?.designation || user?.category) && (
+                  <Text style={[styles.userRole, { color: theme.textSecondary }]}>
+                    {user?.designation && user?.category 
+                      ? `${user.designation} • ${user.category.charAt(0).toUpperCase() + user.category.slice(1)}`
+                      : user?.designation || (user?.category ? user.category.charAt(0).toUpperCase() + user.category.slice(1) : '')}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -151,10 +155,7 @@ export default function ProfileScreen() {
               description="View your professional profile"
               leftIcon="person-circle-outline"
               rightIcon="chevron-forward-outline"
-              onPress={() => {
-                console.log('Navigating to my-profile...');
-                router.push('/(dashboard)/my-profile');
-              }}
+              onPress={() => router.push('/(dashboard)/my-profile')}
             />
             <ListItem
               title="Edit Account"
@@ -164,64 +165,37 @@ export default function ProfileScreen() {
               onPress={() => router.push('/(settings)/account')}
             />
             <ListItem
-              title="Settings"
-              description="Manage app preferences"
-              leftIcon="settings-outline"
+              title="Notifications"
+              description="View all your notifications"
+              leftIcon="notifications-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => router.push('/(dashboard)/notifications')}
+            />
+            <ListItem
+              title="Leaderboard"
+              description="View top performers"
+              leftIcon="trophy-outline"
               rightIcon="chevron-forward-outline"
               showDivider={false}
-              onPress={() => router.push('/(settings)')}
+              onPress={() => router.push('/(dashboard)/leaderboard')}
             />
           </View>
         </View>
 
-        {/* Preferences Section */}
+        {/* Appearance */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APPEARANCE</Text>
           <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
             <ListItem
-              title="Push Notifications"
-              description={notificationsEnabled ? 'Enabled' : 'Disabled'}
-              leftIcon="notifications-outline"
-              rightContent={
-                <Switch
-                  value={notificationsEnabled}
-                  onValueChange={setNotificationsEnabled}
-                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
-                  thumbColor={notificationsEnabled ? theme.primary : theme.surface}
-                />
-              }
-            />
-            <ListItem
-              title="Email Notifications"
-              description={emailNotifications ? 'Enabled' : 'Disabled'}
-              leftIcon="mail-outline"
-              rightContent={
-                <Switch
-                  value={emailNotifications}
-                  onValueChange={setEmailNotifications}
-                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
-                  thumbColor={emailNotifications ? theme.primary : theme.surface}
-                />
-              }
-            />
-            <ListItem
-              title="Dark Mode"
-              description={isDark ? 'On' : 'Off'}
-              leftIcon="moon-outline"
+              title="Theme"
+              description="Customize app appearance"
+              leftIcon="color-palette-outline"
+              rightIcon="chevron-forward-outline"
               showDivider={false}
-              rightContent={
-                <Switch
-                  value={isDark}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: theme.border, true: theme.primary + '50' }}
-                  thumbColor={isDark ? theme.primary : theme.surface}
-                />
-              }
+              onPress={() => router.push('/(settings)/appearance')}
             />
           </View>
         </View>
-
-
 
         {/* Support Section */}
         <View style={styles.section}>

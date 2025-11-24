@@ -313,8 +313,8 @@ export const Button: React.FC<ButtonProps> = ({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: iconOnly ? 0 : spacing.sm,
-      borderRadius: borderRadius.lg,
+      gap: iconOnly ? 0 : 8,
+      borderRadius: 16,
       ...getSizeStyle(),
     };
 
@@ -407,34 +407,31 @@ export const Button: React.FC<ButtonProps> = ({
       // Square buttons for icon-only
       switch (size) {
         case "sm":
-          return { width: 44, height: 44, padding: spacing[3] };
+          return { width: 36, height: 36, padding: 8 };
         case "lg":
-          return { width: 56, height: 56, padding: spacing[4] };
+          return { width: 48, height: 48, padding: 12 };
         case "md":
         default:
-          return { width: 48, height: 48, padding: spacing[3] };
+          return { width: 40, height: 40, padding: 8 };
       }
     }
 
     switch (size) {
       case "sm":
         return {
-          paddingVertical: spacing[3],
-          paddingHorizontal: spacing[5],
-          minHeight: 44,
+          paddingVertical: 8,
+          paddingHorizontal: 16,
         };
       case "lg":
         return {
-          paddingVertical: spacing[6],
-          paddingHorizontal: spacing[8],
-          minHeight: 56,
+          paddingVertical: 14,
+          paddingHorizontal: 24,
         };
       case "md":
       default:
         return {
-          paddingVertical: spacing[5],
-          paddingHorizontal: spacing[6],
-          minHeight: 48,
+          paddingVertical: 10,
+          paddingHorizontal: 20,
         };
     }
   };
@@ -447,11 +444,24 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextStyle = (): TextStyle => {
-    const fontSize = size === "sm" ? "base" : size === "lg" ? "xl" : "lg";
+    let fontSize: number;
+    switch (size) {
+      case "sm":
+        fontSize = 14;
+        break;
+      case "lg":
+        fontSize = 16;
+        break;
+      case "md":
+      default:
+        fontSize = 15;
+        break;
+    }
+    
     return {
-      ...getTypographyStyle(fontSize, "bold"),
+      fontSize,
+      fontWeight: '600',
       color: getTextColor(),
-      letterSpacing: 0.3,
       ...textStyle,
     };
   };
@@ -516,44 +526,29 @@ export const Button: React.FC<ButtonProps> = ({
     );
   };
 
-  const ButtonComponent = (
-    <Pressable
-      onPress={handlePress}
-      onLongPress={onLongPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={isDisabled}
-      accessible={true}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel || title}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{
-        disabled: isDisabled,
-        busy: loading,
-      }}
-      testID={testID}
-    >
-      <Animated.View style={[getButtonStyle(), buttonAnimatedStyle, style]}>
-        {renderContent()}
-      </Animated.View>
-    </Pressable>
-  );
-
-  if (rippleEnabled && !isDisabled) {
-    return (
-      <RippleEffect
+  return (
+    <Animated.View style={[getButtonStyle(), buttonAnimatedStyle, style]}>
+      <Pressable
         onPress={handlePress}
+        onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         disabled={isDisabled}
-        rippleColor={getTextColor()}
-        rippleOpacity={0.2}
-        style={{ borderRadius: borderRadius.lg }}
+        accessible={true}
+        accessibilityRole={accessibilityRole}
+        accessibilityLabel={accessibilityLabel || title}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{
+          disabled: isDisabled,
+          busy: loading,
+        }}
+        testID={testID}
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
       >
-        {ButtonComponent}
-      </RippleEffect>
-    );
-  }
-
-  return ButtonComponent;
+        {renderContent()}
+      </Pressable>
+    </Animated.View>
+  );
 };
 
 export default Button;

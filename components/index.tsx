@@ -22,6 +22,9 @@ export type { TableColumn, TableProps } from './core/Table';
 export { Select } from './core/Select';
 export type { SelectProps, SelectOption } from './core/Select';
 
+export { Card } from './core/Card';
+export type { CardProps } from './core/Card';
+
 export { Badge } from './core/Badge';
 export type { BadgeProps } from './core/Badge';
 

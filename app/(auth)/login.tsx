@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "reac
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 import { designSystem } from "@/constants/designSystem";
+import { useFirstTimeUser } from "@/hooks/useFirstTimeUser";
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -11,6 +12,7 @@ export default function LoginScreen() {
 
   const { login } = useAuthStore();
   const router = useRouter();
+  const { isFirstTime, resetFirstTime } = useFirstTimeUser();
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -22,7 +24,12 @@ export default function LoginScreen() {
     try {
       const success = await login(username, password);
       if (success) {
-        router.replace("/(dashboard)/home");
+        // Check if this is the first time user
+        if (isFirstTime) {
+          router.replace("/welcome-celebration");
+        } else {
+          router.replace("/(dashboard)/home");
+        }
       } else {
         Alert.alert("Error", "Invalid credentials");
       }
@@ -73,6 +80,17 @@ export default function LoginScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Sarvagun ERP System v1.0</Text>
+        
+        {/* Temporary Test Button - Remove in production */}
+        <TouchableOpacity
+          style={styles.testButton}
+          onPress={async () => {
+            await resetFirstTime();
+            router.replace("/welcome-celebration");
+          }}
+        >
+          <Text style={styles.testButtonText}>🎉 Test Celebration</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -146,5 +164,17 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: designSystem.typography.sizes.sm,
     color: "#666",
+  },
+  testButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: "#FF6B6B",
+    borderRadius: 8,
+  },
+  testButtonText: {
+    color: "#fff",
+    fontSize: designSystem.typography.sizes.sm,
+    fontWeight: designSystem.typography.weights.semibold,
   },
 });

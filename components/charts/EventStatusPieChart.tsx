@@ -23,19 +23,30 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
     <View
       style={{
         backgroundColor: theme.surface,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        borderRadius: designSystem.borderRadius.xl,
+        padding: designSystem.spacing[5],
+        ...designSystem.shadows.sm,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: theme.border,
       }}
     >
-      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: designSystem.spacing[4] }}>
-        Event Status Distribution
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: designSystem.spacing[4] }}>
+        <View style={{ 
+          width: 40, 
+          height: 40, 
+          borderRadius: 20, 
+          backgroundColor: `${COLORS.charts.warning}15`,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        }}>
+          <Text style={{ fontSize: 18 }}>📈</Text>
+        </View>
+        <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, letterSpacing: -0.3 }}>
+          Event Status Distribution
+        </Text>
+      </View>
 
       <View style={{ gap: 16 }}>
         {/* Total Count Card */}
@@ -78,16 +89,18 @@ export default function EventStatusPieChart({ data }: EventStatusPieChartProps) 
                 </View>
                 {/* Progress Bar */}
                 <View style={{ 
-                  height: 8, 
-                  backgroundColor: theme.background,
-                  borderRadius: 4,
+                  height: 10, 
+                  backgroundColor: `${item.color}15`,
+                  borderRadius: 6,
                   overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: `${item.color}20`,
                 }}>
                   <View style={{ 
                     height: '100%',
                     width: `${percentage}%`,
                     backgroundColor: item.color,
-                    borderRadius: 4,
+                    borderRadius: 5,
                   }} />
                 </View>
               </View>

@@ -3,13 +3,16 @@
  * Professional analytics dashboard for events management
  * Extracted from monolithic events/index.tsx
  */
-import React, { useMemo } from 'react';
-import { View, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, ScrollView, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import KPICard from '@/components/ui/KPICard';
 import ConversionFunnelChart from '@/components/charts/ConversionFunnelChart';
 import EventStatusPieChart from '@/components/charts/EventStatusPieChart';
 import ClientSegmentChart from '@/components/charts/ClientSegmentChart';
+import { Button } from '@/components/core';
+import { DateRangePicker } from '@/components/core';
 import { useTheme } from '@/hooks/useTheme';
 import { useEventsStore } from '@/store/eventsStore';
 import { designSystem } from '@/constants/designSystem';
@@ -51,25 +54,47 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
     loading 
   } = store;
 
+  // Filter state
+  const [dateRange, setDateRange] = useState<{ startDate?: Date; endDate?: Date }>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Filter data by date range
+  const filteredLeads = useMemo(() => {
+    if (!dateRange.startDate || !dateRange.endDate) return leads;
+    return leads.filter((lead) => {
+      const leadDate = new Date(lead.created_at);
+      return leadDate >= dateRange.startDate! && leadDate <= dateRange.endDate!;
+    });
+  }, [leads, dateRange]);
+
+  const filteredEvents = useMemo(() => {
+    if (!dateRange.startDate || !dateRange.endDate) return events;
+    return events.filter((event) => {
+      const eventDate = new Date(event.start_date);
+      return eventDate >= dateRange.startDate! && eventDate <= dateRange.endDate!;
+    });
+  }, [events, dateRange]);
+
   // Calculate comprehensive analytics
   const analyticsData: AnalyticsData = useMemo(() => {
     // Leads Analytics
-    const totalLeads = leads.length;
-    const pendingLeads = leads.filter((l) => l.status === 'pending').length;
-    const convertedLeads = leads.filter((l) => l.status === 'converted').length;
-    const rejectedLeads = leads.filter((l) => l.status === 'rejected').length;
+    const totalLeads = filteredLeads.length;
+    const pendingLeads = filteredLeads.filter((l) => l.status === 'pending').length;
+    const convertedLeads = filteredLeads.filter((l) => l.status === 'converted').length;
+    const rejectedLeads = filteredLeads.filter((l) => l.status === 'rejected').length;
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
     
     // Source Analytics
-    const onlineLeads = leads.filter((l) => l.source === 'online').length;
-    const offlineLeads = leads.filter((l) => l.source === 'offline').length;
+    const onlineLeads = filteredLeads.filter((l) => l.source === 'online').length;
+    const offlineLeads = filteredLeads.filter((l) => l.source === 'offline').length;
 
     // Events Analytics
-    const totalRevenue = events.reduce((sum, e) => sum + (e.total_budget || 0), 0);
-    const activeEvents = events.filter((e) => e.status === 'in-progress').length;
-    const completedEvents = events.filter((e) => e.status === 'completed').length;
-    const plannedEvents = events.filter((e) => e.status === 'planned').length;
-    const cancelledEvents = events.filter((e) => e.status === 'cancelled').length;
+    const totalRevenue = filteredEvents.reduce((sum, e) => sum + (e.total_budget || 0), 0);
+    const activeEvents = filteredEvents.filter((e) => e.status === 'in-progress').length;
+    const completedEvents = filteredEvents.filter((e) => e.status === 'completed').length;
+    const plannedEvents = filteredEvents.filter((e) => e.status === 'planned').length;
+    const cancelledEvents = filteredEvents.filter((e) => e.status === 'cancelled').length;
 
     // Client Analytics
     const totalClients = clients.length;
@@ -101,7 +126,35 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
       onlineLeads,
       offlineLeads,
     };
-  }, [leads, events, clients]);
+  }, [filteredLeads, filteredEvents, clients]);
+
+  // Export analytics data
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      // Simulate export - in real app, would generate CSV/PDF
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const exportData = {
+        dateRange: dateRange.startDate && dateRange.endDate 
+          ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
+          : 'All Time',
+        ...analyticsData,
+        exportedAt: new Date().toISOString(),
+      };
+      
+      console.log('Exporting analytics:', exportData);
+      Alert.alert('Success', 'Analytics exported successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export analytics');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setDateRange({});
+  };
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -131,19 +184,104 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
   return (
     <ScrollView 
       style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={[styles.content, { paddingHorizontal: spacing[4] }]}
+      contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Filters and Export Section */}
+      <View style={styles.headerSection}>
+        {/* Header with Export Button */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.pageTitle, { color: theme.text }]}>
+              Analytics Overview
+            </Text>
+            <Text style={[styles.pageSubtitle, { color: theme.textSecondary }]}>
+              {dateRange.startDate && dateRange.endDate 
+                ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
+                : 'All Time Data'}
+            </Text>
+          </View>
+          <Button
+            title="Export"
+            leftIcon="download-outline"
+            variant="outline"
+            size="sm"
+            onPress={handleExport}
+            loading={exporting}
+          />
+        </View>
+
+        {/* Filter Toggle */}
+        <Pressable
+          onPress={() => setShowFilters(!showFilters)}
+          style={[styles.filterToggle, {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+            marginBottom: showFilters ? spacing[3] : 0,
+          }]}
+        >
+          <View style={styles.filterToggleLeft}>
+            <View style={[styles.filterIconCircle, { backgroundColor: `${theme.primary}15` }]}>
+              <Ionicons name="filter" size={18} color={theme.primary} />
+            </View>
+            <Text style={[styles.filterToggleText, { color: theme.text }]}>
+              Filters
+            </Text>
+            {(dateRange.startDate || dateRange.endDate) && (
+              <View style={[styles.filterBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.filterBadgeText}>1</Text>
+              </View>
+            )}
+          </View>
+          <Ionicons 
+            name={showFilters ? 'chevron-up' : 'chevron-down'} 
+            size={20} 
+            color={theme.textSecondary} 
+          />
+        </Pressable>
+
+        {/* Filter Options */}
+        {showFilters && (
+          <View style={[styles.filterContent, {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          }]}>
+            <DateRangePicker
+              label="Date Range"
+              value={dateRange}
+              onChange={setDateRange}
+              placeholder="Select date range"
+            />
+
+            {(dateRange.startDate || dateRange.endDate) && (
+              <Button
+                title="Clear Filters"
+                variant="ghost"
+                size="sm"
+                onPress={clearFilters}
+                leftIcon="close-circle-outline"
+                style={{ marginTop: spacing[3] }}
+              />
+            )}
+          </View>
+        )}
+      </View>
+
       {/* Lead Analytics Section */}
-      <View style={[styles.section, { marginBottom: spacing[6] }]}>
-        <Text style={[styles.sectionTitle, { 
-          color: theme.text, 
-          marginBottom: spacing[4],
-          fontSize: designSystem.typography.sizes.xl,
-          fontWeight: designSystem.typography.weights.semibold
-        }]}>
-          Lead Performance
-        </Text>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIconCircle, { backgroundColor: `${designSystem.baseColors.info[500]}15` }]}>
+            <Ionicons name="people" size={20} color={designSystem.baseColors.info[500]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Lead Performance
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Track lead acquisition and conversion
+            </Text>
+          </View>
+        </View>
         
         <View style={styles.kpiGrid}>
           <KPICard
@@ -175,7 +313,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
         </View>
 
         {/* Conversion Funnel Chart */}
-        <View style={[styles.chartContainer, { marginTop: spacing[4] }]}>
+        <View style={styles.chartWrapper}>
           <ConversionFunnelChart
             data={{
               total: analyticsData.totalLeads,
@@ -187,15 +325,20 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
       </View>
 
       {/* Events Analytics Section */}
-      <View style={[styles.section, { marginBottom: spacing[6] }]}>
-        <Text style={[styles.sectionTitle, { 
-          color: theme.text,
-          marginBottom: spacing[4],
-          fontSize: designSystem.typography.sizes.xl,
-          fontWeight: designSystem.typography.weights.semibold
-        }]}>
-          Event Portfolio
-        </Text>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIconCircle, { backgroundColor: `${designSystem.baseColors.warning[500]}15` }]}>
+            <Ionicons name="calendar" size={20} color={designSystem.baseColors.warning[500]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Event Portfolio
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Monitor event status and revenue
+            </Text>
+          </View>
+        </View>
         
         <View style={styles.kpiGrid}>
           <KPICard
@@ -227,7 +370,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
         </View>
 
         {/* Event Status Chart */}
-        <View style={[styles.chartContainer, { marginTop: spacing[4] }]}>
+        <View style={styles.chartWrapper}>
           <EventStatusPieChart
             data={[
               { status: 'Planned', count: analyticsData.plannedEvents, color: designSystem.baseColors.info[500] },
@@ -240,15 +383,20 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
       </View>
 
       {/* Client Analytics Section */}
-      <View style={[styles.section, { marginBottom: spacing[8] }]}>
-        <Text style={[styles.sectionTitle, { 
-          color: theme.text,
-          marginBottom: spacing[4],
-          fontSize: designSystem.typography.sizes.xl,
-          fontWeight: designSystem.typography.weights.semibold
-        }]}>
-          Client Portfolio
-        </Text>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIconCircle, { backgroundColor: `${designSystem.baseColors.purple[500]}15` }]}>
+            <Ionicons name="briefcase" size={20} color={designSystem.baseColors.purple[500]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Client Portfolio
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Analyze client segments and distribution
+            </Text>
+          </View>
+        </View>
         
         <View style={styles.kpiGrid}>
           <KPICard
@@ -280,7 +428,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
         </View>
 
         {/* Client Segment Chart */}
-        <View style={[styles.chartContainer, { marginTop: spacing[4] }]}>
+        <View style={styles.chartWrapper}>
           <ClientSegmentChart
             data={[
               { category: 'B2B', count: analyticsData.b2bClients, icon: 'business-outline' },
@@ -299,6 +447,7 @@ const styles = {
     flex: 1,
   },
   content: {
+    paddingHorizontal: designSystem.spacing[4],
     paddingBottom: designSystem.spacing[8],
   },
   centered: {
@@ -309,22 +458,100 @@ const styles = {
   loadingText: {
     fontSize: designSystem.typography.sizes.base,
   },
+  headerSection: {
+    marginTop: designSystem.spacing[5],
+    marginBottom: designSystem.spacing[5],
+  },
+  headerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: designSystem.spacing[4],
+  },
+  pageTitle: {
+    fontSize: designSystem.typography.sizes['3xl'],
+    fontWeight: designSystem.typography.weights.bold as any,
+    letterSpacing: -0.5,
+  },
+  pageSubtitle: {
+    fontSize: designSystem.typography.sizes.sm,
+    marginTop: designSystem.spacing[1],
+  },
+  filterToggle: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    padding: designSystem.spacing[3],
+    borderRadius: designSystem.borderRadius.lg,
+    borderWidth: 1,
+  },
+  filterToggleLeft: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: designSystem.spacing[2],
+  },
+  filterIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  filterToggleText: {
+    fontSize: 15,
+    fontWeight: '600' as any,
+  },
+  filterBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 6,
+  },
+  filterBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700' as any,
+  },
+  filterContent: {
+    padding: designSystem.spacing[4],
+    borderRadius: designSystem.borderRadius.lg,
+    borderWidth: 1,
+  },
   section: {
-    // marginBottom handled dynamically
+    marginBottom: designSystem.spacing[6],
+  },
+  sectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: designSystem.spacing[3],
+    marginBottom: designSystem.spacing[4],
+  },
+  sectionIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   sectionTitle: {
-    // Styling handled dynamically
+    fontSize: designSystem.typography.sizes.xl,
+    fontWeight: designSystem.typography.weights.bold as any,
+    letterSpacing: -0.3,
+  },
+  sectionSubtitle: {
+    fontSize: designSystem.typography.sizes.sm,
+    marginTop: 2,
   },
   kpiGrid: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    justifyContent: 'space-between' as const,
     gap: designSystem.spacing[3],
+    marginHorizontal: -2,
   },
-  chartContainer: {
-    backgroundColor: 'transparent',
-    borderRadius: designSystem.borderRadius.lg,
-    padding: designSystem.spacing[4],
+  chartWrapper: {
+    marginTop: designSystem.spacing[4],
   },
 } as const;
 

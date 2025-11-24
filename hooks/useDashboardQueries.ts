@@ -153,6 +153,36 @@ export function useActiveProjectsCount() {
 }
 
 /**
+ * Hook to fetch leaderboard with real-time project scores
+ */
+export function useLeaderboard(limit: number = 10) {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'leaderboard', limit],
+    queryFn: () => dashboardService.getLeaderboard(limit),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+}
+
+/**
+ * Hook to fetch real-time activities from multiple sources
+ */
+export function useRealtimeActivities(limit: number = 10) {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'realtime-activities', limit],
+    queryFn: () => dashboardService.getRecentActivitiesRealtime(limit),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    retry: 1,
+  });
+}
+
+/**
  * Hook to refresh dashboard data
  * DISABLED: Backend endpoints not fully available
  */
@@ -170,6 +200,8 @@ export function useRefreshDashboard() {
       queryClient.invalidateQueries({ queryKey: ['leave'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'realtime-activities'] });
     },
   });
 }

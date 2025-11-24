@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { COLORS, designSystem } from '@/constants/designSystem';
+import { COLORS, designSystem, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 
 interface FunnelData {
@@ -38,18 +38,32 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
     <View
       style={{
         backgroundColor: theme.surface,
-        borderRadius: designSystem.borderRadius.lg,
+        borderRadius: designSystem.borderRadius.xl,
         padding: designSystem.spacing[5],
-        marginBottom: designSystem.spacing[4],
-        ...designSystem.shadows.md,
-        elevation: 3,
+        ...designSystem.shadows.sm,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: theme.border,
       }}
     >
-      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: designSystem.spacing[4] }}>
-        Lead Conversion Funnel
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: designSystem.spacing[5] }}>
+        <View style={{ 
+          width: 40, 
+          height: 40, 
+          borderRadius: 20, 
+          backgroundColor: `${COLORS.charts.info}15`,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        }}>
+          <Text style={{ fontSize: 18 }}>📊</Text>
+        </View>
+        <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, letterSpacing: -0.3 }}>
+          Lead Conversion Funnel
+        </Text>
+      </View>
 
-      <View style={{ gap: 12 }}>
+      <View style={{ gap: 14 }}>
         {stages.map((stage, index) => {
           const barWidth = (stage.percentage / 100) * (width - 80);
 
@@ -84,10 +98,12 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
 
               <View
                 style={{
-                  height: 40,
-                  backgroundColor: theme.border,
-                  borderRadius: 8,
+                  height: 48,
+                  backgroundColor: `${stage.color}15`,
+                  borderRadius: 10,
                   overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: `${stage.color}30`,
                 }}
               >
                 <View
@@ -97,11 +113,11 @@ export default function ConversionFunnelChart({ data }: ConversionFunnelChartPro
                     backgroundColor: stage.color,
                     borderRadius: 8,
                     justifyContent: 'center',
-                    paddingLeft: 12,
+                    paddingLeft: 16,
                   }}
                 >
                   {barWidth > 60 && (
-                    <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>
+                    <Text style={{ color: baseColors.neutral[0], fontSize: 14, fontWeight: '700' }}>
                       {stage.value}
                     </Text>
                   )}

@@ -67,7 +67,7 @@ class HRService {
       });
     }
 
-    const response = await api.post<LeaveRequest>('/hr/leaves/', formData, {
+    const response = await api.post<LeaveRequest>('/leave_management/leaves/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -79,7 +79,7 @@ class HRService {
    * Update an existing leave request (before approval)
    */
   async updateLeave(id: number, data: UpdateLeaveRequest): Promise<LeaveRequest> {
-    const response = await api.patch<LeaveRequest>(`/hr/leaves/${id}/`, data);
+    const response = await api.patch<LeaveRequest>(`/leave_management/leaves/${id}/`, data);
     return response.data;
   }
 
@@ -87,7 +87,7 @@ class HRService {
    * Delete/Cancel a leave request
    */
   async deleteLeave(id: number): Promise<void> {
-    await api.delete(`/hr/leaves/${id}/`);
+    await api.delete(`/leave_management/leaves/${id}/`);
   }
 
   /**
@@ -99,7 +99,7 @@ class HRService {
     data: LeaveApprovalRequest
   ): Promise<LeaveRequest> {
     const response = await api.post<LeaveRequest>(
-      `/hr/leaves/${id}/update-status/`,
+      `/leave_management/leaves/${id}/update-status/`,
       data
     );
     return response.data;
@@ -152,7 +152,7 @@ class HRService {
    * Get leave statistics (dashboard metrics)
    */
   async getLeaveStatistics(): Promise<LeaveStatistics> {
-    const response = await api.get<LeaveStatistics>('/hr/leaves/statistics/');
+    const response = await api.get<LeaveStatistics>('/leave_management/statistics/');
     return response.data;
   }
 
@@ -164,7 +164,7 @@ class HRService {
     if (fromDate) params.from_date = fromDate;
     if (toDate) params.to_date = toDate;
     
-    const response = await api.get<TeamMemberLeave[]>('/hr/leaves/team/', { params });
+    const response = await api.get<TeamMemberLeave[]>('/leave_management/leaves/team/', { params });
     return response.data;
   }
 
@@ -173,7 +173,7 @@ class HRService {
    */
   async getUpcomingLeaves(): Promise<LeaveRequest[]> {
     const today = new Date().toISOString().split('T')[0];
-    const response = await api.get<LeaveResponse>('/hr/leaves/', {
+    const response = await api.get<LeaveResponse>('/leave_management/leaves/', {
       params: {
         from_date: today,
         status: 'approved',
@@ -187,7 +187,7 @@ class HRService {
    * Get my leave requests
    */
   async getMyLeaves(params?: LeaveFilters): Promise<LeaveResponse> {
-    const response = await api.get<LeaveResponse>('/hr/leaves/my/', { params });
+    const response = await api.get<LeaveResponse>('/leave_management/leaves/my/', { params });
     return response.data;
   }
 
@@ -199,7 +199,7 @@ class HRService {
    * Get all employees with filters
    */
   async getEmployees(params?: EmployeeFilters): Promise<EmployeeResponse> {
-    const response = await api.get<EmployeeResponse>('/hr/employees/', { params });
+    const response = await api.get<EmployeeResponse>('/hr/users/employees/', { params });
     return response.data;
   }
 
@@ -207,7 +207,7 @@ class HRService {
    * Get a single employee by ID
    */
   async getEmployee(id: number): Promise<Employee> {
-    const response = await api.get<Employee>(`/hr/employees/${id}/`);
+    const response = await api.get<Employee>(`/hr/users/${id}/`);
     return response.data;
   }
 
@@ -224,7 +224,7 @@ class HRService {
    * Get team members (for managers)
    */
   async getTeamMembers(): Promise<Employee[]> {
-    const response = await api.get<EmployeeResponse>('/hr/employees/team/');
+    const response = await api.get<EmployeeResponse>('/hr/users/employees/');
     return response.data.results;
   }
 
@@ -232,7 +232,7 @@ class HRService {
    * Update employee profile
    */
   async updateEmployee(id: number, data: Partial<Employee>): Promise<Employee> {
-    const response = await api.patch<Employee>(`/hr/employees/${id}/`, data);
+    const response = await api.patch<Employee>(`/hr/users/${id}/`, data);
     return response.data;
   }
 

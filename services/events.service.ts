@@ -92,10 +92,15 @@ class EventsService {
   }
 
   /**
-   * Update lead
+   * Update lead (using service layer)
    */
-  async updateLead(leadId: number, data: Partial<Lead>) {
-    return await apiClient.patch<Lead>(`/events/leads/${leadId}/`, data);
+  async updateLead(leadId: number, data: any) {
+    try {
+      return await apiClient.patch<Lead>(`/events/leads/${leadId}/update-lead/`, data);
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      throw error;
+    }
   }
 
   /**

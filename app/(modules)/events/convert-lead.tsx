@@ -17,7 +17,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { Button, FormField } from '@/components';
-import DatePickerInput from '@/components/ui/DatePickerInput';
+import { DatePicker, DateRangePicker, MultiDatePicker } from '@/components/core';
 import { useTheme } from '@/hooks/useTheme';
 import { spacing, typography, borderRadius, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
@@ -48,15 +48,13 @@ export default function ConvertLeadScreen() {
     categoryId: 0,
     organisationId: 0,
     venueId: 0,
-    startDate: '',
-    endDate: '',
+    startDate: null as Date | null,
+    endDate: null as Date | null,
     typeOfEvent: '',
     eventCategory: '' as 'social events' | 'weddings' | 'corporate events' | 'religious events' | 'sports' | 'other' | '',
   });
 
-  const [eventDates, setEventDates] = useState<Array<{ date: string }>>([
-    { date: '' },
-  ]);
+  const [eventDates, setEventDates] = useState<Date[]>([]);
 
   const eventCategoryOptions = [
     'social events', 
@@ -92,11 +90,20 @@ export default function ConvertLeadScreen() {
       setCategories(categoriesData || []);
       setOrganisations(orgsData || []);
       
-      // Initialize form with default values but allow editing
-      setFormData(prev => ({
-        ...prev,
-        typeOfEvent: '', // Start with empty field, let user type
-      }));
+      // Initialize venue from lead if available
+      if (leadData.venue) {
+        setSelectedVenue(leadData.venue);
+        setFormData(prev => ({
+          ...prev,
+          venueId: leadData.venue?.id || 0,
+          typeOfEvent: '', // Start with empty field, let user type
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          typeOfEvent: '', // Start with empty field, let user type
+        }));
+      }
     } catch (error: any) {
       console.error('Event management fetch error:', error);
       Alert.alert('Error', error.message || 'Failed to load lead data');
@@ -125,26 +132,26 @@ export default function ConvertLeadScreen() {
     venue.address?.toLowerCase().includes(venueSearchQuery.toLowerCase())
   );
 
-  const updateEventDate = (index: number, value: string) => {
-    const newDates = [...eventDates];
-    newDates[index] = { date: value };
-    setEventDates(newDates);
-  };
-
-  const addEventDate = () => {
-    setEventDates([...eventDates, { date: '' }]);
-  };
-
-  const removeEventDate = (index: number) => {
-    if (eventDates.length === 1) {
-      return;
-    }
-    setEventDates(eventDates.filter((_, i) => i !== index));
+  const handleEventDatesChange = (dates: Date[]) => {
+    setEventDates(dates);
   };
 
   const handleSubmit = async () => {
+    // Prevent double submission
+    if (loading) {
+      console.log('⚠️ Already processing, ignoring duplicate click');
+      return;
+    }
+
+    console.log('🔵 handleSubmit called');
+    console.log('Form data:', formData);
+    console.log('Event dates:', eventDates);
+    console.log('Selected venue:', selectedVenue);
+    console.log('Lead:', lead);
+    
     // Validation
     if (!formData.company) {
+      console.log('❌ Validation failed: No company selected');
       Alert.alert('Error', 'Please select a company');
       return;
     }
@@ -159,15 +166,11 @@ export default function ConvertLeadScreen() {
       return;
     }
 
-    if (!formData.venueId) {
-      Alert.alert('Error', 'Please select a venue');
-      return;
-    }
-    if (!formData.startDate.trim()) {
+    if (!formData.startDate) {
       Alert.alert('Error', 'Please select a start date');
       return;
     }
-    if (!formData.endDate.trim()) {
+    if (!formData.endDate) {
       Alert.alert('Error', 'Please select an end date');
       return;
     }
@@ -181,32 +184,96 @@ export default function ConvertLeadScreen() {
     }
 
     // Validate event dates
-    const validEventDates = eventDates.filter(d => d.date.trim());
-    if (validEventDates.length === 0) {
+    if (eventDates.length === 0) {
       Alert.alert('Error', 'Please add at least one event date');
+      return;
+    }
+
+    // Validate venue (use selected venue or venue from lead)
+    const venueToUse = selectedVenue || lead?.venue;
+    if (!venueToUse) {
+      Alert.alert('Error', 'Please select a venue');
       return;
     }
 
     setLoading(true);
     try {
       const selectedCategory = getSelectedCategory();
-      await eventsService.convertLeadToEvent(Number(leadId), {
+      
+      // Format dates to YYYY-MM-DD
+      const formatDate = (date: Date) => date.toISOString().split('T')[0];
+      
+      const payload = {
         company: formData.company,
         client_category: selectedCategory?.code,
         organisation: formData.organisationId || undefined,
-        venue: formData.venueId,
-        start_date: formData.startDate.trim(),
-        end_date: formData.endDate.trim(),
+        venue: venueToUse.id,
+        start_date: formatDate(formData.startDate),
+        end_date: formatDate(formData.endDate),
         type_of_event: formData.typeOfEvent.trim(),
         category: formData.eventCategory,
-        event_dates: validEventDates,
+        event_dates: eventDates.map(date => ({ date: formatDate(date) })),
+      };
+
+      console.log('🚀 Converting lead to event:', {
+        leadId,
+        payload,
       });
 
-      Alert.alert('Success', 'Lead converted to event successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      const response = await eventsService.convertLeadToEvent(Number(leadId), payload);
+      
+      console.log('✅ Lead converted successfully:', response);
+
+      // Navigate immediately after success
+      router.replace('/(modules)/events');
+      
+      // Show success message after navigation
+      setTimeout(() => {
+        Alert.alert('Success', 'Lead converted to event successfully!');
+      }, 300);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to convert lead');
+      console.error('❌ Error converting lead:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      // Extract error message from different possible formats
+      let errorMessage = 'Failed to convert lead. Please check all required fields.';
+      
+      if (error.response?.data) {
+        const data = error.response.data;
+        
+        // Check various error formats
+        if (typeof data === 'string') {
+          errorMessage = data;
+        } else if (data.error) {
+          // Handle error field (string or array)
+          if (typeof data.error === 'string') {
+            errorMessage = data.error;
+          } else if (Array.isArray(data.error)) {
+            errorMessage = data.error.join(', ');
+          } else {
+            errorMessage = JSON.stringify(data.error);
+          }
+        } else if (data.message) {
+          errorMessage = data.message;
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        } else if (data.non_field_errors) {
+          errorMessage = Array.isArray(data.non_field_errors) 
+            ? data.non_field_errors.join(', ') 
+            : data.non_field_errors;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Clean up the error message (remove array brackets and quotes)
+      errorMessage = errorMessage.replace(/^\['?|'?\]$/g, '').replace(/^"?|"?$/g, '');
+      
+      Alert.alert('Conversion Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -236,31 +303,45 @@ export default function ConvertLeadScreen() {
       }}>
         {label} {required && <Text style={{ color: theme.error }}>*</Text>}
       </Text>
-      <Pressable
-        onPress={onPress}
-        android_disableSound={true}
-        style={({ pressed }) => ({
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: theme.surface,
           borderWidth: 1.5,
           borderColor: value ? theme.primary : theme.border,
           borderRadius: borderRadius.md,
-          paddingHorizontal: spacing[3],
-          paddingVertical: spacing[3],
-          backgroundColor: theme.surface,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          opacity: pressed ? 0.8 : 1,
-        })}
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          minHeight: 48,
+        }}
       >
-        <Text style={{ 
-          color: value ? theme.text : theme.textSecondary,
-          fontSize: typography.sizes.base,
-          flex: 1,
-        }}>
-          {value || placeholder}
-        </Text>
-        <Ionicons name={icon as any} size={20} color={theme.primary} />
-      </Pressable>
+        <Pressable
+          onPress={onPress}
+          style={{ 
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <Text 
+            numberOfLines={1}
+            style={{ 
+              flex: 1,
+              fontSize: 16,
+              color: value ? theme.text : theme.textSecondary,
+            }}
+          >
+            {value || placeholder}
+          </Text>
+          <Ionicons 
+            name={icon as any} 
+            size={20} 
+            color={value ? theme.primary : theme.textSecondary}
+            style={{ marginLeft: 8 }}
+          />
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -268,11 +349,11 @@ export default function ConvertLeadScreen() {
 
   const SectionHeader = ({ title }: { title: string }) => (
     <Text style={{ 
-      fontSize: typography.sizes.lg, 
+      fontSize: typography.sizes.base, 
       fontWeight: typography.weights.bold, 
       color: theme.text, 
-      marginTop: spacing[2],
-      marginBottom: spacing[3]
+      marginTop: spacing[1],
+      marginBottom: spacing[2]
     }}>
       {title}
     </Text>
@@ -319,8 +400,8 @@ export default function ConvertLeadScreen() {
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              paddingHorizontal: 20,
-              paddingVertical: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
               borderBottomWidth: 1,
               borderBottomColor: theme.border,
             }}
@@ -334,9 +415,9 @@ export default function ConvertLeadScreen() {
           </View>
 
           {/* Options List */}
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}>
             {data.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                 <Text style={{ ...getTypographyStyle('base'), color: theme.textSecondary }}>
                   No options available
                 </Text>
@@ -352,8 +433,8 @@ export default function ConvertLeadScreen() {
                       onPress={() => onSelect(item)}
                       android_disableSound={true}
                       style={({ pressed }) => ({
-                        padding: 16,
-                        borderRadius: 12,
+                        padding: 12,
+                        borderRadius: 10,
                         borderWidth: isSelected ? 2 : 1,
                         borderColor: isSelected ? theme.primary : theme.border,
                         backgroundColor: isSelected 
@@ -410,7 +491,7 @@ export default function ConvertLeadScreen() {
 
         <ScrollView 
           style={{ flex: 1 }} 
-          contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 80 }}
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
@@ -418,13 +499,13 @@ export default function ConvertLeadScreen() {
             {/* Lead Info */}
             <View style={{
               backgroundColor: theme.primary + '15',
-              padding: 14,
-              borderRadius: 12,
-              borderLeftWidth: 4,
+              padding: 12,
+              borderRadius: 10,
+              borderLeftWidth: 3,
               borderLeftColor: theme.primary,
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <Ionicons name="person-circle" size={20} color={theme.primary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Ionicons name="person-circle" size={18} color={theme.primary} />
                 <Text style={{ color: theme.primary, ...getTypographyStyle('base', 'bold') }}>
                   Converting Lead: {lead.client.name}
                 </Text>
@@ -451,8 +532,9 @@ export default function ConvertLeadScreen() {
                     onPress={() => setFormData({ ...formData, company })}
                     style={({ pressed }) => ({
                       flex: 1,
-                      paddingVertical: 16,
-                      borderRadius: 12,
+                      paddingVertical: 10,
+                      minHeight: 44,
+                      borderRadius: 10,
                       borderWidth: formData.company === company ? 2 : 1.5,
                       borderColor: formData.company === company ? theme.primary : theme.border,
                       backgroundColor: formData.company === company 
@@ -460,24 +542,24 @@ export default function ConvertLeadScreen() {
                         : theme.surface,
                       alignItems: 'center',
                       shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 3,
-                      elevation: 3,
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 2,
+                      elevation: 2,
                       opacity: pressed ? 0.8 : 1,
                       flexDirection: 'row',
                       justifyContent: 'center',
-                      gap: 8,
+                      gap: 6,
                     })}
                   >
                     <Ionicons 
                       name="business-outline" 
-                      size={20} 
+                      size={18} 
                       color={formData.company === company ? theme.primary : theme.textSecondary} 
                     />
                     <Text
                       style={{
-                        ...getTypographyStyle('sm', 'bold'),
+                        ...getTypographyStyle('sm', 'semibold'),
                         color: formData.company === company ? theme.primary : theme.text,
                       }}
                     >
@@ -488,29 +570,57 @@ export default function ConvertLeadScreen() {
               </View>
             </View>
 
-            {/* Client Category Dropdown */}
-            <DropdownField
-              label="Client Category"
-              value={getSelectedCategory()?.name || ''}
-              placeholder="Select client category"
-              onPress={() => setShowCategoryModal(true)}
-              required
-            />
-
-            {/* Organisation (conditional) */}
-            {requiresOrganisation() && (
+            {/* Client Business Type Section */}
+            <View style={{ gap: 12 }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingBottom: 6,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.border,
+              }}>
+                <Ionicons name="business-outline" size={20} color={theme.primary} />
+                <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text }]}>
+                  Client Business Type
+                </Text>
+              </View>
+              
               <DropdownField
-                label="Organisation"
-                value={getSelectedOrganisation()?.name || ''}
-                placeholder="Select organisation"
-                onPress={() => setShowOrganisationModal(true)}
+                label="Client Category (B2B/B2C/B2G)"
+                value={getSelectedCategory()?.name || ''}
+                placeholder="Select client category"
+                onPress={() => setShowCategoryModal(true)}
                 required
               />
-            )}
 
-            {/* Event Details */}
-            <View style={{ gap: 16 }}>
-              <SectionHeader title="Event Details" />
+              {/* Organisation (conditional) */}
+              {requiresOrganisation() && (
+                <DropdownField
+                  label="Organisation"
+                  value={getSelectedOrganisation()?.name || ''}
+                  placeholder="Select organisation"
+                  onPress={() => setShowOrganisationModal(true)}
+                  required
+                />
+              )}
+            </View>
+
+            {/* Event Details Section */}
+            <View style={{ gap: 12 }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingBottom: 6,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.border,
+              }}>
+                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text }]}>
+                  Event Details
+                </Text>
+              </View>
               
               <FormField
                 label="Type of Event"
@@ -522,7 +632,7 @@ export default function ConvertLeadScreen() {
 
               {/* Event Category Dropdown */}
               <DropdownField
-                label="Event Category"
+                label="Event Category (Wedding/Corporate/etc.)"
                 value={formData.eventCategory}
                 placeholder="Select event category"
                 onPress={() => setShowEventCategoryModal(true)}
@@ -530,20 +640,13 @@ export default function ConvertLeadScreen() {
               />
 
               {/* Date Selection */}
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <DatePickerInput
-                  label="Start Date *"
-                  value={formData.startDate}
-                  onDateSelect={(date) => setFormData({ ...formData, startDate: date })}
-                  placeholder="YYYY-MM-DD"
-                />
-                <DatePickerInput
-                  label="End Date *"
-                  value={formData.endDate}
-                  onDateSelect={(date) => setFormData({ ...formData, endDate: date })}
-                  placeholder="YYYY-MM-DD"
-                />
-              </View>
+              <DateRangePicker
+                label="Event Duration"
+                value={{ startDate: formData.startDate || undefined, endDate: formData.endDate || undefined }}
+                onChange={(range) => setFormData({ ...formData, startDate: range.startDate || null, endDate: range.endDate || null })}
+                placeholder="Select start and end date"
+                required
+              />
             </View>
 
             {/* Venue Selection */}
@@ -556,69 +659,63 @@ export default function ConvertLeadScreen() {
               icon="location-outline"
             />
 
-            {/* Event Active Days */}
-            <View style={{ gap: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <SectionHeader title="Event Active Days *" />
-                <Pressable
-                  onPress={addEventDate}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                    backgroundColor: pressed ? theme.primary + '20' : theme.primary + '15',
-                  })}
-                >
-                  <Ionicons name="add-circle" size={20} color={theme.primary} />
-                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.primary }}>Add Day</Text>
-                </Pressable>
-              </View>
-
-              {eventDates.map((eventDate, index) => (
-                <View
-                  key={index}
-                  style={{
-                    padding: 14,
-                    borderRadius: 12,
-                    backgroundColor: theme.surface,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="calendar" size={16} color={theme.primary} />
-                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                        Event Day {index + 1}
-                      </Text>
-                    </View>
-                    {eventDates.length > 1 && (
-                      <Pressable onPress={() => removeEventDate(index)} android_disableSound={true}>
-                        <Ionicons name="trash-outline" size={20} color={theme.error} />
-                      </Pressable>
-                    )}
-                  </View>
-
-                  <DatePickerInput
-                    label=""
-                    value={eventDate.date}
-                    onDateSelect={(date) => updateEventDate(index, date)}
-                    placeholder="Select event date"
-                  />
+            {/* Venue Info from Lead */}
+            {(selectedVenue || lead.venue) && (
+              <View style={{
+                backgroundColor: theme.surface,
+                padding: 14,
+                borderRadius: 10,
+                borderWidth: 1.5,
+                borderColor: theme.primary,
+                gap: 6,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="location" size={20} color={theme.primary} />
+                  <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                    {selectedVenue ? 'Selected Venue' : 'Venue (from Lead)'}
+                  </Text>
                 </View>
-              ))}
-            </View>
+                <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginLeft: 28 }}>
+                  {(selectedVenue || lead.venue)?.name}
+                </Text>
+                <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginLeft: 28 }}>
+                  {(selectedVenue || lead.venue)?.address}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 16, marginLeft: 28, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="people" size={14} color={theme.textSecondary} />
+                    <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                      {(selectedVenue || lead.venue)?.capacity} capacity
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="pricetag" size={14} color={theme.textSecondary} />
+                    <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                      {(selectedVenue || lead.venue)?.type}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Event Active Days */}
+            <MultiDatePicker
+              label="Event Active Days"
+              selectedDates={eventDates}
+              onChange={handleEventDatesChange}
+              placeholder="Select event dates"
+              minDate={formData.startDate || undefined}
+              maxDate={formData.endDate || undefined}
+              required
+            />
 
             {/* Submit Button */}
             <Button
               title="Convert to Event"
               onPress={handleSubmit}
               loading={loading}
+              size="md"
               leftIcon="swap-horizontal"
-              style={{ marginTop: 8 }}
             />
           </ScrollView>
 
@@ -667,16 +764,21 @@ export default function ConvertLeadScreen() {
             labelExtractor={(item) => item.name}
           />
 
-          {/* Venue Selection Modal */}
+          {/* Venue Modal */}
           <Modal visible={showVenueModal} animationType="slide" transparent>
-            <View style={{ flex: 1, backgroundColor: baseColors.neutral[900] + '80' }}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
               <View
                 style={{
                   flex: 1,
-                  marginTop: 80,
+                  marginTop: 100,
                   backgroundColor: theme.background,
                   borderTopLeftRadius: 24,
                   borderTopRightRadius: 24,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 12,
+                  elevation: 8,
                 }}
               >
                 {/* Modal Header */}
@@ -685,8 +787,8 @@ export default function ConvertLeadScreen() {
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    paddingHorizontal: 20,
-                    paddingVertical: 16,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
                     borderBottomWidth: 1,
                     borderBottomColor: theme.border,
                   }}
@@ -694,22 +796,22 @@ export default function ConvertLeadScreen() {
                   <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
                     Select Venue
                   </Text>
-                  <Pressable onPress={() => setShowVenueModal(false)} style={{ padding: 4 }}>
+                  <Pressable onPress={() => setShowVenueModal(false)} android_disableSound={true} style={{ padding: 4 }}>
                     <Ionicons name="close" size={28} color={theme.text} />
                   </Pressable>
                 </View>
 
                 {/* Search Box */}
-                <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+                <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 }}>
                   <View
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
                       backgroundColor: theme.surface,
-                      borderRadius: 12,
+                      borderRadius: 10,
                       paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      gap: 8,
+                      paddingVertical: 8,
+                      gap: 6,
                       borderWidth: 1,
                       borderColor: theme.border,
                     }}
@@ -726,16 +828,16 @@ export default function ConvertLeadScreen() {
                 </View>
 
                 {/* Venue List */}
-                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
                   {filteredVenues.length === 0 ? (
-                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                      <Ionicons name="location-outline" size={60} color={theme.textSecondary} />
-                      <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, marginTop: 16 }}>
+                    <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                      <Ionicons name="location-outline" size={48} color={theme.textSecondary} />
+                      <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, marginTop: 12 }}>
                         No venues found
                       </Text>
                     </View>
                   ) : (
-                    <View style={{ gap: 10 }}>
+                    <View style={{ gap: 8 }}>
                       {filteredVenues.map((venue) => (
                         <Pressable
                           key={venue.id}
@@ -746,50 +848,48 @@ export default function ConvertLeadScreen() {
                             setVenueSearchQuery('');
                           }}
                           style={({ pressed }) => ({
-                            padding: 14,
-                            borderRadius: 12,
+                            padding: 12,
+                            borderRadius: 10,
                             borderWidth: 1.5,
                             borderColor: selectedVenue?.id === venue.id ? theme.primary : theme.border,
                             backgroundColor: selectedVenue?.id === venue.id
-                              ? theme.primary + '10'
+                              ? theme.primary + '15'
                               : theme.surface,
-                            opacity: pressed ? 0.7 : 1,
+                            opacity: pressed ? 0.8 : 1,
                           })}
                         >
-                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                            <View
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                backgroundColor: theme.primary + '20',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <Ionicons name="location" size={20} color={theme.primary} />
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 18,
+                              backgroundColor: theme.primary + '20',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}>
+                              <Ionicons name="location" size={18} color={theme.primary} />
                             </View>
-
                             <View style={{ flex: 1 }}>
-                              <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 4 }}>
+                              <Text
+                                style={{
+                                  ...getTypographyStyle('base', selectedVenue?.id === venue.id ? 'bold' : 'semibold'),
+                                  color: selectedVenue?.id === venue.id ? theme.primary : theme.text,
+                                }}
+                              >
                                 {venue.name}
                               </Text>
-                              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 6 }}>
+                              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 2 }}>
                                 {venue.address}
                               </Text>
-                              <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                  <Ionicons name="people" size={14} color={theme.textSecondary} />
+                              <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                                <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                                  <Ionicons name="people" size={12} /> {venue.capacity} capacity
+                                </Text>
+                                {venue.type && (
                                   <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                                    {venue.capacity}
+                                    <Ionicons name="pricetag" size={12} /> {venue.type}
                                   </Text>
-                                </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                  <Ionicons name="pricetag" size={14} color={theme.textSecondary} />
-                                  <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                                    {venue.type}
-                                  </Text>
-                                </View>
+                                )}
                               </View>
                             </View>
                           </View>
@@ -798,26 +898,6 @@ export default function ConvertLeadScreen() {
                     </View>
                   )}
                 </ScrollView>
-
-                {/* Convert Button */}
-                <View style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  backgroundColor: theme.background,
-                  padding: 16,
-                  borderTopWidth: 1,
-                  borderTopColor: theme.border,
-                }}>
-                  <Button
-                    onPress={handleSubmit}
-                    loading={loading}
-                    disabled={loading}
-                    title={loading ? 'Converting...' : 'Convert Lead to Event'}
-                    fullWidth
-                  />
-                </View>
               </View>
             </View>
           </Modal>

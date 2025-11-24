@@ -75,6 +75,16 @@ export default function EventManagementScreen() {
     }, [router])
   );
 
+  // Refresh data when screen gains focus (e.g., after creating a lead)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated && user) {
+        console.log('🔄 Events: Screen focused, refreshing data...');
+        fetchTabData();
+      }
+    }, [activeTab, isAuthenticated, user])
+  );
+
   // Initialize required data
   const initializeData = async () => {
     if (!isAuthenticated) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,345 +7,210 @@ import {
   StatusBar,
   StyleSheet,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withDelay,
-  withRepeat,
-  Easing,
-  withTiming,
-} from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
-import { Avatar, AnimatedPressable } from '@/components';
+import { Avatar, AnimatedPressable, Card, Badge, Button } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
-import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { formatDistanceToNow } from 'date-fns';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Notification types
+type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'mention' | 'task' | 'event' | 'leave' | 'project';
 
-// Dummy Leadership Board Data - Top 10 Only
-const DUMMY_LEADERBOARD_FULL = [
+interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+  avatar?: string;
+  userName?: string;
+  actionUrl?: string;
+}
+
+// Dummy notifications data
+const DUMMY_NOTIFICATIONS: Notification[] = [
   {
     id: '1',
-    name: 'Rajesh Kumar',
-    photo: null,
-    designation: 'Senior Developer',
-    rank: 1,
-    score: 2450,
-    projectsCompleted: 12,
-    tasksCompleted: 89,
-    isOnline: true,
+    type: 'mention',
+    title: 'Rajesh Kumar mentioned you',
+    message: 'Rajesh mentioned you in a comment on "Q4 Marketing Campaign"',
+    timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    isRead: false,
+    userName: 'Rajesh Kumar',
   },
   {
     id: '2',
-    name: 'Priya Sharma',
-    photo: null,
-    designation: 'Project Manager',
-    rank: 2,
-    score: 2280,
-    projectsCompleted: 10,
-    tasksCompleted: 76,
-    isOnline: true,
+    type: 'task',
+    title: 'New task assigned',
+    message: 'You have been assigned to "Update user dashboard UI"',
+    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    isRead: false,
   },
   {
     id: '3',
-    name: 'Amit Patel',
-    photo: null,
-    designation: 'Full Stack Developer',
-    rank: 3,
-    score: 2150,
-    projectsCompleted: 9,
-    tasksCompleted: 71,
-    isOnline: false,
+    type: 'success',
+    title: 'Leave approved',
+    message: 'Your leave request for Dec 25-27 has been approved by HR',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    isRead: false,
   },
   {
     id: '4',
-    name: 'Sneha Reddy',
-    photo: null,
-    designation: 'UI/UX Designer',
-    rank: 4,
-    score: 1980,
-    projectsCompleted: 8,
-    tasksCompleted: 64,
-    isOnline: true,
+    type: 'event',
+    title: 'Upcoming event reminder',
+    message: 'Team Building Workshop starts in 2 days',
+    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    isRead: true,
   },
   {
     id: '5',
-    name: 'Vikram Singh',
-    photo: null,
-    designation: 'Backend Developer',
-    rank: 5,
-    score: 1875,
-    projectsCompleted: 7,
-    tasksCompleted: 58,
-    isOnline: true,
+    type: 'project',
+    title: 'Project milestone completed',
+    message: 'Mobile App Development - Phase 1 has been completed',
+    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    isRead: true,
   },
   {
     id: '6',
-    name: 'Ananya Desai',
-    photo: null,
-    designation: 'Frontend Developer',
-    rank: 6,
-    score: 1720,
-    projectsCompleted: 6,
-    tasksCompleted: 52,
-    isOnline: false,
+    type: 'warning',
+    title: 'Task deadline approaching',
+    message: '"API Integration" is due in 2 hours',
+    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+    isRead: true,
   },
   {
     id: '7',
-    name: 'Karthik Menon',
-    photo: null,
-    designation: 'DevOps Engineer',
-    rank: 7,
-    score: 1650,
-    projectsCompleted: 6,
-    tasksCompleted: 48,
-    isOnline: true,
+    type: 'info',
+    title: 'New announcement',
+    message: 'Company holiday schedule updated for next month',
+    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    isRead: true,
   },
 ];
 
-// Animated Podium Item Component
-const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
-  const { theme } = useTheme();
-  const scale = useSharedValue(0);
-  const translateY = useSharedValue(100);
-  const rotate = useSharedValue(0);
-  const glowOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    // Entry animation
-    scale.value = withDelay(
-      delay,
-      withSpring(1, {
-        damping: 12,
-        stiffness: 100,
-      })
-    );
-    
-    translateY.value = withDelay(
-      delay,
-      withSpring(0, {
-        damping: 15,
-        stiffness: 120,
-      })
-    );
-
-    // Continuous glow for rank 1
-    if (rank === 1) {
-      glowOpacity.value = withDelay(
-        delay + 500,
-        withRepeat(
-          withSequence(
-            withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-            withTiming(0.3, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-          ),
-          -1,
-          false
-        )
-      );
+const NotificationIcon = ({ type, isRead }: { type: NotificationType; isRead: boolean }) => {
+  const getIconConfig = () => {
+    switch (type) {
+      case 'mention':
+        return { name: 'at-circle' as const, color: '#6366F1' };
+      case 'task':
+        return { name: 'checkmark-circle' as const, color: '#8B5CF6' };
+      case 'success':
+        return { name: 'checkmark-circle' as const, color: '#10B981' };
+      case 'warning':
+        return { name: 'warning' as const, color: '#F59E0B' };
+      case 'error':
+        return { name: 'close-circle' as const, color: '#EF4444' };
+      case 'event':
+        return { name: 'calendar' as const, color: '#3B82F6' };
+      case 'leave':
+        return { name: 'time' as const, color: '#A855F7' };
+      case 'project':
+        return { name: 'briefcase' as const, color: '#4F46E5' };
+      default:
+        return { name: 'information-circle' as const, color: '#6B7280' };
     }
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: scale.value },
-      { translateY: translateY.value },
-      { rotate: `${rotate.value}deg` },
-    ],
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
-  }));
-
-  const getRankColor = () => {
-    if (rank === 1) return '#FFD700';
-    if (rank === 2) return '#C0C0C0';
-    if (rank === 3) return '#CD7F32';
-    return theme.primary;
   };
 
-  const getRankIcon = (): keyof typeof Ionicons.glyphMap => {
-    if (rank === 1) return 'trophy';
-    if (rank === 2) return 'medal';
-    if (rank === 3) return 'ribbon';
-    return 'star';
-  };
-
-  const rankColor = getRankColor();
-  const podiumHeight = rank === 1 ? 180 : rank === 2 ? 150 : 140;
+  const { name, color } = getIconConfig();
 
   return (
-    <Animated.View style={[styles.podiumItemContainer, animatedStyle]}>
-      <View style={styles.podiumContentWrapper}>
-        {/* Rank Badge */}
-        <View style={[styles.rankBadge, { backgroundColor: rankColor }]}>
-          <Ionicons 
-            name={getRankIcon()} 
-            size={rank === 1 ? 22 : 18} 
-            color="#FFFFFF" 
-          />
-        </View>
-
-        {/* Avatar with glow effect for winner */}
-        <View style={styles.avatarContainer}>
-          {rank === 1 && (
-            <Animated.View style={[styles.glowRing, glowStyle, { borderColor: rankColor }]} />
-          )}
-          <Avatar
-            size={rank === 1 ? 72 : rank === 2 ? 60 : 56}
-            source={leader.photo ? { uri: leader.photo } : undefined}
-            name={leader.name}
-            onlineStatus={leader.isOnline}
-          />
-        </View>
-
-        {/* Name */}
-        <Text 
-          style={[
-            styles.podiumNameNew, 
-            { color: theme.text },
-            rank === 1 && styles.podiumNameFirst
-          ]} 
-          numberOfLines={1}
-        >
-          {leader.name}
-        </Text>
-
-        {/* Designation */}
-        <Text style={[styles.podiumDesignation, { color: theme.textSecondary }]} numberOfLines={1}>
-          {leader.designation}
-        </Text>
-
-        {/* Score with animated background */}
-        <LinearGradient
-          colors={[rankColor + '20', rankColor + '10']}
-          style={styles.scoreContainer}
-        >
-          <Text style={[styles.scoreValue, { color: rankColor }]}>
-            {leader.score}
-          </Text>
-          <Text style={[styles.scoreLabel, { color: rankColor }]}>points</Text>
-        </LinearGradient>
-
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{leader.projectsCompleted}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Projects</Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{leader.tasksCompleted}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tasks</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Podium Base */}
-      <LinearGradient
-        colors={[rankColor + '40', rankColor + '20', rankColor + '10']}
-        style={[styles.podiumBase, { height: podiumHeight }]}
-      >
-        <Text style={[styles.podiumRankText, { color: rankColor }]}>#{rank}</Text>
-      </LinearGradient>
-    </Animated.View>
+    <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+      <Ionicons name={name} size={24} color={color} />
+      {!isRead && <View style={styles.unreadDot} />}
+    </View>
   );
 };
 
-// Animated Leaderboard Row
-const AnimatedLeaderboardRow = ({ leader, index }: any) => {
+const NotificationItem = ({ notification, onPress, onMarkAsRead }: { 
+  notification: Notification; 
+  onPress: () => void;
+  onMarkAsRead: () => void;
+}) => {
   const { theme } = useTheme();
-  const translateX = useSharedValue(-SCREEN_WIDTH);
-  const opacity = useSharedValue(0);
-
-  useEffect(() => {
-    translateX.value = withDelay(
-      index * 100,
-      withSpring(0, {
-        damping: 20,
-        stiffness: 90,
-      })
-    );
-    
-    opacity.value = withDelay(
-      index * 100,
-      withTiming(1, { duration: 400 })
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-    opacity: opacity.value,
-  }));
-
-  const rankColor = theme.primary;
+  
+  const timeAgo = (() => {
+    try {
+      return formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true });
+    } catch {
+      return 'Recently';
+    }
+  })();
 
   return (
-    <Animated.View style={animatedStyle}>
-      <AnimatedPressable
-        onPress={() => console.log('View profile:', leader.name)}
-        style={[
-          styles.leaderboardRow,
-          getCardStyle(theme.surface, 'md', 'xl'),
-          { marginBottom: spacing.md },
-        ]}
-        hapticType="light"
-        springConfig="bouncy"
-      >
-        {/* Rank Circle */}
-        <View style={[styles.rankCircle, { backgroundColor: rankColor + '15' }]}>
-          <Text style={[styles.rankNumber, { color: rankColor }]}>
-            {leader.rank}
+    <Card
+      onPress={onPress}
+      variant="elevated"
+      shadow="sm"
+      padding="base"
+      animated={true}
+      style={!notification.isRead ? { backgroundColor: theme.primary + '08' } : undefined}
+    >
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <NotificationIcon type={notification.type} isRead={notification.isRead} />
+        
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
+            <Text 
+              style={[
+                { 
+                  fontSize: 14, 
+                  fontWeight: !notification.isRead ? '700' : '600',
+                  color: theme.text,
+                  flex: 1,
+                  marginRight: spacing.xs,
+                }
+              ]} 
+              numberOfLines={1}
+            >
+              {notification.title}
+            </Text>
+            {!notification.isRead && (
+              <Badge variant="dot" size="sm" color={theme.primary} />
+            )}
+          </View>
+          
+          <Text 
+            style={{ 
+              fontSize: 13, 
+              color: theme.textSecondary,
+              lineHeight: 18,
+              marginBottom: spacing.xs,
+            }} 
+            numberOfLines={2}
+          >
+            {notification.message}
           </Text>
-        </View>
-
-        {/* Avatar */}
-        <Avatar
-          size={52}
-          source={leader.photo ? { uri: leader.photo } : undefined}
-          name={leader.name}
-          onlineStatus={leader.isOnline}
-        />
-
-        {/* User Info */}
-        <View style={styles.userInfo}>
-          <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
-            {leader.name}
-          </Text>
-          <Text style={[styles.userDesignation, { color: theme.textSecondary }]} numberOfLines={1}>
-            {leader.designation}
-          </Text>
-          <View style={styles.userStats}>
-            <Ionicons name="briefcase" size={12} color={theme.textSecondary} />
-            <Text style={[styles.userStatText, { color: theme.textSecondary }]}>
-              {leader.projectsCompleted} • {leader.tasksCompleted} tasks
+          
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+            <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+              {timeAgo}
             </Text>
           </View>
         </View>
-
-        {/* Score Badge */}
-        <View style={[styles.scoreBadge, { backgroundColor: rankColor + '15' }]}>
-          <Text style={[styles.scoreBadgeValue, { color: rankColor }]}>
-            {leader.score}
-          </Text>
-          <Text style={[styles.scoreBadgeLabel, { color: rankColor }]}>pts</Text>
-        </View>
-
-        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-      </AnimatedPressable>
-    </Animated.View>
+      </View>
+    </Card>
   );
 };
 
-export default function LeaderboardScreen() {
+export default function NotificationsScreen() {
+  const router = useRouter();
   const { theme, isDark } = useTheme();
+  const [notifications, setNotifications] = useState(DUMMY_NOTIFICATIONS);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const filteredNotifications = filter === 'unread' 
+    ? notifications.filter(n => !n.isRead)
+    : notifications;
 
   const onRefresh = React.useCallback(() => {
     setIsRefreshing(true);
@@ -354,8 +219,27 @@ export default function LeaderboardScreen() {
     }, 1000);
   }, []);
 
-  const topThree = DUMMY_LEADERBOARD_FULL.slice(0, 3);
-  const remaining = DUMMY_LEADERBOARD_FULL.slice(3);
+  const handleNotificationPress = (notification: Notification) => {
+    // Mark as read
+    setNotifications(prev => 
+      prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
+    );
+    
+    // Navigate to relevant page if actionUrl exists
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl as any);
+    }
+  };
+
+  const handleMarkAsRead = (notificationId: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+    );
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -365,18 +249,54 @@ export default function LeaderboardScreen() {
         translucent
       />
 
-      {/* Elegant Header */}
+      {/* Header */}
       <LinearGradient
-        colors={isDark ? ['#1F2937', '#111827'] : [theme.primary + '15', theme.background]}
+        colors={isDark ? ['#1F2937', '#111827'] : [theme.primary + '10', theme.background]}
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>🏆 Leadership Board</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-              Top performers of the month
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
+            {unreadCount > 0 && (
+              <Badge 
+                label={unreadCount.toString()} 
+                variant="filled" 
+                size="sm" 
+                color={theme.primary}
+              />
+            )}
           </View>
+          
+          {unreadCount > 0 && (
+            <AnimatedPressable
+              onPress={handleMarkAllAsRead}
+              hapticType="light"
+              springConfig="bouncy"
+            >
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.primary }}>
+                Mark all read
+              </Text>
+            </AnimatedPressable>
+          )}
+        </View>
+
+        {/* Filter Tabs */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <Button
+            title="All"
+            variant={filter === 'all' ? 'primary' : 'outline'}
+            size="sm"
+            onPress={() => setFilter('all')}
+            style={{ flex: 1 }}
+          />
+          
+          <Button
+            title={`Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
+            variant={filter === 'unread' ? 'primary' : 'outline'}
+            size="sm"
+            onPress={() => setFilter('unread')}
+            style={{ flex: 1 }}
+          />
         </View>
       </LinearGradient>
 
@@ -391,59 +311,28 @@ export default function LeaderboardScreen() {
           />
         }
       >
-        {/* Championship Podium - 2nd, 1st, 3rd arrangement */}
-        <View style={styles.podiumSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>🎖️ Top Champions</Text>
-          
-          <View style={styles.podiumStage}>
-            {/* 2nd Place - Left */}
-            {topThree[1] && (
-              <View style={styles.secondPlaceWrapper}>
-                <AnimatedPodiumItem 
-                  leader={topThree[1]} 
-                  rank={2} 
-                  delay={200}
-                />
-              </View>
-            )}
-
-            {/* 1st Place - Center (Elevated) */}
-            {topThree[0] && (
-              <View style={styles.firstPlaceWrapper}>
-                <AnimatedPodiumItem 
-                  leader={topThree[0]} 
-                  rank={1} 
-                  delay={400}
-                />
-              </View>
-            )}
-
-            {/* 3rd Place - Right */}
-            {topThree[2] && (
-              <View style={styles.thirdPlaceWrapper}>
-                <AnimatedPodiumItem 
-                  leader={topThree[2]} 
-                  rank={3} 
-                  delay={600}
-                />
-              </View>
-            )}
+        {filteredNotifications.length > 0 ? (
+          <View style={styles.notificationsList}>
+            {filteredNotifications.map((notification) => (
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+                onPress={() => handleNotificationPress(notification)}
+                onMarkAsRead={() => handleMarkAsRead(notification.id)}
+              />
+            ))}
           </View>
-        </View>
-
-        {/* Rest of Rankings - Clean & Spacious */}
-        {remaining.length > 0 && (
-          <View style={styles.rankingsSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Rankings</Text>
-            <View style={styles.rankingsList}>
-              {remaining.map((leader, index) => (
-                <AnimatedLeaderboardRow 
-                  key={leader.id} 
-                  leader={leader} 
-                  index={index}
-                />
-              ))}
-            </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="notifications-off-outline" size={64} color={theme.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {filter === 'unread' ? 'All caught up!' : 'No notifications yet'}
+            </Text>
+            <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
+              {filter === 'unread' 
+                ? "You've read all your notifications"
+                : "We'll notify you when something new arrives"}
+            </Text>
           </View>
         )}
 
@@ -460,248 +349,59 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.base,
     paddingHorizontal: spacing.lg,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  headerTextContainer: {
-    flex: 1,
+    marginBottom: spacing.base,
   },
   headerTitle: {
     ...getTypographyStyle('2xl', 'bold'),
-    marginBottom: spacing.xs,
-  },
-  headerSubtitle: {
-    ...getTypographyStyle('sm', 'regular'),
   },
   scrollContent: {
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
-  
-  // Podium Section
-  podiumSection: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.base,
-  },
-  sectionTitle: {
-    ...getTypographyStyle('lg', 'bold'),
-    marginBottom: spacing.base,
-    textAlign: 'center',
-  },
-  podiumStage: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    gap: 4,
-    paddingTop: spacing.base,
-  },
-  
-  // Podium Wrappers - FIXED SPACING
-  firstPlaceWrapper: {
-    flex: 1,
-    maxWidth: 130,
-    alignItems: 'center',
-    zIndex: 3,
-  },
-  secondPlaceWrapper: {
-    flex: 1,
-    maxWidth: 120,
-    alignItems: 'center',
-    zIndex: 2,
-    marginTop: 30,
-  },
-  thirdPlaceWrapper: {
-    flex: 1,
-    maxWidth: 120,
-    alignItems: 'center',
-    zIndex: 1,
-    marginTop: 40,
-  },
-  
-  // Podium Item - COMPACT
-  podiumItemContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  podiumContentWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xs,
-    paddingTop: spacing.base,
-    paddingBottom: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    gap: spacing.xs,
-  },
-  
-  // Rank Badge - SMALLER
-  rankBadge: {
-    position: 'absolute',
-    top: -16,
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  
-  // Avatar Container - COMPACT
-  avatarContainer: {
-    position: 'relative',
-    marginTop: spacing.sm,
-  },
-  glowRing: {
-    position: 'absolute',
-    top: -6,
-    left: -6,
-    right: -6,
-    bottom: -6,
-    borderRadius: borderRadius.full,
-    borderWidth: 2,
-    opacity: 0.5,
-  },
-  
-  // Podium Text - COMPACT
-  podiumNameNew: {
-    ...getTypographyStyle('sm', 'bold'),
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  podiumNameFirst: {
-    ...getTypographyStyle('base', 'bold'),
-  },
-  podiumDesignation: {
-    ...getTypographyStyle('xs', 'regular'),
-    textAlign: 'center',
-  },
-  
-  // Score Container - SMALLER
-  scoreContainer: {
-    paddingVertical: 4,
-    paddingHorizontal: spacing.base,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  scoreValue: {
-    ...getTypographyStyle('lg', 'bold'),
-  },
-  scoreLabel: {
-    ...getTypographyStyle('xs', 'semibold'),
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  
-  // Stats Row - COMPACT
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: 4,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    width: '100%',
-  },
-  statBox: {
-    alignItems: 'center',
-  },
-  statValue: {
-    ...getTypographyStyle('base', 'bold'),
-  },
-  statLabel: {
-    ...getTypographyStyle('xs', 'regular'),
-  },
-  statDivider: {
-    width: 1,
-    height: 16,
-  },
-  
-  // Podium Base - SHORTER
-  podiumBase: {
-    width: '100%',
-    borderBottomLeftRadius: borderRadius.lg,
-    borderBottomRightRadius: borderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopWidth: 0,
-  },
-  podiumRankText: {
-    ...getTypographyStyle('3xl', 'bold'),
-    opacity: 0.25,
-  },
-  
-  // Rankings Section - COMPACT
-  rankingsSection: {
+  notificationsList: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
-  },
-  rankingsList: {
     gap: spacing.sm,
   },
-  
-  // Leaderboard Row - COMPACT
-  leaderboardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.base,
-    gap: spacing.sm,
-  },
-  rankCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rankNumber: {
-    ...getTypographyStyle('base', 'bold'),
-  },
-  userInfo: {
-    flex: 1,
-    marginLeft: spacing.xs,
-  },
-  userName: {
-    ...getTypographyStyle('base', 'bold'),
-    marginBottom: 2,
-  },
-  userDesignation: {
-    ...getTypographyStyle('xs', 'regular'),
-    marginBottom: 4,
-  },
-  userStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  userStatText: {
-    ...getTypographyStyle('xs', 'regular'),
-  },
-  scoreBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: spacing.sm,
+  iconContainer: {
+    width: 48,
+    height: 48,
     borderRadius: borderRadius.lg,
+    justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 60,
+    position: 'relative',
   },
-  scoreBadgeValue: {
-    ...getTypographyStyle('base', 'bold'),
+  unreadDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  scoreBadgeLabel: {
-    ...getTypographyStyle('xs', 'semibold'),
-    textTransform: 'uppercase',
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.lg,
+  },
+  emptyTitle: {
+    ...getTypographyStyle('xl', 'bold'),
+    marginTop: spacing.base,
+    marginBottom: spacing.xs,
+  },
+  emptyMessage: {
+    ...getTypographyStyle('sm', 'regular'),
+    textAlign: 'center',
   },
 });

@@ -106,39 +106,48 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       )}
 
       {/* Input Button */}
-      <Pressable
-        onPress={() => !disabled && setIsOpen(true)}
-        disabled={disabled}
-        style={({ pressed }) => ({
+      <View
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
           backgroundColor: colors.surface,
           borderWidth: 1.5,
-          borderColor: error ? colors.error : colors.border,
+          borderColor: error ? colors.error : value?.startDate ? colors.primary : colors.border,
           borderRadius: borderRadius.md,
-          paddingHorizontal: spacing[3],
-          paddingVertical: spacing[3],
-          opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
-        })}
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          minHeight: 48,
+          opacity: disabled ? 0.5 : 1,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+        <Pressable
+          onPress={() => !disabled && setIsOpen(true)}
+          disabled={disabled}
+          style={{ 
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
           <Ionicons
             name="calendar-outline"
             size={20}
-            color={error ? colors.error : colors.textSecondary}
+            color={error ? colors.error : value?.startDate ? colors.primary : colors.textSecondary}
+            style={{ marginRight: 8 }}
           />
           <Text
+            numberOfLines={1}
             style={{
-              fontSize: typography.sizes.base,
+              flex: 1,
+              fontSize: 16,
               color: value?.startDate ? colors.text : colors.textSecondary,
             }}
           >
             {formatDateRange(value || {})}
           </Text>
-        </View>
-        <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-      </Pressable>
+          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} style={{ marginLeft: 8 }} />
+        </Pressable>
+      </View>
 
       {/* Error Message */}
       {error && (
@@ -183,18 +192,37 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               padding: spacing[4],
               width: '100%',
               maxWidth: 400,
+              maxHeight: '85%',
             }}
           >
-            {/* Selection Info */}
-            <View style={{ marginBottom: spacing[3] }}>
-              <Text style={{ fontSize: typography.sizes.sm, color: colors.textSecondary, textAlign: 'center' }}>
-                {selectingStart ? 'Select start date' : 'Select end date'}
+            {/* Header with Selection Info */}
+            <View style={{ marginBottom: spacing[3], alignItems: 'center' }}>
+              <Text style={{ 
+                fontSize: typography.sizes.lg, 
+                fontWeight: typography.weights.bold,
+                color: colors.text,
+                marginBottom: spacing[1],
+              }}>
+                Select Date Range
+              </Text>
+              <Text style={{ fontSize: typography.sizes.sm, color: colors.textSecondary }}>
+                {selectingStart ? 'Choose start date' : 'Choose end date'}
               </Text>
               {tempRange.startDate && (
-                <Text style={{ fontSize: typography.sizes.base, color: colors.text, textAlign: 'center', marginTop: spacing[1] }}>
-                  {tempRange.startDate.toLocaleDateString()}
-                  {tempRange.endDate && ` - ${tempRange.endDate.toLocaleDateString()}`}
-                </Text>
+                <View style={{ 
+                  marginTop: spacing[2],
+                  paddingHorizontal: spacing[3],
+                  paddingVertical: spacing[2],
+                  backgroundColor: colors.primary + '15',
+                  borderRadius: borderRadius.md,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                }}>
+                  <Text style={{ fontSize: typography.sizes.sm, color: colors.primary, fontWeight: typography.weights.semibold }}>
+                    {tempRange.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {tempRange.endDate && ` - ${tempRange.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+                  </Text>
+                </View>
               )}
             </View>
 
@@ -206,27 +234,29 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             />
 
             {/* Action Buttons */}
-            <View style={{ flexDirection: 'row', gap: spacing[2], marginTop: spacing[4] }}>
+            <View style={{ flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] }}>
               <Button
                 title="Cancel"
                 variant="secondary"
                 onPress={handleCancel}
-                size="sm"
+                size="md"
                 style={{ flex: 1 }}
               />
-              <Button
-                title="Clear"
-                variant="outline"
-                onPress={handleClear}
-                size="sm"
-                style={{ flex: 1 }}
-              />
+              {tempRange.startDate && (
+                <Button
+                  title="Clear"
+                  variant="outline"
+                  onPress={handleClear}
+                  size="md"
+                  style={{ flex: 1 }}
+                />
+              )}
               <Button
                 title="Confirm"
                 variant="primary"
                 onPress={handleConfirm}
                 disabled={!tempRange.startDate || !tempRange.endDate}
-                size="sm"
+                size="md"
                 style={{ flex: 1 }}
               />
             </View>

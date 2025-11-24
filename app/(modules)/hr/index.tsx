@@ -56,7 +56,6 @@ export default function HRScreen() {
   const tabs: Tab[] = [
     { key: 'staff', label: 'Staff', icon: 'people' },
     { key: 'reimbursement', label: 'Reimbursement', icon: 'cash' },
-    { key: 'leave', label: 'Leave', icon: 'calendar' },
   ];
 
   // Mock data - replace with API calls
@@ -64,12 +63,6 @@ export default function HRScreen() {
     { id: 1, name: 'John Doe', designation: 'Developer', department: 'IT', status: 'Active', email: 'john@example.com' },
     { id: 2, name: 'Jane Smith', designation: 'HR Manager', department: 'HR', status: 'Active', email: 'jane@example.com' },
     { id: 3, name: 'Mike Johnson', designation: 'Designer', department: 'Design', status: 'Active', email: 'mike@example.com' },
-  ];
-
-  const leaveData = [
-    { id: 1, employee: 'John Doe', employeeId: 1, type: 'Casual Leave', from: '2025-11-25', to: '2025-11-27', days: 3, status: 'Pending', reason: 'Family function' },
-    { id: 2, employee: 'Jane Smith', employeeId: 2, type: 'Sick Leave', from: '2025-11-20', to: '2025-11-21', days: 2, status: 'Approved', reason: 'Medical' },
-    { id: 3, employee: 'Mike Johnson', employeeId: 3, type: 'Earned Leave', from: '2025-12-01', to: '2025-12-05', days: 5, status: 'Pending', reason: 'Vacation' },
   ];
 
   const reimbursementData = [
@@ -89,57 +82,6 @@ export default function HRScreen() {
       width: 100,
       render: (value) => <Badge label={value} status={value === 'Active' ? 'active' : 'inactive'} size="sm" />
     },
-  ];
-
-  const leaveColumns: TableColumn[] = [
-    { key: 'employee', title: 'Employee', sortable: true, width: 150 },
-    { key: 'type', title: 'Leave Type', sortable: true, width: 120 },
-    { key: 'from', title: 'From', sortable: true, width: 100 },
-    { key: 'to', title: 'To', sortable: true, width: 100 },
-    { key: 'days', title: 'Days', sortable: true, width: 60 },
-    { 
-      key: 'status', 
-      title: 'Status',
-      width: 100,
-      render: (value) => <Badge label={value} status={value as any} size="sm" />
-    },
-    ...(canApprove ? [{
-      key: 'actions',
-      title: 'Actions',
-      width: 160,
-      render: (value: any, row: any) => row.status === 'Pending' ? (
-        <View style={{ flexDirection: 'row', gap: 4 }}>
-          <Pressable
-            style={{
-              backgroundColor: '#10B981',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 6,
-            }}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleApprove(row.id, 'leave');
-            }}
-          >
-            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>Approve</Text>
-          </Pressable>
-          <Pressable
-            style={{
-              backgroundColor: '#EF4444',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 6,
-            }}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleReject(row.id, 'leave');
-            }}
-          >
-            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs', 'semibold') }}>Reject</Text>
-          </Pressable>
-        </View>
-      ) : null
-    } as TableColumn] : []),
   ];
 
   const reimbursementColumns: TableColumn[] = [

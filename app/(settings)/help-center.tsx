@@ -8,6 +8,7 @@ import {
   StatusBar,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 import { AnimatedPressable } from '@/components';
+import { useFirstTimeUser } from '@/hooks/useFirstTimeUser';
 
 type FAQCategory = {
   id: string;
@@ -164,6 +166,25 @@ export default function HelpCenterScreen() {
   const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const { resetFirstTime } = useFirstTimeUser();
+
+  const handleResetFirstTime = () => {
+    Alert.alert(
+      'Reset Welcome Experience',
+      'This will show the welcome celebration screen on next login. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await resetFirstTime();
+            Alert.alert('Success', 'Welcome experience reset. You\'ll see it on next login.');
+          },
+        },
+      ]
+    );
+  };
 
   const toggleItem = (id: string) => {
     const newExpanded = new Set(expandedItems);
@@ -348,10 +369,18 @@ export default function HelpCenterScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/(settings)/report-problem')}
-              style={styles.quickLink}
+              style={[styles.quickLink, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             >
               <Ionicons name="alert-circle-outline" size={24} color={theme.primary} />
               <Text style={[styles.quickLinkText, { color: theme.text }]}>Report a Problem</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleResetFirstTime}
+              style={styles.quickLink}
+            >
+              <Ionicons name="refresh-outline" size={24} color={theme.primary} />
+              <Text style={[styles.quickLinkText, { color: theme.text }]}>Reset Welcome Experience</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>

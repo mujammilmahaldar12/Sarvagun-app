@@ -74,40 +74,45 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  logout: async () => {
-    console.log('🔄 Starting logout process...');
+  logout: () => {
+    console.log('🔄 Starting logout...');
     const { refreshToken } = get();
     
-    try {
+    // STEP 1: Clear auth state IMMEDIATELY (synchronous)
+    set({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+    console.log('✅ State cleared');
+
+    // STEP 2: Background cleanup - all async work happens here, won't block
+    setTimeout(async () => {
+      // Clear AsyncStorage
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
+      } catch (e) {}
+      
+      // Call logout API
       if (refreshToken) {
-        console.log('📡 Calling logout API with refresh token...');
-        await authService.logout(refreshToken);
-        console.log('✅ Logout API call successful');
-      } else {
-        console.log('⚠️ No refresh token found, skipping API call');
+        try {
+          await authService.logout(refreshToken);
+        } catch (e) {}
       }
-    } catch (error) {
-      console.log('❌ Logout API error:', error);
-      // Silent error - continue with local cleanup
-    } finally {
-      console.log('🧹 Clearing auth state...');
-      set({
-        user: null,
-        accessToken: null,
-        refreshToken: null,
-        isAuthenticated: false,
-      });
       
-      console.log('🗂️ Clearing React Query cache...');
-      // Clear React Query cache on logout
-      cacheUtils.clearOnLogout();
+      // Clear cache
+      try {
+        cacheUtils.clearOnLogout();
+      } catch (e) {}
       
-      console.log('🔐 Clearing permissions...');
-      // Clear permissions on logout
-      syncPermissionsWithAuth();
-      
-      console.log('✅ Logout process complete');
-    }
+      // Clear permissions
+      try {
+        syncPermissionsWithAuth();
+      } catch (e) {}
+    }, 100);
   },
 
   loadUser: async () => {

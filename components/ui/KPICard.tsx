@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { designSystem } from '@/constants/designSystem';
+import { designSystem, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -35,47 +35,57 @@ export default function KPICard({
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{
-        borderRadius: designSystem.borderRadius.lg,
-        padding: designSystem.spacing[5],
-        ...designSystem.shadows.lg,
-        elevation: 5,
+        borderRadius: designSystem.borderRadius.xl,
+        padding: designSystem.spacing[4],
+        ...designSystem.shadows.md,
+        elevation: 3,
         minHeight: 140,
+        maxHeight: 140,
       }}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.textInverse, ...getTypographyStyle('sm', 'medium'), opacity: 0.9 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text 
+            style={{ color: baseColors.neutral[0], fontSize: 13, fontWeight: '500', opacity: 0.95, marginBottom: 8 }}
+            numberOfLines={2}
+          >
             {title}
           </Text>
           <Text
             style={{
-              color: theme.textInverse,
-              ...getTypographyStyle('3xl', 'bold'),
-              marginTop: designSystem.spacing[2],
-              marginBottom: designSystem.spacing[1],
+              color: baseColors.neutral[0],
+              fontSize: 26,
+              fontWeight: '700',
+              letterSpacing: -0.5,
+              marginBottom: 4,
             }}
             numberOfLines={1}
             adjustsFontSizeToFit
+            minimumFontScale={0.7}
           >
             {value}
           </Text>
           {subtitle && (
-            <Text style={{ color: theme.textInverse, ...getTypographyStyle('xs'), opacity: 0.85, marginTop: designSystem.spacing[1] }}>
+            <Text 
+              style={{ color: baseColors.neutral[0], fontSize: 12, opacity: 0.85 }}
+              numberOfLines={1}
+            >
               {subtitle}
             </Text>
           )}
         </View>
         <View
           style={{
-            width: designSystem.iconSizes['2xl'],
-            height: designSystem.iconSizes['2xl'],
-            borderRadius: designSystem.borderRadius.full,
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: 'rgba(255, 255, 255, 0.25)',
             justifyContent: 'center',
             alignItems: 'center',
+            flexShrink: 0,
           }}
         >
-          <Ionicons name={icon} size={designSystem.iconSizes.md} color="#FFF" />
+          <Ionicons name={icon} size={24} color={baseColors.neutral[0]} />
         </View>
       </View>
 
@@ -111,11 +121,11 @@ export default function KPICard({
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={{ flex: 1 }}>
+      <Pressable onPress={onPress} style={{ flex: 1, minWidth: 280, maxHeight: 140 }}>
         {content}
       </Pressable>
     );
   }
 
-  return <View style={{ flex: 1 }}>{content}</View>;
+  return <View style={{ flex: 1, minWidth: 280, maxHeight: 140 }}>{content}</View>;
 }

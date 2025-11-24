@@ -38,6 +38,8 @@ export interface Client {
 export interface Lead {
   id: number;
   client: Client;
+  venue?: Venue;  // Venue from linked event (populated by serializer)
+  event_id?: number;  // Event ID
   source?: string;
   message?: string;
   status: 'pending' | 'converted' | 'rejected';

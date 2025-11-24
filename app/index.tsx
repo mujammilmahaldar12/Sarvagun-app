@@ -19,14 +19,26 @@ export default function Index() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (isAuthenticated) {
-        // Check if onboarding should be shown
-        if (showOnboarding) {
-          setShowCelebration(true);
+      console.log('🔄 Index routing:', { isAuthenticated, showOnboarding });
+      
+      try {
+        if (isAuthenticated) {
+          // Check if onboarding should be shown
+          if (showOnboarding) {
+            setShowCelebration(true);
+          } else {
+            router.replace("/(dashboard)/home");
+          }
         } else {
-          router.replace("/(dashboard)/home");
+          console.log('🔓 Redirecting to login');
+          // Use timeout to prevent navigation crashes
+          setTimeout(() => {
+            router.replace("/(auth)/login");
+          }, 10);
         }
-      } else {
+      } catch (error) {
+        console.error('Navigation error:', error);
+        // Fallback - force navigation
         router.replace("/(auth)/login");
       }
     }

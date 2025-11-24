@@ -40,9 +40,21 @@ export const removeToken = async (key: string): Promise<void> => {
 
 export const clearAllTokens = async (): Promise<void> => {
   try {
+    console.log('🗑️ Clearing all authentication tokens...');
     await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
+    console.log('✅ All tokens cleared');
   } catch (error) {
-    // Silent error
+    console.log('❌ Error clearing tokens:', error);
+  }
+};
+
+export const clearAllStorage = async (): Promise<void> => {
+  try {
+    console.log('🗑️ Clearing ALL AsyncStorage data...');
+    await AsyncStorage.clear();
+    console.log('✅ All storage cleared');
+  } catch (error) {
+    console.log('❌ Error clearing storage:', error);
   }
 };
 

@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Avatar, Skeleton, SkeletonText, AnimatedPressable } from '@/components';
 import { spacing, borderRadius, iconSizes, typography, moduleColors, baseColors } from '@/constants/designSystem';
 import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
-import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount } from '@/hooks/useDashboardQueries';
+import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard, useRealtimeActivities } from '@/hooks/useDashboardQueries';
 import { formatDistanceToNow } from 'date-fns';
 
 // Medal colors for leaderboard
@@ -131,13 +131,12 @@ export default function HomeScreen() {
   const { user: authUser } = useAuthStore();
   const { theme, isDark } = useTheme();
   
-  // Fetch real data from backend
-  // Use auth store directly since backend endpoints not fully implemented
+  // Fetch real data from backend with real-time updates
   const user = useAuthStore((state) => state.user);
-  // const { data: currentUser, isLoading: userLoading, error: userError, refetch: refetchUser } = useCurrentUser();
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();
-  const { data: recentActivities = [], isLoading: activitiesLoading } = useRecentActivities(5);
+  const { data: realtimeActivities = [], isLoading: activitiesLoading } = useRealtimeActivities(5);
   const { data: activeProjectsCount, refetch: refetchProjects } = useActiveProjectsCount();
+  const { data: leaderboardData = [], isLoading: leaderboardLoading } = useLeaderboard(5);
   const { mutate: refreshDashboard, isPending: isRefreshing } = useRefreshDashboard();
 
   const [notificationCount] = useState(0);
@@ -403,11 +402,21 @@ export default function HomeScreen() {
                   </View>
                 ))}
               </>
-            ) : recentActivities.length > 0 ? (
-              recentActivities.slice(0, 5).map((activity, index, arr) => {
+            ) : realtimeActivities.length > 0 ? (
+              realtimeActivities.slice(0, 5).map((activity, index, arr) => {
                 const activityIcon = getActivityIcon(activity.type);
                 const activityColor = getActivityColor(activity.type);
-                const timeAgo = formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true });
+                
+                // Safe date parsing with fallback
+                let timeAgo = 'Recently';
+                try {
+                  const date = new Date(activity.timestamp);
+                  if (!isNaN(date.getTime())) {
+                    timeAgo = formatDistanceToNow(date, { addSuffix: true });
+                  }
+                } catch (e) {
+                  console.log('Invalid date for activity:', activity.timestamp);
+                }
 
                 return (
                   <AnimatedPressable
@@ -460,7 +469,7 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Leadership Board</Text>
             <AnimatedPressable 
-              onPress={() => router.push('/(dashboard)/notifications')} 
+              onPress={() => router.push('/(dashboard)/leaderboard')} 
               hapticType="selection"
             >
               <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
@@ -468,7 +477,30 @@ export default function HomeScreen() {
           </View>
 
           <View style={[styles.leaderboardContainer, getCardStyle(theme.surface, 'md', 'lg')]}>
-            {DUMMY_LEADERBOARD.slice(0, 5).map((leader, index) => {
+            {leaderboardLoading ? (
+              <>
+                {[1, 2, 3].map((index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.leaderboardItem,
+                      {
+                        borderBottomWidth: index < 3 ? 1 : 0,
+                        borderBottomColor: theme.border,
+                      },
+                    ]}
+                  >
+                    <Skeleton width={40} height={40} borderRadius={20} style={{ marginRight: spacing.sm }} />
+                    <Skeleton width={48} height={48} borderRadius={24} />
+                    <View style={styles.leaderInfo}>
+                      <Skeleton width={150} height={16} style={{ marginBottom: spacing.xs }} />
+                      <Skeleton width={200} height={14} />
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : leaderboardData.length > 0 ? (
+              leaderboardData.map((leader, index) => {
               const getRankColor = (rank: number) => {
                 if (rank === 1) return MEDAL_COLORS.gold;
                 if (rank === 2) return MEDAL_COLORS.silver;
@@ -489,7 +521,7 @@ export default function HomeScreen() {
               return (
                 <AnimatedPressable
                   key={leader.id}
-                  onPress={() => router.push('/(dashboard)/notifications')}
+                  onPress={() => router.push('/(dashboard)/leaderboard')}
                   style={[
                     styles.leaderboardItem,
                     ...(isTopThree ? [styles.leaderboardItemTopThree] : []),
@@ -564,7 +596,106 @@ export default function HomeScreen() {
                   <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
                 </AnimatedPressable>
               );
-            })}
+            })
+            ) : (
+              DUMMY_LEADERBOARD.slice(0, 5).map((leader, index) => {
+                const getRankColor = (rank: number) => {
+                  if (rank === 1) return MEDAL_COLORS.gold;
+                  if (rank === 2) return MEDAL_COLORS.silver;
+                  if (rank === 3) return MEDAL_COLORS.bronze;
+                  return theme.primary;
+                };
+
+                const getRankIcon = (rank: number): keyof typeof Ionicons.glyphMap => {
+                  if (rank === 1) return 'trophy';
+                  if (rank === 2) return 'medal';
+                  if (rank === 3) return 'ribbon';
+                  return 'star';
+                };
+
+                const rankColor = getRankColor(leader.rank);
+                const isTopThree = leader.rank <= 3;
+
+                return (
+                  <AnimatedPressable
+                    key={leader.id}
+                    onPress={() => router.push('/(dashboard)/leaderboard')}
+                    style={[
+                      styles.leaderboardItem,
+                      ...(isTopThree ? [styles.leaderboardItemTopThree] : []),
+                      {
+                        borderBottomWidth: index < 4 ? 1 : 0,
+                        borderBottomColor: theme.border,
+                      },
+                    ]}
+                    hapticType="light"
+                    springConfig="gentle"
+                    animateOnMount={true}
+                  >
+                    <LinearGradient
+                      colors={isTopThree ? [rankColor + '08', rankColor + '00'] : ['transparent', 'transparent']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    
+                    <View style={styles.leaderRankContainer}>
+                      <View style={[
+                        styles.leaderRankBadge,
+                        { backgroundColor: rankColor + (isTopThree ? '20' : '10') }
+                      ]}>
+                        {isTopThree ? (
+                          <Ionicons name={getRankIcon(leader.rank)} size={iconSizes.md} color={rankColor} />
+                        ) : (
+                          <Text style={[styles.leaderRankText, { color: rankColor }]}>
+                            {leader.rank}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    <Avatar
+                      size={48}
+                      source={leader.photo ? { uri: leader.photo } : undefined}
+                      name={leader.name}
+                      onlineStatus={leader.isOnline}
+                    />
+
+                    <View style={styles.leaderInfo}>
+                      <Text style={[styles.leaderName, { color: theme.text }]} numberOfLines={1}>
+                        {leader.name}
+                      </Text>
+                      <View style={styles.leaderStats}>
+                        <View style={styles.leaderStatItem}>
+                          <Ionicons name="briefcase-outline" size={iconSizes.xs} color={theme.textSecondary} />
+                          <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
+                            {leader.projectsCompleted} projects
+                          </Text>
+                        </View>
+                        <View style={styles.leaderStatDot} />
+                        <View style={styles.leaderStatItem}>
+                          <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color={theme.success} />
+                          <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
+                            {leader.tasksCompleted} tasks
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.leaderScore}>
+                      <Text style={[styles.leaderScoreValue, { color: theme.primary }]}>
+                        {leader.score}
+                      </Text>
+                      <Text style={[styles.leaderScoreLabel, { color: theme.textSecondary }]}>
+                        pts
+                      </Text>
+                    </View>
+
+                    <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
+                  </AnimatedPressable>
+                );
+              })
+            )}
           </View>
         </View>
       </ScrollView>

@@ -80,6 +80,13 @@ export const chartColors = {
   senary: '#3B82F6',
   septenary: '#EC4899',
   octonary: '#06B6D4',
+  
+  // Semantic chart colors
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  danger: '#EF4444',
+  info: '#3B82F6',
 } as const;
 
 // Gradient Colors for UI Elements

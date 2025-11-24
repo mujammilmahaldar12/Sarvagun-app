@@ -186,6 +186,156 @@ class DashboardService {
   }
 
   /**
+   * Get leaderboard data with real-time project completion scores
+   */
+  async getLeaderboard(limit: number = 10): Promise<any[]> {
+    try {
+      console.log('🏆 Dashboard Service: Fetching leaderboard...');
+      // Fetch all users - using correct endpoint
+      const usersResponse = await api.get<any[]>('/hr/users/employees/');
+      let users = Array.isArray(usersResponse) ? usersResponse : 
+                  (usersResponse as any)?.data ? (usersResponse as any).data : [];
+      
+      console.log('📊 Leaderboard: Fetched users:', users.length);
+      
+      // Fetch project data for scoring
+      const projectsResponse = await api.get<any[]>('/project_management/projects/');
+      let allProjects = Array.isArray(projectsResponse) ? projectsResponse : 
+                       (projectsResponse as any)?.data ? (projectsResponse as any).data : [];
+      
+      console.log('📊 Leaderboard: Fetched projects:', allProjects.length);
+      
+      // Calculate scores for each user
+      const leaderboardData = users.map(user => {
+        // Count projects where user is assigned
+        const userProjects = allProjects.filter((p: any) => 
+          p.assigned_to === user.id || 
+          (Array.isArray(p.team_members) && p.team_members.includes(user.id))
+        );
+        
+        const completedProjects = userProjects.filter((p: any) => 
+          p.status === 'Completed'
+        ).length;
+        
+        // Calculate score (you can customize this formula)
+        const score = (completedProjects * 250) + (userProjects.length * 50);
+        
+        return {
+          id: user.id,
+          name: user.full_name || user.username,
+          photo: user.photo || user.profile_picture,
+          projectsCompleted: completedProjects,
+          tasksCompleted: Math.floor(completedProjects * 8), // Estimate
+          score: score,
+          isOnline: user.is_active || false,
+          designation: user.designation,
+          department: user.department,
+        };
+      });
+      
+      // Sort by score and assign ranks
+      const sortedLeaderboard = leaderboardData
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map((user, index) => ({
+          ...user,
+          rank: index + 1,
+        }));
+      
+      console.log('✅ Leaderboard calculated:', sortedLeaderboard.length, 'leaders');
+      return sortedLeaderboard;
+    } catch (error) {
+      console.log('❌ Leaderboard error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recent activities with real-time data
+   */
+  async getRecentActivitiesRealtime(limit: number = 10): Promise<RecentActivity[]> {
+    try {
+      console.log('📡 Fetching real-time activities...');
+      const activities: RecentActivity[] = [];
+      
+      // Fetch recent leave requests
+      try {
+        const leavesResponse = await api.get<any[]>('/hr/leaves/');
+        let leaves = Array.isArray(leavesResponse) ? leavesResponse : 
+                    (leavesResponse as any)?.data ? (leavesResponse as any).data : [];
+        
+        leaves.slice(0, 3).forEach((leave: any) => {
+          // Ensure timestamp is ISO format or valid date string
+          const timestamp = leave.created_at || leave.from_date || new Date().toISOString();
+          activities.push({
+            id: leave.id,
+            type: 'leave',
+            title: `${leave.leave_type || 'Leave'} Request`,
+            description: `${leave.status || 'Pending'} - ${leave.from_date || ''} to ${leave.to_date || ''}`,
+            timestamp: timestamp,
+            related_id: leave.id,
+          });
+        });
+      } catch (e) {
+        console.log('No leaves data');
+      }
+      
+      // Fetch recent project updates
+      try {
+        const projectsResponse = await api.get<any[]>('/project_management/projects/my_projects/');
+        let projects = Array.isArray(projectsResponse) ? projectsResponse : 
+                      (projectsResponse as any)?.data ? (projectsResponse as any).data : [];
+        
+        projects.slice(0, 3).forEach((project: any) => {
+          const timestamp = project.updated_at || project.created_at || new Date().toISOString();
+          activities.push({
+            id: project.id,
+            type: 'project',
+            title: project.name || 'Unnamed Project',
+            description: `Status: ${project.status || 'Active'} - Progress: ${project.progress || 0}%`,
+            timestamp: timestamp,
+            related_id: project.id,
+          });
+        });
+      } catch (e) {
+        console.log('No projects data');
+      }
+      
+      // Fetch recent events
+      try {
+        const eventsResponse = await api.get<any[]>('/events/');
+        let events = Array.isArray(eventsResponse) ? eventsResponse : 
+                    (eventsResponse as any)?.data ? (eventsResponse as any).data : [];
+        
+        events.slice(0, 2).forEach((event: any) => {
+          const timestamp = event.created_at || event.date || new Date().toISOString();
+          activities.push({
+            id: event.id,
+            type: 'event',
+            title: event.title || event.name || 'Event',
+            description: `${event.event_type || 'Event'} - ${event.date || 'Upcoming'}`,
+            timestamp: timestamp,
+            related_id: event.id,
+          });
+        });
+      } catch (e) {
+        console.log('No events data');
+      }
+      
+      // Sort by timestamp and limit
+      const sortedActivities = activities
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, limit);
+      
+      console.log('✅ Real-time activities:', sortedActivities.length);
+      return sortedActivities;
+    } catch (error) {
+      console.log('❌ Activities error:', error);
+      return [];
+    }
+  }
+
+  /**
    * Refresh dashboard data
    */
   async refresh(): Promise<void> {

@@ -20,16 +20,21 @@ export default function AddLeadScreen() {
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [venues, setVenues] = useState<any[]>([]);
   
   // Modal states
   const [showClientModal, setShowClientModal] = useState(false);
+  const [showVenueModal, setShowVenueModal] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [venueSearchQuery, setVenueSearchQuery] = useState('');
   const [showOrgInput, setShowOrgInput] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   
   // Form mode: 'select' or 'create'
   const [clientMode, setClientMode] = useState<'select' | 'create'>('select');
+  const [venueMode, setVenueMode] = useState<'select' | 'create'>('select');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     // For existing client
@@ -42,6 +47,14 @@ export default function AddLeadScreen() {
     address: '',
     categoryId: 0,
     organisationId: 0,
+    // For existing venue
+    venueId: 0,
+    // For new venue
+    venueName: '',
+    venueAddress: '',
+    venueCapacity: '',
+    venueType: 'home',
+    venueRegion: 'india',
     // Lead details
     source: 'online',
     referral: '',
@@ -54,14 +67,16 @@ export default function AddLeadScreen() {
 
   const fetchReferenceData = async () => {
     try {
-      const [categoriesData, orgsData, clientsData] = await Promise.all([
+      const [categoriesData, orgsData, clientsData, venuesData] = await Promise.all([
         eventsService.getClientCategories(),
         eventsService.getOrganisations(),
         eventsService.getClients(),
+        eventsService.getVenues(),
       ]);
       setCategories(categoriesData);
       setOrganisations(orgsData);
       setClients(clientsData);
+      setVenues(venuesData);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to load reference data');
     }
@@ -79,6 +94,13 @@ export default function AddLeadScreen() {
     client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
     client.email?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
     client.number?.includes(clientSearchQuery)
+  );
+
+  // Filtered venues based on search
+  const filteredVenues = venues.filter(venue =>
+    venue.name.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
+    venue.address?.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
+    venue.region?.toLowerCase().includes(venueSearchQuery.toLowerCase())
   );
 
   const updateField = (field: string, value: string) => {
@@ -104,9 +126,9 @@ export default function AddLeadScreen() {
   };
 
   const handleSubmit = async () => {
-    // Validation based on mode
+    // Validate Client
     if (clientMode === 'select') {
-      if (!formData.clientId) {
+      if (!formData.clientId || formData.clientId === 0) {
         Alert.alert('Error', 'Please select an existing client');
         return;
       }
@@ -114,10 +136,6 @@ export default function AddLeadScreen() {
       // Creating new client - validate all fields
       if (!formData.companyName.trim()) {
         Alert.alert('Error', 'Please enter company name');
-        return;
-      }
-      if (!formData.contactPerson.trim()) {
-        Alert.alert('Error', 'Please enter contact person name');
         return;
       }
       if (!formData.phone.trim()) {
@@ -128,7 +146,7 @@ export default function AddLeadScreen() {
         Alert.alert('Error', 'Please enter email address');
         return;
       }
-      if (!formData.categoryId) {
+      if (!formData.categoryId || formData.categoryId === 0) {
         Alert.alert('Error', 'Please select client category');
         return;
       }
@@ -141,39 +159,83 @@ export default function AddLeadScreen() {
       }
     }
 
+    // Validate Venue (REQUIRED)
+    if (venueMode === 'select') {
+      if (!formData.venueId || formData.venueId === 0) {
+        Alert.alert('Error', 'Please select a venue');
+        return;
+      }
+    } else {
+      if (!formData.venueName.trim()) {
+        Alert.alert('Error', 'Please enter venue name');
+        return;
+      }
+    }
+
+    // Validate Lead Details
+    if (!formData.message.trim()) {
+      Alert.alert('Error', 'Please enter a message or notes about this lead');
+      return;
+    }
+
     setLoading(true);
     try {
       const leadData: any = {
         source: formData.source,
-        message: formData.message.trim() || undefined,
+        message: formData.message.trim(),
       };
 
+      // Add referral only if it has a value
       if (formData.referral.trim()) {
         leadData.referral = formData.referral.trim();
       }
 
+      // Client Data
       if (clientMode === 'select') {
-        // Use existing client
-        leadData.client_id = formData.clientId;
-        await eventsService.createLead(leadData);
+        leadData.client = formData.clientId;
       } else {
-        // Create new client with lead
-        leadData.client_data = {
+        leadData.client = {
           name: formData.companyName.trim(),
-          contact_person: formData.contactPerson.trim(),
           email: formData.email.trim(),
-          phone: formData.phone.trim(),
-          address: formData.address.trim() || undefined,
-          category_id: formData.categoryId,
-          organisation_id: formData.organisationId || undefined,
+          number: formData.phone.trim(),
+          client_category: [formData.categoryId],
         };
-        await eventsService.createLeadComplete(leadData);
+        
+        // Add organisation only if selected
+        if (formData.organisationId) {
+          leadData.client.organisation = [formData.organisationId];
+        }
       }
 
-      Alert.alert('Success', 'Lead created successfully', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      // Venue Data
+      if (venueMode === 'select') {
+        leadData.venue = formData.venueId;
+      } else {
+        leadData.venue = {
+          name: formData.venueName.trim(),
+          address: formData.venueAddress.trim() || '',
+          capacity: parseInt(formData.venueCapacity) || 100,
+          type_of_venue: formData.venueType,
+          region: formData.venueRegion,
+        };
+      }
+
+      console.log('📤 Sending lead data:', JSON.stringify(leadData, null, 2));
+
+      // Use create-complete endpoint
+      const result = await eventsService.createLeadComplete(leadData);
+      console.log('✅ Lead created successfully:', result);
+
+      // Navigate back immediately (no alert needed)
+      router.back();
+      
+      // Show toast-style success message after navigation
+      setTimeout(() => {
+        Alert.alert('Success', 'Lead created successfully! 🎉', [{ text: 'OK' }]);
+      }, 500);
+      
     } catch (error: any) {
+      console.error('❌ Error creating lead:', error);
       Alert.alert('Error', error.message || 'Failed to create lead');
     } finally {
       setLoading(false);
@@ -210,17 +272,24 @@ export default function AddLeadScreen() {
                 setClientMode('select');
                 setFormData({ ...formData, clientId: 0, companyName: '', contactPerson: '', phone: '', email: '', address: '', categoryId: 0, organisationId: 0 });
               }}
-              style={[styles.modeButton, clientMode === 'select' && styles.modeButtonActive]}
+              style={[
+                styles.modeButton,
+                {
+                  borderColor: clientMode === 'select' ? theme.primary : theme.border,
+                  backgroundColor: clientMode === 'select' ? `${theme.primary}15` : theme.surface,
+                },
+                clientMode === 'select' && styles.modeButtonActive,
+              ]}
             >
               <Ionicons 
                 name="search-outline" 
                 size={22} 
-                color={baseColors.purple[500]} 
+                color={clientMode === 'select' ? theme.primary : theme.textSecondary} 
               />
               <Text
                 style={[
                   getTypographyStyle('base', 'bold'),
-                  { color: clientMode === 'select' ? baseColors.purple[500] : theme.text }
+                  { color: clientMode === 'select' ? theme.primary : theme.text }
                 ]}
               >
                 Select Existing
@@ -233,17 +302,24 @@ export default function AddLeadScreen() {
                 setFormData({ ...formData, clientId: 0 });
                 setSelectedClient(null);
               }}
-              style={[styles.modeButton, clientMode === 'create' && styles.modeButtonActive]}
+              style={[
+                styles.modeButton,
+                {
+                  borderColor: clientMode === 'create' ? theme.primary : theme.border,
+                  backgroundColor: clientMode === 'create' ? `${theme.primary}15` : theme.surface,
+                },
+                clientMode === 'create' && styles.modeButtonActive,
+              ]}
             >
               <Ionicons 
                 name="add-circle-outline" 
                 size={22} 
-                color={baseColors.purple[500]} 
+                color={clientMode === 'create' ? theme.primary : theme.textSecondary} 
               />
               <Text
                 style={[
                   getTypographyStyle('base', 'bold'),
-                  { color: clientMode === 'create' ? baseColors.purple[500] : theme.text }
+                  { color: clientMode === 'create' ? theme.primary : theme.text }
                 ]}
               >
                 Create New
@@ -397,12 +473,6 @@ export default function AddLeadScreen() {
         {clientMode === 'create' && (
           <FormSection title="Contact Information">
             <FormField
-              label="Contact Person *"
-              value={formData.contactPerson}
-              onChangeText={(text: string) => updateField('contactPerson', text)}
-              placeholder="Enter contact person name"
-            />
-            <FormField
               label="Phone *"
               value={formData.phone}
               onChangeText={(text: string) => updateField('phone', text)}
@@ -416,15 +486,157 @@ export default function AddLeadScreen() {
               placeholder="Enter email address"
               keyboardType="email-address"
             />
-            <FormField
-              label="Address"
-              value={formData.address}
-              onChangeText={(text: string) => updateField('address', text)}
-              placeholder="Enter company address"
-              multiline
-            />
           </FormSection>
         )}
+
+        {/* Venue Selection */}
+        <FormSection title="Venue Information">
+          <View style={styles.modeContainer}>
+            <Pressable
+              onPress={() => {
+                setVenueMode('select');
+                setFormData({ ...formData, venueId: 0, venueName: '', venueAddress: '', venueCapacity: '', venueType: 'home' });
+              }}
+              style={[
+                styles.modeButton,
+                {
+                  borderColor: venueMode === 'select' ? theme.primary : theme.border,
+                  backgroundColor: venueMode === 'select' ? `${theme.primary}15` : theme.surface,
+                },
+                venueMode === 'select' && styles.modeButtonActive,
+              ]}
+            >
+              <Ionicons 
+                name="location-outline" 
+                size={22} 
+                color={venueMode === 'select' ? theme.primary : theme.textSecondary} 
+              />
+              <Text
+                style={[
+                  getTypographyStyle('base', 'bold'),
+                  { color: venueMode === 'select' ? theme.primary : theme.text }
+                ]}
+              >
+                Select Existing
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                setVenueMode('create');
+                setFormData({ ...formData, venueId: 0 });
+                setSelectedVenue(null);
+              }}
+              style={[
+                styles.modeButton,
+                {
+                  borderColor: venueMode === 'create' ? theme.primary : theme.border,
+                  backgroundColor: venueMode === 'create' ? `${theme.primary}15` : theme.surface,
+                },
+                venueMode === 'create' && styles.modeButtonActive,
+              ]}
+            >
+              <Ionicons 
+                name="add-circle-outline" 
+                size={22} 
+                color={venueMode === 'create' ? theme.primary : theme.textSecondary} 
+              />
+              <Text
+                style={[
+                  getTypographyStyle('base', 'bold'),
+                  { color: venueMode === 'create' ? theme.primary : theme.text }
+                ]}
+              >
+                Create New
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Select Existing Venue */}
+          {venueMode === 'select' && (
+            <View style={{ gap: 12 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                Search & Select Venue *
+              </Text>
+              <Pressable
+                onPress={() => setShowVenueModal(true)}
+                style={{
+                  borderWidth: 1.5,
+                  borderColor: selectedVenue ? theme.primary : theme.border,
+                  borderRadius: 12,
+                  padding: 14,
+                  backgroundColor: theme.surface,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {selectedVenue ? (
+                    <>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }} numberOfLines={1}>
+                        {selectedVenue.name}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                        {selectedVenue.address} • Capacity: {selectedVenue.capacity}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+                      Tap to search and select a venue
+                    </Text>
+                  )}
+                </View>
+                <Ionicons name="search" size={20} color={theme.primary} style={{ marginLeft: 8, flexShrink: 0 }} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Create New Venue */}
+          {venueMode === 'create' && (
+            <>
+              <FormField
+                label="Venue Name *"
+                value={formData.venueName}
+                onChangeText={(text: string) => updateField('venueName', text)}
+                placeholder="Enter venue name"
+              />
+              <FormField
+                label="Address"
+                value={formData.venueAddress}
+                onChangeText={(text: string) => updateField('venueAddress', text)}
+                placeholder="Enter venue address"
+                multiline
+              />
+              <FormField
+                label="Capacity"
+                value={formData.venueCapacity}
+                onChangeText={(text: string) => updateField('venueCapacity', text)}
+                placeholder="Enter venue capacity"
+                keyboardType="numeric"
+              />
+              <View style={{ gap: spacing.sm }}>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
+                  Venue Type
+                </Text>
+                <View style={styles.chipContainer}>
+                  {[
+                    { value: 'home', label: 'Home' },
+                    { value: 'ground', label: 'Ground' },
+                    { value: 'hall', label: 'Hall' },
+                  ].map((type) => (
+                    <Chip
+                      key={type.value}
+                      label={type.label}
+                      selected={formData.venueType === type.value}
+                      onPress={() => setFormData({ ...formData, venueType: type.value })}
+                    />
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
+        </FormSection>
 
         {/* Lead Details */}
         <FormSection title="Lead Details">
@@ -436,17 +648,24 @@ export default function AddLeadScreen() {
             <View style={styles.modeContainer}>
               <Pressable
                 onPress={() => updateField('source', 'online')}
-                style={[styles.modeButton, formData.source === 'online' && styles.modeButtonActive]}
+                style={[
+                  styles.modeButton,
+                  {
+                    borderColor: formData.source === 'online' ? theme.primary : theme.border,
+                    backgroundColor: formData.source === 'online' ? `${theme.primary}15` : theme.surface,
+                  },
+                  formData.source === 'online' && styles.modeButtonActive,
+                ]}
               >
                 <Ionicons 
                   name="globe-outline" 
                   size={22} 
-                  color={baseColors.purple[500]} 
+                  color={formData.source === 'online' ? theme.primary : theme.textSecondary} 
                 />
                 <Text
                   style={[
                     getTypographyStyle('base', 'bold'),
-                    { color: formData.source === 'online' ? baseColors.purple[500] : theme.text }
+                    { color: formData.source === 'online' ? theme.primary : theme.text }
                   ]}
                 >
                   Online
@@ -455,17 +674,24 @@ export default function AddLeadScreen() {
 
               <Pressable
                 onPress={() => updateField('source', 'offline')}
-                style={[styles.modeButton, formData.source === 'offline' && styles.modeButtonActive]}
+                style={[
+                  styles.modeButton,
+                  {
+                    borderColor: formData.source === 'offline' ? theme.primary : theme.border,
+                    backgroundColor: formData.source === 'offline' ? `${theme.primary}15` : theme.surface,
+                  },
+                  formData.source === 'offline' && styles.modeButtonActive,
+                ]}
               >
                 <Ionicons 
                   name="storefront-outline" 
                   size={22} 
-                  color={baseColors.purple[500]} 
+                  color={formData.source === 'offline' ? theme.primary : theme.textSecondary} 
                 />
                 <Text
                   style={[
                     getTypographyStyle('base', 'bold'),
-                    { color: formData.source === 'offline' ? baseColors.purple[500] : theme.text }
+                    { color: formData.source === 'offline' ? theme.primary : theme.text }
                   ]}
                 >
                   Offline
@@ -508,9 +734,16 @@ export default function AddLeadScreen() {
             onPress={handleSubmit}
             disabled={loading}
             loading={loading}
-            size="lg"
-            leftIcon="checkmark-circle"
+            size="md"
+            leftIcon={loading ? undefined : "checkmark-circle"}
           />
+          {loading && (
+            <View style={{ marginTop: spacing.sm, alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                Saving your lead...
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -581,7 +814,7 @@ export default function AddLeadScreen() {
             </View>
 
             {/* Clients List */}
-            <ScrollView style={{ paddingHorizontal: 16 }}>
+            <ScrollView style={{ paddingHorizontal: 12 }}>
               {filteredClients.length === 0 ? (
                 <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                   <Ionicons name="search-outline" size={48} color={theme.textSecondary} />
@@ -601,31 +834,31 @@ export default function AddLeadScreen() {
                     }}
                     style={({ pressed }) => ({
                       backgroundColor: pressed ? theme.primary + '10' : theme.surface,
-                      padding: 16,
-                      borderRadius: 12,
-                      marginBottom: 12,
+                      padding: 12,
+                      borderRadius: 10,
+                      marginBottom: 10,
                       borderWidth: 1,
                       borderColor: theme.border,
                     })}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
                         backgroundColor: theme.primary + '20',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}>
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: theme.primary }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primary }}>
                           {client.name.charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
                           {client.name}
                         </Text>
-                        <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
+                        <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
                           {client.email || 'No email'} • {client.number || 'No phone'}
                         </Text>
                         {client.category && client.category.length > 0 && (
@@ -658,6 +891,154 @@ export default function AddLeadScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Venue Selection Modal */}
+      <Modal
+        visible={showVenueModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowVenueModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: baseColors.neutral[900] + '80', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: theme.background,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            maxHeight: '80%',
+            paddingTop: 20,
+          }}>
+            {/* Modal Header */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+              paddingBottom: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.border,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
+                Select Venue
+              </Text>
+              <Pressable onPress={() => setShowVenueModal(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            {/* Search Box */}
+            <View style={{ padding: 16 }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: theme.surface,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: theme.border,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                gap: 8,
+              }}>
+                <Ionicons name="search" size={20} color={theme.textSecondary} />
+                <TextInput
+                  value={venueSearchQuery}
+                  onChangeText={setVenueSearchQuery}
+                  placeholder="Search by name, address, or region"
+                  placeholderTextColor={theme.textSecondary}
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    color: theme.text,
+                  }}
+                />
+                {venueSearchQuery.length > 0 && (
+                  <Pressable onPress={() => setVenueSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+                  </Pressable>
+                )}
+              </View>
+            </View>
+
+            {/* Venues List */}
+            <ScrollView style={{ paddingHorizontal: 16 }}>
+              {filteredVenues.length === 0 ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <Ionicons name="location-outline" size={48} color={theme.textSecondary} />
+                  <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 12 }}>
+                    {venueSearchQuery ? 'No venues found' : 'No venues available'}
+                  </Text>
+                </View>
+              ) : (
+                filteredVenues.map((venue) => (
+                  <Pressable
+                    key={venue.id}
+                    onPress={() => {
+                      setSelectedVenue(venue);
+                      setFormData({ ...formData, venueId: venue.id });
+                      setShowVenueModal(false);
+                      setVenueSearchQuery('');
+                    }}
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed ? theme.primary + '10' : theme.surface,
+                      padding: 16,
+                      borderRadius: 12,
+                      marginBottom: 12,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                    })}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: theme.primary + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Ionicons name="location" size={20} color={theme.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>
+                          {venue.name}
+                        </Text>
+                        <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
+                          {venue.address || 'No address'} • Capacity: {venue.capacity}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+                          <View style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 8,
+                            backgroundColor: theme.primary + '15',
+                          }}>
+                            <Text style={{ fontSize: 11, color: theme.primary, fontWeight: '600' }}>
+                              {venue.type_of_venue || 'home'}
+                            </Text>
+                          </View>
+                          {venue.region && (
+                            <View style={{
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 8,
+                              backgroundColor: theme.primary + '15',
+                            }}>
+                              <Text style={{ fontSize: 11, color: theme.primary, fontWeight: '600' }}>
+                                {venue.region}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                    </View>
+                  </Pressable>
+                ))
+              )}
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
       </View>
     </KeyboardAvoidingView>
   );
@@ -674,15 +1055,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.xl,
   },
-  modeButton: {
-    flex: 1,
-    paddingVertical: spacing.lg,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
   chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -690,25 +1062,22 @@ const styles = StyleSheet.create({
   },
   modeContainer: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   modeButton: {
     flex: 1,
-    paddingVertical: spacing.base,
+    paddingVertical: 10,
+    minHeight: 44,
     borderRadius: borderRadius.lg,
     borderWidth: 1.5,
-    borderColor: baseColors.neutral[300],
-    backgroundColor: baseColors.neutral[50],
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.sm,
-    ...getShadowStyle(2),
+    gap: spacing.xs,
+    ...getShadowStyle(1),
   },
   modeButtonActive: {
     borderWidth: 2,
-    borderColor: baseColors.purple[500],
-    backgroundColor: baseColors.purple[50],
   },
   infoNote: {
     backgroundColor: baseColors.purple[50],

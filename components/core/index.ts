@@ -15,6 +15,7 @@ export { Switch } from './Switch';
 export { Calendar } from './Calendar';
 export { DatePicker } from './DatePicker';
 export { DateRangePicker } from './DateRangePicker';
+export { MultiDatePicker } from './MultiDatePicker';
 
 // Display
 export { Card } from './Card';
@@ -40,6 +41,7 @@ export { default as SwitchDefault } from './Switch';
 export { default as CalendarDefault } from './Calendar';
 export { default as DatePickerDefault } from './DatePicker';
 export { default as DateRangePickerDefault } from './DateRangePicker';
+export { default as MultiDatePickerDefault } from './MultiDatePicker';
 export { default as CardDefault } from './Card';
 export { default as BadgeDefault } from './Badge';
 export { default as ListItemDefault } from './ListItem';

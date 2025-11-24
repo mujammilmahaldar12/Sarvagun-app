@@ -20,76 +20,76 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    id: 'add-employee',
-    title: 'Add Employee',
-    description: 'Register new team member',
-    icon: 'person-add-outline',
-    route: '/(modules)/hr/add',
-    color: moduleColors.hr.main,
-    category: 'HR',
-  },
-  {
-    id: 'create-event',
-    title: 'Create Event',
-    description: 'Schedule new event',
-    icon: 'calendar-outline',
-    route: '/(modules)/events/add',
-    color: moduleColors.events.main,
-    category: 'Events',
-  },
-  {
-    id: 'add-expense',
-    title: 'Add Expense',
-    description: 'Record new expense',
-    icon: 'receipt-outline',
-    route: '/(modules)/finance/add',
-    color: moduleColors.finance.main,
-    category: 'Finance',
-  },
-  {
     id: 'create-project',
     title: 'Create Project',
     description: 'Start new project',
     icon: 'briefcase-outline',
-    route: '/(modules)/projects/add',
+    route: '/(modules)/projects/create',
     color: moduleColors.projects.main,
     category: 'Projects',
+  },
+  {
+    id: 'add-lead',
+    title: 'Add Lead',
+    description: 'Register new lead',
+    icon: 'person-add-outline',
+    route: '/(modules)/events/add-lead',
+    color: moduleColors.events.main,
+    category: 'Events',
   },
   {
     id: 'apply-leave',
     title: 'Apply Leave',
     description: 'Submit leave request',
     icon: 'time-outline',
-    route: '/(modules)/leave/add',
+    route: '/(modules)/hr/apply-leave',
     color: moduleColors.leave.main,
-    category: 'Leave',
+    category: 'HR',
   },
   {
-    id: 'mark-attendance',
-    title: 'Mark Attendance',
-    description: 'Check in/out',
-    icon: 'finger-print-outline',
-    route: '/(modules)/hr/attendance',
-    color: moduleColors.attendance.main,
+    id: 'add-employee',
+    title: 'Add Employee',
+    description: 'Register new employee',
+    icon: 'people-outline',
+    route: '/(modules)/hr/add-employee',
+    color: moduleColors.hr.main,
     category: 'HR',
   },
   {
     id: 'add-client',
     title: 'Add Client',
     description: 'Register new client',
-    icon: 'people-outline',
-    route: '/(modules)/events/clients/add',
+    icon: 'business-outline',
+    route: '/(modules)/events/add-client',
     color: moduleColors.clients.main,
     category: 'Events',
   },
   {
-    id: 'create-task',
-    title: 'Create Task',
-    description: 'Add project task',
-    icon: 'list-outline',
-    route: '/(modules)/projects/tasks/add',
-    color: moduleColors.tasks.main,
-    category: 'Projects',
+    id: 'add-venue',
+    title: 'Add Venue',
+    description: 'Register event venue',
+    icon: 'location-outline',
+    route: '/(modules)/events/add-venue',
+    color: moduleColors.events.main,
+    category: 'Events',
+  },
+  {
+    id: 'add-reimbursement',
+    title: 'Add Reimbursement',
+    description: 'Submit expense claim',
+    icon: 'receipt-outline',
+    route: '/(modules)/hr/add-reimbursement',
+    color: moduleColors.finance.main,
+    category: 'HR',
+  },
+  {
+    id: 'add-event',
+    title: 'Add Event',
+    description: 'View lead list',
+    icon: 'calendar-outline',
+    route: '/(modules)/events',
+    color: moduleColors.events.main,
+    category: 'Events',
   },
 ];
 
@@ -108,8 +108,7 @@ export default function QuickAddScreen() {
     : QUICK_ACTIONS.filter(a => a.category === selectedCategory);
 
   const handleActionPress = (action: QuickAction) => {
-    // Will be linked later when modules are ready
-    console.log('Quick action:', action.route);
+    router.push(action.route as any);
   };
 
   return (

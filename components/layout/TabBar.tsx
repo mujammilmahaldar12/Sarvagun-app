@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, Pressable, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { designSystem } from '@/constants/designSystem';
+import { designSystem, baseColors } from '@/constants/designSystem';
 
 export interface Tab {
   key: string;
@@ -46,26 +46,25 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
                   paddingHorizontal: 20,
                   paddingVertical: 12,
                   borderRadius: 12,
-                  backgroundColor: isActive ? theme.primary : (isDark ? theme.surface : '#FFFFFF'),
+                  backgroundColor: isActive ? '#6D376D' : theme.surface,
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
                   minWidth: 90,
                   opacity: pressed ? 0.9 : 1,
-                  transform: [{ scale: pressed ? 0.96 : 1 }],
-                  shadowColor: isActive ? theme.primary : '#000',
+                  shadowColor: isActive ? '#6D376D' : '#000',
                   shadowOffset: { width: 0, height: isActive ? 6 : 2 },
                   shadowOpacity: isActive ? 0.5 : 0.15,
                   shadowRadius: isActive ? 10 : 4,
                   elevation: isActive ? 8 : 3,
-                  borderWidth: isActive ? 0 : 1,
-                  borderColor: isDark ? '#374151' : '#E5E7EB',
+                  borderWidth: isActive ? 2 : 1,
+                  borderColor: isActive ? '#6D376D' : theme.border,
                 })}
               >
                 {tab.icon && (
                   <View style={{
-                    backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                    backgroundColor: isActive ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
                     borderRadius: 20,
                     padding: isActive ? 6 : 0,
                   }}>

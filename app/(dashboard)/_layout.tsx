@@ -94,7 +94,7 @@ export default function DashboardLayout() {
         }}
       />
       <Tabs.Screen
-        name="notifications"
+        name="leaderboard"
         options={{
           title: 'Leaderboard',
           tabBarIcon: ({ color, size, focused }) => (
@@ -127,6 +127,12 @@ export default function DashboardLayout() {
       />
       <Tabs.Screen
         name="my-profile"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
         options={{
           href: null,
         }}

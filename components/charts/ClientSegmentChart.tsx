@@ -34,19 +34,30 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
     <View
       style={{
         backgroundColor: theme.surface,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        borderRadius: designSystem.borderRadius.xl,
+        padding: designSystem.spacing[5],
+        ...designSystem.shadows.sm,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: theme.border,
       }}
     >
-      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: designSystem.spacing[4] }}>
-        Client Segmentation
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: designSystem.spacing[4] }}>
+        <View style={{ 
+          width: 40, 
+          height: 40, 
+          borderRadius: 20, 
+          backgroundColor: `${colors[1]}15`,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        }}>
+          <Text style={{ fontSize: 18 }}>👥</Text>
+        </View>
+        <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, letterSpacing: -0.3 }}>
+          Client Segmentation
+        </Text>
+      </View>
 
       <View style={{ gap: 16 }}>
         {data.map((segment, index) => {
@@ -93,10 +104,12 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
 
               <View
                 style={{
-                  height: 12,
-                  backgroundColor: theme.border,
-                  borderRadius: 6,
+                  height: 14,
+                  backgroundColor: `${color}15`,
+                  borderRadius: 8,
                   overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: `${color}20`,
                 }}
               >
                 <View
@@ -104,7 +117,7 @@ export default function ClientSegmentChart({ data }: ClientSegmentChartProps) {
                     height: '100%',
                     width: barWidth,
                     backgroundColor: color,
-                    borderRadius: 6,
+                    borderRadius: 7,
                   }}
                 />
               </View>
