@@ -9,6 +9,8 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
@@ -34,6 +36,7 @@ const LEAVE_TYPE_ICONS = {
 export default function LeaveManagementScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterType>('all');
 
   // API Hooks
@@ -44,6 +47,7 @@ export default function LeaveManagementScreen() {
   // Mock data for demo until backend endpoints are ready
   const leaves = leavesData?.results || [];
   const [refreshing, setRefreshing] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -340,15 +344,29 @@ export default function LeaveManagementScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <Animated.View 
+      entering={FadeIn.duration(400)}
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <ModuleHeader title="Leave Management" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: Math.max(20, insets.bottom + 16) }]}
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          setIsAtTop(offsetY <= 0);
+        }}
+        scrollEventThrottle={16}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[theme.primary]}
+            enabled={isAtTop}
+            progressViewOffset={0}
+          />
         }
       >
         {/* Leave Balance Card */}
@@ -407,7 +425,7 @@ export default function LeaveManagementScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 

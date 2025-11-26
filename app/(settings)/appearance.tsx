@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useThemeStore } from '@/store/themeStore';
@@ -10,10 +11,19 @@ import { designSystem } from '@/constants/designSystem';
 type ThemeOption = 'light' | 'dark';
 
 export default function AppearanceScreen() {
+  const router = useRouter();
   const { theme, isDark, mode } = useTheme();
   const { toggleMode } = useThemeStore();
   const [isChangingTheme, setIsChangingTheme] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<ThemeOption>(mode);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(dashboard)/profile');
+    }
+  };
 
   useEffect(() => {
     setSelectedTheme(mode);
@@ -56,7 +66,7 @@ export default function AppearanceScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Appearance" showBack />
+      <ModuleHeader title="Appearance" showBack onBack={handleBack} />
 
       <ScrollView style={{ flex: 1 }}>
         {/* Preview */}

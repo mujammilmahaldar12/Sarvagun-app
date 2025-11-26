@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Sarvagun",
+    "name": "Sarvagun ERP",
     "slug": "Sarvagun",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,6 +8,7 @@
     "scheme": "sarvagun",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "description": "Enterprise Resource Planning System by BlingSquare",
     "ios": {
       "supportsTablet": true
     },
@@ -45,9 +46,18 @@
       "reactCompiler": true
     },
     "updates": {
-      "enabled": false,
+      "url": "https://u.expo.dev/1557dae7-23ca-4db5-85dd-7c09b0f761df",
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "OFF"
+      "checkAutomatically": "ON_LOAD"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1557dae7-23ca-4db5-85dd-7c09b0f761df"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

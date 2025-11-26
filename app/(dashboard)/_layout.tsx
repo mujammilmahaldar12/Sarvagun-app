@@ -1,11 +1,28 @@
 import { Tabs } from 'expo-router';
 import { View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 import { designSystem } from '@/constants/designSystem';
 
+// Base tab bar height (without safe area)
+const BASE_TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 90 : 70;
+
+// Export function to get total tab bar height including safe area
+export const getTabBarHeight = (bottomInset: number = 0) => {
+  if (Platform.OS === 'ios') {
+    return BASE_TAB_BAR_HEIGHT; // iOS already includes safe area in the 90px
+  }
+  return BASE_TAB_BAR_HEIGHT + bottomInset; // Android needs explicit bottom inset
+};
+
 export default function DashboardLayout() {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Calculate dynamic tab bar height based on device safe area
+  const tabBarHeight = getTabBarHeight(insets.bottom);
+  const tabBarPaddingBottom = Platform.OS === 'ios' ? 32 : Math.max(12, insets.bottom);
 
   return (
     <Tabs
@@ -17,8 +34,8 @@ export default function DashboardLayout() {
           backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: isDark ? '#374151' : '#E5E7EB',
-          height: Platform.OS === 'ios' ? 90 : 70,
-          paddingBottom: Platform.OS === 'ios' ? 32 : 12,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
           paddingTop: 2,
           elevation: 12,
           shadowColor: '#000',

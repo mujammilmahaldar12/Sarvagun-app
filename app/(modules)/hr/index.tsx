@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { View, Platform, StatusBar, Modal, Text, Pressable, ScrollView, Alert, Animated } from 'react-native';
+import { View, Platform, StatusBar, Modal, Text, Pressable, ScrollView, Alert, Animated as RNAnimated } from 'react-native';
+import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
@@ -26,7 +27,8 @@ export default function HRScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [isAtTop, setIsAtTop] = useState(true);
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
   const tableScrollRef = useRef<any>(null);
 
   // API hooks
@@ -284,6 +286,8 @@ export default function HRScreen() {
     const offsetY = event.nativeEvent.contentOffset.y;
     // Show scroll-to-top button when scrolled down more than 200px
     setShowScrollTop(offsetY > 200);
+    // Track if at top to control refresh
+    setIsAtTop(offsetY <= 0);
   };
 
   const handleFilter = () => {
@@ -302,7 +306,11 @@ export default function HRScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.background }}>
+    <Animated.View 
+      entering={FadeIn.duration(400)}
+      className="flex-1" 
+      style={{ backgroundColor: theme.background }}
+    >
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={theme.surface}
@@ -324,7 +332,12 @@ export default function HRScreen() {
       {/* Content - Fixed flex container */}
       <View style={{ flex: 1 }}>
         {activeTab === 'leave' ? (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+          <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={{ padding: 16 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
             {/* Leave Statistics */}
             {leaveStats && (
               <View style={{ marginBottom: 16 }}>
@@ -678,7 +691,7 @@ export default function HRScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </Animated.View>
   );
 }
 

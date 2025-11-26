@@ -157,25 +157,6 @@ const EventsList: React.FC<EventsListProps> = ({
   // Table configuration - Optimized columns with fixed widths
   const columns: TableColumn<EventRowData>[] = [
     { 
-      key: 'eventName', 
-      title: 'Event', 
-      width: 150,
-      sortable: true,
-      render: (value: string, row: EventRowData) => (
-        <Text 
-          style={[styles.cellText, { 
-            color: theme.text, 
-            fontWeight: designSystem.typography.weights.semibold,
-            fontSize: designSystem.typography.sizes.sm 
-          }]}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {value || 'Untitled Event'}
-        </Text>
-      ),
-    },
-    { 
       key: 'clientName', 
       title: 'Client', 
       width: 110,

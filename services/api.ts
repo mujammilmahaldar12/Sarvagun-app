@@ -10,9 +10,9 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.231.38.209:8000/api';
+      return 'http://10.199.119.162:8000/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://10.231.38.209:8000/api';
+      return 'http://10.199.119.162:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
@@ -20,7 +20,7 @@ const getApiBaseUrl = () => {
   }
   
   // For production
-  return 'https://your-production-api.com/api';
+  return 'https://api.manager.blingsquare.in/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

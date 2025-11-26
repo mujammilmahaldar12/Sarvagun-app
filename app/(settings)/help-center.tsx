@@ -168,6 +168,14 @@ export default function HelpCenterScreen() {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const { resetFirstTime } = useFirstTimeUser();
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(dashboard)/profile');
+    }
+  };
+
   const handleResetFirstTime = () => {
     Alert.alert(
       'Reset Welcome Experience',
@@ -218,7 +226,7 @@ export default function HelpCenterScreen() {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <AnimatedPressable onPress={() => router.back()} hapticType="light">
+        <AnimatedPressable onPress={handleBack} hapticType="light">
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </AnimatedPressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Help Center</Text>

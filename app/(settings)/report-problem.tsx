@@ -43,6 +43,14 @@ export default function ReportProblemScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(dashboard)/profile');
+    }
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [summary, setSummary] = useState('');
   const [details, setDetails] = useState('');
@@ -202,7 +210,7 @@ export default function ReportProblemScreen() {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <AnimatedPressable onPress={() => router.back()} hapticType="light">
+        <AnimatedPressable onPress={handleBack} hapticType="light">
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </AnimatedPressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Report a Problem</Text>

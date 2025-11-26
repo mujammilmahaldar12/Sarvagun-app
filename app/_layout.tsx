@@ -2,8 +2,10 @@ import "./disable-logs";
 import "./global.css";
 import { Slot } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Updates from "expo-updates";
 import { useTheme } from '@/hooks/useTheme';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { spacing } from '@/constants/designSystem';
@@ -59,16 +61,34 @@ function ErrorFallback({ error }: { error: any }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    async function checkForUpdates() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          Updates.reloadAsync();
+        }
+      } catch (e) {
+        console.log("Update check failed:", e);
+      }
+    }
+
+    checkForUpdates();
+  }, []);
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryProvider>
-        <ErrorBoundary>
-          <View style={styles.container}>
-            <Slot />
-          </View>
-        </ErrorBoundary>
-      </QueryProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryProvider>
+          <ErrorBoundary>
+            <View style={styles.container}>
+              <Slot />
+            </View>
+          </ErrorBoundary>
+        </QueryProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 

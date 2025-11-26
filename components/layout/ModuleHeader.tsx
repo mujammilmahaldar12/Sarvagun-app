@@ -9,6 +9,7 @@ interface ModuleHeaderProps {
   onSearch?: () => void;
   onFilter?: () => void;
   showBack?: boolean;
+  onBack?: () => void;
   rightActions?: React.ReactNode;
 }
 
@@ -17,10 +18,22 @@ export default function ModuleHeader({
   onSearch,
   onFilter,
   showBack = true,
+  onBack,
   rightActions,
 }: ModuleHeaderProps) {
   const router = useRouter();
   const { theme } = useTheme();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Fallback to home if no valid back route
+      router.replace('/(dashboard)/home');
+    }
+  };
 
   return (
     <View
@@ -42,7 +55,7 @@ export default function ModuleHeader({
         <View className="flex-row items-center flex-1">
           {showBack && (
             <Pressable
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={({ pressed }) => ({
                 marginRight: 12,
                 opacity: pressed ? 0.6 : 1,

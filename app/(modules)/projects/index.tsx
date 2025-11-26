@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal, Platform } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { designSystem } from '@/constants/designSystem';
@@ -33,6 +34,7 @@ const { spacing, borderRadius, typography } = designSystem;
 export default function ProjectsScreen() {
   const { theme } = useTheme();
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   
   // Team lead context from navigation params
   const teamMemberId = params.teamMemberId as string;
@@ -68,6 +70,7 @@ export default function ProjectsScreen() {
   const [newTaskForSection, setNewTaskForSection] = useState<{[sectionId: number]: boolean}>({});
   const [showDatePicker, setShowDatePicker] = useState<{taskId: string | number, sectionId: number, currentDate?: string} | null>(null);
   const [showPriorityPicker, setShowPriorityPicker] = useState<{taskId: string | number, sectionId: number, currentPriority?: string} | null>(null);
+  const [isAtTop, setIsAtTop] = useState(true);
 
   // Use team member projects if in team lead mode, otherwise use my projects
   const { data: myProjects, isLoading: myProjectsLoading, refetch: refetchMyProjects } = useMyProjects();
@@ -533,12 +536,24 @@ export default function ProjectsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader 
-        title={isTeamLead && teamMemberName ? `${teamMemberName}'s Tasks` : "Task Tracker"} 
-      />
+    <Animated.View 
+      entering={FadeIn.duration(400)}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+        <ModuleHeader 
+          title={isTeamLead && teamMemberName ? `${teamMemberName}'s Tasks` : "Task Tracker"} 
+        />
       
-      <ScrollView style={{ flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+      <ScrollView 
+        style={{ flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
+        contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 16) }}
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          setIsAtTop(offsetY <= 0);
+        }}
+        scrollEventThrottle={16}
+      >
         {/* Project Dropdown Selector */}
         <View style={{
           backgroundColor: theme.surface,
@@ -2037,6 +2052,7 @@ export default function ProjectsScreen() {
           </View>
         </Modal>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </Animated.View>
   );
 }

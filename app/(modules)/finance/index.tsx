@@ -5,6 +5,8 @@
  */
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, ScrollView, Pressable, Modal, Alert, Platform, RefreshControl } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +33,7 @@ export default function FinanceManagementScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('analytics');
@@ -38,6 +41,7 @@ export default function FinanceManagementScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
 
   // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
@@ -64,6 +68,12 @@ export default function FinanceManagementScreen() {
   // Handle search with debouncing
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
+  }, []);
+
+  // Track scroll position to enable/disable refresh
+  const handleScroll = useCallback((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setIsAtTop(offsetY <= 0);
   }, []);
 
   // Render active tab content
@@ -173,7 +183,10 @@ export default function FinanceManagementScreen() {
   }, [activeTab, salesData, expensesData]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <Animated.View 
+      entering={FadeIn.duration(400)}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
       {/* Header */}
       <ModuleHeader
         title="Finance Management"
@@ -201,8 +214,17 @@ export default function FinanceManagementScreen() {
       {/* Summary Cards - Only show for sales and expenses tabs */}
       <ScrollView
         style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 16) }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[theme.primary]}
+            enabled={isAtTop}
+            progressViewOffset={0}
+          />
         }
       >
         {renderTabContent()}
@@ -321,6 +343,6 @@ export default function FinanceManagementScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </Animated.View>
   );
 }

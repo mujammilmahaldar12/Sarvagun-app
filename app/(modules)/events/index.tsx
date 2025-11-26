@@ -4,7 +4,9 @@
  * Refactored from monolithic component to orchestrate specialized components
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, RefreshControl, BackHandler, Modal, Pressable, Text } from 'react-native';
+import { View, ScrollView, RefreshControl, BackHandler, Modal, Pressable, Text, Platform } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +32,7 @@ export default function EventManagementScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const eventsStore = useEventsStore();
+  const insets = useSafeAreaInsets();
   
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('leads');
@@ -38,6 +41,7 @@ export default function EventManagementScreen() {
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [refreshing, setRefreshing] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
 
   // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
@@ -322,7 +326,10 @@ export default function EventManagementScreen() {
   const fabConfig = getFABConfig();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <Animated.View 
+      entering={FadeIn.duration(400)}
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       {/* Header */}
       <ModuleHeader
         title="Event Management"
@@ -339,12 +346,20 @@ export default function EventManagementScreen() {
       {/* Content */}
       <ScrollView
         style={styles.content}
+        contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 16) }}
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          setIsAtTop(offsetY <= 0);
+        }}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.primary}
             colors={[theme.primary]}
+            enabled={isAtTop}
+            progressViewOffset={0}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -541,7 +556,7 @@ export default function EventManagementScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </Animated.View>
   );
 }
 

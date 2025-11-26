@@ -23,11 +23,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { theme, isDark, toggleTheme } = useTheme();
   const { user, logout, isAuthenticated } = useAuthStore();
-
-  // Don't render if not authenticated - avoid any router calls here
-  if (!isAuthenticated || !user) {
-    return null;
-  }
+  const [shouldLogout, setShouldLogout] = useState(false);
 
   // Swipe to logout animation
   const translateX = useSharedValue(0);
@@ -41,9 +37,11 @@ export default function ProfileScreen() {
     })
     .onEnd((event) => {
       if (translateX.value > SWIPE_THRESHOLD * 0.85) {
-        // Swipe completed - slide to end then logout
-        translateX.value = withTiming(SWIPE_THRESHOLD, { duration: 200 }, () => {
-          runOnJS(performLogout)();
+        // Swipe completed - slide to end then trigger logout via state
+        translateX.value = withTiming(SWIPE_THRESHOLD, { duration: 200 }, (finished) => {
+          if (finished) {
+            runOnJS(setShouldLogout)(true);
+          }
         });
       } else {
         // Reset position with spring
@@ -59,10 +57,28 @@ export default function ProfileScreen() {
     opacity: withTiming(translateX.value > 50 ? 0 : 1, { duration: 150 }),
   }));
 
-  const performLogout = () => {
-    // Just clear state - don't await, don't navigate here
-    // Let the app's routing system handle navigation
-    useAuthStore.getState().logout();
+  // Handle logout when state changes
+  React.useEffect(() => {
+    if (shouldLogout) {
+      performLogout();
+      setShouldLogout(false);
+    }
+  }, [shouldLogout]);
+
+  const performLogout = async () => {
+    try {
+      // Perform logout
+      await useAuthStore.getState().logout();
+      
+      // Navigate to login after a brief delay
+      setTimeout(() => {
+        router.replace('/(auth)/login');
+      }, 100);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still navigate even if there's an error
+      router.replace('/(auth)/login');
+    }
   };
 
   const handleLogout = () => {
@@ -82,6 +98,11 @@ export default function ProfileScreen() {
       ]
     );
   };
+
+  // Don't render if not authenticated - placed AFTER all hooks
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

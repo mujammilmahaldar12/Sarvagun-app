@@ -80,6 +80,15 @@ export default function AboutScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Fallback to profile if no back history
+      router.replace('/(dashboard)/profile');
+    }
+  };
+
   const openLink = async (url: string) => {
     try {
       await Linking.openURL(url);
@@ -98,7 +107,7 @@ export default function AboutScreen() {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <AnimatedPressable onPress={() => router.back()} hapticType="light">
+        <AnimatedPressable onPress={handleBack} hapticType="light">
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </AnimatedPressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>About Sarvagun</Text>

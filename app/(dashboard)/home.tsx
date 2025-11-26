@@ -1,7 +1,8 @@
-﻿import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, Image, RefreshControl, Dimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeInUp, FadeIn, SlideInRight } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
@@ -199,7 +200,10 @@ export default function HomeScreen() {
       />
 
       {/* Clean Professional Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
+      <Animated.View 
+        entering={FadeInDown.duration(600).springify()}
+        style={[styles.header, { backgroundColor: theme.surface }]}
+      >
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <Text style={[styles.appName, { color: theme.text }]}>Sarvagun</Text>
@@ -244,7 +248,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Scrollable Content */}
       <ScrollView
@@ -259,7 +263,10 @@ export default function HomeScreen() {
         }
       >
         {/* Welcome Card - Clean & Minimal with Real Data */}
-        <View style={styles.section}>
+        <Animated.View 
+          entering={FadeInUp.delay(200).duration(700).springify()}
+          style={styles.section}
+        >
           {isLoading ? (
             <View style={[styles.welcomeCard, getCardStyle(theme.surface, 'md', 'xl')]}>
               <View style={styles.welcomeContent}>
@@ -335,10 +342,13 @@ export default function HomeScreen() {
               </View>
             </AnimatedPressable>
           )}
-        </View>
+        </Animated.View>
 
         {/* Modules Section - Professional Cards */}
-        <View style={styles.section}>
+        <Animated.View 
+          entering={FadeInUp.delay(400).duration(700).springify()}
+          style={styles.section}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
             <AnimatedPressable onPress={() => router.push('/(dashboard)/modules')} hapticType="selection">
@@ -347,34 +357,42 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.modulesGrid}>
-            {MODULES.slice(0, 4).map((module) => (
-              <AnimatedPressable
+            {MODULES.slice(0, 4).map((module, index) => (
+              <Animated.View
                 key={module.id}
-                onPress={() => router.push(module.route as any)}
-                style={[
-                  styles.moduleCard,
-                  getCardStyle(theme.surface, 'sm', 'lg'),
-                  { 
-                    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2,
-                  },
-                ]}
-                hapticType="medium"
-                springConfig="bouncy"
-                animateOnMount={true}
+                entering={FadeIn.delay(600 + index * 100).duration(600).springify()}
               >
-                <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
-                  <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
-                </View>
-                <Text style={[styles.moduleTitle, { color: theme.text }]} numberOfLines={1}>
-                  {module.title}
-                </Text>
-              </AnimatedPressable>
+                <AnimatedPressable
+                  onPress={() => router.push(module.route as any)}
+                  style={[
+                    styles.moduleCard,
+                    getCardStyle(theme.surface, 'sm', 'lg'),
+                    { 
+                      width: (SCREEN_WIDTH - spacing.lg * 4) / 4,
+                      marginRight: index === 3 ? 0 : spacing.md +1,
+                    },
+                  ]}
+                  hapticType="medium"
+                  springConfig="bouncy"
+                  animateOnMount={false}
+                >
+                  <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
+                    <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
+                  </View>
+                  <Text style={[styles.moduleTitle, { color: theme.text }]} numberOfLines={1}>
+                    {module.title}
+                  </Text>
+                </AnimatedPressable>
+              </Animated.View>
             ))}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Recent Activity Section */}
-        <View style={styles.section}>
+        <Animated.View 
+          entering={FadeInUp.delay(1000).duration(700).springify()}
+          style={styles.section}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
           </View>
@@ -462,10 +480,13 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Leadership Board Preview */}
-        <View style={styles.section}>
+        <Animated.View 
+          entering={FadeInUp.delay(1200).duration(700).springify()}
+          style={styles.section}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Leadership Board</Text>
             <AnimatedPressable 
@@ -697,7 +718,7 @@ export default function HomeScreen() {
               })
             )}
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -880,7 +901,7 @@ const styles = StyleSheet.create({
   modulesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    marginRight: 0,
   },
   moduleCard: {
     padding: spacing.base,

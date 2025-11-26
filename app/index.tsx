@@ -21,24 +21,15 @@ export default function Index() {
     if (!isLoading) {
       console.log('🔄 Index routing:', { isAuthenticated, showOnboarding });
       
-      try {
-        if (isAuthenticated) {
-          // Check if onboarding should be shown
-          if (showOnboarding) {
-            setShowCelebration(true);
-          } else {
-            router.replace("/(dashboard)/home");
-          }
+      if (isAuthenticated) {
+        // Check if onboarding should be shown
+        if (showOnboarding) {
+          setShowCelebration(true);
         } else {
-          console.log('🔓 Redirecting to login');
-          // Use timeout to prevent navigation crashes
-          setTimeout(() => {
-            router.replace("/(auth)/login");
-          }, 10);
+          router.replace("/(dashboard)/home");
         }
-      } catch (error) {
-        console.error('Navigation error:', error);
-        // Fallback - force navigation
+      } else {
+        console.log('🔓 Redirecting to login');
         router.replace("/(auth)/login");
       }
     }

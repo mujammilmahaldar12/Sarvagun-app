@@ -15,6 +15,14 @@ export default function AccountScreen() {
   const router = useRouter();
   const { user, setUser } = useAuthStore();
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(dashboard)/profile');
+    }
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -193,6 +201,7 @@ export default function AccountScreen() {
       <ModuleHeader 
         title="Your account" 
         showBack
+        onBack={handleBack}
         rightActions={
           <TouchableOpacity
             onPress={() => {

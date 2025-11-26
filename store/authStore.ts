@@ -74,11 +74,37 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  logout: () => {
+  logout: async () => {
     console.log('🔄 Starting logout...');
     const { refreshToken } = get();
     
-    // STEP 1: Clear auth state IMMEDIATELY (synchronous)
+    try {
+      // STEP 1: Call logout API first
+      if (refreshToken) {
+        await authService.logout(refreshToken);
+      }
+    } catch (e) {
+      console.log('⚠️ Logout API error (continuing):', e);
+    }
+
+    // STEP 2: Clear AsyncStorage
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
+      console.log('✅ Storage cleared');
+    } catch (e) {
+      console.log('⚠️ Storage clear error:', e);
+    }
+
+    // STEP 3: Clear cache
+    try {
+      cacheUtils.clearOnLogout();
+      console.log('✅ Cache cleared');
+    } catch (e) {
+      console.log('⚠️ Cache clear error:', e);
+    }
+
+    // STEP 4: Clear auth state
     set({
       user: null,
       accessToken: null,
@@ -86,33 +112,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       isAuthenticated: false,
       isLoading: false,
     });
-    console.log('✅ State cleared');
+    console.log('✅ Auth state cleared');
 
-    // STEP 2: Background cleanup - all async work happens here, won't block
-    setTimeout(async () => {
-      // Clear AsyncStorage
-      try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
-      } catch (e) {}
-      
-      // Call logout API
-      if (refreshToken) {
-        try {
-          await authService.logout(refreshToken);
-        } catch (e) {}
-      }
-      
-      // Clear cache
-      try {
-        cacheUtils.clearOnLogout();
-      } catch (e) {}
-      
-      // Clear permissions
-      try {
-        syncPermissionsWithAuth();
-      } catch (e) {}
-    }, 100);
+    // STEP 5: Clear permissions
+    try {
+      syncPermissionsWithAuth();
+      console.log('✅ Permissions cleared');
+    } catch (e) {
+      console.log('⚠️ Permissions clear error:', e);
+    }
+
+    console.log('✅ Logout complete');
   },
 
   loadUser: async () => {
