@@ -8,6 +8,7 @@ import {
   StyleSheet,
   RefreshControl,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,125 +22,102 @@ import Animated, {
   withRepeat,
   Easing,
   withTiming,
+  FadeInDown,
+  FadeInUp,
+  FadeIn,
 } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { useLeaderboard } from '@/hooks/useDashboardQueries';
+import { useInternLeaderboard, useTeamLeaderboard, useIndividualInternRanking } from '@/hooks/useDashboardQueries';
 import { Avatar, AnimatedPressable, Skeleton } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Dummy Leadership Board Data - Top 10 Only
-const DUMMY_LEADERBOARD_FULL = [
-  {
-    id: '1',
-    name: 'Rajesh Kumar',
-    photo: null,
-    designation: 'Senior Developer',
-    rank: 1,
-    score: 2450,
-    projectsCompleted: 12,
-    tasksCompleted: 89,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    name: 'Priya Sharma',
-    photo: null,
-    designation: 'Project Manager',
-    rank: 2,
-    score: 2280,
-    projectsCompleted: 10,
-    tasksCompleted: 76,
-    isOnline: true,
-  },
-  {
-    id: '3',
-    name: 'Amit Patel',
-    photo: null,
-    designation: 'Full Stack Developer',
-    rank: 3,
-    score: 2150,
-    projectsCompleted: 9,
-    tasksCompleted: 71,
-    isOnline: false,
-  },
-  {
-    id: '4',
-    name: 'Sneha Reddy',
-    photo: null,
-    designation: 'UI/UX Designer',
-    rank: 4,
-    score: 1980,
-    projectsCompleted: 8,
-    tasksCompleted: 64,
-    isOnline: true,
-  },
-  {
-    id: '5',
-    name: 'Vikram Singh',
-    photo: null,
-    designation: 'Backend Developer',
-    rank: 5,
-    score: 1875,
-    projectsCompleted: 7,
-    tasksCompleted: 58,
-    isOnline: true,
-  },
-  {
-    id: '6',
-    name: 'Ananya Desai',
-    photo: null,
-    designation: 'Frontend Developer',
-    rank: 6,
-    score: 1720,
-    projectsCompleted: 6,
-    tasksCompleted: 52,
-    isOnline: false,
-  },
-  {
-    id: '7',
-    name: 'Karthik Menon',
-    photo: null,
-    designation: 'DevOps Engineer',
-    rank: 7,
-    score: 1650,
-    projectsCompleted: 6,
-    tasksCompleted: 48,
-    isOnline: true,
-  },
-];
+type FilterType = 'individual' | 'team';
 
-// Animated Podium Item Component
+// Filter Tab Component
+const FilterTab = ({ 
+  label, 
+  icon, 
+  isActive, 
+  onPress 
+}: { 
+  label: string; 
+  icon: keyof typeof Ionicons.glyphMap; 
+  isActive: boolean; 
+  onPress: () => void 
+}) => {
+  const { theme } = useTheme();
+  
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.filterTab,
+        {
+          backgroundColor: isActive ? theme.primary : theme.surface,
+          borderColor: isActive ? theme.primary : theme.border,
+        },
+      ]}
+      activeOpacity={0.7}
+    >
+      <Ionicons 
+        name={icon} 
+        size={18} 
+        color={isActive ? '#FFFFFF' : theme.textSecondary} 
+      />
+      <Text 
+        style={[
+          styles.filterTabText,
+          { color: isActive ? '#FFFFFF' : theme.textSecondary },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+// Active Status Indicator
+const ActiveStatusBadge = ({ isActive, lastActivity }: { isActive: boolean; lastActivity?: string }) => {
+  const { theme } = useTheme();
+  
+  const getStatusColor = () => {
+    if (isActive) return '#22C55E'; // Green
+    return '#EF4444'; // Red
+  };
+  
+  return (
+    <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
+      <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+      <Text style={[styles.statusText, { color: getStatusColor() }]}>
+        {isActive ? 'Active' : 'Inactive'}
+      </Text>
+    </View>
+  );
+};
+
+// Animated Podium Item Component for Top 3
 const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
   const { theme } = useTheme();
   const router = useRouter();
   const scale = useSharedValue(0);
   const translateY = useSharedValue(100);
-  const rotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Entry animation
     scale.value = withDelay(
       delay,
-      withSpring(1, {
-        damping: 12,
-        stiffness: 100,
-      })
+      withSpring(1, { damping: 12, stiffness: 100 })
     );
     
     translateY.value = withDelay(
       delay,
-      withSpring(0, {
-        damping: 15,
-        stiffness: 120,
-      })
+      withSpring(0, { damping: 15, stiffness: 120 })
     );
 
-    // Continuous glow for rank 1
     if (rank === 1) {
       glowOpacity.value = withDelay(
         delay + 500,
@@ -159,7 +137,6 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
     transform: [
       { scale: scale.value },
       { translateY: translateY.value },
-      { rotate: `${rotate.value}deg` },
     ],
   }));
 
@@ -182,7 +159,7 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
   };
 
   const rankColor = getRankColor();
-  const podiumHeight = rank === 1 ? 180 : rank === 2 ? 150 : 140;
+  const podiumHeight = rank === 1 ? 160 : rank === 2 ? 130 : 120;
 
   return (
     <AnimatedPressable
@@ -196,7 +173,7 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
         <View style={[styles.rankBadge, { backgroundColor: rankColor }]}>
           <Ionicons 
             name={getRankIcon()} 
-            size={rank === 1 ? 22 : 18} 
+            size={rank === 1 ? 20 : 16} 
             color="#FFFFFF" 
           />
         </View>
@@ -207,12 +184,15 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
             <Animated.View style={[styles.glowRing, glowStyle, { borderColor: rankColor }]} />
           )}
           <Avatar
-            size={rank === 1 ? 72 : rank === 2 ? 60 : 56}
+            size={rank === 1 ? 68 : rank === 2 ? 56 : 52}
             source={leader.photo ? { uri: leader.photo } : undefined}
             name={leader.name}
-            onlineStatus={leader.isOnline}
+            onlineStatus={leader.is_active}
           />
         </View>
+
+        {/* Active Status */}
+        <ActiveStatusBadge isActive={leader.is_active} lastActivity={leader.last_activity} />
 
         {/* Name */}
         <Text 
@@ -226,12 +206,17 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
           {leader.name}
         </Text>
 
-        {/* Designation */}
-        <Text style={[styles.podiumDesignation, { color: theme.textSecondary }]} numberOfLines={1}>
-          {leader.designation}
-        </Text>
+        {/* Team Name */}
+        {leader.team_name && (
+          <View style={styles.teamBadge}>
+            <Ionicons name="people" size={10} color={theme.textSecondary} />
+            <Text style={[styles.teamBadgeText, { color: theme.textSecondary }]} numberOfLines={1}>
+              {leader.team_name}
+            </Text>
+          </View>
+        )}
 
-        {/* Score with animated background */}
+        {/* Score */}
         <LinearGradient
           colors={[rankColor + '20', rankColor + '10']}
           style={styles.scoreContainer}
@@ -239,19 +224,18 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
           <Text style={[styles.scoreValue, { color: rankColor }]}>
             {leader.score}
           </Text>
-          <Text style={[styles.scoreLabel, { color: rankColor }]}>points</Text>
         </LinearGradient>
 
-        {/* Stats Row */}
+        {/* Task Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{leader.projectsCompleted}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Projects</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{leader.completed_tasks || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Done</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{leader.tasksCompleted}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tasks</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{leader.in_progress_tasks || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Active</Text>
           </View>
         </View>
       </View>
@@ -267,87 +251,168 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
   );
 };
 
-// Animated Leaderboard Row
-const AnimatedLeaderboardRow = ({ leader, index }: any) => {
+// Individual Intern Row Component
+const InternRow = ({ leader, index }: { leader: any; index: number }) => {
   const { theme } = useTheme();
   const router = useRouter();
-  const translateX = useSharedValue(-SCREEN_WIDTH);
-  const opacity = useSharedValue(0);
 
-  useEffect(() => {
-    translateX.value = withDelay(
-      index * 100,
-      withSpring(0, {
-        damping: 20,
-        stiffness: 90,
-      })
-    );
-    
-    opacity.value = withDelay(
-      index * 100,
-      withTiming(1, { duration: 400 })
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-    opacity: opacity.value,
-  }));
-
-  const rankColor = theme.primary;
+  const getRankColor = (rank: number) => {
+    if (rank <= 3) return theme.primary;
+    return theme.textSecondary;
+  };
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View entering={FadeInDown.delay(index * 80).springify()}>
       <AnimatedPressable
         onPress={() => router.push(`/(dashboard)/my-profile?userId=${leader.id}` as any)}
         style={[
-          styles.leaderboardRow,
+          styles.internRow,
           getCardStyle(theme.surface, 'md', 'xl'),
-          { marginBottom: spacing.md },
+          { marginBottom: spacing.sm },
         ]}
         hapticType="light"
         springConfig="bouncy"
       >
-        {/* Rank Circle */}
-        <View style={[styles.rankCircle, { backgroundColor: rankColor + '15' }]}>
-          <Text style={[styles.rankNumber, { color: rankColor }]}>
+        {/* Rank */}
+        <View style={[styles.rankCircle, { backgroundColor: getRankColor(leader.rank) + '15' }]}>
+          <Text style={[styles.rankNumber, { color: getRankColor(leader.rank) }]}>
             {leader.rank}
           </Text>
         </View>
 
         {/* Avatar */}
         <Avatar
-          size={52}
+          size={48}
           source={leader.photo ? { uri: leader.photo } : undefined}
           name={leader.name}
-          onlineStatus={leader.isOnline}
+          onlineStatus={leader.is_active}
         />
 
-        {/* User Info */}
-        <View style={styles.userInfo}>
-          <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
-            {leader.name}
-          </Text>
-          <Text style={[styles.userDesignation, { color: theme.textSecondary }]} numberOfLines={1}>
-            {leader.designation}
-          </Text>
-          <View style={styles.userStats}>
-            <Ionicons name="briefcase" size={12} color={theme.textSecondary} />
-            <Text style={[styles.userStatText, { color: theme.textSecondary }]}>
-              {leader.projectsCompleted} • {leader.tasksCompleted} tasks
+        {/* Info */}
+        <View style={styles.internInfo}>
+          <View style={styles.internNameRow}>
+            <Text style={[styles.internName, { color: theme.text }]} numberOfLines={1}>
+              {leader.name}
             </Text>
+            <ActiveStatusBadge isActive={leader.is_active} />
+          </View>
+          
+          {leader.team_name && (
+            <View style={styles.teamIndicator}>
+              <Ionicons name="people" size={12} color={theme.textSecondary} />
+              <Text style={[styles.teamText, { color: theme.textSecondary }]} numberOfLines={1}>
+                {leader.team_name}
+              </Text>
+            </View>
+          )}
+          
+          <View style={styles.taskStats}>
+            <View style={styles.taskStatItem}>
+              <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+              <Text style={[styles.taskStatText, { color: theme.textSecondary }]}>
+                {leader.completed_tasks || 0} done
+              </Text>
+            </View>
+            <View style={styles.taskStatItem}>
+              <Ionicons name="time" size={12} color="#F59E0B" />
+              <Text style={[styles.taskStatText, { color: theme.textSecondary }]}>
+                {leader.in_progress_tasks || 0} active
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Score Badge */}
-        <View style={[styles.scoreBadge, { backgroundColor: rankColor + '15' }]}>
-          <Text style={[styles.scoreBadgeValue, { color: rankColor }]}>
+        {/* Score */}
+        <View style={[styles.scoreBadge, { backgroundColor: theme.primary + '15' }]}>
+          <Text style={[styles.scoreBadgeValue, { color: theme.primary }]}>
             {leader.score}
           </Text>
-          <Text style={[styles.scoreBadgeLabel, { color: rankColor }]}>pts</Text>
         </View>
 
-        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+      </AnimatedPressable>
+    </Animated.View>
+  );
+};
+
+// Team Card Component
+const TeamCard = ({ team, index }: { team: any; index: number }) => {
+  const { theme } = useTheme();
+  const router = useRouter();
+
+  const getRankColor = (rank: number) => {
+    if (rank === 1) return '#FFD700';
+    if (rank === 2) return '#C0C0C0';
+    if (rank === 3) return '#CD7F32';
+    return theme.primary;
+  };
+
+  const rankColor = getRankColor(team.rank);
+
+  return (
+    <Animated.View entering={FadeInUp.delay(index * 100).springify()}>
+      <AnimatedPressable
+        style={[
+          styles.teamCard,
+          getCardStyle(theme.surface, 'md', 'xl'),
+          { marginBottom: spacing.md },
+        ]}
+        hapticType="light"
+        springConfig="bouncy"
+      >
+        {/* Rank Badge */}
+        <View style={[styles.teamRankBadge, { backgroundColor: rankColor }]}>
+          <Text style={styles.teamRankText}>#{team.rank}</Text>
+        </View>
+
+        {/* Team Header */}
+        <View style={styles.teamHeader}>
+          <View style={[styles.teamIconWrapper, { backgroundColor: rankColor + '20' }]}>
+            <Ionicons name="people" size={28} color={rankColor} />
+          </View>
+          <View style={styles.teamHeaderInfo}>
+            <Text style={[styles.teamName, { color: theme.text }]}>{team.team_name}</Text>
+            <View style={styles.teamMeta}>
+              <Ionicons name="person" size={12} color={theme.textSecondary} />
+              <Text style={[styles.teamMetaText, { color: theme.textSecondary }]}>
+                {team.total_members} members
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.teamScoreBadge, { backgroundColor: rankColor + '15' }]}>
+            <Text style={[styles.teamScoreValue, { color: rankColor }]}>{Math.round(team.avg_score)}</Text>
+            <Text style={[styles.teamScoreLabel, { color: rankColor }]}>avg</Text>
+          </View>
+        </View>
+
+        {/* Team Stats */}
+        <View style={styles.teamStats}>
+          <View style={[styles.teamStatItem, { backgroundColor: '#22C55E' + '10' }]}>
+            <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
+            <Text style={[styles.teamStatValue, { color: theme.text }]}>{team.total_completed_tasks || 0}</Text>
+            <Text style={[styles.teamStatLabel, { color: theme.textSecondary }]}>Completed</Text>
+          </View>
+          <View style={[styles.teamStatItem, { backgroundColor: '#F59E0B' + '10' }]}>
+            <Ionicons name="time" size={20} color="#F59E0B" />
+            <Text style={[styles.teamStatValue, { color: theme.text }]}>{team.total_in_progress_tasks || 0}</Text>
+            <Text style={[styles.teamStatLabel, { color: theme.textSecondary }]}>In Progress</Text>
+          </View>
+          <View style={[styles.teamStatItem, { backgroundColor: '#8B5CF6' + '10' }]}>
+            <Ionicons name="star" size={20} color="#8B5CF6" />
+            <Text style={[styles.teamStatValue, { color: theme.text }]}>{team.total_score || 0}</Text>
+            <Text style={[styles.teamStatLabel, { color: theme.textSecondary }]}>Score</Text>
+          </View>
+        </View>
+
+        {/* Active Members */}
+        <View style={[styles.activeMembers, { borderTopColor: theme.border }]}>
+          <View style={styles.activeMembersBadge}>
+            <View style={[styles.activeDot, { backgroundColor: '#22C55E' }]} />
+            <Text style={[styles.activeMembersText, { color: theme.textSecondary }]}>
+              {team.active_members || 0} active now
+            </Text>
+          </View>
+        </View>
       </AnimatedPressable>
     </Animated.View>
   );
@@ -356,19 +421,41 @@ const AnimatedLeaderboardRow = ({ leader, index }: any) => {
 export default function LeaderboardScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  const { data: leaderboardData = [], isLoading, refetch } = useLeaderboard(50);
+  const [filter, setFilter] = useState<FilterType>('individual');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const onRefresh = React.useCallback(() => {
+  // Fetch data based on filter
+  const { 
+    data: internData = [], 
+    isLoading: internLoading, 
+    refetch: refetchInterns 
+  } = useInternLeaderboard();
+  
+  const { 
+    data: teamData = [], 
+    isLoading: teamLoading, 
+    refetch: refetchTeams 
+  } = useTeamLeaderboard();
+  
+  const { 
+    data: currentUserRank 
+  } = useIndividualInternRanking(user?.id || 0);
+
+  const isLoading = filter === 'individual' ? internLoading : teamLoading;
+  const data = filter === 'individual' ? internData : teamData;
+
+  const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
-    refetch().finally(() => setIsRefreshing(false));
-  }, [refetch]);
+    if (filter === 'individual') {
+      await refetchInterns();
+    } else {
+      await refetchTeams();
+    }
+    setIsRefreshing(false);
+  }, [filter, refetchInterns, refetchTeams]);
 
-  // Find current user's rank
-  const currentUserRank = leaderboardData.find((leader: any) => leader.id === user?.id);
-
-  const topThree = leaderboardData.slice(0, 3);
-  const remaining = leaderboardData.slice(3);
+  const topThree = filter === 'individual' ? internData.slice(0, 3) : [];
+  const remaining = filter === 'individual' ? internData.slice(3) : [];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -378,7 +465,7 @@ export default function LeaderboardScreen() {
         translucent
       />
 
-      {/* Elegant Header */}
+      {/* Header */}
       <LinearGradient
         colors={isDark ? ['#1F2937', '#111827'] : [theme.primary + '15', theme.background]}
         style={styles.header}
@@ -387,9 +474,25 @@ export default function LeaderboardScreen() {
           <View style={styles.headerTextContainer}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>🏆 Leadership Board</Text>
             <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-              Top performers of the month
+              Top performing interns this month
             </Text>
           </View>
+        </View>
+
+        {/* Filter Tabs */}
+        <View style={styles.filterContainer}>
+          <FilterTab
+            label="Individual"
+            icon="person"
+            isActive={filter === 'individual'}
+            onPress={() => setFilter('individual')}
+          />
+          <FilterTab
+            label="Teams"
+            icon="people"
+            isActive={filter === 'team'}
+            onPress={() => setFilter('team')}
+          />
         </View>
       </LinearGradient>
 
@@ -404,9 +507,9 @@ export default function LeaderboardScreen() {
           />
         }
       >
-        {/* Current User Rank Card - Sticky */}
-        {!isLoading && currentUserRank && (
-          <View style={styles.currentUserSection}>
+        {/* Current User Rank Card - Only for interns */}
+        {!isLoading && currentUserRank && filter === 'individual' && (
+          <Animated.View entering={FadeIn.delay(100)} style={styles.currentUserSection}>
             <View style={[styles.currentUserCard, getCardStyle(theme.surface, 'md', 'xl')]}>
               <LinearGradient
                 colors={[theme.primary + '15', theme.primary + '05']}
@@ -419,128 +522,161 @@ export default function LeaderboardScreen() {
                   <Text style={[styles.currentUserLabel, { color: theme.textSecondary }]}>Your Rank</Text>
                   <View style={styles.currentUserRankBadge}>
                     <Ionicons name="trophy" size={24} color={theme.primary} />
-                    <Text style={[styles.currentUserRankText, { color: theme.primary }]}>#{currentUserRank.rank}</Text>
+                    <Text style={[styles.currentUserRankText, { color: theme.primary }]}>
+                      #{currentUserRank.rank || '—'}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.currentUserStats}>
                   <View style={styles.currentUserStatItem}>
-                    <Text style={[styles.currentUserStatValue, { color: theme.text }]}>{currentUserRank.score}</Text>
+                    <Text style={[styles.currentUserStatValue, { color: theme.text }]}>
+                      {currentUserRank.score || 0}
+                    </Text>
                     <Text style={[styles.currentUserStatLabel, { color: theme.textSecondary }]}>Points</Text>
                   </View>
                   <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
                   <View style={styles.currentUserStatItem}>
-                    <Text style={[styles.currentUserStatValue, { color: theme.text }]}>{currentUserRank.projectsCompleted}</Text>
-                    <Text style={[styles.currentUserStatLabel, { color: theme.textSecondary }]}>Projects</Text>
+                    <Text style={[styles.currentUserStatValue, { color: theme.text }]}>
+                      {currentUserRank.completed_tasks || 0}
+                    </Text>
+                    <Text style={[styles.currentUserStatLabel, { color: theme.textSecondary }]}>Done</Text>
                   </View>
                   <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
                   <View style={styles.currentUserStatItem}>
-                    <Text style={[styles.currentUserStatValue, { color: theme.text }]}>{currentUserRank.tasksCompleted}</Text>
-                    <Text style={[styles.currentUserStatLabel, { color: theme.textSecondary }]}>Tasks</Text>
+                    <Text style={[styles.currentUserStatValue, { color: theme.text }]}>
+                      {currentUserRank.avg_rating?.toFixed(1) || '—'}
+                    </Text>
+                    <Text style={[styles.currentUserStatLabel, { color: theme.textSecondary }]}>Rating</Text>
                   </View>
                 </View>
               </View>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* Loading State */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <View style={styles.podiumSection}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>🎖️ Top Champions</Text>
-              <View style={styles.podiumStage}>
+            {filter === 'individual' ? (
+              <>
+                <View style={styles.podiumSection}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Champions</Text>
+                  <View style={styles.podiumStage}>
+                    {[1, 2, 3].map((i) => (
+                      <View key={i} style={{ flex: 1, maxWidth: 120, alignItems: 'center' }}>
+                        <Skeleton width={70} height={70} borderRadius={35} style={{ marginBottom: spacing.sm }} />
+                        <Skeleton width={90} height={14} style={{ marginBottom: spacing.xs }} />
+                        <Skeleton width={60} height={90} borderRadius={borderRadius.lg} />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.rankingsSection}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <View key={i} style={[styles.internRow, getCardStyle(theme.surface, 'md', 'xl'), { marginBottom: spacing.sm }]}>
+                      <Skeleton width={36} height={36} borderRadius={18} style={{ marginRight: spacing.sm }} />
+                      <Skeleton width={48} height={48} borderRadius={24} style={{ marginRight: spacing.sm }} />
+                      <View style={{ flex: 1 }}>
+                        <Skeleton width={140} height={16} style={{ marginBottom: spacing.xs }} />
+                        <Skeleton width={100} height={12} />
+                      </View>
+                      <Skeleton width={50} height={36} borderRadius={borderRadius.lg} />
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <View style={styles.teamListSection}>
                 {[1, 2, 3].map((i) => (
-                  <View key={i} style={{ flex: 1, maxWidth: 130, alignItems: 'center' }}>
-                    <Skeleton width={80} height={80} borderRadius={40} style={{ marginBottom: spacing.sm }} />
-                    <Skeleton width={100} height={16} style={{ marginBottom: spacing.xs }} />
-                    <Skeleton width={80} height={14} style={{ marginBottom: spacing.sm }} />
-                    <Skeleton width={60} height={100} borderRadius={borderRadius.lg} />
+                  <View key={i} style={[styles.teamCard, getCardStyle(theme.surface, 'md', 'xl'), { marginBottom: spacing.md }]}>
+                    <View style={styles.teamHeader}>
+                      <Skeleton width={50} height={50} borderRadius={25} style={{ marginRight: spacing.md }} />
+                      <View style={{ flex: 1 }}>
+                        <Skeleton width={150} height={18} style={{ marginBottom: spacing.xs }} />
+                        <Skeleton width={100} height={14} />
+                      </View>
+                    </View>
+                    <View style={styles.teamStats}>
+                      {[1, 2, 3].map((j) => (
+                        <Skeleton key={j} width={90} height={70} borderRadius={borderRadius.lg} />
+                      ))}
+                    </View>
                   </View>
                 ))}
               </View>
-            </View>
-            <View style={styles.rankingsSection}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Rankings</Text>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <View key={i} style={[styles.leaderboardRow, getCardStyle(theme.surface, 'md', 'xl'), { marginBottom: spacing.md }]}>
-                  <Skeleton width={36} height={36} borderRadius={18} style={{ marginRight: spacing.sm }} />
-                  <Skeleton width={52} height={52} borderRadius={26} style={{ marginRight: spacing.sm }} />
-                  <View style={{ flex: 1 }}>
-                    <Skeleton width={150} height={16} style={{ marginBottom: spacing.xs }} />
-                    <Skeleton width={100} height={14} />
-                  </View>
-                  <Skeleton width={60} height={40} borderRadius={borderRadius.lg} />
-                </View>
-              ))}
-            </View>
+            )}
           </View>
-        ) : leaderboardData.length === 0 ? (
+        ) : data.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="trophy-outline" size={64} color={theme.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No Rankings Yet</Text>
-            <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>Leaderboard data will appear here once projects are completed</Text>
+            <Ionicons name={filter === 'individual' ? 'school-outline' : 'people-outline'} size={64} color={theme.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {filter === 'individual' ? 'No Interns Yet' : 'No Teams Yet'}
+            </Text>
+            <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
+              {filter === 'individual' 
+                ? 'Intern rankings will appear here once tasks are assigned' 
+                : 'Team rankings will appear once teams have active interns'}
+            </Text>
           </View>
         ) : (
           <>
-        {/* Championship Podium - 2nd, 1st, 3rd arrangement */}
-        <View style={styles.podiumSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>🎖️ Top Champions</Text>
-          
-          <View style={styles.podiumStage}>
-            {/* 2nd Place - Left */}
-            {topThree[1] && (
-              <View style={styles.secondPlaceWrapper}>
-                <AnimatedPodiumItem 
-                  leader={topThree[1]} 
-                  rank={2} 
-                  delay={200}
-                />
+            {/* Individual Leaderboard */}
+            {filter === 'individual' && (
+              <>
+                {/* Top 3 Podium */}
+                {topThree.length > 0 && (
+                  <View style={styles.podiumSection}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Champions</Text>
+                    
+                    <View style={styles.podiumStage}>
+                      {/* 2nd Place - Left */}
+                      {topThree[1] && (
+                        <View style={styles.secondPlaceWrapper}>
+                          <AnimatedPodiumItem leader={topThree[1]} rank={2} delay={200} />
+                        </View>
+                      )}
+
+                      {/* 1st Place - Center */}
+                      {topThree[0] && (
+                        <View style={styles.firstPlaceWrapper}>
+                          <AnimatedPodiumItem leader={topThree[0]} rank={1} delay={400} />
+                        </View>
+                      )}
+
+                      {/* 3rd Place - Right */}
+                      {topThree[2] && (
+                        <View style={styles.thirdPlaceWrapper}>
+                          <AnimatedPodiumItem leader={topThree[2]} rank={3} delay={600} />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Remaining Rankings */}
+                {remaining.length > 0 && (
+                  <View style={styles.rankingsSection}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 All Rankings</Text>
+                    {remaining.map((leader: any, index: number) => (
+                      <InternRow key={leader.id} leader={leader} index={index} />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Team Leaderboard */}
+            {filter === 'team' && (
+              <View style={styles.teamListSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>🏅 Team Rankings</Text>
+                {teamData.map((team: any, index: number) => (
+                  <TeamCard key={team.team_name || index} team={{ ...team, rank: index + 1 }} index={index} />
+                ))}
               </View>
             )}
 
-            {/* 1st Place - Center (Elevated) */}
-            {topThree[0] && (
-              <View style={styles.firstPlaceWrapper}>
-                <AnimatedPodiumItem 
-                  leader={topThree[0]} 
-                  rank={1} 
-                  delay={400}
-                />
-              </View>
-            )}
-
-            {/* 3rd Place - Right */}
-            {topThree[2] && (
-              <View style={styles.thirdPlaceWrapper}>
-                <AnimatedPodiumItem 
-                  leader={topThree[2]} 
-                  rank={3} 
-                  delay={600}
-                />
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Rest of Rankings - Clean & Spacious */}
-        {remaining.length > 0 && (
-          <View style={styles.rankingsSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Rankings</Text>
-            <View style={styles.rankingsList}>
-              {remaining.map((leader, index) => (
-                <AnimatedLeaderboardRow 
-                  key={leader.id} 
-                  leader={leader} 
-                  index={index}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Bottom Spacing */}
-        <View style={{ height: 40 }} />
-        </>
+            <View style={{ height: 40 }} />
+          </>
         )}
       </ScrollView>
     </View>
@@ -551,9 +687,76 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  
+  // Header
+  header: {
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
+    paddingBottom: spacing.base,
+    paddingHorizontal: spacing.lg,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.base,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    ...getTypographyStyle('2xl', 'bold'),
+    marginBottom: spacing.xs,
+  },
+  headerSubtitle: {
+    ...getTypographyStyle('sm', 'regular'),
+  },
+  
+  // Filter Tabs
+  filterContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  filterTabText: {
+    ...getTypographyStyle('sm', 'semibold'),
+  },
+  
+  // Status Badge
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    ...getTypographyStyle('xs', 'semibold'),
+  },
+  
+  scrollContent: {
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+  },
+  
+  // Loading
   loadingContainer: {
     paddingHorizontal: spacing.base,
   },
+  
+  // Empty State
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -570,6 +773,8 @@ const styles = StyleSheet.create({
     ...getTypographyStyle('sm', 'regular'),
     textAlign: 'center',
   },
+  
+  // Current User
   currentUserSection: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
@@ -616,28 +821,9 @@ const styles = StyleSheet.create({
   currentUserStatLabel: {
     ...getTypographyStyle('xs', 'medium'),
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...getTypographyStyle('2xl', 'bold'),
-    marginBottom: spacing.xs,
-  },
-  headerSubtitle: {
-    ...getTypographyStyle('sm', 'regular'),
-  },
-  scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+  statDivider: {
+    width: 1,
+    height: 16,
   },
   
   // Podium Section
@@ -657,30 +843,28 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingTop: spacing.base,
   },
-  
-  // Podium Wrappers - FIXED SPACING
   firstPlaceWrapper: {
     flex: 1,
-    maxWidth: 130,
+    maxWidth: 125,
     alignItems: 'center',
     zIndex: 3,
   },
   secondPlaceWrapper: {
     flex: 1,
-    maxWidth: 120,
+    maxWidth: 115,
     alignItems: 'center',
     zIndex: 2,
-    marginTop: 30,
+    marginTop: 25,
   },
   thirdPlaceWrapper: {
     flex: 1,
-    maxWidth: 120,
+    maxWidth: 115,
     alignItems: 'center',
     zIndex: 1,
-    marginTop: 40,
+    marginTop: 35,
   },
   
-  // Podium Item - COMPACT
+  // Podium Item
   podiumItemContainer: {
     width: '100%',
     alignItems: 'center',
@@ -694,15 +878,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
-    gap: spacing.xs,
+    gap: 4,
   },
-  
-  // Rank Badge - SMALLER
   rankBadge: {
     position: 'absolute',
-    top: -16,
-    width: 36,
-    height: 36,
+    top: -14,
+    width: 32,
+    height: 32,
     borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
@@ -712,8 +894,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  
-  // Avatar Container - COMPACT
   avatarContainer: {
     position: 'relative',
     marginTop: spacing.sm,
@@ -728,39 +908,36 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     opacity: 0.5,
   },
-  
-  // Podium Text - COMPACT
   podiumNameNew: {
     ...getTypographyStyle('sm', 'bold'),
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   podiumNameFirst: {
     ...getTypographyStyle('base', 'bold'),
   },
-  podiumDesignation: {
-    ...getTypographyStyle('xs', 'regular'),
-    textAlign: 'center',
-  },
-  
-  // Score Container - SMALLER
-  scoreContainer: {
-    paddingVertical: 4,
-    paddingHorizontal: spacing.base,
-    borderRadius: borderRadius.full,
+  teamBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    gap: 3,
+  },
+  teamBadgeText: {
+    ...getTypographyStyle('xs', 'regular'),
+  },
+  scoreContainer: {
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
   },
   scoreValue: {
-    ...getTypographyStyle('lg', 'bold'),
+    ...getTypographyStyle('base', 'bold'),
   },
   scoreLabel: {
     ...getTypographyStyle('xs', 'semibold'),
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  
-  // Stats Row - COMPACT
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -776,17 +953,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    ...getTypographyStyle('base', 'bold'),
+    ...getTypographyStyle('sm', 'bold'),
   },
   statLabel: {
     ...getTypographyStyle('xs', 'regular'),
   },
-  statDivider: {
-    width: 1,
-    height: 16,
-  },
-  
-  // Podium Base - SHORTER
   podiumBase: {
     width: '100%',
     borderBottomLeftRadius: borderRadius.lg,
@@ -802,17 +973,14 @@ const styles = StyleSheet.create({
     opacity: 0.25,
   },
   
-  // Rankings Section - COMPACT
+  // Rankings Section
   rankingsSection: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
   },
-  rankingsList: {
-    gap: spacing.sm,
-  },
   
-  // Leaderboard Row - COMPACT
-  leaderboardRow: {
+  // Intern Row
+  internRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.base,
@@ -828,24 +996,40 @@ const styles = StyleSheet.create({
   rankNumber: {
     ...getTypographyStyle('base', 'bold'),
   },
-  userInfo: {
+  internInfo: {
     flex: 1,
     marginLeft: spacing.xs,
   },
-  userName: {
-    ...getTypographyStyle('base', 'bold'),
+  internNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: 2,
   },
-  userDesignation: {
-    ...getTypographyStyle('xs', 'regular'),
+  internName: {
+    ...getTypographyStyle('base', 'bold'),
+    flex: 1,
+  },
+  teamIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginBottom: 4,
   },
-  userStats: {
+  teamText: {
+    ...getTypographyStyle('xs', 'regular'),
+  },
+  taskStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.base,
+  },
+  taskStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  userStatText: {
+  taskStatText: {
     ...getTypographyStyle('xs', 'regular'),
   },
   scoreBadge: {
@@ -853,13 +1037,113 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
-    minWidth: 60,
+    minWidth: 55,
   },
   scoreBadgeValue: {
     ...getTypographyStyle('base', 'bold'),
   },
   scoreBadgeLabel: {
     ...getTypographyStyle('xs', 'semibold'),
-    textTransform: 'uppercase',
+  },
+  
+  // Team List Section
+  teamListSection: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.base,
+  },
+  
+  // Team Card
+  teamCard: {
+    padding: spacing.lg,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  teamRankBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+  },
+  teamRankText: {
+    ...getTypographyStyle('sm', 'bold'),
+    color: '#FFFFFF',
+  },
+  teamHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.base,
+  },
+  teamIconWrapper: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  teamHeaderInfo: {
+    flex: 1,
+  },
+  teamName: {
+    ...getTypographyStyle('lg', 'bold'),
+    marginBottom: 2,
+  },
+  teamMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  teamMetaText: {
+    ...getTypographyStyle('sm', 'regular'),
+  },
+  teamScoreBadge: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  teamScoreValue: {
+    ...getTypographyStyle('xl', 'bold'),
+  },
+  teamScoreLabel: {
+    ...getTypographyStyle('xs', 'semibold'),
+  },
+  teamStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  teamStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    gap: 4,
+  },
+  teamStatValue: {
+    ...getTypographyStyle('lg', 'bold'),
+  },
+  teamStatLabel: {
+    ...getTypographyStyle('xs', 'regular'),
+  },
+  activeMembers: {
+    marginTop: spacing.base,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+  },
+  activeMembersBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  activeMembersText: {
+    ...getTypographyStyle('sm', 'medium'),
   },
 });

@@ -168,6 +168,51 @@ export function useLeaderboard(limit: number = 10) {
 }
 
 /**
+ * Hook to fetch intern leaderboard (individual rankings)
+ */
+export function useInternLeaderboard() {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'intern-leaderboard'],
+    queryFn: () => dashboardService.getInternLeaderboard(),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+}
+
+/**
+ * Hook to fetch team leaderboard (aggregated by team)
+ */
+export function useTeamLeaderboard() {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'team-leaderboard'],
+    queryFn: () => dashboardService.getTeamLeaderboard(),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+}
+
+/**
+ * Hook to fetch individual intern ranking
+ */
+export function useIndividualInternRanking(userId: number) {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'intern-ranking', userId],
+    queryFn: () => dashboardService.getIndividualInternRanking(userId),
+    enabled: isAuthenticated && !!userId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+}
+
+/**
  * Hook to fetch real-time activities from multiple sources
  */
 export function useRealtimeActivities(limit: number = 10) {
@@ -201,6 +246,8 @@ export function useRefreshDashboard() {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'intern-leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'team-leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'realtime-activities'] });
     },
   });

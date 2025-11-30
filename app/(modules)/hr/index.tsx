@@ -1,20 +1,19 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { View, Platform, StatusBar, Modal, Text, Pressable, ScrollView, Alert, Animated as RNAnimated } from 'react-native';
+import { View, Platform, StatusBar, Modal, Text, Pressable, ScrollView, Alert, Animated as RNAnimated, ActivityIndicator } from 'react-native';
 import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { useLeaveStatistics } from '@/hooks/useHRQueries';
+import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus } from '@/hooks/useHRQueries';
 import { usePermissions } from '@/store/permissionStore';
-import { LeaveList, LeaveBalanceCard } from '@/components/hr';
 import { Input, Table, type TableColumn, Badge, FAB } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import type { LeaveFilters } from '@/types/hr';
+import type { Reimbursement } from '@/types/hr';
 
-type TabType = 'staff' | 'reimbursement' | 'leave';
+type TabType = 'staff' | 'reimbursement';
 
 export default function HRScreen() {
   const router = useRouter();
@@ -25,33 +24,44 @@ export default function HRScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
   const tableScrollRef = useRef<any>(null);
 
-  // API hooks
-  const { data: leaveStats } = useLeaveStatistics();
+  // Fetch all users from API
+  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useAllUsers({
+    search: debouncedSearch || undefined,
+  });
+  
+  // Search users when query is debounced
+  const { data: searchResults, isLoading: searchLoading } = useSearchEmployees(
+    debouncedSearch,
+    {},
+    debouncedSearch.length > 1
+  );
+
+  // Reimbursement data from API
+  const { data: reimbursementsData, isLoading: reimbursementsLoading, refetch: refetchReimbursements } = useReimbursements();
+  const { data: reimbursementStats } = useReimbursementStatistics();
+  const updateReimbursementStatus = useUpdateReimbursementStatus();
 
   // Check user role for permissions
   const canManage = permissions.hasPermission('hr:manage');
-  const canApprove = permissions.hasPermission('leave:approve');
+  const canApprove = permissions.hasPermission('leave:approve') || user?.category === 'hr' || user?.category === 'admin';
 
-  // Async search with debouncing
+  // Debounce search query
   useEffect(() => {
-    if (searchQuery) {
-      setIsSearching(true);
-      const timer = setTimeout(() => {
-        setIsSearching(false);
-      }, 300);
-      return () => {
-        clearTimeout(timer);
-        setIsSearching(false);
-      };
-    } else {
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
       setIsSearching(false);
-    }
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [searchQuery]);
 
   // Tabs configuration
@@ -60,24 +70,50 @@ export default function HRScreen() {
     { key: 'reimbursement', label: 'Reimbursement', icon: 'cash' },
   ];
 
-  // Mock data - replace with API calls
-  const staffData = [
-    { id: 1, name: 'John Doe', designation: 'Developer', department: 'IT', status: 'Active', email: 'john@example.com' },
-    { id: 2, name: 'Jane Smith', designation: 'HR Manager', department: 'HR', status: 'Active', email: 'jane@example.com' },
-    { id: 3, name: 'Mike Johnson', designation: 'Designer', department: 'Design', status: 'Active', email: 'mike@example.com' },
-  ];
+  // Transform API users to staff data format
+  const staffData = useMemo(() => {
+    // Use search results if searching, otherwise use all users
+    const users = debouncedSearch && searchResults?.results 
+      ? searchResults.results 
+      : usersData || [];
+    
+    return users.map((user: any) => ({
+      id: user.id,
+      name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
+      designation: user.designation || 'N/A',
+      department: user.department || 'N/A',
+      status: user.is_active ? 'Active' : 'Inactive',
+      email: user.email || 'N/A',
+      category: user.category || 'employee',
+      phone: user.mobileno || 'N/A',
+      photo: user.photo,
+    }));
+  }, [usersData, searchResults, debouncedSearch]);
 
-  const reimbursementData = [
-    { id: 1, employee: 'John Doe', employeeId: 1, type: 'Travel', amount: 5000, date: '2025-11-15', status: 'Pending', description: 'Client meeting travel' },
-    { id: 2, employee: 'Jane Smith', employeeId: 2, type: 'Medical', amount: 2500, date: '2025-11-10', status: 'Approved', description: 'Health checkup' },
-    { id: 3, employee: 'Mike Johnson', employeeId: 3, type: 'Food', amount: 800, date: '2025-11-18', status: 'Rejected', description: 'Team lunch' },
-  ];
+  // Transform API reimbursements to table data format
+  const reimbursementData = useMemo(() => {
+    const reimbursements = reimbursementsData?.results || [];
+    
+    return reimbursements.map((item: Reimbursement) => ({
+      id: item.id,
+      employee: item.requested_by_name || `User ${item.requested_by}`,
+      employeeId: item.requested_by,
+      type: item.expense_details?.particulars || 'Expense',
+      amount: Number(item.reimbursement_amount) || 0,
+      date: item.submitted_at ? new Date(item.submitted_at).toISOString().split('T')[0] : 'N/A',
+      status: (item.latest_status?.status || item.status || 'pending').charAt(0).toUpperCase() + 
+              (item.latest_status?.status || item.status || 'pending').slice(1),
+      description: item.details || 'No description',
+      bill_evidence: item.bill_evidence,
+    }));
+  }, [reimbursementsData]);
 
   // Column definitions
   const staffColumns: TableColumn[] = [
     { key: 'name', title: 'Name', sortable: true, width: 150 },
     { key: 'designation', title: 'Designation', sortable: true, width: 150 },
     { key: 'department', title: 'Department', sortable: true, width: 120 },
+    { key: 'category', title: 'Category', sortable: true, width: 100 },
     { 
       key: 'status', 
       title: 'Status',
@@ -149,9 +185,6 @@ export default function HRScreen() {
       case 'staff':
         data = staffData;
         break;
-      case 'leave':
-        data = leaveData;
-        break;
       case 'reimbursement':
         data = reimbursementData;
         break;
@@ -159,8 +192,8 @@ export default function HRScreen() {
         data = [];
     }
 
-    // Role-based filtering for leave and reimbursement
-    if ((activeTab === 'leave' || activeTab === 'reimbursement') && user) {
+    // Role-based filtering for reimbursement
+    if (activeTab === 'reimbursement' && user) {
       // If user is intern/employee, show only their own items
       if (user.category === 'intern' || user.category === 'employee') {
         data = data.filter((item: any) => item.employeeId === user.id);
@@ -181,7 +214,6 @@ export default function HRScreen() {
   const getCurrentColumns = () => {
     switch (activeTab) {
       case 'staff': return staffColumns;
-      case 'leave': return leaveColumns;
       case 'reimbursement': return reimbursementColumns;
       default: return [];
     }
@@ -191,8 +223,8 @@ export default function HRScreen() {
   const filteredData = useMemo(() => {
     let data: any[] = getCurrentData();
 
-    // Apply search filter
-    if (searchQuery.trim()) {
+    // For staff tab, search is handled by API, only filter locally for other tabs
+    if (activeTab !== 'staff' && searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       data = data.filter((item: any) => {
         return Object.values(item).some((value) =>
@@ -226,8 +258,6 @@ export default function HRScreen() {
     // Navigate to appropriate add screen based on active tab
     if (activeTab === 'staff') {
       router.push('/(modules)/hr/add-employee' as any);
-    } else if (activeTab === 'leave') {
-      router.push('/(modules)/hr/apply-leave' as any);
     } else if (activeTab === 'reimbursement') {
       router.push('/(modules)/hr/add-reimbursement' as any);
     }
@@ -246,10 +276,24 @@ export default function HRScreen() {
         {
           text: 'Approve',
           onPress: async () => {
-            // TODO: Call API to approve
-            console.log(`Approved ${type}:`, itemId);
-            Alert.alert('Success', `${type} approved successfully`);
-            // Refresh data after approval
+            if (type === 'reimbursement') {
+              try {
+                await updateReimbursementStatus.mutateAsync({
+                  id: itemId,
+                  status: 'approved',
+                  reason: 'Approved by admin/HR',
+                });
+                Alert.alert('Success', 'Reimbursement approved successfully');
+                refetchReimbursements();
+              } catch (error) {
+                console.error('Error approving reimbursement:', error);
+                Alert.alert('Error', 'Failed to approve reimbursement');
+              }
+            } else {
+              // TODO: Call API to approve leave
+              console.log(`Approved ${type}:`, itemId);
+              Alert.alert('Success', `${type} approved successfully`);
+            }
           },
         },
       ]
@@ -266,10 +310,24 @@ export default function HRScreen() {
           text: 'Reject',
           style: 'destructive',
           onPress: async () => {
-            // TODO: Call API to reject
-            console.log(`Rejected ${type}:`, itemId);
-            Alert.alert('Success', `${type} rejected successfully`);
-            // Refresh data after rejection
+            if (type === 'reimbursement') {
+              try {
+                await updateReimbursementStatus.mutateAsync({
+                  id: itemId,
+                  status: 'rejected',
+                  reason: 'Rejected by admin/HR',
+                });
+                Alert.alert('Success', 'Reimbursement rejected');
+                refetchReimbursements();
+              } catch (error) {
+                console.error('Error rejecting reimbursement:', error);
+                Alert.alert('Error', 'Failed to reject reimbursement');
+              }
+            } else {
+              // TODO: Call API to reject leave
+              console.log(`Rejected ${type}:`, itemId);
+              Alert.alert('Success', `${type} rejected successfully`);
+            }
           },
         },
       ]
@@ -331,15 +389,15 @@ export default function HRScreen() {
 
       {/* Content - Fixed flex container */}
       <View style={{ flex: 1 }}>
-        {activeTab === 'leave' ? (
+        {activeTab === 'reimbursement' ? (
           <ScrollView 
             style={{ flex: 1 }} 
             contentContainerStyle={{ padding: 16 }}
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
-            {/* Leave Statistics */}
-            {leaveStats && (
+            {/* Reimbursement Statistics */}
+            {reimbursementStats && (
               <View style={{ marginBottom: 16 }}>
                 <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 12 }}>
                   Overview
@@ -347,53 +405,187 @@ export default function HRScreen() {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                   <StatCard
                     label="Total Requests"
-                    value={leaveStats.total_requests}
+                    value={reimbursementStats.total}
                     icon="documents"
                     color="#8B5CF6"
                     theme={theme}
                   />
                   <StatCard
                     label="Pending"
-                    value={leaveStats.pending_requests}
+                    value={reimbursementStats.pending}
                     icon="time"
                     color="#F59E0B"
                     theme={theme}
                   />
                   <StatCard
                     label="Approved"
-                    value={leaveStats.approved_requests}
+                    value={reimbursementStats.approved}
                     icon="checkmark-circle"
                     color="#10B981"
                     theme={theme}
                   />
                   <StatCard
-                    label="On Leave Today"
-                    value={leaveStats.employees_on_leave_today}
-                    icon="people"
+                    label="Completed"
+                    value={reimbursementStats.done}
+                    icon="checkmark-done-circle"
                     color="#3B82F6"
                     theme={theme}
                   />
                 </View>
+                
+                {/* Amount Summary */}
+                <View style={{ 
+                  flexDirection: 'row', 
+                  gap: 12, 
+                  marginTop: 12,
+                }}>
+                  <View style={{
+                    flex: 1,
+                    backgroundColor: theme.surface,
+                    padding: 16,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                  }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+                      Total Amount
+                    </Text>
+                    <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.text }}>
+                      ₹{reimbursementStats.total_amount.toLocaleString()}
+                    </Text>
+                  </View>
+                  <View style={{
+                    flex: 1,
+                    backgroundColor: `${theme.warning}10`,
+                    padding: 16,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: theme.warning,
+                  }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+                      Pending Amount
+                    </Text>
+                    <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.warning }}>
+                      ₹{reimbursementStats.pending_amount.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
               </View>
             )}
 
-            {/* Leave Balance */}
-            {!permissions.hasPermission('leave:view_all') && (
+            {/* Loading State */}
+            {reimbursementsLoading && (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={{ color: theme.textSecondary, marginTop: 8 }}>Loading reimbursements...</Text>
+              </View>
+            )}
+
+            {/* Reimbursement List */}
+            {!reimbursementsLoading && (
               <View style={{ marginBottom: 16 }}>
-                <LeaveBalanceCard compact />
+                <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 12 }}>
+                  Reimbursement Requests ({reimbursementData.length})
+                </Text>
+                
+                {reimbursementData.length === 0 ? (
+                  <View style={{
+                    backgroundColor: theme.surface,
+                    padding: 32,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                  }}>
+                    <Ionicons name="cash-outline" size={48} color={theme.textSecondary} />
+                    <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginTop: 12 }}>
+                      No Reimbursements Found
+                    </Text>
+                    <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 4, textAlign: 'center' }}>
+                      {canApprove ? 'No reimbursement requests have been submitted yet.' : 'You haven\'t submitted any reimbursement requests yet.'}
+                    </Text>
+                  </View>
+                ) : (
+                  reimbursementData.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => handleRowPress(item)}
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed ? `${theme.primary}10` : theme.surface,
+                        padding: 16,
+                        borderRadius: 12,
+                        marginBottom: 12,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                      })}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text }}>
+                            {item.employee}
+                          </Text>
+                          <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 2 }}>
+                            {item.type}
+                          </Text>
+                        </View>
+                        <Badge 
+                          label={item.status} 
+                          status={item.status.toLowerCase() as any} 
+                          size="sm" 
+                        />
+                      </View>
+                      
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                        <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.primary }}>
+                          ₹{item.amount.toLocaleString()}
+                        </Text>
+                        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+                          {item.date}
+                        </Text>
+                      </View>
+                      
+                      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 8 }} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                      
+                      {/* Action Buttons for HR/Admin */}
+                      {canApprove && item.status.toLowerCase() === 'pending' && (
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                          <Pressable
+                            style={{
+                              flex: 1,
+                              backgroundColor: '#10B981',
+                              paddingVertical: 10,
+                              borderRadius: 8,
+                              alignItems: 'center',
+                            }}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleApprove(item.id, 'reimbursement');
+                            }}
+                          >
+                            <Text style={{ color: '#fff', ...getTypographyStyle('sm', 'semibold') }}>Approve</Text>
+                          </Pressable>
+                          <Pressable
+                            style={{
+                              flex: 1,
+                              backgroundColor: '#EF4444',
+                              paddingVertical: 10,
+                              borderRadius: 8,
+                              alignItems: 'center',
+                            }}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleReject(item.id, 'reimbursement');
+                            }}
+                          >
+                            <Text style={{ color: '#fff', ...getTypographyStyle('sm', 'semibold') }}>Reject</Text>
+                          </Pressable>
+                        </View>
+                      )}
+                    </Pressable>
+                  ))
+                )}
               </View>
             )}
-
-            {/* Leave List */}
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 12 }}>
-                Leave Requests
-              </Text>
-              <LeaveList
-                filters={{ status: statusFilter === 'all' ? undefined : statusFilter } as LeaveFilters}
-                showMyLeaves={!permissions.hasPermission('leave:view_all') && !permissions.hasPermission('leave:view_team')}
-              />
-            </View>
           </ScrollView>
         ) : (
           <Table

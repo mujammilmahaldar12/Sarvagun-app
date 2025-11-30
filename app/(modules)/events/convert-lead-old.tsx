@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   ScrollView, 
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import PrimaryButton from '@/components/ui/PrimaryButton';
@@ -25,7 +26,17 @@ import type { Lead, Venue, ClientCategory, Organisation } from '@/types/events';
 export default function ConvertLeadScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const { leadId } = useLocalSearchParams<{ leadId: string }>();
+
+  // Safe back navigation helper
+  const safeGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(modules)/events');
+    }
+  }, [navigation, router]);
 
   const [loading, setLoading] = useState(true);
   const [lead, setLead] = useState<Lead | null>(null);
@@ -59,7 +70,7 @@ export default function ConvertLeadScreen() {
 
   const fetchData = async () => {
     if (!leadId) {
-      router.back();
+      safeGoBack();
       return;
     }
 
@@ -82,7 +93,7 @@ export default function ConvertLeadScreen() {
         typeOfEvent: `${leadData.client.name} Event`,
       }));
     } catch (error: any) {
-      router.back();
+      safeGoBack();
     } finally {
       setLoading(false);
     }
@@ -177,7 +188,7 @@ export default function ConvertLeadScreen() {
       });
 
       Alert.alert('Success', 'Lead converted to event successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => safeGoBack() }
       ]);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to convert lead');

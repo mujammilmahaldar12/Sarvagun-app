@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, ScrollView, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { useTheme } from '@/hooks/useTheme';
 import eventsService from '@/services/events.service';
@@ -10,6 +11,16 @@ import { getTypographyStyle } from '@/utils/styleHelpers';
 export default function AddVenueScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
+
+  // Safe back navigation helper
+  const safeGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(modules)/events');
+    }
+  }, [navigation, router]);
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -45,7 +56,7 @@ export default function AddVenueScreen() {
         facilities: formData.facilities.trim() || undefined,
       });
 
-      router.back();
+      safeGoBack();
     } catch (error: any) {
       // Silent error
     } finally {

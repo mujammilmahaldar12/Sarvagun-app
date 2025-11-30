@@ -41,7 +41,9 @@ class NotificationService {
     const response = await api.get<Notification[]>(
       `${NOTIFICATION_ENDPOINTS.LIST}?${params.toString()}`
     );
-    return response.data;
+    // API returns data directly, handle both cases
+    const data = (response as any)?.data ?? response;
+    return Array.isArray(data) ? data : data?.results || [];
   }
 
   /**
@@ -49,7 +51,7 @@ class NotificationService {
    */
   async getNotification(id: number): Promise<Notification> {
     const response = await api.get<Notification>(NOTIFICATION_ENDPOINTS.DETAIL(id));
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -57,7 +59,7 @@ class NotificationService {
    */
   async getNotificationStats(): Promise<NotificationStats> {
     const response = await api.get<NotificationStats>(NOTIFICATION_ENDPOINTS.STATS);
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -65,7 +67,7 @@ class NotificationService {
    */
   async markAsRead(id: number): Promise<Notification> {
     const response = await api.post<Notification>(NOTIFICATION_ENDPOINTS.MARK_READ(id));
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -75,7 +77,7 @@ class NotificationService {
     const response = await api.post<{ message: string; count: number }>(
       NOTIFICATION_ENDPOINTS.MARK_ALL_READ
     );
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -89,7 +91,7 @@ class NotificationService {
       NOTIFICATION_ENDPOINTS.DETAIL(id),
       data
     );
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -106,7 +108,7 @@ class NotificationService {
     const response = await api.post<{ message: string; count: number }>(
       NOTIFICATION_ENDPOINTS.DELETE_ALL
     );
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -116,7 +118,7 @@ class NotificationService {
     const response = await api.get<NotificationPreferences>(
       NOTIFICATION_ENDPOINTS.PREFERENCES
     );
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -129,7 +131,7 @@ class NotificationService {
       NOTIFICATION_ENDPOINTS.PREFERENCES,
       preferences
     );
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**
@@ -137,7 +139,7 @@ class NotificationService {
    */
   async createNotification(data: CreateNotificationData): Promise<Notification> {
     const response = await api.post<Notification>(NOTIFICATION_ENDPOINTS.LIST, data);
-    return response.data;
+    return (response as any)?.data ?? response;
   }
 
   /**

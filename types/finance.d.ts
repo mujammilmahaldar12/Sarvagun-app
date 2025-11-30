@@ -280,15 +280,29 @@ export interface ReimbursementsFilters {
 // ============================================================================
 
 export interface FinanceStatistics {
-  total_sales: number;
-  total_expenses: number;
-  net_profit: number;
-  pending_sales: number;
-  pending_expenses: number;
-  total_invoices: number;
-  pending_reimbursements: number;
-  approved_reimbursements: number;
-  total_vendors: number;
+  sales: {
+    total_amount: number;
+    total_count: number;
+    completed_count: number;
+    pending_count: number;
+  };
+  expenses: {
+    total_amount: number;
+    total_count: number;
+    paid_count: number;
+    pending_count: number;
+  };
+  invoices: {
+    total_amount: number;
+    total_count: number;
+  };
+  vendors: {
+    total_count: number;
+  };
+  reimbursements: {
+    total_amount: number;
+    total_count: number;
+  };
 }
 
 export interface SalesAnalytics {

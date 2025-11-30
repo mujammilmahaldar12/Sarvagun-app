@@ -1,39 +1,73 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import Animated, { FadeIn, SlideInUp } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useCreateReimbursement } from '@/hooks/useHRQueries';
 import ModuleHeader from '@/components/layout/ModuleHeader';
+import api from '@/services/api';
 
-const REIMBURSEMENT_TYPES = ['Travel', 'Medical', 'Food', 'Accommodation', 'Other'];
+interface Expense {
+  id: number;
+  particulars: string;
+  amount: number;
+  details: string;
+  date: string;
+  reimbursed: string;
+}
 
 export default function AddReimbursementScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { user } = useAuthStore();
+  const createReimbursement = useCreateReimbursement();
+  
   const [loading, setLoading] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(true);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [documents, setDocuments] = useState<string[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
-    type: '',
-    amount: '',
-    date: '',
-    description: '',
+    reimbursement_amount: '',
+    details: '',
+    bill_evidence: 'no' as 'yes' | 'no',
   });
+
+  // Fetch user's expenses that are not yet reimbursed
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const fetchExpenses = async () => {
+    try {
+      setLoadingExpenses(true);
+      const response: any = await api.get('/finance_management/expenses/');
+      const data = response?.results || response || [];
+      
+      // Filter expenses that are not yet reimbursed
+      const unreimbursedExpenses = data.filter((expense: Expense) => 
+        expense.reimbursed === 'notreimbursed' || !expense.reimbursed
+      );
+      
+      setExpenses(unreimbursedExpenses);
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      setExpenses([]);
+    } finally {
+      setLoadingExpenses(false);
+    }
+  };
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const pickDocument = async () => {
-    // TODO: Implement document picker with expo-document-picker
     Alert.alert('Document Picker', 'Document picker will be implemented with expo-document-picker');
-    // const result = await DocumentPicker.getDocumentAsync();
-    // if (result.type === 'success') {
-    //   setDocuments([...documents, result.uri]);
-    // }
   };
 
   const removeDocument = (index: number) => {
@@ -42,42 +76,60 @@ export default function AddReimbursementScreen() {
 
   const handleSubmit = async () => {
     // Validation
-    if (!formData.type || !formData.amount || !formData.date || !formData.description) {
+    if (!selectedExpense) {
+      Alert.alert('Validation Error', 'Please select an expense to claim reimbursement for');
+      return;
+    }
+
+    if (!formData.reimbursement_amount || !formData.details) {
       Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
 
-    const amount = parseFloat(formData.amount);
+    const amount = parseFloat(formData.reimbursement_amount);
     if (isNaN(amount) || amount <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
 
+    if (amount > Number(selectedExpense.amount)) {
+      Alert.alert('Invalid Amount', 'Reimbursement amount cannot exceed expense amount');
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Replace with real API call
-      console.log('Submitting reimbursement:', { ...formData, employee: user?.full_name });
+      const payload = {
+        expense: selectedExpense.id,
+        reimbursement_amount: amount,
+        details: formData.details,
+        bill_evidence: formData.bill_evidence,
+      };
+
+      console.log('📤 Submitting reimbursement:', payload);
       
-      // Simulate API call
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert('Success', 'Reimbursement claim submitted successfully', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]);
-      }, 1000);
-    } catch (error) {
+      await createReimbursement.mutateAsync(payload);
+      
+      Alert.alert('Success', 'Reimbursement claim submitted successfully! HR/Admin will be notified.', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error: any) {
+      console.error('Error submitting reimbursement:', error);
+      Alert.alert(
+        'Error', 
+        error?.response?.data?.detail || error?.message || 'Failed to submit reimbursement claim'
+      );
+    } finally {
       setLoading(false);
-      Alert.alert('Error', 'Failed to submit reimbursement claim');
-      console.error('Error:', error);
     }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Add Reimbursement" />
+      <ModuleHeader title="Request Reimbursement" />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -89,99 +141,232 @@ export default function AddReimbursementScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Employee Info */}
-          <View style={{
-            backgroundColor: theme.surface,
-            padding: 16,
-            borderRadius: 12,
-            marginBottom: 24,
-          }}>
+          <Animated.View 
+            entering={FadeIn.duration(300)}
+            style={{
+              backgroundColor: theme.surface,
+              padding: 16,
+              borderRadius: 12,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}
+          >
             <Text style={{ fontSize: 14, color: theme.textSecondary, marginBottom: 4 }}>
-              Claiming as
+              Requesting as
             </Text>
             <Text style={{ fontSize: 18, color: theme.text, fontWeight: '600' }}>
-              {user?.full_name || 'Employee'}
+              {user?.full_name || user?.first_name || 'Employee'}
             </Text>
-          </View>
+          </Animated.View>
 
-          {/* Reimbursement Type Selection */}
-          <Text style={{
-            fontSize: 14,
-            color: theme.textSecondary,
-            marginBottom: 8,
-            fontWeight: '500',
-          }}>
-            Reimbursement Type *
-          </Text>
-          <View style={{ marginBottom: 16, gap: 8 }}>
-            {REIMBURSEMENT_TYPES.map((type) => (
-              <Pressable
-                key={type}
-                style={{
-                  backgroundColor: formData.type === type 
-                    ? `${theme.primary}20` 
-                    : theme.surface,
-                  borderWidth: 1,
-                  borderColor: formData.type === type 
-                    ? theme.primary 
-                    : theme.border,
-                  padding: 16,
-                  borderRadius: 8,
-                }}
-                onPress={() => updateField('type', type)}
-              >
-                <Text style={{
-                  color: formData.type === type 
-                    ? theme.primary 
-                    : theme.text,
-                  fontSize: 16,
-                  fontWeight: formData.type === type ? '600' : '400',
-                }}>
-                  {type}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Amount Input */}
-          <FormInput
-            label="Amount *"
-            value={formData.amount}
-            onChangeText={(text) => updateField('amount', text.replace(/[^0-9.]/g, ''))}
-            placeholder="5000"
-            keyboardType="numeric"
-            theme={theme}
-            prefix="₹"
-          />
-
-          {/* Date Input */}
-          <FormInput
-            label="Date *"
-            value={formData.date}
-            onChangeText={(text) => updateField('date', text)}
-            placeholder="YYYY-MM-DD"
-            theme={theme}
-          />
-
-          {/* Description */}
-          <FormInput
-            label="Description *"
-            value={formData.description}
-            onChangeText={(text) => updateField('description', text)}
-            placeholder="Enter detailed description of the expense"
-            multiline
-            numberOfLines={4}
-            theme={theme}
-          />
-
-          {/* Document Upload (Required for Reimbursement) */}
-          <View style={{ marginBottom: 16 }}>
+          {/* Select Expense Section */}
+          <Animated.View entering={SlideInUp.duration(400).delay(100)}>
             <Text style={{
               fontSize: 14,
               color: theme.textSecondary,
               marginBottom: 8,
               fontWeight: '500',
             }}>
-              Attach Bills/Receipts *
+              Select Expense to Reimburse *
+            </Text>
+            
+            {loadingExpenses ? (
+              <View style={{ 
+                backgroundColor: theme.surface, 
+                padding: 32, 
+                borderRadius: 12, 
+                alignItems: 'center',
+                marginBottom: 16,
+              }}>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={{ color: theme.textSecondary, marginTop: 8 }}>Loading expenses...</Text>
+              </View>
+            ) : expenses.length === 0 ? (
+              <View style={{ 
+                backgroundColor: theme.surface, 
+                padding: 32, 
+                borderRadius: 12, 
+                alignItems: 'center',
+                marginBottom: 16,
+              }}>
+                <Ionicons name="receipt-outline" size={48} color={theme.textSecondary} />
+                <Text style={{ color: theme.text, fontWeight: '600', marginTop: 12 }}>
+                  No Expenses Found
+                </Text>
+                <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 4 }}>
+                  You need to have an unreimbursed expense to request reimbursement.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ marginBottom: 16, gap: 8 }}>
+                {expenses.map((expense) => (
+                  <Pressable
+                    key={expense.id}
+                    style={{
+                      backgroundColor: selectedExpense?.id === expense.id 
+                        ? `${theme.primary}20` 
+                        : theme.surface,
+                      borderWidth: 1,
+                      borderColor: selectedExpense?.id === expense.id 
+                        ? theme.primary 
+                        : theme.border,
+                      padding: 16,
+                      borderRadius: 12,
+                    }}
+                    onPress={() => {
+                      setSelectedExpense(expense);
+                      setFormData(prev => ({
+                        ...prev,
+                        reimbursement_amount: expense.amount.toString(),
+                      }));
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{
+                          color: selectedExpense?.id === expense.id ? theme.primary : theme.text,
+                          fontSize: 16,
+                          fontWeight: '600',
+                        }}>
+                          {expense.particulars}
+                        </Text>
+                        <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 4 }} numberOfLines={2}>
+                          {expense.details}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{
+                          color: theme.primary,
+                          fontSize: 16,
+                          fontWeight: '700',
+                        }}>
+                          ₹{Number(expense.amount).toLocaleString()}
+                        </Text>
+                        <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                          {expense.date}
+                        </Text>
+                      </View>
+                    </View>
+                    {selectedExpense?.id === expense.id && (
+                      <View style={{ position: 'absolute', top: 8, right: 8 }}>
+                        <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+                      </View>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Reimbursement Amount */}
+          {selectedExpense && (
+            <Animated.View entering={SlideInUp.duration(400).delay(200)}>
+              <FormInput
+                label="Reimbursement Amount *"
+                value={formData.reimbursement_amount}
+                onChangeText={(text) => updateField('reimbursement_amount', text.replace(/[^0-9.]/g, ''))}
+                placeholder={selectedExpense.amount.toString()}
+                keyboardType="numeric"
+                theme={theme}
+                prefix="₹"
+              />
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: -12, marginBottom: 16 }}>
+                Max: ₹{Number(selectedExpense.amount).toLocaleString()}
+              </Text>
+            </Animated.View>
+          )}
+
+          {/* Details/Reason */}
+          <Animated.View entering={SlideInUp.duration(400).delay(300)}>
+            <FormInput
+              label="Reason/Details *"
+              value={formData.details}
+              onChangeText={(text) => updateField('details', text)}
+              placeholder="Enter reason for reimbursement claim"
+              multiline
+              numberOfLines={4}
+              theme={theme}
+            />
+          </Animated.View>
+
+          {/* Bill Evidence Toggle */}
+          <Animated.View entering={SlideInUp.duration(400).delay(400)}>
+            <Text style={{
+              fontSize: 14,
+              color: theme.textSecondary,
+              marginBottom: 8,
+              fontWeight: '500',
+            }}>
+              Bill/Receipt Available? *
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <Pressable
+                style={{
+                  flex: 1,
+                  backgroundColor: formData.bill_evidence === 'yes' ? '#10B98120' : theme.surface,
+                  borderWidth: 1,
+                  borderColor: formData.bill_evidence === 'yes' ? '#10B981' : theme.border,
+                  padding: 16,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onPress={() => setFormData(prev => ({ ...prev, bill_evidence: 'yes' }))}
+              >
+                <Ionicons 
+                  name={formData.bill_evidence === 'yes' ? 'checkmark-circle' : 'ellipse-outline'} 
+                  size={20} 
+                  color={formData.bill_evidence === 'yes' ? '#10B981' : theme.textSecondary} 
+                />
+                <Text style={{ 
+                  color: formData.bill_evidence === 'yes' ? '#10B981' : theme.text,
+                  fontWeight: '500',
+                }}>
+                  Yes
+                </Text>
+              </Pressable>
+              <Pressable
+                style={{
+                  flex: 1,
+                  backgroundColor: formData.bill_evidence === 'no' ? '#EF444420' : theme.surface,
+                  borderWidth: 1,
+                  borderColor: formData.bill_evidence === 'no' ? '#EF4444' : theme.border,
+                  padding: 16,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onPress={() => setFormData(prev => ({ ...prev, bill_evidence: 'no' }))}
+              >
+                <Ionicons 
+                  name={formData.bill_evidence === 'no' ? 'close-circle' : 'ellipse-outline'} 
+                  size={20} 
+                  color={formData.bill_evidence === 'no' ? '#EF4444' : theme.textSecondary} 
+                />
+                <Text style={{ 
+                  color: formData.bill_evidence === 'no' ? '#EF4444' : theme.text,
+                  fontWeight: '500',
+                }}>
+                  No
+                </Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+
+          {/* Document Upload */}
+          <Animated.View entering={SlideInUp.duration(400).delay(500)} style={{ marginBottom: 16 }}>
+            <Text style={{
+              fontSize: 14,
+              color: theme.textSecondary,
+              marginBottom: 8,
+              fontWeight: '500',
+            }}>
+              Supporting Documents (Optional)
             </Text>
             
             <Pressable
@@ -190,14 +375,14 @@ export default function AddReimbursementScreen() {
                 borderWidth: 1,
                 borderColor: theme.border,
                 borderStyle: 'dashed',
-                borderRadius: 8,
-                padding: 16,
+                borderRadius: 12,
+                padding: 24,
                 alignItems: 'center',
               }}
               onPress={pickDocument}
             >
-              <Ionicons name="cloud-upload" size={32} color={theme.primary} />
-              <Text style={{ color: theme.primary, marginTop: 8, fontWeight: '500' }}>
+              <Ionicons name="cloud-upload" size={40} color={theme.primary} />
+              <Text style={{ color: theme.primary, marginTop: 8, fontWeight: '600' }}>
                 Upload Document
               </Text>
               <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
@@ -205,7 +390,6 @@ export default function AddReimbursementScreen() {
               </Text>
             </Pressable>
 
-            {/* Show uploaded documents */}
             {documents.length > 0 && (
               <View style={{ marginTop: 12, gap: 8 }}>
                 {documents.map((doc, index) => (
@@ -223,7 +407,7 @@ export default function AddReimbursementScreen() {
                   >
                     <Ionicons name="document" size={20} color={theme.primary} />
                     <Text style={{ flex: 1, marginLeft: 12, color: theme.text }}>
-                      Receipt {index + 1}
+                      Document {index + 1}
                     </Text>
                     <Pressable onPress={() => removeDocument(index)}>
                       <Ionicons name="close-circle" size={20} color="#EF4444" />
@@ -232,25 +416,56 @@ export default function AddReimbursementScreen() {
                 ))}
               </View>
             )}
-          </View>
+          </Animated.View>
 
-          {/* Submit Button */}
-          <Pressable
+          {/* Info Note */}
+          <Animated.View 
+            entering={SlideInUp.duration(400).delay(600)}
             style={{
-              backgroundColor: loading ? '#9CA3AF' : theme.primary,
+              backgroundColor: '#3B82F615',
               padding: 16,
               borderRadius: 12,
-              alignItems: 'center',
-              marginTop: 8,
-              marginBottom: 32,
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 12,
+              marginBottom: 16,
             }}
-            onPress={handleSubmit}
-            disabled={loading}
           >
-            <Text style={{ color: theme.textInverse, fontSize: 16, fontWeight: '600' }}>
-              {loading ? 'Submitting...' : 'Submit Reimbursement'}
-            </Text>
-          </Pressable>
+            <Ionicons name="information-circle" size={24} color="#3B82F6" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.text, fontWeight: '600', marginBottom: 4 }}>
+                Note
+              </Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
+                HR and Admin will be notified of your reimbursement request. 
+                You'll receive a notification once it's approved or rejected.
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* Submit Button */}
+          <Animated.View entering={SlideInUp.duration(400).delay(700)}>
+            <Pressable
+              style={{
+                backgroundColor: loading || !selectedExpense ? '#9CA3AF' : theme.primary,
+                padding: 16,
+                borderRadius: 12,
+                alignItems: 'center',
+                marginTop: 8,
+                marginBottom: 32,
+              }}
+              onPress={handleSubmit}
+              disabled={loading || !selectedExpense}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                  Submit Reimbursement Request
+                </Text>
+              )}
+            </Pressable>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

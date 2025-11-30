@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, ScrollView, Pressable, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
@@ -17,6 +18,7 @@ type TabType = 'info' | 'timeline' | 'documents';
 export default function EventDetailScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const user = useAuthStore((state) => state.user);
   
@@ -30,6 +32,15 @@ export default function EventDetailScreen() {
   const canManage = user?.category === 'hr' || user?.category === 'admin';
   const canEdit = canManage || item?.created_by === user?.id;
   const canDelete = canManage;
+
+  // Safe back navigation helper
+  const safeGoBack = () => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(modules)/events');
+    }
+  };
 
   useEffect(() => {
     fetchItemDetails();
@@ -56,13 +67,13 @@ export default function EventDetailScreen() {
           data = await eventsService.getVenue(itemId);
           break;
         default:
-          router.back();
+          safeGoBack();
           return;
       }
       
       setItem(data);
     } catch (error: any) {
-      router.back();
+      safeGoBack();
     } finally {
       setLoading(false);
     }
@@ -94,7 +105,7 @@ export default function EventDetailScreen() {
           await eventsService.deleteVenue(itemId);
           break;
       }
-      router.back();
+      safeGoBack();
     } catch (error: any) {
       // Silent error
     }
@@ -309,6 +320,7 @@ export default function EventDetailScreen() {
       <ModuleHeader
         title={getTitle()}
         showBack
+        onBack={safeGoBack}
         rightActions={
           <View style={styles.headerActions}>
             {itemType === 'leads' && canManage && item && !item.reject && !item.convert && (

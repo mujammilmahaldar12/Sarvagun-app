@@ -34,36 +34,39 @@ export default function FinanceAnalytics() {
     );
   }
 
-  // Sample KPI cards
+  // Sample KPI cards - using data from statistics and analytics endpoints
   const kpiCards = [
     {
       title: 'Total Sales',
-      value: `₹${(salesAnalytics?.total_amount || 0).toLocaleString('en-IN')}`,
-      change: '+12%',
+      value: `₹${(statistics?.sales?.total_amount || salesAnalytics?.total_amount || 0).toLocaleString('en-IN')}`,
+      change: `${statistics?.sales?.total_count || 0} transactions`,
       changePositive: true,
       icon: 'trending-up' as const,
       color: '#10B981',
     },
     {
       title: 'Total Expenses',
-      value: `₹${(expensesAnalytics?.total_amount || 0).toLocaleString('en-IN')}`,
-      change: '+8%',
+      value: `₹${(statistics?.expenses?.total_amount || expensesAnalytics?.total_amount || 0).toLocaleString('en-IN')}`,
+      change: `${statistics?.expenses?.total_count || 0} transactions`,
       changePositive: false,
       icon: 'wallet' as const,
       color: '#EF4444',
     },
     {
       title: 'Net Profit',
-      value: `₹${((salesAnalytics?.total_amount || 0) - (expensesAnalytics?.total_amount || 0)).toLocaleString('en-IN')}`,
-      change: '+15%',
-      changePositive: true,
+      value: `₹${(
+        (statistics?.sales?.total_amount || salesAnalytics?.total_amount || 0) - 
+        (statistics?.expenses?.total_amount || expensesAnalytics?.total_amount || 0)
+      ).toLocaleString('en-IN')}`,
+      change: 'Revenue - Expenses',
+      changePositive: (statistics?.sales?.total_amount || 0) > (statistics?.expenses?.total_amount || 0),
       icon: 'cash' as const,
       color: '#6366F1',
     },
     {
       title: 'Pending Sales',
       value: `₹${(salesAnalytics?.balance_due || 0).toLocaleString('en-IN')}`,
-      change: `${salesAnalytics?.pending_count || 0} pending`,
+      change: `${statistics?.sales?.pending_count || salesAnalytics?.pending_count || 0} pending`,
       changePositive: false,
       icon: 'hourglass' as const,
       color: '#F59E0B',
@@ -71,15 +74,15 @@ export default function FinanceAnalytics() {
     {
       title: 'Pending Expenses',
       value: `₹${(expensesAnalytics?.pending_amount || 0).toLocaleString('en-IN')}`,
-      change: `${expensesAnalytics?.not_paid_count || 0} unpaid`,
+      change: `${statistics?.expenses?.pending_count || expensesAnalytics?.not_paid_count || 0} unpaid`,
       changePositive: false,
       icon: 'alert-circle' as const,
       color: '#F59E0B',
     },
     {
       title: 'Total Invoices',
-      value: String(statistics?.total_invoices || 0),
-      change: 'All time',
+      value: String(statistics?.invoices?.total_count || 0),
+      change: `₹${(statistics?.invoices?.total_amount || 0).toLocaleString('en-IN')}`,
       changePositive: true,
       icon: 'document-text' as const,
       color: '#8B5CF6',

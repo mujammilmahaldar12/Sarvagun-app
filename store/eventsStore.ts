@@ -220,7 +220,10 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       }));
       
       try {
-        const leads = await eventsService.getLeads(get().filters.leads);
+        const leads = await eventsService.getLeads({
+          ...get().filters.leads,
+          page_size: 100  // Request 100 leads instead of default 10
+        });
         
         set({ leads });
         get().setCachedData(cacheKey, leads);
@@ -255,7 +258,10 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       }));
       
       try {
-        const events = await eventsService.getEvents(get().filters.events);
+        const events = await eventsService.getEvents({
+          ...get().filters.events,
+          page_size: 100  // Request 100 events instead of default 10
+        });
         
         set({ events });
         get().setCachedData(cacheKey, events);

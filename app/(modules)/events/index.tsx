@@ -7,7 +7,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, ScrollView, RefreshControl, BackHandler, Modal, Pressable, Text, Platform } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
@@ -46,47 +46,61 @@ export default function EventManagementScreen() {
   // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
 
-  // Initialize data on component mount - only if authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      console.log('✅ Events: User authenticated, initializing data...');
-      initializeData();
-    } else {
-      console.log('⚠️ Events: User not authenticated, skipping data initialization');
-    }
-  }, [isAuthenticated, user]);
+  // Track if initial data has been loaded
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  // Fetch data when tab changes - only if authenticated
+  // Initialize data on component mount - only once
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !initialLoadDone) {
+      console.log('✅ Events: User authenticated, initializing data...');
+      initializeData().then(() => setInitialLoadDone(true));
+    }
+  }, [isAuthenticated, user, initialLoadDone]);
+
+  // Fetch data when tab changes - debounced to prevent rapid switching issues
+  useEffect(() => {
+    if (!isAuthenticated || !user || !initialLoadDone) return;
+    
+    const timeoutId = setTimeout(() => {
       console.log(`🔄 Events: Fetching data for tab: ${activeTab}`);
       fetchTabData();
-    } else {
-      console.log(`⚠️ Events: Not authenticated, skipping ${activeTab} data fetch`);
-    }
-  }, [activeTab, isAuthenticated, user]);
+    }, 100); // Small delay to prevent rapid tab switching issues
+    
+    return () => clearTimeout(timeoutId);
+  }, [activeTab, initialLoadDone]);
 
   // Handle back button on Android
+  const navigation = useNavigation();
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        router.back();
-        return true;
+        // Only call router.back() if we can actually go back
+        if (navigation.canGoBack()) {
+          router.back();
+          return true;
+        }
+        // Return false to let the default behavior happen (exit app or go to home)
+        return false;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [router])
+    }, [router, navigation])
   );
 
-  // Refresh data when screen gains focus (e.g., after creating a lead)
+  // Refresh data when screen gains focus - only if coming back from another screen
+  const [lastFocusTime, setLastFocusTime] = useState(0);
   useFocusEffect(
     useCallback(() => {
-      if (isAuthenticated && user) {
-        console.log('🔄 Events: Screen focused, refreshing data...');
+      const now = Date.now();
+      // Only refresh if more than 30 seconds since last focus (avoid rapid re-fetches)
+      if (isAuthenticated && user && initialLoadDone && (now - lastFocusTime > 30000)) {
+        console.log('🔄 Events: Screen focused, soft refresh...');
+        setLastFocusTime(now);
+        // Only fetch current tab data, not everything
         fetchTabData();
       }
-    }, [activeTab, isAuthenticated, user])
+    }, [activeTab, isAuthenticated, user, initialLoadDone, lastFocusTime])
   );
 
   // Initialize required data
@@ -109,41 +123,33 @@ export default function EventManagementScreen() {
     }
   };
 
-  // Fetch data based on active tab
+  // Fetch data based on active tab - optimized to use cache
   const fetchTabData = async () => {
-    if (!isAuthenticated) {
-      console.log(`⚠️ Events: Not authenticated, skipping ${activeTab} data fetch`);
-      return;
-    }
+    if (!isAuthenticated) return;
     
     try {
-      console.log(`🔄 Events: Fetching ${activeTab} data...`);
       switch (activeTab) {
         case 'analytics':
-          // Fetch all data for analytics
+          // Fetch only what's needed for analytics (use cached data when available)
           await Promise.all([
-            eventsStore.fetchLeads(),
-            eventsStore.fetchEvents(),
-            eventsStore.fetchClients(),
-            eventsStore.fetchVenues(),
-            eventsStore.fetchLeadStatistics(),
+            eventsStore.fetchLeads(false), // false = use cache
+            eventsStore.fetchEvents(false),
+            eventsStore.fetchClients(false),
           ]);
           break;
         case 'leads':
-          await eventsStore.fetchLeads();
-          await eventsStore.fetchLeadStatistics();
+          await eventsStore.fetchLeads(false);
           break;
         case 'events':
-          await eventsStore.fetchEvents();
+          await eventsStore.fetchEvents(false);
           break;
         case 'clients':
-          await eventsStore.fetchClients();
+          await eventsStore.fetchClients(false);
           break;
         case 'venues':
-          await eventsStore.fetchVenues();
+          await eventsStore.fetchVenues(false);
           break;
       }
-      console.log(`✅ Events: ${activeTab} data loaded successfully`);
     } catch (error) {
       console.error(`❌ Events: Error fetching ${activeTab} data:`, error);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   ScrollView, 
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { Button, FormField } from '@/components';
@@ -27,7 +28,17 @@ import type { Lead, Venue, ClientCategory, Organisation } from '@/types/events';
 export default function ConvertLeadScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const { leadId } = useLocalSearchParams<{ leadId: string }>();
+
+  // Safe back navigation helper
+  const safeGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(modules)/events');
+    }
+  }, [navigation, router]);
 
   const [loading, setLoading] = useState(true);
   const [lead, setLead] = useState<Lead | null>(null);
@@ -72,7 +83,7 @@ export default function ConvertLeadScreen() {
   const fetchData = async () => {
     if (!leadId) {
       Alert.alert('Error', 'No lead ID provided');
-      router.back();
+      safeGoBack();
       return;
     }
 
@@ -465,7 +476,7 @@ export default function ConvertLeadScreen() {
   if (loading || !lead) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <ModuleHeader title="Convert Lead to Event" showBack />
+        <ModuleHeader title="Convert Lead to Event" showBack onBack={safeGoBack} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={{ 
@@ -487,7 +498,7 @@ export default function ConvertLeadScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <View style={{ flex: 1 }}>
-        <ModuleHeader title="Convert Lead to Event" showBack />
+        <ModuleHeader title="Convert Lead to Event" showBack onBack={safeGoBack} />
 
         <ScrollView 
           style={{ flex: 1 }} 

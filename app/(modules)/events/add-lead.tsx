@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal, StyleSheet, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ModuleHeader, Button, FormField, FormSection, Chip } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
@@ -14,7 +15,17 @@ import type { ClientCategory, Organisation, Client } from '@/types/events';
 export default function AddLeadScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
+
+  // Safe back navigation helper
+  const safeGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(modules)/events');
+    }
+  }, [navigation, router]);
 
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<ClientCategory[]>([]);
@@ -227,7 +238,7 @@ export default function AddLeadScreen() {
       console.log('✅ Lead created successfully:', result);
 
       // Navigate back immediately (no alert needed)
-      router.back();
+      safeGoBack();
       
       // Show toast-style success message after navigation
       setTimeout(() => {
@@ -257,6 +268,7 @@ export default function AddLeadScreen() {
         <ModuleHeader
           title="Add Lead"
           showBack
+          onBack={safeGoBack}
         />
 
         <ScrollView 

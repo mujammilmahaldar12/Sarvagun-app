@@ -340,21 +340,31 @@ export const Table = <T extends any>({
       )}
 
       {/* Table */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={true} bounces={false}>
-        <View>
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: spacing[2],
-              paddingVertical: spacing[3],
-              minHeight: 50,
-              backgroundColor: colors.surfaceElevated,
-              borderBottomWidth: 2,
-              borderBottomColor: colors.primary,
-            }}
-          >
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={true} 
+        bounces={false}
+        nestedScrollEnabled={true}
+      >
+        <ScrollView 
+          showsVerticalScrollIndicator={true}
+          nestedScrollEnabled={true}
+          style={{ flex: 1 }}
+        >
+          <View>
+            {/* Header */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: spacing[2],
+                paddingVertical: spacing[3],
+                minHeight: 50,
+                backgroundColor: colors.surfaceElevated,
+                borderBottomWidth: 2,
+                borderBottomColor: colors.primary,
+              }}
+            >
             {selectable && (
               <View style={{ width: 40, flexShrink: 0, justifyContent: 'center', alignItems: 'center' }}>
                 <Pressable onPress={handleSelectAll}>
@@ -413,22 +423,15 @@ export const Table = <T extends any>({
               <Ionicons name="folder-open-outline" size={64} color={colors.textSecondary} />
               <Text style={{ color: colors.textSecondary, marginTop: spacing[2] }}>{emptyMessage}</Text>
             </View>
-          ) : virtualized ? (
-            <FlatList
-              data={paginatedData}
-              keyExtractor={(item, idx) => String(keyExtractor(item, idx))}
-              renderItem={({ item, index }) => <TableRow item={item} index={index} />}
-              maxToRenderPerBatch={20}
-              windowSize={10}
-            />
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <View>
               {paginatedData.map((item, index) => (
                 <TableRow key={String(keyExtractor(item, index))} item={item} index={index} />
               ))}
-            </ScrollView>
+            </View>
           )}
-        </View>
+          </View>
+        </ScrollView>
       </ScrollView>
 
       {/* Pagination */}

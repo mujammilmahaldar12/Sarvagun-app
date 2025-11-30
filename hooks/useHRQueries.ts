@@ -117,9 +117,7 @@ export const useMyLeaves = (filters?: LeaveFilters) => {
   return useQuery({
     queryKey: hrQueryKeys.myLeaves(filters),
     queryFn: () => hrService.getMyLeaves(filters),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    enabled: false, // Disable until backend endpoint exists
+    staleTime: 1 * 60 * 1000, // 1 minute
   });
 };
 
@@ -165,7 +163,6 @@ export const useLeaveStatistics = () => {
     queryFn: () => hrService.getLeaveStatistics(),
     staleTime: 5 * 60 * 1000,
     retry: false,
-    enabled: false, // Disable until backend endpoint exists
   });
 };
 
@@ -256,6 +253,33 @@ export const useEmployees = (filters?: EmployeeFilters) => {
     queryKey: hrQueryKeys.employeesList(filters),
     queryFn: () => hrService.getEmployees(filters),
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+/**
+ * Search employees by query string
+ */
+export const useSearchEmployees = (
+  query: string, 
+  filters?: { category?: string; department?: string },
+  enabled: boolean = true
+) => {
+  return useQuery({
+    queryKey: [...hrQueryKeys.employees(), 'search', query, filters],
+    queryFn: () => hrService.searchEmployees(query, filters),
+    staleTime: 30 * 1000, // 30 seconds cache for search results
+    enabled: enabled && query.length > 0,
+  });
+};
+
+/**
+ * Get all users with optional search
+ */
+export const useAllUsers = (params?: { search?: string; category?: string; department?: string }) => {
+  return useQuery({
+    queryKey: [...hrQueryKeys.employees(), 'all', params],
+    queryFn: () => hrService.getAllUsers(params),
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
@@ -376,4 +400,93 @@ export const useLeaveTypeBalance = (
     used: balance[`${typeKey}_used`],
     planned: balance[`${typeKey}_planned`] || 0,
   };
+};
+
+// ============================================================================
+// REIMBURSEMENT QUERIES
+// ============================================================================
+
+export const reimbursementQueryKeys = {
+  all: ['reimbursements'] as const,
+  list: (filters?: any) => [...reimbursementQueryKeys.all, 'list', filters] as const,
+  detail: (id: number) => [...reimbursementQueryKeys.all, 'detail', id] as const,
+  statistics: () => [...reimbursementQueryKeys.all, 'statistics'] as const,
+};
+
+/**
+ * Get all reimbursement requests
+ */
+export const useReimbursements = (filters?: any) => {
+  return useQuery({
+    queryKey: reimbursementQueryKeys.list(filters),
+    queryFn: () => hrService.getReimbursements(filters),
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+};
+
+/**
+ * Get a single reimbursement
+ */
+export const useReimbursement = (id: number) => {
+  return useQuery({
+    queryKey: reimbursementQueryKeys.detail(id),
+    queryFn: () => hrService.getReimbursement(id),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+};
+
+/**
+ * Get reimbursement statistics
+ */
+export const useReimbursementStatistics = () => {
+  return useQuery({
+    queryKey: reimbursementQueryKeys.statistics(),
+    queryFn: () => hrService.getReimbursementStatistics(),
+    staleTime: 2 * 60 * 1000,
+  });
+};
+
+/**
+ * Create a new reimbursement request
+ */
+export const useCreateReimbursement = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => hrService.createReimbursement(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
+    },
+  });
+};
+
+/**
+ * Update reimbursement status (approve/reject/done)
+ */
+export const useUpdateReimbursementStatus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, status, reason }: { id: number; status: string; reason?: string }) =>
+      hrService.updateReimbursementStatus(id, status, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
+    },
+  });
+};
+
+/**
+ * Upload reimbursement photo
+ */
+export const useUploadReimbursementPhoto = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ reimbursementId, photo }: { reimbursementId: number; photo: any }) =>
+      hrService.uploadReimbursementPhoto(reimbursementId, photo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
+    },
+  });
 };

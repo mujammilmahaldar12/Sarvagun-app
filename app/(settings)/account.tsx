@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
@@ -26,6 +26,16 @@ export default function AccountScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
     lastName: user?.last_name || '',
@@ -122,11 +132,62 @@ export default function AccountScreen() {
   };
 
   const handleChangePassword = () => {
-    Alert.alert(
-      'Change Password',
-      'Password change functionality will be implemented soon',
-      [{ text: 'OK' }]
-    );
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordSubmit = async () => {
+    // Validate
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      Alert.alert('Error', 'New password must be at least 8 characters');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      
+      await authService.changePassword({
+        old_password: passwordForm.oldPassword,
+        new_password: passwordForm.newPassword,
+        confirm_password: passwordForm.confirmPassword,
+      });
+
+      Alert.alert('Success', 'Password changed successfully');
+      setShowPasswordModal(false);
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      
+      let errorMessage = 'Failed to change password';
+      if (error.response?.data?.old_password) {
+        errorMessage = Array.isArray(error.response.data.old_password) 
+          ? error.response.data.old_password[0] 
+          : error.response.data.old_password;
+      } else if (error.response?.data?.new_password) {
+        errorMessage = Array.isArray(error.response.data.new_password) 
+          ? error.response.data.new_password[0] 
+          : error.response.data.new_password;
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const InfoRow = ({ label, value, icon }: { label: string; value: string; icon: keyof typeof Ionicons.glyphMap }) => (
@@ -406,6 +467,190 @@ export default function AccountScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={showPasswordModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+          {/* Modal Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: designSystem.spacing.lg,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.border,
+              backgroundColor: theme.surface,
+            }}
+          >
+            <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+              <Text style={{ color: theme.textSecondary, ...getTypographyStyle('base') }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ ...getTypographyStyle('lg', 'semibold'), color: theme.text }}>
+              Change Password
+            </Text>
+            <TouchableOpacity 
+              onPress={handlePasswordSubmit}
+              disabled={isChangingPassword}
+            >
+              {isChangingPassword ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Text style={{ color: theme.primary, ...getTypographyStyle('base', 'semibold') }}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ flex: 1 }}>
+            <View style={{ padding: designSystem.spacing.lg }}>
+              {/* Old Password */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary, marginBottom: 8 }}>
+                  Current Password
+                </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: theme.surface,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Ionicons name="lock-closed-outline" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                  <TextInput
+                    value={passwordForm.oldPassword}
+                    onChangeText={(text) => setPasswordForm({ ...passwordForm, oldPassword: text })}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      ...getTypographyStyle('base'),
+                      color: theme.text,
+                    }}
+                    placeholder="Enter current password"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showOldPassword}
+                  />
+                  <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)}>
+                    <Ionicons 
+                      name={showOldPassword ? 'eye-off-outline' : 'eye-outline'} 
+                      size={20} 
+                      color={theme.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* New Password */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary, marginBottom: 8 }}>
+                  New Password
+                </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: theme.surface,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Ionicons name="key-outline" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                  <TextInput
+                    value={passwordForm.newPassword}
+                    onChangeText={(text) => setPasswordForm({ ...passwordForm, newPassword: text })}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      ...getTypographyStyle('base'),
+                      color: theme.text,
+                    }}
+                    placeholder="Enter new password"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showNewPassword}
+                  />
+                  <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+                    <Ionicons 
+                      name={showNewPassword ? 'eye-off-outline' : 'eye-outline'} 
+                      size={20} 
+                      color={theme.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary, marginTop: 4 }}>
+                  Must be at least 8 characters
+                </Text>
+              </View>
+
+              {/* Confirm New Password */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary, marginBottom: 8 }}>
+                  Confirm New Password
+                </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: theme.surface,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                  <TextInput
+                    value={passwordForm.confirmPassword}
+                    onChangeText={(text) => setPasswordForm({ ...passwordForm, confirmPassword: text })}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      ...getTypographyStyle('base'),
+                      color: theme.text,
+                    }}
+                    placeholder="Confirm new password"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showConfirmPassword}
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    <Ionicons 
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} 
+                      size={20} 
+                      color={theme.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Info */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  backgroundColor: theme.primary + '10',
+                  padding: 16,
+                  borderRadius: 12,
+                  marginTop: 8,
+                }}
+              >
+                <Ionicons name="information-circle-outline" size={20} color={theme.primary} style={{ marginRight: 8, marginTop: 2 }} />
+                <Text style={{ flex: 1, ...getTypographyStyle('sm'), color: theme.text, lineHeight: 20 }}>
+                  After changing your password, you'll need to log in again with your new password on all devices.
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }

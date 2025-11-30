@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StatusBar,
   StyleSheet,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,82 +17,22 @@ import { Avatar, AnimatedPressable, Card, Badge, Button } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { formatDistanceToNow } from 'date-fns';
+import { useNotifications, useMarkNotificationAsRead, useMarkAllNotificationsAsRead } from '@/hooks/useNotificationQueries';
 
 // Notification types
 type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'mention' | 'task' | 'event' | 'leave' | 'project';
 
-interface Notification {
-  id: string;
+interface NotificationItem {
+  id: number;
   type: NotificationType;
   title: string;
   message: string;
-  timestamp: string;
-  isRead: boolean;
+  created_at: string;
+  is_read: boolean;
   avatar?: string;
-  userName?: string;
-  actionUrl?: string;
+  user_name?: string;
+  action_url?: string;
 }
-
-// Dummy notifications data
-const DUMMY_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'mention',
-    title: 'Rajesh Kumar mentioned you',
-    message: 'Rajesh mentioned you in a comment on "Q4 Marketing Campaign"',
-    timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    isRead: false,
-    userName: 'Rajesh Kumar',
-  },
-  {
-    id: '2',
-    type: 'task',
-    title: 'New task assigned',
-    message: 'You have been assigned to "Update user dashboard UI"',
-    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    isRead: false,
-  },
-  {
-    id: '3',
-    type: 'success',
-    title: 'Leave approved',
-    message: 'Your leave request for Dec 25-27 has been approved by HR',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    isRead: false,
-  },
-  {
-    id: '4',
-    type: 'event',
-    title: 'Upcoming event reminder',
-    message: 'Team Building Workshop starts in 2 days',
-    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    isRead: true,
-  },
-  {
-    id: '5',
-    type: 'project',
-    title: 'Project milestone completed',
-    message: 'Mobile App Development - Phase 1 has been completed',
-    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'warning',
-    title: 'Task deadline approaching',
-    message: '"API Integration" is due in 2 hours',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    isRead: true,
-  },
-  {
-    id: '7',
-    type: 'info',
-    title: 'New announcement',
-    message: 'Company holiday schedule updated for next month',
-    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    isRead: true,
-  },
-];
 
 const NotificationIcon = ({ type, isRead }: { type: NotificationType; isRead: boolean }) => {
   const getIconConfig = () => {
@@ -127,8 +68,8 @@ const NotificationIcon = ({ type, isRead }: { type: NotificationType; isRead: bo
   );
 };
 
-const NotificationItem = ({ notification, onPress, onMarkAsRead }: { 
-  notification: Notification; 
+const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: { 
+  notification: NotificationItem; 
   onPress: () => void;
   onMarkAsRead: () => void;
 }) => {
@@ -136,7 +77,7 @@ const NotificationItem = ({ notification, onPress, onMarkAsRead }: {
   
   const timeAgo = (() => {
     try {
-      return formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true });
+      return formatDistanceToNow(new Date(notification.created_at), { addSuffix: true });
     } catch {
       return 'Recently';
     }
@@ -149,10 +90,10 @@ const NotificationItem = ({ notification, onPress, onMarkAsRead }: {
       shadow="sm"
       padding="base"
       animated={true}
-      style={!notification.isRead ? { backgroundColor: theme.primary + '08' } : undefined}
+      style={!notification.is_read ? { backgroundColor: theme.primary + '08' } : undefined}
     >
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <NotificationIcon type={notification.type} isRead={notification.isRead} />
+        <NotificationIcon type={notification.type} isRead={notification.is_read} />
         
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
@@ -160,7 +101,7 @@ const NotificationItem = ({ notification, onPress, onMarkAsRead }: {
               style={[
                 { 
                   fontSize: 14, 
-                  fontWeight: !notification.isRead ? '700' : '600',
+                  fontWeight: !notification.is_read ? '700' : '600',
                   color: theme.text,
                   flex: 1,
                   marginRight: spacing.xs,
@@ -170,7 +111,7 @@ const NotificationItem = ({ notification, onPress, onMarkAsRead }: {
             >
               {notification.title}
             </Text>
-            {!notification.isRead && (
+            {!notification.is_read && (
               <Badge variant="dot" size="sm" color={theme.primary} />
             )}
           </View>
@@ -202,43 +143,56 @@ const NotificationItem = ({ notification, onPress, onMarkAsRead }: {
 export default function NotificationsScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
-  const [notifications, setNotifications] = useState(DUMMY_NOTIFICATIONS);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Fetch real notifications from API
+  const { 
+    data: notificationsData = [], 
+    isLoading, 
+    refetch,
+    isRefetching 
+  } = useNotifications(filter === 'unread' ? { status: 'unread' } : undefined);
+  
+  const { mutate: markAsRead } = useMarkNotificationAsRead();
+  const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
 
-  const filteredNotifications = filter === 'unread' 
-    ? notifications.filter(n => !n.isRead)
-    : notifications;
+  // Transform API data to match our interface
+  const notifications: NotificationItem[] = notificationsData.map((n: any) => ({
+    id: n.id,
+    type: (n.type || 'info') as NotificationType,
+    title: n.title || 'Notification',
+    message: n.message || n.content || '',
+    created_at: n.created_at || n.timestamp || new Date().toISOString(),
+    is_read: n.is_read || n.read || false,
+    avatar: n.avatar,
+    user_name: n.user_name || n.sender_name,
+    action_url: n.action_url || n.url,
+  }));
 
-  const onRefresh = React.useCallback(() => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
-  }, []);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  const handleNotificationPress = (notification: Notification) => {
-    // Mark as read
-    setNotifications(prev => 
-      prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
-    );
+  const onRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  const handleNotificationPress = (notification: NotificationItem) => {
+    // Mark as read via API
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
     
-    // Navigate to relevant page if actionUrl exists
-    if (notification.actionUrl) {
-      router.push(notification.actionUrl as any);
+    // Navigate to relevant page if action_url exists
+    if (notification.action_url) {
+      router.push(notification.action_url as any);
     }
   };
 
-  const handleMarkAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
-    );
+  const handleMarkAsRead = (notificationId: number) => {
+    markAsRead(notificationId);
   };
 
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    markAllAsRead();
   };
 
   return (
@@ -305,16 +259,23 @@ export default function NotificationsScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing}
+            refreshing={isRefetching}
             onRefresh={onRefresh}
             tintColor={theme.primary}
           />
         }
       >
-        {filteredNotifications.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+              Loading notifications...
+            </Text>
+          </View>
+        ) : notifications.length > 0 ? (
           <View style={styles.notificationsList}>
-            {filteredNotifications.map((notification) => (
-              <NotificationItem
+            {notifications.map((notification) => (
+              <NotificationItemComponent
                 key={notification.id}
                 notification={notification}
                 onPress={() => handleNotificationPress(notification)}
@@ -403,5 +364,15 @@ const styles = StyleSheet.create({
   emptyMessage: {
     ...getTypographyStyle('sm', 'regular'),
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
+  },
+  loadingText: {
+    ...getTypographyStyle('base', 'medium'),
+    marginTop: spacing.base,
   },
 });

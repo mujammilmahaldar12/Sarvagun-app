@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, ScrollView, Pressable, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ModuleHeader, Button, FormField, FormSection, Chip } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
@@ -14,8 +15,18 @@ const EVENT_TYPES = ['Conference', 'Workshop', 'Seminar', 'Launch', 'Training', 
 export default function AddEventScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const { fromLead } = useLocalSearchParams<{ fromLead?: string }>();
   const user = useAuthStore((state) => state.user);
+
+  // Safe back navigation helper
+  const safeGoBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(modules)/events');
+    }
+  }, [navigation, router]);
 
   const [formData, setFormData] = useState({
     eventName: '',
@@ -81,6 +92,7 @@ export default function AddEventScreen() {
       <ModuleHeader
         title={fromLead ? "Convert Lead to Event" : "Add New Event"}
         showBack
+        onBack={safeGoBack}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

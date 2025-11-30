@@ -132,6 +132,8 @@ export default function HomeScreen() {
   const { user: authUser } = useAuthStore();
   const { theme, isDark } = useTheme();
   
+  // Dashboard data fetching
+  
   // Fetch real data from backend with real-time updates
   const user = useAuthStore((state) => state.user);
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();

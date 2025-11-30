@@ -102,8 +102,8 @@ class DashboardService {
   async getUserStats(): Promise<DashboardStats> {
     try {
       // Try to fetch from a dedicated stats endpoint if it exists
-      const response = await api.get<DashboardStats>('/hr/users/stats/');
-      return response.data;
+      const response: any = await api.get<DashboardStats>('/hr/users/stats/');
+      return response.data || response;
     } catch (error) {
       // If no dedicated endpoint, return default values
       console.warn('Stats endpoint not available, using defaults');
@@ -134,8 +134,8 @@ class DashboardService {
    */
   async getAttendancePercentage(): Promise<number> {
     try {
-      const response = await api.get<{ percentage: number }>('/hr/attendance/percentage/');
-      return response.data.percentage;
+      const response: any = await api.get<{ percentage: number }>('/hr/attendance/percentage/');
+      return response?.percentage || response?.data?.percentage || 95;
     } catch (error) {
       console.warn('Attendance endpoint not available');
       return 95; // Temporary default
@@ -206,7 +206,7 @@ class DashboardService {
       console.log('📊 Leaderboard: Fetched projects:', allProjects.length);
       
       // Calculate scores for each user
-      const leaderboardData = users.map(user => {
+      const leaderboardData = users.map((user: any) => {
         // Count projects where user is assigned
         const userProjects = allProjects.filter((p: any) => 
           p.assigned_to === user.id || 
@@ -235,9 +235,9 @@ class DashboardService {
       
       // Sort by score and assign ranks
       const sortedLeaderboard = leaderboardData
-        .sort((a, b) => b.score - a.score)
+        .sort((a: any, b: any) => b.score - a.score)
         .slice(0, limit)
-        .map((user, index) => ({
+        .map((user: any, index: number) => ({
           ...user,
           rank: index + 1,
         }));
@@ -303,7 +303,7 @@ class DashboardService {
       
       // Fetch recent events
       try {
-        const eventsResponse = await api.get<any[]>('/events/');
+        const eventsResponse = await api.get<any[]>('/events/events/');
         let events = Array.isArray(eventsResponse) ? eventsResponse : 
                     (eventsResponse as any)?.data ? (eventsResponse as any).data : [];
         
@@ -341,6 +341,54 @@ class DashboardService {
   async refresh(): Promise<void> {
     // This can be used to invalidate caches
     await this.getDashboardData();
+  }
+
+  /**
+   * Get intern leaderboard (individual rankings)
+   * Returns all interns, no limit
+   */
+  async getInternLeaderboard(): Promise<any[]> {
+    try {
+      console.log('🏆 Fetching intern leaderboard...');
+      const response = await api.get<any>('/project_management/leaderboard/?filter=individual&limit=1000');
+      const data = response?.results || (Array.isArray(response) ? response : []);
+      console.log('✅ Intern leaderboard fetched:', data.length, 'interns');
+      return data;
+    } catch (error) {
+      console.error('❌ Failed to fetch intern leaderboard:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get team leaderboard (aggregated by team)
+   * Returns all teams, no limit
+   */
+  async getTeamLeaderboard(): Promise<any[]> {
+    try {
+      console.log('🏆 Fetching team leaderboard...');
+      const response = await api.get<any>('/project_management/leaderboard/?filter=team&limit=1000');
+      const data = response?.results || (Array.isArray(response) ? response : []);
+      console.log('✅ Team leaderboard fetched:', data.length, 'teams');
+      return data;
+    } catch (error) {
+      console.error('❌ Failed to fetch team leaderboard:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get individual intern ranking (current user's rank)
+   */
+  async getIndividualInternRanking(userId: number): Promise<any | null> {
+    try {
+      console.log('🏆 Fetching my rank...');
+      const response = await api.get<any>('/project_management/leaderboard/my-rank/');
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch individual ranking:', error);
+      return null;
+    }
   }
 }
 

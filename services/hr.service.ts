@@ -19,6 +19,8 @@ import type {
   Holiday,
   HolidayResponse,
   Reimbursement,
+  ReimbursementFilters,
+  CreateReimbursementRequest,
   TeamMemberLeave,
 } from '../types/hr';
 
@@ -52,11 +54,26 @@ class HRService {
    */
   async getLeaveTypes(): Promise<any[]> {
     try {
-      const response = await api.get<{ results: any[] }>('/leave_management/leave-types/');
-      const data: any = response;
-      return data?.results || data || [];
+      const response = await api.get('/leave_management/leave-types/');
+      const data: any = response.data;
+      console.log('📋 Leave types raw response:', data);
+      
+      // Handle different response formats
+      // 1. If it's already an array (no pagination)
+      if (Array.isArray(data)) {
+        console.log('📋 Leave types (array format):', data);
+        return data;
+      }
+      // 2. If it's paginated with results
+      if (data?.results && Array.isArray(data.results)) {
+        console.log('📋 Leave types (paginated format):', data.results);
+        return data.results;
+      }
+      // 3. If data is an object without results, return empty
+      console.warn('⚠️ Unexpected leave types format:', data);
+      return [];
     } catch (error) {
-      console.warn('⚠️ Could not fetch leave types:', error);
+      console.error('❌ Could not fetch leave types:', error);
       return [];
     }
   }
@@ -143,8 +160,8 @@ class HRService {
     // Try the enhanced-leaves endpoint (correct endpoint from backend URLs)
     try {
       const response = await api.post<LeaveRequest>('/leave_management/enhanced-leaves/', payload);
-      console.log('✅ Leave created successfully:', response);
-      return response;
+      console.log('✅ Leave created successfully:', response.data);
+      return response.data;
     } catch (error: any) {
       console.error('❌ Leave creation failed:', error);
       console.error('Error details:', {
@@ -192,14 +209,61 @@ class HRService {
    */
   async getLeaveBalance(employeeId?: number): Promise<LeaveBalance> {
     try {
-      const response = await api.get<{ results: LeaveBalance[] }>('/leave_management/leave-balances/');
-      // API interceptor returns data directly, so response is the data object
-      const data: any = response;
-      const results = data?.results || [];
+      // Try the new my_balance endpoint first
+      const response = await api.get<any[]>('/leave_management/leave-balances/my_balance/');
+      const balances: any = response.data;
       
-      // Return first balance (current user's balance)
-      if (results && results.length > 0) {
-        return results[0];
+      console.log('📊 Leave balances response:', balances);
+      
+      // Convert array of balances to summary format
+      if (Array.isArray(balances) && balances.length > 0) {
+        const summary: LeaveBalance = {
+          id: balances[0]?.id || 0,
+          employee: balances[0]?.user || 0,
+          year: new Date().getFullYear(),
+          annual_leave_total: 0,
+          annual_leave_used: 0,
+          annual_leave_planned: 0,
+          sick_leave_total: 0,
+          sick_leave_used: 0,
+          sick_leave_planned: 0,
+          casual_leave_total: 0,
+          casual_leave_used: 0,
+          casual_leave_planned: 0,
+          study_leave_total: 0,
+          study_leave_used: 0,
+          study_leave_planned: 0,
+          optional_leave_total: 0,
+          optional_leave_used: 0,
+          optional_leave_planned: 0,
+          annual_leave_available: 0,
+        };
+
+        // Map each balance to the summary
+        for (const balance of balances) {
+          const typeName = balance.leave_type_name || balance.leave_type?.name || '';
+          const typeKey = typeName.toLowerCase().replace(/\s+/g, '_');
+          
+          if (typeKey.includes('annual')) {
+            summary.annual_leave_total = balance.total_allocated || 0;
+            summary.annual_leave_used = balance.leave_takes || 0;
+            summary.annual_leave_available = balance.remaining_leaves || (balance.total_allocated - balance.leave_takes) || 0;
+          } else if (typeKey.includes('sick')) {
+            summary.sick_leave_total = balance.total_allocated || 0;
+            summary.sick_leave_used = balance.leave_takes || 0;
+          } else if (typeKey.includes('casual')) {
+            summary.casual_leave_total = balance.total_allocated || 0;
+            summary.casual_leave_used = balance.leave_takes || 0;
+          } else if (typeKey.includes('study')) {
+            summary.study_leave_total = balance.total_allocated || 0;
+            summary.study_leave_used = balance.leave_takes || 0;
+          } else if (typeKey.includes('optional')) {
+            summary.optional_leave_total = balance.total_allocated || 0;
+            summary.optional_leave_used = balance.leave_takes || 0;
+          }
+        }
+
+        return summary;
       }
       throw new Error('No leave balance found');
     } catch (error) {
@@ -209,22 +273,22 @@ class HRService {
         id: 0,
         employee: 0,
         year: new Date().getFullYear(),
-        annual_leave_total: 0,
+        annual_leave_total: 12,
         annual_leave_used: 0,
         annual_leave_planned: 0,
-        sick_leave_total: 0,
+        sick_leave_total: 6,
         sick_leave_used: 0,
         sick_leave_planned: 0,
-        casual_leave_total: 0,
+        casual_leave_total: 6,
         casual_leave_used: 0,
         casual_leave_planned: 0,
-        study_leave_total: 0,
+        study_leave_total: 3,
         study_leave_used: 0,
         study_leave_planned: 0,
-        optional_leave_total: 0,
+        optional_leave_total: 2,
         optional_leave_used: 0,
         optional_leave_planned: 0,
-        annual_leave_available: 0,
+        annual_leave_available: 12,
       };
     }
   }
@@ -269,15 +333,39 @@ class HRService {
    */
   async getMyLeaves(params?: LeaveFilters): Promise<LeaveResponse> {
     try {
-      const response = await api.get<LeaveResponse>('/leave_management/leaves/my/', { params });
-      return response.data;
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
-        // Fallback to hr/leaves/ endpoint filtered by user
-        const response = await api.get<LeaveResponse>('/hr/leaves/', { params });
-        return response.data;
+      // Use the enhanced-leaves/my_leaves endpoint
+      const response = await api.get<any[]>('/leave_management/enhanced-leaves/my_leaves/', { params });
+      const leaves: any = response.data;
+      
+      console.log('📋 My leaves response:', leaves);
+      
+      // Transform to LeaveResponse format
+      if (Array.isArray(leaves)) {
+        return {
+          count: leaves.length,
+          results: leaves.map((leave: any) => ({
+            id: leave.id,
+            employee: leave.user,
+            employee_name: leave.user_name,
+            leave_type: leave.leave_type_name || leave.leave_type,
+            from_date: leave.leave_dates?.[0]?.date,
+            to_date: leave.leave_dates?.[leave.leave_dates?.length - 1]?.date,
+            total_days: leave.num_days,
+            status: leave.status,
+            reason: leave.reason,
+            created_at: leave.created_at,
+            updated_at: leave.updated_at,
+            approved_by: leave.approved_by,
+            leave_dates: leave.leave_dates,
+          })),
+        };
       }
-      throw error;
+      
+      return { count: 0, results: [] };
+    } catch (error: any) {
+      console.warn('Could not fetch my leaves:', error);
+      // Return empty response
+      return { count: 0, results: [] };
     }
   }
 
@@ -291,6 +379,35 @@ class HRService {
   async getEmployees(params?: EmployeeFilters): Promise<EmployeeResponse> {
     const response = await api.get<EmployeeResponse>('/hr/users/employees/', { params });
     return response.data;
+  }
+
+  /**
+   * Search employees by name, email, designation, department
+   * @param query - Search query string
+   * @param filters - Additional filters (category, department)
+   */
+  async searchEmployees(query: string, filters?: { category?: string; department?: string }): Promise<{
+    count: number;
+    results: Employee[];
+  }> {
+    const params: any = { q: query };
+    if (filters?.category) params.category = filters.category;
+    if (filters?.department) params.department = filters.department;
+    
+    const response = await api.get<{ count: number; results: Employee[] }>('/hr/users/search/', { params });
+    return response as any;
+  }
+
+  /**
+   * Get all users with search support
+   * @param search - Optional search string
+   * @param category - Optional category filter (employee, intern, admin, etc.)
+   */
+  async getAllUsers(params?: { search?: string; category?: string; department?: string }): Promise<Employee[]> {
+    const response = await api.get<Employee[]>('/hr/users/', { params });
+    // Handle paginated or direct response
+    const data = response as any;
+    return data?.results || data || [];
   }
 
   /**
@@ -356,29 +473,59 @@ class HRService {
   }
 
   // ============================================================================
-  // REIMBURSEMENT (for completeness)
+  // REIMBURSEMENT MANAGEMENT
   // ============================================================================
 
   /**
-   * Get reimbursement requests
+   * Get all reimbursement requests
+   * Role-based:
+   * - Admin/HR: All requests
+   * - Others: Own requests only
    */
-  async getReimbursements(params?: any): Promise<Reimbursement[]> {
-    const response = await api.get<{ results: Reimbursement[] }>('/hr/reimbursements/', {
-      params,
-    });
-    return response.data.results;
+  async getReimbursements(params?: any): Promise<{ count: number; results: Reimbursement[] }> {
+    try {
+      const response = await api.get<{ results: Reimbursement[] }>('/finance_management/reimbursements/', {
+        params,
+      });
+      const data: any = response.data;
+      const results = data?.results || data || [];
+      return {
+        count: results.length,
+        results: results.map((item: any) => ({
+          ...item,
+          status: item.latest_status?.status || 'pending',
+          requested_by_name: item.requested_by_name || `User ${item.requested_by}`,
+        })),
+      };
+    } catch (error) {
+      console.error('Error fetching reimbursements:', error);
+      return { count: 0, results: [] };
+    }
+  }
+
+  /**
+   * Get a single reimbursement request
+   */
+  async getReimbursement(id: number): Promise<Reimbursement> {
+    const response = await api.get<Reimbursement>(`/finance_management/reimbursements/${id}/`);
+    const data: any = response.data;
+    return {
+      ...data,
+      status: data.latest_status?.status || 'pending',
+    };
   }
 
   /**
    * Create reimbursement request
    */
-  async createReimbursement(data: Partial<Reimbursement>): Promise<Reimbursement> {
-    const response = await api.post<Reimbursement>('/hr/reimbursements/', data);
-    return response.data;
+  async createReimbursement(data: any): Promise<Reimbursement> {
+    const response = await api.post<Reimbursement>('/finance_management/reimbursements/', data);
+    return response.data as any;
   }
 
   /**
-   * Approve/reject reimbursement
+   * Update reimbursement status (Approve/reject/done)
+   * Only for HR/Admin
    */
   async updateReimbursementStatus(
     id: number,
@@ -386,10 +533,67 @@ class HRService {
     reason?: string
   ): Promise<Reimbursement> {
     const response = await api.post<Reimbursement>(
-      `/hr/reimbursements/${id}/update-status/`,
-      { status, rejection_reason: reason }
+      `/finance_management/reimbursements/${id}/update-status/`,
+      { status, reason }
     );
-    return response.data;
+    return response as any;
+  }
+
+  /**
+   * Upload reimbursement photo/document
+   */
+  async uploadReimbursementPhoto(reimbursementId: number, photo: any): Promise<any> {
+    const formData = new FormData();
+    formData.append('reimbursement_request', reimbursementId.toString());
+    formData.append('photo', photo);
+    
+    const response = await api.post('/finance_management/reimbursement-photos/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response;
+  }
+
+  /**
+   * Get reimbursement statistics
+   */
+  async getReimbursementStatistics(): Promise<{
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    done: number;
+    total_amount: number;
+    pending_amount: number;
+  }> {
+    try {
+      const { results } = await this.getReimbursements();
+      
+      const stats = {
+        total: results.length,
+        pending: results.filter(r => r.status === 'pending').length,
+        approved: results.filter(r => r.status === 'approved').length,
+        rejected: results.filter(r => r.status === 'rejected').length,
+        done: results.filter(r => r.status === 'done').length,
+        total_amount: results.reduce((sum, r) => sum + Number(r.reimbursement_amount || 0), 0),
+        pending_amount: results.filter(r => r.status === 'pending')
+          .reduce((sum, r) => sum + Number(r.reimbursement_amount || 0), 0),
+      };
+      
+      return stats;
+    } catch (error) {
+      console.error('Error getting reimbursement statistics:', error);
+      return {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        done: 0,
+        total_amount: 0,
+        pending_amount: 0,
+      };
+    }
   }
 
   // ============================================================================

@@ -61,7 +61,18 @@ const EventsList: React.FC<EventsListProps> = ({
 
   // Process and filter events data
   const processedEvents: EventRowData[] = useMemo(() => {
+    console.log('📊 Events Debug:', {
+      isArray: Array.isArray(events),
+      total: Array.isArray(events) ? events.length : 0,
+      firstEvent: Array.isArray(events) && events.length > 0 ? events[0] : null,
+      selectedStatus,
+      searchQuery,
+      userId: user?.id,
+      userCategory: user?.category
+    });
+    
     if (!Array.isArray(events)) {
+      console.log('⚠️ Events is not an array:', typeof events, events);
       return [];
     }
 
@@ -82,6 +93,9 @@ const EventsList: React.FC<EventsListProps> = ({
         event.description?.toLowerCase().includes(query)
       );
     }
+
+    // All users can view all events
+    console.log(`✅ All events visible to user ${user?.id} (category: ${user?.category}). Total: ${filtered.length}`);
 
     // Transform to table format
     return filtered.map(event => ({
@@ -108,11 +122,11 @@ const EventsList: React.FC<EventsListProps> = ({
 
   // Handle event actions
   const handleEventDetails = (eventId: number) => {
-    router.push(`/events/${eventId}`);
+    router.push(`/(modules)/events/${eventId}?type=events` as any);
   };
 
   const handleEditEvent = (eventId: number) => {
-    router.push(`/events/edit-event?eventId=${eventId}`);
+    router.push(`/(modules)/events/add-event?id=${eventId}` as any);
   };
 
   const handleDeleteEvent = async (eventId: number) => {
@@ -350,6 +364,7 @@ const EventsList: React.FC<EventsListProps> = ({
         searchable={true}
         searchPlaceholder="Search events..."
         exportable={user?.category === 'admin' || user?.category === 'hr'}
+        pageSize={100}
       />
     </View>
   );

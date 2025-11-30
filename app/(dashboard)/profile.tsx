@@ -9,11 +9,14 @@ import Animated, {
   withTiming,
   runOnJS,
   interpolateColor,
+  FadeIn,
+  FadeInDown,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useAIStore } from '@/store/aiStore';
 import { Avatar, ListItem, AnimatedPressable, AnimatedButton } from '@/components';
 import { spacing, borderRadius, iconSizes, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
@@ -23,6 +26,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { theme, isDark, toggleTheme } = useTheme();
   const { user, logout, isAuthenticated } = useAuthStore();
+  const { isAIModeEnabled, toggleAIMode } = useAIStore();
   const [shouldLogout, setShouldLogout] = useState(false);
 
   // Swipe to logout animation
@@ -218,6 +222,68 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* AI Assistant - Beta */}
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>AI ASSISTANT</Text>
+            <View style={styles.betaBadge}>
+              <Ionicons name="sparkles" size={10} color="#FFFFFF" />
+              <Text style={styles.betaText}>BETA</Text>
+            </View>
+          </View>
+          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
+            {/* AI Mode Toggle */}
+            <View style={styles.aiToggleRow}>
+              <View style={styles.aiToggleLeft}>
+                <View style={[styles.aiIconContainer, { backgroundColor: theme.primary + '20' }]}>
+                  <Ionicons name="sparkles" size={20} color={theme.primary} />
+                </View>
+                <View style={styles.aiToggleInfo}>
+                  <Text style={[styles.aiToggleTitle, { color: theme.text }]}>AI Mode</Text>
+                  <Text style={[styles.aiToggleDescription, { color: theme.textSecondary }]}>
+                    Enable Sarvagun AI assistant
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={isAIModeEnabled}
+                onValueChange={toggleAIMode}
+                trackColor={{ false: theme.border, true: theme.primary + '60' }}
+                thumbColor={isAIModeEnabled ? theme.primary : theme.surface}
+                ios_backgroundColor={theme.border}
+              />
+            </View>
+
+            {/* Chat with AI - Only visible when AI mode is enabled */}
+            {isAIModeEnabled && (
+              <Animated.View entering={FadeIn.springify()}>
+                <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                <ListItem
+                  title="Chat with AI"
+                  description="Ask questions, get help instantly"
+                  leftIcon="chatbubble-ellipses-outline"
+                  rightIcon="chevron-forward-outline"
+                  showDivider={false}
+                  onPress={() => router.push('/(dashboard)/ai-chat')}
+                />
+              </Animated.View>
+            )}
+          </View>
+          
+          {/* AI Info Card */}
+          {isAIModeEnabled && (
+            <Animated.View 
+              entering={FadeInDown.delay(150).springify()}
+              style={[styles.aiInfoCard, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}
+            >
+              <Ionicons name="information-circle" size={18} color={theme.primary} />
+              <Text style={[styles.aiInfoText, { color: theme.primary }]}>
+                AI assistant helps with leave, tasks, events & workplace queries. Responses may not always be accurate.
+              </Text>
+            </Animated.View>
+          )}
+        </Animated.View>
+
         {/* Support Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SUPPORT</Text>
@@ -365,8 +431,77 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     marginLeft: spacing.xs,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    marginLeft: spacing.xs,
+  },
+  betaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  betaText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
   sectionCard: {
     overflow: 'hidden',
+  },
+  aiToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.base,
+  },
+  aiToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  aiIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiToggleInfo: {
+    flex: 1,
+  },
+  aiToggleTitle: {
+    ...getTypographyStyle('base', 'semibold'),
+    marginBottom: 2,
+  },
+  aiToggleDescription: {
+    ...getTypographyStyle('sm', 'regular'),
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: spacing.base,
+  },
+  aiInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.base,
+    marginTop: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  aiInfoText: {
+    flex: 1,
+    ...getTypographyStyle('xs', 'regular'),
+    lineHeight: 18,
   },
   sliderContainer: {
     position: 'relative',

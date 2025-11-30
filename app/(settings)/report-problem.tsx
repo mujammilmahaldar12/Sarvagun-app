@@ -167,11 +167,7 @@ export default function ReportProblemScreen() {
       }
 
       // Submit to backend
-      const response = await api.post('/hr/problem-reports/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response: any = await api.post('/hr/problem-reports/', formData);
 
       Alert.alert(
         'Success',

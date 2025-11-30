@@ -66,7 +66,18 @@ const LeadsList: React.FC<LeadsListProps> = ({
 
   // Process and filter leads data
   const processedLeads: LeadRowData[] = useMemo(() => {
+    console.log('📊 Leads Debug:', {
+      isArray: Array.isArray(leads),
+      total: Array.isArray(leads) ? leads.length : 0,
+      firstLead: Array.isArray(leads) && leads.length > 0 ? leads[0] : null,
+      selectedStatus,
+      searchQuery,
+      canManage,
+      userId: user?.id
+    });
+    
     if (!Array.isArray(leads)) {
+      console.log('⚠️ Leads is not an array:', typeof leads, leads);
       return [];
     }
 
@@ -89,10 +100,8 @@ const LeadsList: React.FC<LeadsListProps> = ({
       );
     }
 
-    // Filter by user permissions (only show user's own leads unless admin/hr)
-    if (!canManage && user?.id) {
-      filtered = filtered.filter(lead => lead.user === user.id);
-    }
+    // All users can view all leads
+    console.log(`✅ All leads visible to user ${user?.id} (category: ${user?.category}). Total: ${filtered.length}`);
 
     // Transform to table format
     return filtered.map(lead => ({
@@ -111,11 +120,11 @@ const LeadsList: React.FC<LeadsListProps> = ({
 
   // Handle lead actions
   const handleLeadDetails = (leadId: number) => {
-    router.push(`/events/${leadId}`);
+    router.push(`/(modules)/events/${leadId}?type=leads` as any);
   };
 
   const handleConvertLead = (leadId: number) => {
-    router.push(`/events/convert-lead?leadId=${leadId}`);
+    router.push(`/(modules)/events/convert-lead?leadId=${leadId}` as any);
   };
 
   const handleRejectLead = async (leadId: number) => {
@@ -352,7 +361,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
               : 'Add your first lead to get started'
           }
           actionTitle={canCreateLeads ? 'Add Lead' : undefined}
-          onActionPress={canCreateLeads ? () => router.push('/events/add-lead') : undefined}
+          onActionPress={canCreateLeads ? () => router.push('/(modules)/events/add-lead' as any) : undefined}
         />
       </View>
     );
@@ -370,6 +379,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
         searchable={true}
         searchPlaceholder="Search leads..."
         exportable={user?.category === 'admin' || user?.category === 'hr'}
+        pageSize={100}
       />
     </View>
   );

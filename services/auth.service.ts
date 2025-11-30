@@ -6,7 +6,7 @@ export const authService = {
   login: async (credentials: { username: string; password: string }) => {
     try {
       console.log('🔐 Auth Service: Attempting login...');
-      const response = await api.post('/hr/auth/login/', {
+      const response: any = await api.post('/hr/auth/login/', {
         username: credentials.username,
         password: credentials.password,
       });
@@ -105,11 +105,12 @@ export const authService = {
         throw new Error('No refresh token');
       }
 
-      const response = await api.post('/hr/auth/token/refresh/', {
+      const response: any = await api.post('/hr/auth/token/refresh/', {
         refresh: refreshToken,
       });
 
-      const { access } = response.data;
+      const responseData = response?.data || response;
+      const { access } = responseData;
       await storeToken('access', access);
       
       return access;
@@ -125,8 +126,8 @@ export const authService = {
   // Profile Management
   getProfile: async () => {
     try {
-      const response = await api.get('/hr/profile/');
-      return response.data;
+      const response: any = await api.get('/hr/profile/');
+      return response?.data || response;
     } catch (error) {
       throw error;
     }
@@ -142,13 +143,14 @@ export const authService = {
     mobileno?: string;
   }) => {
     try {
-      const response = await api.patch('/hr/profile/', profileData);
+      const response: any = await api.patch('/hr/profile/', profileData);
       
       // Update stored user data
-      const updatedUser = response.data.user;
+      const responseData = response?.data || response;
+      const updatedUser = responseData?.user || responseData;
       await storeToken('user', JSON.stringify(updatedUser));
       
-      return response.data;
+      return responseData;
     } catch (error) {
       throw error;
     }
@@ -169,21 +171,18 @@ export const authService = {
         type,
       } as any);
 
-      const response = await api.post('/hr/profile/photo/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response: any = await api.post('/hr/profile/photo/', formData);
 
       // Update stored user data with new photo URL
       const userString = await getToken('user');
       if (userString) {
         const user = JSON.parse(userString);
-        user.photo = response.data.photo_url;
+        const responseData = response?.data || response;
+        user.photo = responseData?.photo_url || responseData?.photo;
         await storeToken('user', JSON.stringify(user));
       }
 
-      return response.data;
+      return response?.data || response;
     } catch (error) {
       throw error;
     }
@@ -192,8 +191,8 @@ export const authService = {
   // Theme Management
   getThemePreference: async () => {
     try {
-      const response = await api.get('/hr/profile/theme/');
-      return response.data.theme_preference;
+      const response: any = await api.get('/hr/profile/theme/');
+      return response?.theme_preference || response?.data?.theme_preference;
     } catch (error) {
       throw error;
     }
@@ -201,7 +200,7 @@ export const authService = {
 
   updateThemePreference: async (theme: 'light' | 'dark') => {
     try {
-      const response = await api.post('/hr/profile/theme/', {
+      const response: any = await api.post('/hr/profile/theme/', {
         theme_preference: theme,
       });
 
@@ -213,7 +212,21 @@ export const authService = {
         await storeToken('user', JSON.stringify(user));
       }
 
-      return response.data;
+      return response?.data || response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Change Password
+  changePassword: async (data: {
+    old_password: string;
+    new_password: string;
+    confirm_password: string;
+  }) => {
+    try {
+      const response: any = await api.post('/hr/auth/change-password/', data);
+      return response?.data || response || { message: 'Password changed successfully' };
     } catch (error) {
       throw error;
     }

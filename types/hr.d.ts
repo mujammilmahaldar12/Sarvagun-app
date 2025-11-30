@@ -223,24 +223,69 @@ export interface EmployeeFilters {
 }
 
 // ============================================================================
-// REIMBURSEMENT (for completeness)
+// REIMBURSEMENT
 // ============================================================================
+
+export type ReimbursementStatus = 'pending' | 'approved' | 'rejected' | 'done';
+export type ReimbursementType = 'Travel' | 'Medical' | 'Food' | 'Accommodation' | 'Other';
+
+export interface ReimbursementPhoto {
+  id: number;
+  reimbursement_request: number;
+  photo: string;
+  description?: string;
+  uploaded_at: string;
+}
+
+export interface ReimbursementStatusRecord {
+  id: number;
+  reimbursement_request: number;
+  status: ReimbursementStatus;
+  updated_by: number;
+  updated_at: string;
+  reason?: string;
+}
 
 export interface Reimbursement {
   id: number;
-  employee: number;
-  employee_name?: string;
-  category: string;
-  amount: number;
-  description: string;
-  receipt?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  applied_date: string;
-  approved_by?: number;
-  approved_date?: string;
-  rejection_reason?: string;
-  created_at?: string;
-  updated_at?: string;
+  expense: number;
+  expense_details?: {
+    id: number;
+    particulars: string;
+    amount: number;
+    details: string;
+  };
+  reimbursement_amount: number;
+  details: string;
+  supporting_documents?: string;
+  requested_by: number;
+  requested_by_name?: string;
+  requested_by_email?: string;
+  requested_by_photo?: string;
+  submitted_at: string;
+  bill_evidence: 'yes' | 'no';
+  photos?: ReimbursementPhoto[];
+  latest_status?: ReimbursementStatusRecord;
+  status?: ReimbursementStatus; // Computed from latest_status
+}
+
+export interface CreateReimbursementRequest {
+  expense: number;
+  reimbursement_amount: number;
+  details: string;
+  bill_evidence: 'yes' | 'no';
+  supporting_documents?: File;
+}
+
+export interface ReimbursementFilters {
+  status?: ReimbursementStatus;
+  requested_by?: number;
+  from_date?: string;
+  to_date?: string;
+  search?: string;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
 }
 
 // ============================================================================

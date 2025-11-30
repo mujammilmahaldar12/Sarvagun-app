@@ -29,7 +29,23 @@ class EventsService {
     page_size?: number;
   }) {
     try {
-      return await apiClient.get<any>('/events/leads/', { params });
+      const response = await apiClient.get<any>('/events/leads/', { params });
+      
+      console.log('📊 Leads API Response:', {
+        isPaginated: !!(response?.results),
+        count: response?.count,
+        resultsLength: response?.results?.length,
+        isDirectArray: Array.isArray(response),
+      });
+      
+      // Handle DRF paginated response structure {count, next, previous, results}
+      if (response?.results && Array.isArray(response.results)) {
+        console.log('✅ Returning', response.results.length, 'leads from paginated response');
+        return response.results;
+      }
+      
+      // Fallback to direct array
+      return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching leads:', error);
       throw error;
@@ -146,13 +162,21 @@ class EventsService {
       
       // Debug: Log API response structure
       console.log('📊 Events API Response:', {
-        total: response?.length || 0,
-        isArray: Array.isArray(response),
-        firstEvent: response?.[0],
-        fields: response?.[0] ? Object.keys(response[0]) : [],
+        isPaginated: !!(response?.results),
+        count: response?.count,
+        resultsLength: response?.results?.length,
+        isDirectArray: Array.isArray(response),
+        directLength: Array.isArray(response) ? response.length : 0,
       });
       
-      return response;
+      // Handle DRF paginated response structure
+      if (response?.results && Array.isArray(response.results)) {
+        console.log('✅ Returning paginated results:', response.results.length, 'events');
+        return response.results;
+      }
+      
+      // Fallback to direct array
+      return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('❌ Error fetching events:', error);
       throw error;
