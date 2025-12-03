@@ -24,6 +24,7 @@ import { spacing, borderRadius, getOpacityColor, iconSizes } from '@/constants/d
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 import { format } from 'date-fns';
 import type { LeaveType, ShiftType } from '@/types/hr';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 const LEAVE_TYPES: LeaveType[] = ['Annual Leave', 'Sick Leave', 'Casual Leave', 'Study Leave', 'Optional Leave'];
 
@@ -41,6 +42,7 @@ export default function ApplyLeaveScreen() {
   // API hooks
   const { mutate: createLeave, isPending: isSubmitting } = useCreateLeave();
   const { data: balance, isLoading: balanceLoading } = useLeaveBalance();
+  const { trackLeaveRequest } = useActivityTracker();
 
   // Form state
   const [leaveType, setLeaveType] = useState<LeaveType | ''>('');
@@ -154,9 +156,17 @@ export default function ApplyLeaveScreen() {
         reason: reason.trim(),
       },
       {
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
           console.log('✅ Leave submitted successfully:', data);
           console.log('📢 Showing success alert...');
+          
+          // Track activity in local storage
+          await trackLeaveRequest(
+            leaveType as string,
+            fromDate,
+            toDate,
+            (data as any)?.id
+          );
           
           // Use setTimeout to ensure alert shows after state updates
           setTimeout(() => {

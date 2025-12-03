@@ -6,11 +6,14 @@ import Animated, { FadeInDown, FadeInUp, FadeIn, SlideInRight } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Avatar, Skeleton, SkeletonText, AnimatedPressable } from '@/components';
+import { Avatar, Skeleton, SkeletonText, AnimatedPressable, GlassKPICard, QuickActionButton, MiniChart, GlassCard } from '@/components';
+import NotificationBell from '@/components/layout/NotificationBell';
+import { BlurView } from 'expo-blur';
 import { spacing, borderRadius, iconSizes, typography, moduleColors, baseColors } from '@/constants/designSystem';
 import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
-import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard, useRealtimeActivities } from '@/hooks/useDashboardQueries';
+import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard } from '@/hooks/useDashboardQueries';
 import { formatDistanceToNow } from 'date-fns';
+import { activityStorage, LocalActivity } from '@/services/activityStorage.service';
 
 // Medal colors for leaderboard
 const MEDAL_COLORS = {
@@ -71,59 +74,7 @@ const MODULES: Module[] = [
   },
 ];
 
-// Dummy Leadership Board Data - Project Based Rankings
-const DUMMY_LEADERBOARD = [
-  {
-    id: '1',
-    name: 'Rajesh Kumar',
-    photo: null,
-    rank: 1,
-    score: 2450,
-    projectsCompleted: 12,
-    tasksCompleted: 89,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    name: 'Priya Sharma',
-    photo: null,
-    rank: 2,
-    score: 2280,
-    projectsCompleted: 10,
-    tasksCompleted: 76,
-    isOnline: true,
-  },
-  {
-    id: '3',
-    name: 'Amit Patel',
-    photo: null,
-    rank: 3,
-    score: 2150,
-    projectsCompleted: 9,
-    tasksCompleted: 71,
-    isOnline: false,
-  },
-  {
-    id: '4',
-    name: 'Sneha Reddy',
-    photo: null,
-    rank: 4,
-    score: 1980,
-    projectsCompleted: 8,
-    tasksCompleted: 64,
-    isOnline: true,
-  },
-  {
-    id: '5',
-    name: 'Vikram Singh',
-    photo: null,
-    rank: 5,
-    score: 1875,
-    projectsCompleted: 7,
-    tasksCompleted: 58,
-    isOnline: true,
-  },
-];
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -137,12 +88,30 @@ export default function HomeScreen() {
   // Fetch real data from backend with real-time updates
   const user = useAuthStore((state) => state.user);
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();
-  const { data: realtimeActivities = [], isLoading: activitiesLoading } = useRealtimeActivities(5);
+  const [localActivities, setLocalActivities] = useState<LocalActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
   const { data: activeProjectsCount, refetch: refetchProjects } = useActiveProjectsCount();
   const { data: leaderboardData = [], isLoading: leaderboardLoading } = useLeaderboard(5);
   const { mutate: refreshDashboard, isPending: isRefreshing } = useRefreshDashboard();
 
   const [notificationCount] = useState(0);
+  
+  // Load activities from local storage
+  useEffect(() => {
+    loadLocalActivities();
+  }, []);
+  
+  const loadLocalActivities = async () => {
+    setActivitiesLoading(true);
+    try {
+      const activities = await activityStorage.getRecentActivities(5);
+      setLocalActivities(activities);
+    } catch (error) {
+      console.error('Error loading activities:', error);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
   
   // Use auth store user as fallback
   const currentUser = user;
@@ -160,6 +129,7 @@ export default function HomeScreen() {
     // refetchUser();
     refetchLeave();
     refetchProjects();
+    loadLocalActivities();
   }, [refreshDashboard, refetchLeave, refetchProjects]);
 
   // Loading state
@@ -187,11 +157,20 @@ export default function HomeScreen() {
                      0;
   const leaveDays = totalLeaves;
   
-  // Attendance - will be real when backend provides it
-  const attendancePercentage = 95;
-  
   // Active projects from backend
   const activeProjects = activeProjectsCount ?? 0;
+  
+  // Calculate real productivity score from leaderboard data
+  const myProductivityScore = React.useMemo(() => {
+    if (leaderboardData.length > 0 && displayUser) {
+      const myData = leaderboardData.find(l => l.id === displayUser.id);
+      return myData?.score || 0;
+    }
+    return 0;
+  }, [leaderboardData, displayUser]);
+  
+  // Calculate real attendance percentage - would come from backend eventually
+  const attendancePercentage = 95; // TODO: Replace with real attendance API when available
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -201,55 +180,36 @@ export default function HomeScreen() {
         translucent
       />
 
-      {/* Clean Professional Header */}
+      {/* Glass Morphism Header */}
       <Animated.View 
         entering={FadeInDown.duration(600).springify()}
-        style={[styles.header, { backgroundColor: theme.surface }]}
+        style={styles.header}
       >
+        <BlurView
+          intensity={isDark ? 40 : 60}
+          tint={isDark ? 'dark' : 'light'}
+          style={styles.headerBlur}
+        >
         <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <Text style={[styles.appName, { color: theme.text }]}>Sarvagun</Text>
-
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <Text style={[styles.appTitle, { color: theme.text }]}>Sarvagun</Text>
+            </View>
             <View style={styles.headerActions}>
-            <AnimatedPressable
-              onPress={() => router.push('/(dashboard)/search' as any)}
-              style={[
-                styles.iconButton,
-                { 
-                  backgroundColor: `${theme.primary}10`,
-                  borderColor: theme.border,
-                }
-              ]}
-              hapticType="light"
-              springConfig="snappy"
-            >
-              <Ionicons name="search-outline" size={iconSizes.sm} color={theme.text} />
-            </AnimatedPressable>
-
               <AnimatedPressable
-                onPress={() => router.push('/(dashboard)/notifications')}
-                style={[
-                  styles.iconButton,
-                  { 
-                    backgroundColor: `${theme.primary}10`,
-                    borderColor: theme.border,
-                  }
-                ]}
+                onPress={() => router.push('/(dashboard)/search' as any)}
+                style={[styles.iconButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
                 hapticType="light"
-                springConfig="snappy"
               >
-                <Ionicons name="notifications-outline" size={iconSizes.sm} color={theme.text} />
-                {notificationCount > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <Text style={styles.badgeText}>
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </Text>
-                  </View>
-                )}
+                <Ionicons name="search-outline" size={20} color={theme.text} />
               </AnimatedPressable>
+              <View style={[styles.iconButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                <NotificationBell size={20} color={theme.text} />
+              </View>
             </View>
           </View>
         </View>
+        </BlurView>
       </Animated.View>
 
       {/* Scrollable Content */}
@@ -264,143 +224,167 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Welcome Card - Clean & Minimal with Real Data */}
+        {/* Welcome Header - Clean & Simple */}
         <Animated.View 
-          entering={FadeInUp.delay(200).duration(700).springify()}
+          entering={FadeInUp.delay(100).duration(600).springify()}
           style={styles.section}
         >
-          {isLoading ? (
-            <View style={[styles.welcomeCard, getCardStyle(theme.surface, 'md', 'xl')]}>
-              <View style={styles.welcomeContent}>
-                <Skeleton width={56} height={56} borderRadius={28} />
-                <View style={styles.welcomeInfo}>
-                  <Skeleton width={150} height={16} style={{ marginBottom: spacing.xs }} />
-                  <Skeleton width={200} height={24} />
-                </View>
+          <AnimatedPressable
+            onPress={() => router.push('/(dashboard)/my-profile')}
+            hapticType="light"
+            springConfig="gentle"
+          >
+            <View style={styles.welcomeHeader}>
+              <Avatar
+                size={52}
+                source={displayUser?.photo ? { uri: displayUser.photo } : undefined}
+                name={fullName}
+                onlineStatus={true}
+              />
+              <View style={styles.welcomeText}>
+                <Text style={[styles.greeting, { color: theme.textSecondary }]}>
+                  {getGreeting()}
+                </Text>
+                <Text style={[styles.userName, { color: theme.text }]}>
+                  {fullName}
+                </Text>
               </View>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Skeleton width={60} height={20} style={{ marginBottom: spacing.xs }} />
-                  <Skeleton width={70} height={14} />
-                </View>
-                <View style={styles.statItem}>
-                  <Skeleton width={60} height={20} style={{ marginBottom: spacing.xs }} />
-                  <Skeleton width={70} height={14} />
-                </View>
-                <View style={styles.statItem}>
-                  <Skeleton width={60} height={20} style={{ marginBottom: spacing.xs }} />
-                  <Skeleton width={70} height={14} />
-                </View>
-              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
             </View>
-          ) : (
-            <AnimatedPressable
-              onPress={() => router.push('/(dashboard)/my-profile')}
-              style={[styles.welcomeCard, getCardStyle(theme.surface, 'md', 'xl')]}
-              hapticType="light"
-              springConfig="gentle"
-            >
-              <View style={styles.welcomeContent}>
-                <Avatar
-                  size={56}
-                  source={displayUser?.photo ? { uri: displayUser.photo } : undefined}
-                  name={fullName}
-                  onlineStatus={true}
-                />
-                <View style={styles.welcomeInfo}>
-                  <Text style={[styles.welcomeName, { color: theme.text }]}>
-                    {fullName}
-                  </Text>
-                  {displayUser?.designation && (
-                    <Text style={[styles.userDesignation, { color: theme.textSecondary }]}>
-                      {displayUser.designation}
-                    </Text>
-                  )}
-                  {displayUser?.category && (
-                    <Text style={[styles.userDefinition, { color: theme.primary }]}>
-                      {displayUser.category.charAt(0).toUpperCase() + displayUser.category.slice(1)}
-                    </Text>
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-              </View>
-
-              {/* Clean Stats Row with Real Data */}
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.text }]}>{attendancePercentage}%</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Attendance</Text>
-                </View>
-                <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.text }]}>{leaveDays}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Leave Balance</Text>
-                </View>
-                <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.text }]}>{activeProjects}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Projects</Text>
-                </View>
-              </View>
-            </AnimatedPressable>
-          )}
+          </AnimatedPressable>
         </Animated.View>
 
-        {/* Modules Section - Professional Cards */}
+        {/* Your Stats Title */}
         <Animated.View 
-          entering={FadeInUp.delay(400).duration(700).springify()}
+          entering={FadeInUp.delay(150).duration(600).springify()}
           style={styles.section}
         >
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Stats</Text>
+        </Animated.View>
+
+        {/* KPI Cards - Horizontal Scroll */}
+        <Animated.View 
+          entering={FadeInUp.delay(200).duration(600).springify()}
+          style={styles.sectionNoPadding}
+        >
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.kpiScrollContainer}
+            decelerationRate="fast"
+            snapToInterval={SCREEN_WIDTH * 0.70 + spacing.md}
+            snapToAlignment="start"
+          >
+            <GlassKPICard
+              title="Attendance"
+              value={`${attendancePercentage}%`}
+              icon="calendar-outline"
+              gradientColors={['#3B82F6', '#1D4ED8']}
+              trend="up"
+              trendValue="+2%"
+              subtitle="Last 7 days"
+              onPress={() => router.push('/(modules)/hr' as any)}
+              style={styles.kpiCardHorizontal}
+            />
+            
+            <GlassKPICard
+              title="Productivity Score"
+              value={myProductivityScore > 0 ? myProductivityScore.toString() : '0'}
+              icon="trending-up-outline"
+              gradientColors={['#10B981', '#059669']}
+              trend={myProductivityScore > 0 ? "up" : "neutral"}
+              trendValue={myProductivityScore > 0 ? `${Math.floor(myProductivityScore / 10)} pts` : undefined}
+              subtitle="Project score"
+              onPress={() => router.push('/(dashboard)/leaderboard' as any)}
+              style={styles.kpiCardHorizontal}
+            />
+
+            <GlassKPICard
+              title="Leave Balance"
+              value={leaveDays}
+              icon="time-outline"
+              gradientColors={['#F59E0B', '#D97706']}
+              trend="neutral"
+              subtitle="Days remaining"
+              onPress={() => router.push('/(modules)/leave' as any)}
+              style={styles.kpiCardHorizontal}
+            />
+            
+            <GlassKPICard
+              title="Active Projects"
+              value={activeProjects}
+              icon="briefcase-outline"
+              gradientColors={['#8B5CF6', '#7C3AED']}
+              trend="up"
+              trendValue="+1"
+              subtitle="In progress"
+              onPress={() => router.push('/(modules)/projects' as any)}
+              style={styles.kpiCardHorizontal}
+            />
+          </ScrollView>
+        </Animated.View>
+
+        {/* Modules Section - Single Row Horizontal Scroll */}
+        <Animated.View 
+          entering={FadeInUp.delay(300).duration(600).springify()}
+          style={styles.sectionNoPadding}
+        >
+          <View style={[styles.sectionHeader, { paddingHorizontal: spacing.lg }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Modules</Text>
             <AnimatedPressable onPress={() => router.push('/(dashboard)/modules')} hapticType="selection">
               <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
             </AnimatedPressable>
           </View>
 
-          <View style={styles.modulesGrid}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.modulesHorizontalContainer}
+          >
             {MODULES.slice(0, 4).map((module, index) => (
               <Animated.View
                 key={module.id}
-                entering={FadeIn.delay(600 + index * 100).duration(600).springify()}
+                entering={FadeIn.delay(400 + index * 50).duration(600).springify()}
               >
                 <AnimatedPressable
                   onPress={() => router.push(module.route as any)}
-                  style={[
-                    styles.moduleCard,
-                    getCardStyle(theme.surface, 'sm', 'lg'),
-                    { 
-                      width: (SCREEN_WIDTH - spacing.lg * 4) / 4,
-                      marginRight: index === 3 ? 0 : spacing.md +1,
-                    },
-                  ]}
-                  hapticType="medium"
-                  springConfig="bouncy"
-                  animateOnMount={false}
+                  hapticType="light"
+                  springConfig="snappy"
                 >
-                  <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
-                    <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
-                  </View>
-                  <Text style={[styles.moduleTitle, { color: theme.text }]} numberOfLines={1}>
-                    {module.title}
-                  </Text>
+                  <GlassCard
+                    variant="default"
+                    intensity="light"
+                    pressable={false}
+                    style={styles.moduleCardHorizontal}
+                  >
+                    <View style={styles.modernModuleContent}>
+                      <View style={[styles.modernModuleIcon, { backgroundColor: `${module.color}15`, borderWidth: 1.5, borderColor: `${module.color}40` }]}>
+                        <Ionicons name={module.icon} size={28} color={module.color} />
+                      </View>
+                      <Text style={[styles.modernModuleTitle, { color: theme.text }]} numberOfLines={1}>
+                        {module.title}
+                      </Text>
+                    </View>
+                  </GlassCard>
                 </AnimatedPressable>
               </Animated.View>
             ))}
-          </View>
+          </ScrollView>
         </Animated.View>
 
-        {/* Recent Activity Section */}
+        {/* Recent Activity Section - Glass Effect - Hide if no activities */}
+        {(!activitiesLoading && localActivities.length > 0) && (
         <Animated.View 
-          entering={FadeInUp.delay(1000).duration(700).springify()}
+          entering={FadeInUp.delay(500).duration(600).springify()}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
           </View>
 
-          <View style={[styles.activityContainer, getCardStyle(theme.surface, 'md', 'lg')]}>
-            {activitiesLoading ? (
+          <GlassCard variant="default" intensity="medium">
+            <View style={styles.activityContainer}>
+              {activitiesLoading ? (
               <>
                 {[1, 2, 3].map((index) => (
                   <View
@@ -422,8 +406,8 @@ export default function HomeScreen() {
                   </View>
                 ))}
               </>
-            ) : realtimeActivities.length > 0 ? (
-              realtimeActivities.slice(0, 5).map((activity, index, arr) => {
+            ) : localActivities.length > 0 ? (
+              localActivities.slice(0, 5).map((activity, index, arr) => {
                 const activityIcon = getActivityIcon(activity.type);
                 const activityColor = getActivityColor(activity.type);
                 
@@ -442,31 +426,35 @@ export default function HomeScreen() {
                   <AnimatedPressable
                     key={activity.id}
                     onPress={() => handleActivityPress(activity)}
-                    style={[
-                      styles.activityItem,
-                      {
-                        borderBottomWidth: index < arr.length - 1 ? 1 : 0,
-                        borderBottomColor: theme.border,
-                      },
-                    ]}
                     hapticType="light"
                     springConfig="gentle"
                   >
-                    <View style={[styles.activityIcon, { backgroundColor: activityColor + '15' }]}>
-                      <Ionicons name={activityIcon} size={iconSizes.md} color={activityColor} />
+                    <View style={[
+                      styles.activityItemCard,
+                      { 
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                        marginBottom: index < arr.length - 1 ? spacing.sm : 0,
+                      }
+                    ]}>
+                      <View style={[styles.activityIcon, { backgroundColor: activityColor + '20' }]}>
+                        <Ionicons name={activityIcon} size={22} color={activityColor} />
+                      </View>
+                      <View style={styles.activityContent}>
+                        <Text style={[styles.activityTitle, { color: theme.text }]}>
+                          {activity.title}
+                        </Text>
+                        <Text style={[styles.activityDescription, { color: theme.textSecondary }]} numberOfLines={1}>
+                          {activity.description}
+                        </Text>
+                        <View style={styles.activityMeta}>
+                          <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+                          <Text style={[styles.activityTime, { color: theme.textSecondary }]}>
+                            {timeAgo}
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
                     </View>
-                    <View style={styles.activityContent}>
-                      <Text style={[styles.activityTitle, { color: theme.text }]}>
-                        {activity.title}
-                      </Text>
-                      <Text style={[styles.activityDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-                        {activity.description}
-                      </Text>
-                      <Text style={[styles.activityTime, { color: theme.textSecondary }]}>
-                        {timeAgo}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
                   </AnimatedPressable>
                 );
               })
@@ -481,12 +469,14 @@ export default function HomeScreen() {
                 </Text>
               </View>
             )}
-          </View>
+            </View>
+          </GlassCard>
         </Animated.View>
+        )}
 
-        {/* Leadership Board Preview */}
+        {/* Leadership Board Preview - Glass Effect */}
         <Animated.View 
-          entering={FadeInUp.delay(1200).duration(700).springify()}
+          entering={FadeInUp.delay(600).duration(600).springify()}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -499,8 +489,9 @@ export default function HomeScreen() {
             </AnimatedPressable>
           </View>
 
-          <View style={[styles.leaderboardContainer, getCardStyle(theme.surface, 'md', 'lg')]}>
-            {leaderboardLoading ? (
+          <GlassCard variant="default" intensity="medium">
+            <View style={styles.leaderboardContainer}>
+              {leaderboardLoading ? (
               <>
                 {[1, 2, 3].map((index) => (
                   <View
@@ -522,7 +513,7 @@ export default function HomeScreen() {
                   </View>
                 ))}
               </>
-            ) : leaderboardData.length > 0 ? (
+            ) : leaderboardData && leaderboardData.length > 0 ? (
               leaderboardData.map((leader, index) => {
               const getRankColor = (rank: number) => {
                 if (rank === 1) return MEDAL_COLORS.gold;
@@ -545,24 +536,19 @@ export default function HomeScreen() {
                 <AnimatedPressable
                   key={leader.id}
                   onPress={() => router.push('/(dashboard)/leaderboard')}
-                  style={[
-                    styles.leaderboardItem,
-                    ...(isTopThree ? [styles.leaderboardItemTopThree] : []),
-                    {
-                      borderBottomWidth: index < 4 ? 1 : 0,
-                      borderBottomColor: theme.border,
-                    },
-                  ]}
                   hapticType="light"
                   springConfig="gentle"
                   animateOnMount={true}
                 >
-                  <LinearGradient
-                    colors={isTopThree ? [rankColor + '08', rankColor + '00'] : ['transparent', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
+                  <View style={[
+                    styles.leaderboardItemCard,
+                    {
+                      backgroundColor: isTopThree 
+                        ? (isDark ? 'rgba(255,215,0,0.08)' : 'rgba(255,215,0,0.05)')
+                        : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'),
+                      marginBottom: index < leaderboardData.length - 1 ? spacing.sm : 0,
+                    }
+                  ]}>
                   
                   <View style={styles.leaderRankContainer}>
                     <View style={[
@@ -617,109 +603,23 @@ export default function HomeScreen() {
                   </View>
 
                   <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
+                  </View>
                 </AnimatedPressable>
               );
             })
             ) : (
-              DUMMY_LEADERBOARD.slice(0, 5).map((leader, index) => {
-                const getRankColor = (rank: number) => {
-                  if (rank === 1) return MEDAL_COLORS.gold;
-                  if (rank === 2) return MEDAL_COLORS.silver;
-                  if (rank === 3) return MEDAL_COLORS.bronze;
-                  return theme.primary;
-                };
-
-                const getRankIcon = (rank: number): keyof typeof Ionicons.glyphMap => {
-                  if (rank === 1) return 'trophy';
-                  if (rank === 2) return 'medal';
-                  if (rank === 3) return 'ribbon';
-                  return 'star';
-                };
-
-                const rankColor = getRankColor(leader.rank);
-                const isTopThree = leader.rank <= 3;
-
-                return (
-                  <AnimatedPressable
-                    key={leader.id}
-                    onPress={() => router.push('/(dashboard)/leaderboard')}
-                    style={[
-                      styles.leaderboardItem,
-                      ...(isTopThree ? [styles.leaderboardItemTopThree] : []),
-                      {
-                        borderBottomWidth: index < 4 ? 1 : 0,
-                        borderBottomColor: theme.border,
-                      },
-                    ]}
-                    hapticType="light"
-                    springConfig="gentle"
-                    animateOnMount={true}
-                  >
-                    <LinearGradient
-                      colors={isTopThree ? [rankColor + '08', rankColor + '00'] : ['transparent', 'transparent']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                    
-                    <View style={styles.leaderRankContainer}>
-                      <View style={[
-                        styles.leaderRankBadge,
-                        { backgroundColor: rankColor + (isTopThree ? '20' : '10') }
-                      ]}>
-                        {isTopThree ? (
-                          <Ionicons name={getRankIcon(leader.rank)} size={iconSizes.md} color={rankColor} />
-                        ) : (
-                          <Text style={[styles.leaderRankText, { color: rankColor }]}>
-                            {leader.rank}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-
-                    <Avatar
-                      size={48}
-                      source={leader.photo ? { uri: leader.photo } : undefined}
-                      name={leader.name}
-                      onlineStatus={leader.isOnline}
-                    />
-
-                    <View style={styles.leaderInfo}>
-                      <Text style={[styles.leaderName, { color: theme.text }]} numberOfLines={1}>
-                        {leader.name}
-                      </Text>
-                      <View style={styles.leaderStats}>
-                        <View style={styles.leaderStatItem}>
-                          <Ionicons name="briefcase-outline" size={iconSizes.xs} color={theme.textSecondary} />
-                          <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
-                            {leader.projectsCompleted} projects
-                          </Text>
-                        </View>
-                        <View style={styles.leaderStatDot} />
-                        <View style={styles.leaderStatItem}>
-                          <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color={theme.success} />
-                          <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
-                            {leader.tasksCompleted} tasks
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.leaderScore}>
-                      <Text style={[styles.leaderScoreValue, { color: theme.primary }]}>
-                        {leader.score}
-                      </Text>
-                      <Text style={[styles.leaderScoreLabel, { color: theme.textSecondary }]}>
-                        pts
-                      </Text>
-                    </View>
-
-                    <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
-                  </AnimatedPressable>
-                );
-              })
+              <View style={styles.emptyState}>
+                <Ionicons name="trophy-outline" size={48} color={theme.textSecondary} />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  No leaderboard data yet
+                </Text>
+                <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+                  Complete projects to appear on the leaderboard
+                </Text>
+              </View>
             )}
-          </View>
+            </View>
+          </GlassCard>
         </Animated.View>
       </ScrollView>
     </View>
@@ -737,6 +637,10 @@ export default function HomeScreen() {
         return 'calendar-outline';
       case 'project':
         return 'folder-outline';
+      case 'hr':
+        return 'people-outline';
+      case 'finance':
+        return 'cash-outline';
       default:
         return 'notifications-outline';
     }
@@ -747,22 +651,27 @@ export default function HomeScreen() {
       case 'leave':
         return moduleColors.leave.main;
       case 'task':
-        return moduleColors.tasks.main;
+        return moduleColors.tasks?.main || moduleColors.projects.main;
       case 'attendance':
-        return moduleColors.attendance.main;
+        return moduleColors.attendance?.main || moduleColors.hr.main;
       case 'event':
         return moduleColors.events.main;
       case 'project':
         return moduleColors.projects.main;
+      case 'hr':
+        return moduleColors.hr.main;
+      case 'finance':
+        return moduleColors.finance.main;
       default:
         return theme.primary;
     }
   }
 
-  function handleActivityPress(activity: any) {
+  function handleActivityPress(activity: LocalActivity) {
     // Navigate to appropriate screen based on activity type
     switch (activity.type) {
       case 'leave':
+      case 'hr':
         router.push('/(modules)/hr');
         break;
       case 'task':
@@ -771,6 +680,9 @@ export default function HomeScreen() {
         break;
       case 'event':
         router.push('/(modules)/events');
+        break;
+      case 'finance':
+        router.push('/(modules)/finance');
         break;
       default:
         console.log('Activity:', activity);
@@ -783,59 +695,121 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
+  headerBlur: {
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   headerContent: {
-    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  headerTop: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  appName: {
-    ...getTypographyStyle('2xl', 'bold'),
+  headerLeft: {
+    flex: 1,
+  },
+  appTitle: {
+    ...getTypographyStyle('xl', 'bold'),
+    letterSpacing: 0.5,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   notificationBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: -4,
+    right: -4,
     backgroundColor: baseColors.error[500],
     borderRadius: borderRadius.full,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  badgeText: {
-    ...getTypographyStyle('xs', 'bold'),
-    color: baseColors.neutral[0],
+  notificationBadgeText: {
+    ...getTypographyStyle("xs", 'bold'),
+    color: '#FFFFFF',
+    fontSize: 10,
   },
   scrollContent: {
-    paddingTop: spacing.xl,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 110 : 130,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
   section: {
     marginBottom: spacing['2xl'],
     paddingHorizontal: spacing.lg,
+  },
+  sectionNoPadding: {
+    marginBottom: spacing['2xl'],
+  },
+  welcomeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  welcomeText: {
+    flex: 1,
+  },
+  greeting: {
+    ...getTypographyStyle('sm', 'medium'),
+    marginBottom: 2,
+  },
+  userName: {
+    ...getTypographyStyle('xl', 'bold'),
+  },
+  kpiScrollContainer: {
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.lg,
+    gap: spacing.md,
+  },
+  kpiCardHorizontal: {
+    width: SCREEN_WIDTH * 0.70,
+    height: 165,
+  },
+  modulesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  moduleCardWrapper: {
+    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2,
+  },
+  moduleCardFixed: {
+    height: 105,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: spacing.md,
   },
   welcomeCard: {
     padding: spacing.xl,
@@ -900,10 +874,44 @@ const styles = StyleSheet.create({
   seeAllText: {
     ...getTypographyStyle('sm', 'semibold'),
   },
-  modulesGrid: {
+  modernModulesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginRight: 0,
+    gap: spacing.md,
+  },
+  modernModuleCardWrapper: {
+    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2,
+  },
+  modernModuleCard: {
+    height: 100,
+  },
+  modernModuleContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    height: '100%',
+    paddingVertical: spacing.xs,
+  },
+  modernModuleIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modernModuleTitle: {
+    ...getTypographyStyle('xs', 'semibold'),
+    textAlign: 'center',
+  },
+  modulesHorizontalContainer: {
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.lg,
+    gap: spacing.md,
+  },
+  moduleCardHorizontal: {
+    width: SCREEN_WIDTH * 0.235,
+    height: 100,
   },
   moduleCard: {
     padding: spacing.base,
@@ -924,18 +932,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   activityContainer: {
-    overflow: 'hidden',
+    // Container for activity items inside GlassCard
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.base,
+    padding: spacing.md,
     gap: spacing.md,
   },
+  activityItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
   activityIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.full,
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -943,12 +958,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityTitle: {
-    ...getTypographyStyle('base', 'semibold'),
-    marginBottom: spacing.xs,
+    ...getTypographyStyle('sm', 'semibold'),
+    marginBottom: 4,
   },
   activityDescription: {
-    ...getTypographyStyle('sm', 'regular'),
-    marginBottom: spacing.xs,
+    ...getTypographyStyle('xs', 'regular'),
+    marginBottom: 4,
+  },
+  activityMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   activityTime: {
     ...getTypographyStyle('xs', 'regular'),
@@ -968,17 +988,20 @@ const styles = StyleSheet.create({
   },
   // Leadership Board Styles
   leaderboardContainer: {
-    overflow: 'hidden',
+    // Container for leaderboard items inside GlassCard
   },
   leaderboardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.base,
+    padding: spacing.md,
     gap: spacing.sm,
-    minHeight: 72,
   },
-  leaderboardItemTopThree: {
-    minHeight: 80,
+  leaderboardItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.sm,
+    borderRadius: borderRadius.lg,
   },
   leaderRankContainer: {
     width: 40,
@@ -990,9 +1013,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   leaderRankText: {
-    ...getTypographyStyle('base', 'bold'),
+    ...getTypographyStyle('sm', 'bold'),
   },
   leaderInfo: {
     flex: 1,

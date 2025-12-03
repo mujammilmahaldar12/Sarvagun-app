@@ -4,12 +4,12 @@
  * Extracted from monolithic events/index.tsx
  */
 import React, { useMemo } from 'react';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Table, type TableColumn, Badge, Button } from '@/components';
 import ActionButton from '@/components/ui/ActionButton';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyState, LoadingState } from '@/components';
 import { Chip } from '@/components/ui/Chip';
 import { useTheme } from '@/hooks/useTheme';
 import { useClients } from '@/store/eventsStore';
@@ -308,14 +308,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
 
   // Loading state
   if (loading && !refreshing) {
-    return (
-      <View style={[styles.centered, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing[2] }]}>
-          Loading clients...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading clients..." variant="skeleton" skeletonCount={6} />;
   }
 
   // Error state

@@ -21,6 +21,7 @@ export interface TableColumn<T = any> {
   editable?: boolean;
   resizable?: boolean;
   render?: (value: any, item: T, index: number) => React.ReactNode;
+  sortValue?: (item: T) => string | number;
   align?: 'left' | 'center' | 'right';
 }
 
@@ -28,7 +29,7 @@ export interface TableProps<T = any> {
   columns: TableColumn<T>[];
   data: T[];
   keyExtractor: (item: T, index: number) => string | number;
-  
+
   // Features
   searchable?: boolean;
   sortable?: boolean;
@@ -37,25 +38,28 @@ export interface TableProps<T = any> {
   exportable?: boolean;
   virtualized?: boolean;
   stickyHeader?: boolean;
-  
+
   // Pagination
   paginated?: boolean;
   pageSize?: number;
-  
+
   // Actions
   onRowPress?: (item: T, index: number) => void;
   onRowEdit?: (item: T, key: string, value: any) => void;
   onSelectionChange?: (selectedIds: Set<string | number>) => void;
   onSort?: (key: string, direction: 'asc' | 'desc') => void;
   onExport?: (format: 'csv' | 'excel') => void;
-  
+  onSearch?: (query: string) => void;
+  onScroll?: (event: any) => void;
+
   // States
   loading?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
-  
+
   // Style
   maxHeight?: number;
+  refreshControl?: React.ReactElement<any>;
 }
 
 export const Table = <T extends any>({
@@ -76,13 +80,16 @@ export const Table = <T extends any>({
   onSelectionChange,
   onSort,
   onExport,
+  onSearch,
+  onScroll,
   loading = false,
   emptyMessage = 'No data available',
   searchPlaceholder = 'Search...',
   maxHeight = 600,
+  refreshControl,
 }: TableProps<T>) => {
   const { colors } = useThemeStore();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -103,14 +110,29 @@ export const Table = <T extends any>({
   // Sort data
   const sortedData = useMemo(() => {
     if (!sortColumn) return filteredData;
+
+    const column = columns.find(c => c.key === sortColumn);
+
     return [...filteredData].sort((a: any, b: any) => {
-      const aVal = a[sortColumn];
-      const bVal = b[sortColumn];
+      let aVal: any;
+      let bVal: any;
+
+      if (column?.sortValue) {
+        aVal = column.sortValue(a);
+        bVal = column.sortValue(b);
+      } else {
+        aVal = a[sortColumn];
+        bVal = b[sortColumn];
+      }
+
       if (aVal === bVal) return 0;
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+
       const comparison = typeof aVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal));
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [filteredData, sortColumn, sortDirection]);
+  }, [filteredData, sortColumn, sortDirection, columns]);
 
   // Paginate data
   const paginatedData = useMemo(() => {
@@ -252,8 +274,8 @@ export const Table = <T extends any>({
           backgroundColor: isSelected
             ? `${colors.primary}15`
             : index % 2 === 0
-            ? colors.background
-            : colors.surface,
+              ? colors.background
+              : colors.surface,
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
         }}
@@ -284,48 +306,49 @@ export const Table = <T extends any>({
     );
   };
 
+  // Debug logging to track data flow
+  React.useEffect(() => {
+    console.log('📊 TABLE RENDER:', {
+      dataLength: data.length,
+      filteredLength: filteredData.length,
+      sortedLength: sortedData.length,
+      paginatedLength: paginatedData.length,
+      loading,
+      searchQuery,
+      paginated,
+      pageSize,
+      currentPage,
+    });
+  }, [data, filteredData, sortedData, paginatedData, loading, searchQuery]);
+
   return (
-    <View style={{ maxHeight, flex: 1 }}>
-      {/* Toolbar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], padding: spacing[4], backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        {/* Search */}
-        {searchable && (
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: borderRadius.md, paddingHorizontal: spacing[3], borderWidth: 1, borderColor: colors.border }}>
+    <View style={{ flex: 1 }}>
+      {/* Toolbar - Search Only */}
+      {searchable && (
+        <View style={{ padding: spacing[2], paddingBottom: spacing[2], backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: borderRadius.full, paddingHorizontal: spacing[3], borderWidth: 1, borderColor: colors.border, height: 48 }}>
             <Ionicons name="search" size={20} color={colors.textSecondary} />
             <TextInput
               placeholder={searchPlaceholder}
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                onSearch?.(text);
+              }}
               style={{ flex: 1, paddingVertical: spacing[2], paddingHorizontal: spacing[2], color: colors.text, fontSize: typography.sizes.sm }}
             />
-            {searchQuery && (
-              <Pressable onPress={() => setSearchQuery('')}>
+            {searchQuery ? (
+              <Pressable onPress={() => {
+                setSearchQuery('');
+                onSearch?.('');
+              }}>
                 <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </Pressable>
-            )}
+            ) : null}
           </View>
-        )}
-
-        {/* Export */}
-        {exportable && (
-          <Pressable
-            onPress={exportToCSV}
-            style={{
-              backgroundColor: colors.primary,
-              paddingHorizontal: spacing[3],
-              paddingVertical: spacing[2],
-              borderRadius: borderRadius.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing[1],
-            }}
-          >
-            <Ionicons name="download-outline" size={20} color="#FFF" />
-            <Text style={{ color: '#FFF', fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold }}>Export</Text>
-          </Pressable>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Selection Info */}
       {selectable && selectedRows.size > 0 && (
@@ -339,32 +362,26 @@ export const Table = <T extends any>({
         </View>
       )}
 
-      {/* Table */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={true} 
-        bounces={false}
-        nestedScrollEnabled={true}
+      {/* Table Body */}
+      <ScrollView
+        horizontal
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsHorizontalScrollIndicator={true}
       >
-        <ScrollView 
-          showsVerticalScrollIndicator={true}
-          nestedScrollEnabled={true}
-          style={{ flex: 1 }}
-        >
-          <View>
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: spacing[2],
-                paddingVertical: spacing[3],
-                minHeight: 50,
-                backgroundColor: colors.surfaceElevated,
-                borderBottomWidth: 2,
-                borderBottomColor: colors.primary,
-              }}
-            >
+        <View>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: spacing[2],
+              paddingVertical: spacing[3],
+              minHeight: 50,
+              backgroundColor: colors.surfaceElevated,
+              borderBottomWidth: 2,
+              borderBottomColor: colors.primary,
+            }}
+          >
             {selectable && (
               <View style={{ width: 40, flexShrink: 0, justifyContent: 'center', alignItems: 'center' }}>
                 <Pressable onPress={handleSelectAll}>
@@ -390,10 +407,10 @@ export const Table = <T extends any>({
                   gap: spacing[1],
                 }}
               >
-                <Text 
-                  style={{ 
-                    fontSize: typography.sizes.xs, 
-                    fontWeight: typography.weights.bold, 
+                <Text
+                  style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.bold,
                     color: colors.text,
                     flex: 1,
                   }}
@@ -415,23 +432,31 @@ export const Table = <T extends any>({
 
           {/* Body */}
           {loading ? (
-            <View style={{ padding: spacing[8], alignItems: 'center' }}>
+            <View style={{ padding: spacing[8], alignItems: 'center', width: '100%' }}>
               <Text style={{ color: colors.textSecondary }}>Loading...</Text>
             </View>
-          ) : paginatedData.length === 0 ? (
-            <View style={{ padding: spacing[8], alignItems: 'center' }}>
-              <Ionicons name="folder-open-outline" size={64} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, marginTop: spacing[2] }}>{emptyMessage}</Text>
-            </View>
           ) : (
-            <View>
-              {paginatedData.map((item, index) => (
-                <TableRow key={String(keyExtractor(item, index))} item={item} index={index} />
-              ))}
-            </View>
+            <FlatList
+              data={paginatedData}
+              keyExtractor={(item, index) => String(keyExtractor(item, index))}
+              renderItem={({ item, index }) => <TableRow item={item} index={index} />}
+              ListEmptyComponent={
+                <View style={{ padding: spacing[8], alignItems: 'center', width: '100%' }}>
+                  <Ionicons name="folder-open-outline" size={64} color={colors.textSecondary} />
+                  <Text style={{ color: colors.textSecondary, marginTop: spacing[2] }}>{emptyMessage}</Text>
+                </View>
+              }
+              scrollEnabled={true}
+              refreshControl={refreshControl}
+              contentContainerStyle={{ flexGrow: 1 }}
+              style={{ minHeight: 200, flex: 1 }}
+              removeClippedSubviews={false}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+            />
           )}
-          </View>
-        </ScrollView>
+        </View>
       </ScrollView>
 
       {/* Pagination */}

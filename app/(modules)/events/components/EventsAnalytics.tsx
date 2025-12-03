@@ -4,10 +4,11 @@
  * Extracted from monolithic events/index.tsx
  */
 import React, { useMemo, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Pressable, Alert } from 'react-native';
+import { View, ScrollView, Pressable, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import KPICard from '@/components/ui/KPICard';
+import { LoadingState } from '@/components';
 import ConversionFunnelChart from '@/components/charts/ConversionFunnelChart';
 import EventStatusPieChart from '@/components/charts/EventStatusPieChart';
 import ClientSegmentChart from '@/components/charts/ClientSegmentChart';
@@ -16,7 +17,7 @@ import { DateRangePicker } from '@/components/core';
 import { useTheme } from '@/hooks/useTheme';
 import { useEventsStore } from '@/store/eventsStore';
 import { designSystem } from '@/constants/designSystem';
-import type { Lead, Event, Client } from '@/types/events';
+import type { Lead, Client } from '@/types/events';
 
 interface EventsAnalyticsProps {
   refreshing?: boolean;
@@ -53,6 +54,16 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
     clients,
     loading 
   } = store;
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('📊 Analytics Data:', {
+      leadsCount: leads.length,
+      eventsCount: events.length,
+      clientsCount: clients.length,
+      loading,
+    });
+  }, [leads, events, clients, loading]);
 
   // Filter state
   const [dateRange, setDateRange] = useState<{ startDate?: Date; endDate?: Date }>({});
@@ -99,13 +110,13 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
     // Client Analytics
     const totalClients = clients.length;
     const b2bClients = clients.filter((c) =>
-      c.category?.some((cat) => cat.name?.toLowerCase().includes('b2b'))
+      (c as any).category?.some((cat: any) => cat.name?.toLowerCase().includes('b2b'))
     ).length;
     const b2cClients = clients.filter((c) =>
-      c.category?.some((cat) => cat.name?.toLowerCase().includes('b2c'))
+      (c as any).category?.some((cat: any) => cat.name?.toLowerCase().includes('b2c'))
     ).length;
     const b2gClients = clients.filter((c) =>
-      c.category?.some((cat) => cat.name?.toLowerCase().includes('b2g'))
+      (c as any).category?.some((cat: any) => cat.name?.toLowerCase().includes('b2g'))
     ).length;
 
     return {
@@ -171,14 +182,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
   };
 
   if (loading.leads || loading.events || loading.clients) {
-    return (
-      <View style={[styles.centered, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing[2] }]}>
-          Loading analytics...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading analytics..." variant="skeleton" skeletonCount={8} />;
   }
 
   return (

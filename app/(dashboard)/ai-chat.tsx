@@ -111,12 +111,6 @@ const MessageBubble = ({ message, isUser }: { message: ChatMessage; isUser: bool
         isUser ? styles.userMessageContainer : styles.aiMessageContainer,
       ]}
     >
-      {!isUser && (
-        <View style={[styles.aiAvatarContainer, { backgroundColor: theme.primary + '20' }]}>
-          <Ionicons name="sparkles" size={16} color={theme.primary} />
-        </View>
-      )}
-      
       <View
         style={[
           styles.messageBubble,
@@ -252,29 +246,24 @@ export default function AIChatScreen() {
       />
 
       {/* Header */}
-      <LinearGradient
-        colors={isDark ? ['#1F2937', '#111827'] : [theme.primary + '15', theme.background]}
-        style={styles.header}
-      >
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
         <View style={styles.headerContent}>
           <AnimatedPressable
-            onPress={() => router.back()}
+            onPress={() => router.push('/(dashboard)/home')}
             hapticType="light"
             springConfig="bouncy"
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
+            <Ionicons name="arrow-back" size={22} color={theme.text} />
           </AnimatedPressable>
 
           <View style={styles.headerTitleContainer}>
-            <View style={[styles.aiIconContainer, { backgroundColor: theme.primary + '20' }]}>
-              <Ionicons name="sparkles" size={20} color={theme.primary} />
+            <View style={[styles.aiIconContainer, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="sparkles" size={18} color={theme.primary} />
             </View>
             <View>
               <Text style={[styles.headerTitle, { color: theme.text }]}>Sarvagun AI</Text>
-              <View style={styles.betaBadge}>
-                <Text style={styles.betaText}>BETA</Text>
-              </View>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Beta</Text>
             </View>
           </View>
 
@@ -282,12 +271,12 @@ export default function AIChatScreen() {
             onPress={handleClearChat}
             hapticType="light"
             springConfig="bouncy"
-            style={styles.clearButton}
+            style={[styles.clearButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
           >
-            <Ionicons name="trash-outline" size={22} color={theme.textSecondary} />
+            <Ionicons name="trash-outline" size={20} color={theme.textSecondary} />
           </AnimatedPressable>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Chat Messages */}
       <KeyboardAvoidingView
@@ -305,14 +294,14 @@ export default function AIChatScreen() {
           {/* Welcome Message if no messages */}
           {messages.length === 0 && (
             <Animated.View entering={FadeIn.delay(200)} style={styles.welcomeContainer}>
-              <View style={[styles.welcomeIconContainer, { backgroundColor: theme.primary + '20' }]}>
-                <Ionicons name="sparkles" size={48} color={theme.primary} />
+              <View style={[styles.welcomeIconContainer, { backgroundColor: theme.primary + '15' }]}>
+                <Ionicons name="sparkles" size={36} color={theme.primary} />
               </View>
               <Text style={[styles.welcomeTitle, { color: theme.text }]}>
                 Hi {user?.first_name || 'there'}! 👋
               </Text>
               <Text style={[styles.welcomeSubtitle, { color: theme.textSecondary }]}>
-                I'm Sarvagun AI, your workplace assistant. Ask me anything about leave, tasks, events, or general workplace queries.
+                I'm your AI assistant. Ask me about leave, tasks, events, or workplace queries.
               </Text>
 
               {/* Suggested Prompts */}
@@ -349,12 +338,12 @@ export default function AIChatScreen() {
         </ScrollView>
 
         {/* Input Area */}
-        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-          <View style={[styles.inputWrapper, { backgroundColor: theme.background, borderColor: theme.border }]}>
+        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+          <View style={[styles.inputWrapper, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
             <TextInput
               ref={inputRef}
               style={[styles.textInput, { color: theme.text }]}
-              placeholder="Type a message..."
+              placeholder="Message Sarvagun AI..."
               placeholderTextColor={theme.textSecondary}
               value={inputText}
               onChangeText={setInputText}
@@ -372,20 +361,25 @@ export default function AIChatScreen() {
               style={[
                 styles.sendButton,
                 { 
-                  backgroundColor: inputText.trim() && !isLoading ? theme.primary : theme.primary + '40',
+                  backgroundColor: inputText.trim() && !isLoading ? theme.primary : isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)',
+                  opacity: inputText.trim() && !isLoading ? 1 : 0.5,
                 },
               ]}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={theme.primary} />
               ) : (
-                <Ionicons name="send" size={18} color="#FFFFFF" />
+                <Ionicons 
+                  name="send" 
+                  size={20} 
+                  color={inputText.trim() && !isLoading ? '#FFFFFF' : theme.textSecondary} 
+                />
               )}
             </AnimatedPressable>
           </View>
           
           <Text style={[styles.disclaimer, { color: theme.textSecondary }]}>
-            AI may make mistakes. Verify important info.
+            AI may make mistakes. Verify important information.
           </Text>
         </View>
       </KeyboardAvoidingView>
@@ -398,22 +392,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.base : spacing['3xl'],
-    paddingBottom: spacing.base,
-    paddingHorizontal: spacing.base,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.md : spacing['2xl'],
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
   },
   backButton: {
-    padding: spacing.xs,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    flex: 1,
   },
   aiIconContainer: {
     width: 40,
@@ -425,21 +426,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...getTypographyStyle('lg', 'bold'),
   },
-  betaBadge: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  betaText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+  headerSubtitle: {
+    ...getTypographyStyle('xs', 'medium'),
+    marginTop: 2,
+    opacity: 0.7,
   },
   clearButton: {
-    padding: spacing.xs,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chatContainer: {
     flex: 1,
@@ -450,30 +447,32 @@ const styles = StyleSheet.create({
   messagesContent: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
   },
   welcomeContainer: {
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing['2xl'],
+    paddingHorizontal: spacing.xl,
   },
   welcomeIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
   welcomeTitle: {
-    ...getTypographyStyle('2xl', 'bold'),
+    ...getTypographyStyle('xl', 'bold'),
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   welcomeSubtitle: {
-    ...getTypographyStyle('base', 'regular'),
+    ...getTypographyStyle('sm', 'regular'),
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.xl,
+    opacity: 0.7,
   },
   suggestedPromptsContainer: {
     width: '100%',
@@ -516,25 +515,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   messageBubble: {
-    maxWidth: '75%',
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.xl,
+    maxWidth: '85%',
+    paddingHorizontal: spacing.base + 4,
+    paddingVertical: spacing.sm + 4,
+    borderRadius: borderRadius['2xl'],
   },
   userBubble: {
-    borderBottomRightRadius: borderRadius.sm,
+    borderBottomRightRadius: spacing.xs,
   },
   aiBubble: {
-    borderBottomLeftRadius: borderRadius.sm,
+    borderBottomLeftRadius: spacing.xs,
+    maxWidth: '90%',
   },
   messageText: {
     ...getTypographyStyle('base', 'regular'),
     lineHeight: 22,
   },
   messageTime: {
-    ...getTypographyStyle('xs', 'regular'),
+    ...getTypographyStyle('2xs', 'regular'),
     marginTop: spacing.xs,
     alignSelf: 'flex-end',
+    opacity: 0.7,
   },
   typingContainer: {
     flexDirection: 'row',
@@ -556,26 +557,29 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   inputContainer: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.base,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
     borderTopWidth: 1,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderWidth: 1,
-    borderRadius: borderRadius.xl,
-    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius['3xl'],
+    paddingLeft: spacing.base,
+    paddingRight: spacing.xs,
     paddingVertical: spacing.xs,
     gap: spacing.sm,
+    minHeight: 48,
   },
   textInput: {
     flex: 1,
     maxHeight: 100,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     ...getTypographyStyle('base', 'regular'),
+    lineHeight: 22,
   },
   sendButton: {
     width: 40,
@@ -587,6 +591,7 @@ const styles = StyleSheet.create({
   disclaimer: {
     ...getTypographyStyle('xs', 'regular'),
     textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+    opacity: 0.5,
   },
 });

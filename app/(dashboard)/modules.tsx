@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, TextInput, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
-import { Chip, AnimatedPressable } from '@/components';
+import { Chip, AnimatedPressable, GlassCard } from '@/components';
 import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Module {
   id: string;
@@ -75,6 +78,16 @@ const MODULES: Module[] = [
     category: 'Management',
     badge: 'Lead',
   },
+  {
+    id: 'whatsnew',
+    name: 'What\'s New',
+    description: 'Latest updates & announcements',
+    icon: 'newspaper',
+    route: '/(modules)/whatsnew',
+    color: '#8B5CF6',
+    category: 'Operations',
+    badge: 'New',
+  },
 ];
 
 const CATEGORIES = ['All', 'Management', 'Operations', 'Finance'];
@@ -88,8 +101,7 @@ export default function ModulesScreen() {
   const filteredModules = MODULES.filter((module) => {
     const matchesSearch = module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          module.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || module.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   return (
@@ -100,117 +112,74 @@ export default function ModulesScreen() {
         translucent
       />
 
-      {/* Clean Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
+      {/* Minimal Header with Inline Search */}
+      <Animated.View 
+        entering={FadeInDown.duration(600).springify()}
+        style={[styles.header, { backgroundColor: theme.surface }]}
+      >
         <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>
-            Modules
-          </Text>
-
-          {/* Search Bar */}
-          <View style={[styles.searchContainer, { 
-            backgroundColor: theme.background,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }]}>
-            <Ionicons name="search" size={iconSizes.sm} color={theme.textSecondary} />
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Modules</Text>
+          
+          <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+            <Ionicons name="search" size={20} color={theme.textSecondary} />
             <TextInput
               placeholder="Search modules..."
               placeholderTextColor={theme.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               style={[styles.searchInput, { color: theme.text }]}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={iconSizes.sm} color={theme.textSecondary} />
-              </Pressable>
+              <AnimatedPressable onPress={() => setSearchQuery('')} hapticType="light">
+                <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+              </AnimatedPressable>
             )}
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Category Filters */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryContainer}
-        >
-          {CATEGORIES.map((category) => {
-            const isActive = selectedCategory === category;
-            return (
-              <AnimatedPressable
-                key={category}
-                onPress={() => setSelectedCategory(category)}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: isActive ? theme.primary : theme.surface,
-                    borderWidth: 1.5,
-                    borderColor: isActive ? theme.primary : theme.border,
-                  },
-                ]}
-                hapticType="selection"
-                springConfig="bouncy"
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    {
-                      color: isActive ? theme.textInverse : theme.text,
-                    },
-                  ]}
-                >
-                  {category}
-                </Text>
-              </AnimatedPressable>
-            );
-          })}
-        </ScrollView>
-
-        {/* Modules Grid */}
+        {/* Modules Grid - 2 Column Layout */}
         <View style={styles.modulesSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            {filteredModules.length} {filteredModules.length === 1 ? 'Module' : 'Modules'} Available
-          </Text>
-
           <View style={styles.modulesGrid}>
-            {filteredModules.map((module) => (
-              <AnimatedPressable
+            {filteredModules.map((module, index) => (
+              <Animated.View 
                 key={module.id}
-                onPress={() => router.push(module.route as any)}
-                style={[
-                  styles.moduleCard,
-                  getCardStyle(theme.surface, 'md', 'lg'),
-                ]}
-                hapticType="medium"
-                springConfig="gentle"
-                animateOnMount={true}
+                entering={FadeInUp.delay(100 + index * 50).duration(500).springify()}
+                style={styles.moduleCardWrapper}
               >
-                <View style={styles.moduleContent}>
-                  {/* Icon Container */}
-                  <View style={[styles.moduleIconContainer, { backgroundColor: module.color + '15' }]}>
-                    <Ionicons name={module.icon} size={iconSizes.lg} color={module.color} />
+                <AnimatedPressable
+                  onPress={() => router.push(module.route as any)}
+                  hapticType="light"
+                  springConfig="snappy"
+                >
+                  <View style={[styles.moduleCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }]}>
+                    <View>
+                      <View style={[styles.iconContainer, { backgroundColor: `${module.color}15` }]}>
+                        <Ionicons name={module.icon} size={28} color={module.color} />
+                      </View>
+                      <Text style={[styles.moduleName, { color: theme.text }]} numberOfLines={1}>
+                        {module.name}
+                      </Text>
+                      <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
+                        {module.description}
+                      </Text>
+                    </View>
+                    {module.badge && (
+                      <View style={[styles.moduleBadge, { backgroundColor: `${module.color}20` }]}>
+                        <Text style={[styles.badgeText, { color: module.color }]}>
+                          {module.badge}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-
-                  {/* Module Info */}
-                  <View style={styles.moduleInfo}>
-                    <Text style={[styles.moduleName, { color: theme.text }]}>
-                      {module.name}
-                    </Text>
-                    <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-                      {module.description}
-                    </Text>
-                  </View>
-
-                  {/* Arrow Icon */}
-                  <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
-                </View>
-              </AnimatedPressable>
+                </AnimatedPressable>
+              </Animated.View>
             ))}
           </View>
 
@@ -236,33 +205,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
-    paddingBottom: spacing.lg,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['2xl'],
+    paddingBottom: spacing.base,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   headerContent: {
-    gap: spacing.base,
+    gap: spacing.md,
   },
   headerTitle: {
-    ...getTypographyStyle('2xl', 'bold'),
+    ...getTypographyStyle('xl', 'bold'),
+    letterSpacing: 0.5,
   },
-  searchContainer: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.full,
+    height: 46,
   },
   searchInput: {
     flex: 1,
     ...getTypographyStyle('base', 'regular'),
     padding: 0,
+    paddingVertical: 0,
   },
   scrollContent: {
-    paddingTop: spacing.base,
+    paddingTop: spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
   categoryContainer: {
@@ -281,41 +262,51 @@ const styles = StyleSheet.create({
   },
   modulesSection: {
     paddingHorizontal: spacing.lg,
-    marginTop: spacing.base,
-  },
-  sectionTitle: {
-    ...getTypographyStyle('base', 'semibold'),
-    marginBottom: spacing.base,
+    marginTop: spacing.md,
   },
   modulesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.md,
   },
+  moduleCardWrapper: {
+    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2,
+  },
   moduleCard: {
-    overflow: 'hidden',
-  },
-  moduleContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    aspectRatio: 1,
     padding: spacing.lg,
-    gap: spacing.base,
+    borderRadius: borderRadius.xl,
+    justifyContent: 'space-between',
   },
-  moduleIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: borderRadius.lg,
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  moduleInfo: {
-    flex: 1,
+    marginBottom: spacing.sm,
   },
   moduleName: {
     ...getTypographyStyle('base', 'bold'),
     marginBottom: spacing.xs,
   },
   moduleDescription: {
-    ...getTypographyStyle('sm', 'regular'),
-    lineHeight: 20,
+    ...getTypographyStyle('xs', 'regular'),
+    lineHeight: 15,
+    minHeight: 30,
+    maxHeight: 30,
+    flexShrink: 1,
+  },
+  moduleBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    marginTop: spacing.xs,
+  },
+  badgeText: {
+    ...getTypographyStyle('2xs', 'bold'),
+    fontSize: 10,
   },
   emptyState: {
     alignItems: 'center',

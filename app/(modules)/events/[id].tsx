@@ -1,19 +1,256 @@
-import { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, Pressable, Alert, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import { StatusBadge, InfoRow } from '@/components';
+import { StatusBadge, InfoRow, KPICard, LoadingState } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { baseColors, spacing } from '@/constants/designSystem';
 import eventsService from '@/services/events.service';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
+import type { Sales, Expense } from '@/types/events';
 
 type TabType = 'info' | 'timeline' | 'documents';
+
+// Finance Section Component
+interface FinanceSectionProps {
+  eventId: number;
+}
+
+const FinanceSection: React.FC<FinanceSectionProps> = ({ eventId }) => {
+  const { theme } = useTheme();
+  const router = useRouter();
+
+  // Fetch sales
+  const { data: sales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ['eventSales', eventId],
+    queryFn: () => eventsService.getEventSales(eventId),
+    enabled: !!eventId && !isNaN(eventId),
+  });
+
+  // Fetch expenses
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['eventExpenses', eventId],
+    queryFn: () => eventsService.getEventExpenses(eventId),
+    enabled: !!eventId && !isNaN(eventId),
+  });
+
+  // Fetch summary
+  const { data: summary } = useQuery({
+    queryKey: ['eventFinanceSummary', eventId],
+    queryFn: () => eventsService.getEventFinanceSummary(eventId),
+    enabled: !!eventId && !isNaN(eventId),
+  });
+
+  const totalSales = sales.reduce((sum: number, sale: any) => sum + Number(sale.amount || 0), 0);
+  const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + Number(expense.amount || 0), 0);
+  const netProfit = totalSales - totalExpenses;
+
+  const completedSales = sales.filter((s: any) => s.payment_status === 'completed').length;
+  const paidExpenses = expenses.filter((e: any) => e.payment_status === 'paid').length;
+
+  if (salesLoading || expensesLoading) {
+    return (
+      <View style={{ gap: 12, paddingVertical: 16 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
+          Sales & Expenses
+        </Text>
+        <LoadingState variant="skeleton" skeletonCount={3} />
+      </View>
+    );
+  }
+
+  return (
+    <Animated.View entering={FadeIn} style={{ gap: 16 }}>
+      {/* Header with action button */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
+          Sales & Expenses
+        </Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: theme.primary + '20',
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 8,
+          }}
+          onPress={() => {
+            // Navigate to finance management (can be implemented later)
+            Alert.alert('Info', 'Finance management coming soon!');
+          }}
+        >
+          <Ionicons name="cash" size={16} color={theme.primary} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>
+            Manage
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* KPI Cards */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }}>
+        <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16 }}>
+          <KPICard
+            title="Total Sales"
+            value={`₹${totalSales.toLocaleString('en-IN')}`}
+            icon="trending-up"
+            color="#10b981"
+            subtitle={`${completedSales}/${sales.length} completed`}
+          />
+          <KPICard
+            title="Total Expenses"
+            value={`₹${totalExpenses.toLocaleString('en-IN')}`}
+            icon="trending-down"
+            color="#ef4444"
+            subtitle={`${paidExpenses}/${expenses.length} paid`}
+          />
+          <KPICard
+            title="Net Profit"
+            value={`₹${netProfit.toLocaleString('en-IN')}`}
+            icon={netProfit >= 0 ? 'checkmark-circle' : 'alert-circle'}
+            color={netProfit >= 0 ? '#6366f1' : '#f59e0b'}
+          />
+        </View>
+      </ScrollView>
+
+      {/* Sales List */}
+      {sales.length > 0 && (
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+              Recent Sales ({sales.length})
+            </Text>
+            <TouchableOpacity>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {sales.slice(0, 3).map((sale: any, index: number) => (
+            <View
+              key={index}
+              style={{
+                backgroundColor: theme.surface,
+                padding: 12,
+                borderRadius: 8,
+                borderLeftWidth: 3,
+                borderLeftColor: 
+                  sale.payment_status === 'completed' ? '#10b981' :
+                  sale.payment_status === 'pending' ? '#f59e0b' : '#94a3b8',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: theme.text }}>
+                  ₹{Number(sale.amount || 0).toLocaleString('en-IN')}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  {new Date(sale.date).toLocaleDateString('en-IN')} • {sale.payment_status}
+                </Text>
+                {sale.discount > 0 && (
+                  <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                    Discount: ₹{Number(sale.discount).toLocaleString('en-IN')}
+                  </Text>
+                )}
+              </View>
+              <Ionicons 
+                name={
+                  sale.payment_status === 'completed' ? 'checkmark-circle' :
+                  sale.payment_status === 'pending' ? 'time' : 'alert-circle'
+                }
+                size={20}
+                color={
+                  sale.payment_status === 'completed' ? '#10b981' :
+                  sale.payment_status === 'pending' ? '#f59e0b' : '#94a3b8'
+                }
+              />
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Expenses List */}
+      {expenses.length > 0 && (
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+              Recent Expenses ({expenses.length})
+            </Text>
+            <TouchableOpacity>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {expenses.slice(0, 3).map((expense: any, index: number) => (
+            <View
+              key={index}
+              style={{
+                backgroundColor: theme.surface,
+                padding: 12,
+                borderRadius: 8,
+                borderLeftWidth: 3,
+                borderLeftColor:
+                  expense.payment_status === 'paid' ? '#10b981' :
+                  expense.payment_status === 'partial_paid' ? '#f59e0b' : '#ef4444',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: theme.text }}>
+                  {expense.particulars}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text, marginTop: 2 }}>
+                  ₹{Number(expense.amount || 0).toLocaleString('en-IN')}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  {new Date(expense.date).toLocaleDateString('en-IN')} • {expense.payment_status}
+                </Text>
+                {expense.mode_of_payment && (
+                  <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                    via {expense.mode_of_payment}
+                  </Text>
+                )}
+              </View>
+              <Ionicons 
+                name={
+                  expense.payment_status === 'paid' ? 'checkmark-circle' :
+                  expense.payment_status === 'partial_paid' ? 'time' : 'close-circle'
+                }
+                size={20}
+                color={
+                  expense.payment_status === 'paid' ? '#10b981' :
+                  expense.payment_status === 'partial_paid' ? '#f59e0b' : '#ef4444'
+                }
+              />
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Empty State */}
+      {sales.length === 0 && expenses.length === 0 && (
+        <View style={{ alignItems: 'center', padding: 24 }}>
+          <Ionicons name="cash-outline" size={48} color={theme.textSecondary} />
+          <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 12, textAlign: 'center' }}>
+            No financial records yet
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4, textAlign: 'center' }}>
+            Add sales and expenses to track event finances
+          </Text>
+        </View>
+      )}
+    </Animated.View>
+  );
+};
 
 export default function EventDetailScreen() {
   const { theme } = useTheme();
@@ -197,6 +434,9 @@ export default function EventDetailScreen() {
             <InfoRow label="Total Budget" value={item.total_budget ? `₹${item.total_budget.toLocaleString('en-IN')}` : 'N/A'} />
           </View>
 
+          {/* Sales & Expenses - Enhanced */}
+          <FinanceSection eventId={parseInt(id)} />
+
           {/* Additional Details */}
           {item.active_days?.length > 0 && (
             <View style={{ gap: 12 }}>
@@ -208,6 +448,36 @@ export default function EventDetailScreen() {
                   new Date(day.date).toLocaleDateString('en-IN')
                 ).join(', ')}
               </Text>
+            </View>
+          )}
+
+          {/* Vendors Information */}
+          {item.vendors?.length > 0 && (
+            <View style={{ gap: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
+                Assigned Vendors
+              </Text>
+              {item.vendors.map((vendor: any, index: number) => (
+                <View key={index} style={{ 
+                  backgroundColor: theme.surface, 
+                  padding: 12, 
+                  borderRadius: 8,
+                  borderLeftWidth: 3,
+                  borderLeftColor: theme.primary,
+                }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: theme.text }}>
+                    {vendor.name}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+                    {vendor.organization_name}
+                  </Text>
+                  {vendor.category && (
+                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                      {vendor.category}
+                    </Text>
+                  )}
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -323,6 +593,72 @@ export default function EventDetailScreen() {
         onBack={safeGoBack}
         rightActions={
           <View style={styles.headerActions}>
+            {itemType === 'events' && canManage && (
+              <>
+                <Pressable
+                  onPress={() => {
+                    router.push({
+                      pathname: '/(modules)/events/manage-active-days',
+                      params: {
+                        eventId: id,
+                        eventName: item?.name || 'Event',
+                        startDate: item?.start_date || '',
+                        endDate: item?.end_date || '',
+                      }
+                    } as any);
+                  }}
+                  style={({ pressed }) => ({
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: pressed ? '#10b981' + '20' : '#10b981',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  })}
+                >
+                  <Ionicons name="calendar" size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Days</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    router.push({
+                      pathname: '/(modules)/events/manage-vendors',
+                      params: { eventId: id, eventName: item?.name || 'Event' }
+                    } as any);
+                  }}
+                  style={({ pressed }) => ({
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: pressed ? theme.primary + '20' : theme.primary,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  })}
+                >
+                  <Ionicons name="people" size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Vendors</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    router.push({
+                      pathname: '/(modules)/events/manage-goods',
+                      params: { id: id }
+                    } as any);
+                  }}
+                  style={({ pressed }) => ({
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: pressed ? '#f59e0b' + '20' : '#f59e0b',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  })}
+                >
+                  <Ionicons name="cube" size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Goods</Text>
+                </Pressable>
+              </>
+            )}
             {itemType === 'leads' && canManage && item && !item.reject && !item.convert && (
               <Pressable
                 onPress={() => {

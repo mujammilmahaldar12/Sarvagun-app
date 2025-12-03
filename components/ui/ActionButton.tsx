@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { designSystem } from '@/constants/designSystem';
 
 interface ActionButtonProps {
-  onPress: () => void;
+  onPress?: () => void;
   title: string;
   icon?: keyof typeof Ionicons.glyphMap;
   variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning';
@@ -111,8 +111,8 @@ export default function ActionButton({
 
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
+      onPress={disabled || !onPress ? undefined : onPress}
+      disabled={disabled || !onPress}
       style={({ pressed }) => ([
         {
           backgroundColor: pressed ? colors.backgroundPressed : colors.background,

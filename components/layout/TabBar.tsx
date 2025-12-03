@@ -31,65 +31,83 @@ const TabItem = memo(({
   theme: any;
   isDark: boolean;
   isLast: boolean;
-}) => (
-  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 12,
-        backgroundColor: isActive ? '#6D376D' : theme.surface,
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        minWidth: 90,
-        opacity: pressed ? 0.9 : 1,
-        shadowColor: isActive ? '#6D376D' : '#000',
-        shadowOffset: { width: 0, height: isActive ? 6 : 2 },
-        shadowOpacity: isActive ? 0.5 : 0.15,
-        shadowRadius: isActive ? 10 : 4,
-        elevation: isActive ? 8 : 3,
-        borderWidth: isActive ? 2 : 1,
-        borderColor: isActive ? '#6D376D' : theme.border,
-      })}
-    >
-      {tab.icon && (
-        <View style={{
-          backgroundColor: isActive ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
-          borderRadius: 20,
-          padding: isActive ? 6 : 0,
-        }}>
-          <Ionicons
-            name={tab.icon}
-            size={24}
-            color={isActive ? '#FFFFFF' : theme.primary}
-          />
-        </View>
-      )}
-      <Text
-        style={{
-          color: isActive ? '#FFFFFF' : theme.text,
-          fontSize: designSystem.typography.sizes.sm,
-          fontWeight: isActive ? designSystem.typography.weights.bold : designSystem.typography.weights.semibold,
-          textAlign: 'center',
-        }}
+}) => {
+  // Fixed contrast colors - Active tab always stands out
+  const colors = {
+    active: {
+      background: '#6D376D',  // Purple
+      text: '#FFFFFF',        // White
+      icon: '#FFFFFF',        // White
+      border: '#6D376D',      // Purple
+    },
+    inactive: {
+      background: isDark ? '#1F2937' : '#F3F4F6',  // Dark gray / Light gray
+      text: isDark ? '#9CA3AF' : '#374151',        // Light gray / Dark gray
+      icon: isDark ? '#6B7280' : '#6D376D',        // Gray / Purple
+      border: isDark ? '#374151' : '#E5E7EB',      // Border
+    }
+  }
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          paddingHorizontal: 20,
+          paddingVertical: 12,
+          borderRadius: 12,
+          backgroundColor: isActive ? colors.active.background : colors.inactive.background,
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          minWidth: 90,
+          opacity: pressed ? 0.7 : 1,
+          shadowColor: isActive ? '#6D376D' : '#000',
+          shadowOffset: { width: 0, height: isActive ? 4 : 2 },
+          shadowOpacity: isActive ? 0.3 : 0.1,
+          shadowRadius: isActive ? 8 : 3,
+          elevation: isActive ? 6 : 2,
+          borderWidth: isActive ? 0 : 1,
+          borderColor: colors.inactive.border,
+        })}
       >
-        {tab.label}
-      </Text>
-    </Pressable>
-    {/* Vertical Divider */}
-    {!isLast && (
-      <View style={{
-        width: 1,
-        height: 40,
-        backgroundColor: isDark ? '#374151' : '#E5E7EB',
-        marginHorizontal: 8,
-      }} />
-    )}
-  </View>
-));
+        {tab.icon && (
+          <View style={{
+            backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+            borderRadius: 20,
+            padding: isActive ? 6 : 0,
+          }}>
+            <Ionicons
+              name={tab.icon}
+              size={24}
+              color={isActive ? colors.active.icon : colors.inactive.icon}
+            />
+          </View>
+        )}
+        <Text
+          style={{
+            color: isActive ? colors.active.text : colors.inactive.text,
+            fontSize: designSystem.typography.sizes.sm,
+            fontWeight: isActive ? '700' : '600',
+            textAlign: 'center',
+          }}
+        >
+          {tab.label}
+        </Text>
+      </Pressable>
+      {/* Vertical Divider */}
+      {!isLast && (
+        <View style={{
+          width: 1,
+          height: 40,
+          backgroundColor: isDark ? '#374151' : '#E5E7EB',
+          marginHorizontal: 8,
+        }} />
+      )}
+    </View>
+  );
+});
 
 function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
   const { theme, isDark } = useTheme();

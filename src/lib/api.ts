@@ -3,7 +3,7 @@ import { getToken, storeToken, removeToken } from "../../utils/storage";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__ 
-  ? "http://10.182.126.83:8000/api"  // Your PC's current local IP
+  ? "http://10.12.3.11:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
@@ -90,10 +90,20 @@ api.interceptors.response.use(
 export const apiClient = {
   get: <T>(url: string, config?: AxiosRequestConfig) =>
     api.get<T>(url, config).then((res) => {
+      console.log(`📦 apiClient.get response for ${url}:`, {
+        hasResults: res.data && typeof res.data === 'object' && 'results' in res.data,
+        isArray: Array.isArray(res.data),
+        dataType: typeof res.data,
+        resultsLength: (res.data as any)?.results?.length,
+        directLength: Array.isArray(res.data) ? res.data.length : undefined,
+      });
+      
       // Handle paginated responses - extract results array
       if (res.data && typeof res.data === 'object' && 'results' in res.data) {
+        console.log(`✅ Extracting results array: ${(res.data as any).results.length} items`);
         return (res.data as any).results as T;
       }
+      console.log(`✅ Returning data directly`);
       return res.data;
     }),
 

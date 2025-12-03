@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Platform, StatusBar, Alert, Switch, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StatusBar, Alert, Switch, StyleSheet, Platform, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -8,19 +8,14 @@ import Animated, {
   withSpring,
   withTiming,
   runOnJS,
-  interpolateColor,
-  FadeIn,
-  FadeInDown,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useAIStore } from '@/store/aiStore';
-import { Avatar, ListItem, AnimatedPressable, AnimatedButton } from '@/components';
-import { spacing, borderRadius, iconSizes, baseColors } from '@/constants/designSystem';
-import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
-import { resetOnboardingForTesting } from '@/utils/devUtils';
+import { Avatar, ListItem, AnimatedPressable } from '@/components';
+import { spacing, borderRadius, baseColors } from '@/constants/designSystem';
+import { getTypographyStyle, getShadowStyle } from '@/utils/styleHelpers';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -31,24 +26,21 @@ export default function ProfileScreen() {
 
   // Swipe to logout animation
   const translateX = useSharedValue(0);
-  const containerWidth = 300; // Fixed width for slider
-  const SWIPE_THRESHOLD = containerWidth - 70; // Leave space for the button
+  const containerWidth = 300;
+  const SWIPE_THRESHOLD = containerWidth - 70;
 
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
-      // Only allow right swipe, clamp to container bounds
       translateX.value = Math.max(0, Math.min(event.translationX, SWIPE_THRESHOLD));
     })
     .onEnd((event) => {
       if (translateX.value > SWIPE_THRESHOLD * 0.85) {
-        // Swipe completed - slide to end then trigger logout via state
         translateX.value = withTiming(SWIPE_THRESHOLD, { duration: 200 }, (finished) => {
           if (finished) {
             runOnJS(setShouldLogout)(true);
           }
         });
       } else {
-        // Reset position with spring
         translateX.value = withSpring(0, { damping: 15, stiffness: 150 });
       }
     });
@@ -116,8 +108,8 @@ export default function ProfileScreen() {
         translucent
       />
 
-      {/* Clean Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
+      {/* Minimal Glass Header */}
+      <View style={[styles.header, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)', borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
       </View>
 
@@ -125,80 +117,54 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Profile Header Card */}
-        <View style={styles.section}>
-          <View style={[styles.profileCard, getCardStyle(theme.surface, 'md', 'xl')]}>
-            <View style={styles.profileHeader}>
-              <Avatar
-                size={72}
-                source={user?.photo ? { uri: user.photo } : undefined}
-                name={user?.full_name}
-                onlineStatus={true}
-              />
-              <View style={styles.profileInfo}>
-                <Text style={[styles.userName, { color: theme.text }]}>
-                  {user?.full_name || user?.first_name || user?.username}
-                </Text>
-                <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-                  {user?.email}
-                </Text>
-                {(user?.designation || user?.category) && (
-                  <Text style={[styles.userRole, { color: theme.textSecondary }]}>
-                    {user?.designation && user?.category 
-                      ? `${user.designation} • ${user.category.charAt(0).toUpperCase() + user.category.slice(1)}`
-                      : user?.designation || (user?.category ? user.category.charAt(0).toUpperCase() + user.category.slice(1) : '')}
-                  </Text>
-                )}
-              </View>
+        {/* Profile Header */}
+        <View style={styles.profileSection}>
+          <AnimatedPressable
+            onPress={() => router.push('/(settings)/account')}
+            hapticType="light"
+            style={[styles.profileHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}
+          >
+            <Avatar
+              size={64}
+              source={user?.photo ? { uri: user.photo } : undefined}
+              name={user?.full_name}
+              onlineStatus={true}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {user?.full_name || user?.first_name || user?.username}
+              </Text>
+              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
+                {user?.email}
+              </Text>
             </View>
-
-            <AnimatedPressable
-              onPress={() => router.push('/(settings)/account')}
-              style={[
-                styles.editProfileButton,
-                { 
-                  backgroundColor: theme.primary,
-                  borderWidth: 0,
-                },
-                getShadowStyle('sm'),
-              ]}
-              hapticType="medium"
-              springConfig="bouncy"
-            >
-              <Ionicons name="create-outline" size={iconSizes.sm} color={baseColors.neutral[0]} />
-              <Text style={styles.editButtonText}>Edit Profile</Text>
-            </AnimatedPressable>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </AnimatedPressable>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>QUICK ACTIONS</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
+          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}>
             <ListItem
               title="My Public Profile"
-              description="View your professional profile"
               leftIcon="person-circle-outline"
               rightIcon="chevron-forward-outline"
               onPress={() => router.push('/(dashboard)/my-profile')}
             />
             <ListItem
               title="Edit Account"
-              description="Update your personal information"
               leftIcon="create-outline"
               rightIcon="chevron-forward-outline"
               onPress={() => router.push('/(settings)/account')}
             />
             <ListItem
               title="Notifications"
-              description="View all your notifications"
               leftIcon="notifications-outline"
               rightIcon="chevron-forward-outline"
               onPress={() => router.push('/(dashboard)/notifications')}
             />
             <ListItem
               title="Leaderboard"
-              description="View top performers"
               leftIcon="trophy-outline"
               rightIcon="chevron-forward-outline"
               showDivider={false}
@@ -207,43 +173,16 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Appearance */}
+        {/* AI Assistant */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APPEARANCE</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
-            <ListItem
-              title="Theme"
-              description="Customize app appearance"
-              leftIcon="color-palette-outline"
-              rightIcon="chevron-forward-outline"
-              showDivider={false}
-              onPress={() => router.push('/(settings)/appearance')}
-            />
-          </View>
-        </View>
-
-        {/* AI Assistant - Beta */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>AI ASSISTANT</Text>
-            <View style={styles.betaBadge}>
-              <Ionicons name="sparkles" size={10} color="#FFFFFF" />
-              <Text style={styles.betaText}>BETA</Text>
-            </View>
-          </View>
-          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
-            {/* AI Mode Toggle */}
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>AI ASSISTANT</Text>
+          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}>
             <View style={styles.aiToggleRow}>
               <View style={styles.aiToggleLeft}>
                 <View style={[styles.aiIconContainer, { backgroundColor: theme.primary + '20' }]}>
                   <Ionicons name="sparkles" size={20} color={theme.primary} />
                 </View>
-                <View style={styles.aiToggleInfo}>
-                  <Text style={[styles.aiToggleTitle, { color: theme.text }]}>AI Mode</Text>
-                  <Text style={[styles.aiToggleDescription, { color: theme.textSecondary }]}>
-                    Enable Sarvagun AI assistant
-                  </Text>
-                </View>
+                <Text style={[styles.aiToggleTitle, { color: theme.text }]}>AI Mode</Text>
               </View>
               <Switch
                 value={isAIModeEnabled}
@@ -254,82 +193,55 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Chat with AI - Only visible when AI mode is enabled */}
             {isAIModeEnabled && (
-              <Animated.View entering={FadeIn.springify()}>
+              <>
                 <View style={[styles.divider, { backgroundColor: theme.border }]} />
                 <ListItem
                   title="Chat with AI"
-                  description="Ask questions, get help instantly"
                   leftIcon="chatbubble-ellipses-outline"
                   rightIcon="chevron-forward-outline"
                   showDivider={false}
                   onPress={() => router.push('/(dashboard)/ai-chat')}
                 />
-              </Animated.View>
+              </>
             )}
           </View>
-          
-          {/* AI Info Card */}
-          {isAIModeEnabled && (
-            <Animated.View 
-              entering={FadeInDown.delay(150).springify()}
-              style={[styles.aiInfoCard, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}
-            >
-              <Ionicons name="information-circle" size={18} color={theme.primary} />
-              <Text style={[styles.aiInfoText, { color: theme.primary }]}>
-                AI assistant helps with leave, tasks, events & workplace queries. Responses may not always be accurate.
-              </Text>
-            </Animated.View>
-          )}
-        </Animated.View>
+        </View>
 
-        {/* Support Section */}
+        {/* Settings */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SUPPORT</Text>
-          <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SETTINGS</Text>
+          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}>
             <ListItem
-              title="Help Center"
-              description="Get help and support"
+              title="Appearance"
+              leftIcon="color-palette-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => router.push('/(settings)/appearance')}
+            />
+            <ListItem
+              title="Help & Support"
               leftIcon="help-circle-outline"
+              rightIcon="chevron-forward-outline"
               onPress={() => router.push('/(settings)/help-center')}
             />
             <ListItem
               title="Report a Problem"
-              description="Let us know about issues"
               leftIcon="alert-circle-outline"
+              rightIcon="chevron-forward-outline"
               onPress={() => router.push('/(settings)/report-problem')}
             />
             <ListItem
               title="About"
-              description="App version and info"
               leftIcon="information-circle-outline"
+              rightIcon="chevron-forward-outline"
               showDivider={false}
               onPress={() => router.push('/(settings)/about')}
             />
           </View>
         </View>
 
-        {/* Developer Tools (Testing Only) */}
-        {__DEV__ && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>DEVELOPER TOOLS</Text>
-            <View style={[styles.sectionCard, getCardStyle(theme.surface, 'md', 'lg')]}>
-              <ListItem
-                title="Reset Onboarding Tour"
-                description="Test first-time user experience"
-                leftIcon="refresh-outline"
-                showDivider={false}
-                onPress={resetOnboardingForTesting}
-              />
-            </View>
-          </View>
-        )}
-
-        {/* Swipe to Logout - iPhone Style */}
+        {/* Logout */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>LOGOUT</Text>
-          
           <View style={styles.sliderContainer}>
             <View style={[styles.sliderTrack, { backgroundColor: baseColors.error[600] }]}>
               <Animated.Text style={[styles.sliderText, textOpacity]}>
@@ -346,7 +258,6 @@ export default function ProfileScreen() {
             </GestureDetector>
           </View>
 
-          {/* Alternative Tap to Logout */}
           <Pressable
             onPress={handleLogout}
             style={({ pressed }) => [
@@ -372,58 +283,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
-    paddingBottom: spacing.lg,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.md : spacing.xl,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
   },
   headerTitle: {
-    ...getTypographyStyle('2xl', 'bold'),
+    ...getTypographyStyle('lg', 'bold'),
   },
   scrollContent: {
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
-  section: {
-    marginBottom: spacing['2xl'],
+  profileSection: {
     paddingHorizontal: spacing.lg,
-  },
-  profileCard: {
-    padding: spacing.xl,
+    marginBottom: spacing.lg,
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.base,
-    marginBottom: spacing.lg,
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
   },
   profileInfo: {
     flex: 1,
   },
   userName: {
-    ...getTypographyStyle('xl', 'bold'),
-    marginBottom: spacing.xs,
+    ...getTypographyStyle('lg', 'bold'),
+    marginBottom: 2,
   },
   userEmail: {
     ...getTypographyStyle('sm', 'regular'),
-    marginBottom: spacing.xs,
   },
-  userRole: {
-    ...getTypographyStyle('sm', 'medium'),
+  section: {
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
-  editProfileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.md,
-  },
-  editButtonText: {
-    ...getTypographyStyle('base', 'semibold'),
-    color: baseColors.neutral[0],
+  listCard: {
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
   },
   sectionTitle: {
     ...getTypographyStyle('xs', 'bold'),
@@ -453,8 +352,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  sectionCard: {
+  actionCard: {
     overflow: 'hidden',
+    borderRadius: borderRadius.xl,
   },
   aiToggleRow: {
     flexDirection: 'row',
@@ -475,33 +375,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  aiToggleInfo: {
-    flex: 1,
-  },
   aiToggleTitle: {
     ...getTypographyStyle('base', 'semibold'),
-    marginBottom: 2,
-  },
-  aiToggleDescription: {
-    ...getTypographyStyle('sm', 'regular'),
   },
   divider: {
     height: 1,
     marginHorizontal: spacing.base,
-  },
-  aiInfoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    padding: spacing.base,
-    marginTop: spacing.sm,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-  },
-  aiInfoText: {
-    flex: 1,
-    ...getTypographyStyle('xs', 'regular'),
-    lineHeight: 18,
   },
   sliderContainer: {
     position: 'relative',

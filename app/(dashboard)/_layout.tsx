@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, usePathname } from 'expo-router';
 import { View, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,10 @@ export default function DashboardLayout() {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Check if we're on the AI chat page
+  const isOnAIChatPage = pathname === '/(dashboard)/ai-chat';
 
   // Calculate dynamic tab bar height based on device safe area
   const tabBarHeight = getTabBarHeight(insets.bottom);
@@ -199,73 +203,75 @@ export default function DashboardLayout() {
       />
     </Tabs>
 
-      {/* Floating AI Chat Button - Always visible above tab bar */}
-      <Animated.View
-        entering={FadeInUp.springify().damping(12)}
-        style={{
-          position: 'absolute',
-          bottom: tabBarHeight + 16,
-          right: 16,
-          alignItems: 'center',
-          zIndex: 1000,
-        }}
-      >
-        <Pressable
-          onPress={() => router.push('/(dashboard)/ai-chat')}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            justifyContent: 'center',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <Animated.View
-            style={[
-              {
-                position: 'absolute',
-                width: 66,
-                height: 66,
-                borderRadius: 33,
-                backgroundColor: theme.primary,
-              },
-              aiGlowStyle,
-            ]}
-          />
-          <Animated.View style={aiButtonStyle}>
-            <LinearGradient
-              colors={[theme.primary, `${theme.primary}DD`]}
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Ionicons name="sparkles" size={24} color="#FFFFFF" />
-            </LinearGradient>
-          </Animated.View>
-        </Pressable>
-        <View
+      {/* Floating AI Chat Button - Hidden when on AI chat page */}
+      {!isOnAIChatPage && (
+        <Animated.View
+          entering={FadeInUp.springify().damping(12)}
           style={{
             position: 'absolute',
-            top: -4,
-            right: -4,
-            backgroundColor: '#F59E0B',
-            paddingHorizontal: 5,
-            paddingVertical: 2,
-            borderRadius: 6,
+            bottom: tabBarHeight + 16,
+            right: 16,
+            alignItems: 'center',
+            zIndex: 1000,
           }}
         >
-          <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>AI</Text>
-        </View>
-      </Animated.View>
+          <Pressable
+            onPress={() => router.push('/(dashboard)/ai-chat')}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            <Animated.View
+              style={[
+                {
+                  position: 'absolute',
+                  width: 66,
+                  height: 66,
+                  borderRadius: 33,
+                  backgroundColor: theme.primary,
+                },
+                aiGlowStyle,
+              ]}
+            />
+            <Animated.View style={aiButtonStyle}>
+              <LinearGradient
+                colors={[theme.primary, `${theme.primary}DD`]}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+              </LinearGradient>
+            </Animated.View>
+          </Pressable>
+          <View
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: -4,
+              backgroundColor: '#F59E0B',
+              paddingHorizontal: 5,
+              paddingVertical: 2,
+              borderRadius: 6,
+            }}
+          >
+            <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 }}>AI</Text>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }

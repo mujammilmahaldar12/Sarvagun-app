@@ -21,6 +21,9 @@ import {
   LoadingState, 
   ErrorBoundary,
   Skeleton,
+  PerformanceChart,
+  ActivityTimeline,
+  GoalCard,
 } from '@/components';
 import { Card } from '@/components/core/Card';
 import { Tabs } from '@/components/core/Tabs';
@@ -129,7 +132,7 @@ export default function MyProfileScreen() {
           <View style={{ width: 24 }} />
         </View>
         <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-          <LoadingState type="card" items={1} />
+          <LoadingState />
         </View>
       </View>
     );
@@ -209,14 +212,22 @@ export default function MyProfileScreen() {
         translucent
       />
 
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <AnimatedPressable onPress={() => router.back()} hapticType="light">
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+      {/* Minimal Glass Header */}
+      <View style={[styles.header, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)', borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+        <AnimatedPressable 
+          onPress={() => router.back()} 
+          hapticType="light"
+          style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.text} />
         </AnimatedPressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>My Profile</Text>
-        <AnimatedPressable onPress={() => router.push('/(settings)/account')} hapticType="light">
-          <Ionicons name="create-outline" size={24} color={theme.primary} />
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
+        <AnimatedPressable 
+          onPress={() => router.push('/(settings)/account')} 
+          hapticType="light"
+          style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+        >
+          <Ionicons name="create-outline" size={20} color={theme.primary} />
         </AnimatedPressable>
       </View>
 
@@ -232,96 +243,71 @@ export default function MyProfileScreen() {
           />
         }
       >
-        {/* Profile Header - Enhanced */}
-        <View style={[styles.profileHeader, { backgroundColor: theme.surface }]}>
-          <View style={styles.avatarSection}>
-            <View style={[styles.avatarRing, { borderColor: theme.primary }]}>
-              <Avatar
-                size={110}
-                source={enhancedProfile.photo ? { uri: enhancedProfile.photo } : undefined}
-                name={enhancedProfile.full_name}
-                onlineStatus={'is_active' in enhancedProfile ? enhancedProfile.is_active : 
-                            ('status' in enhancedProfile && enhancedProfile.status === 'active')}
-              />
-            </View>
+        {/* Profile Card - Glass Design */}
+        <View style={[styles.profileCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatarGlow, { backgroundColor: `${theme.primary}20` }]} />
+            <Avatar
+              size={90}
+              source={enhancedProfile.photo ? { uri: enhancedProfile.photo } : undefined}
+              name={enhancedProfile.full_name}
+              onlineStatus={'is_active' in enhancedProfile ? enhancedProfile.is_active : 
+                          ('status' in enhancedProfile && enhancedProfile.status === 'active')}
+            />
           </View>
           
           <Text style={[styles.profileName, { color: theme.text }]}>
             {enhancedProfile.full_name || 'User Name'}
           </Text>
           
-          <Text style={[styles.profileDesignation, { color: theme.textSecondary }]}>
+          <Text style={[styles.profileRole, { color: theme.textSecondary }]}>
             {enhancedProfile.designation || 'Team Member'}
           </Text>
           
-          <View style={styles.profileBadges}>
+          <View style={styles.badgeRow}>
             {enhancedProfile.department && (
-              <View style={[styles.customBadge, { backgroundColor: `${theme.primary}15`, borderColor: `${theme.primary}30` }]}>
-                <Ionicons name="briefcase-outline" size={14} color={theme.primary} />
-                <Text style={[styles.badgeText, { color: theme.primary }]}>{enhancedProfile.department}</Text>
+              <View style={[styles.infoBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                <Ionicons name="briefcase-outline" size={12} color={theme.textSecondary} />
+                <Text style={[styles.badgeLabel, { color: theme.textSecondary }]}>{enhancedProfile.department}</Text>
               </View>
             )}
             {enhancedProfile.category && (
-              <View style={[styles.customBadge, { backgroundColor: getAlphaColor(moduleColors.finance.main, 0.08), borderColor: getAlphaColor(moduleColors.finance.main, 0.19) }]}>
-                <Ionicons name="person-outline" size={14} color={moduleColors.finance.main} />
-                <Text style={[styles.badgeText, { color: moduleColors.finance.main }]}>{enhancedProfile.category.toUpperCase()}</Text>
-              </View>
-            )}
-            {enhancedProfile.team_size > 0 && (
-              <View style={[styles.customBadge, { backgroundColor: getAlphaColor(moduleColors.projects.main, 0.08), borderColor: getAlphaColor(moduleColors.projects.main, 0.19) }]}>
-                <Ionicons name="people-outline" size={14} color={moduleColors.projects.main} />
-                <Text style={[styles.badgeText, { color: moduleColors.projects.main }]}>Team Lead ({enhancedProfile.team_size})</Text>
+              <View style={[styles.infoBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                <Text style={[styles.badgeLabel, { color: theme.textSecondary }]}>{enhancedProfile.category}</Text>
               </View>
             )}
           </View>
 
-          {/* Bio */}
           {enhancedProfile.bio && (
-            <Text style={[styles.profileBio, { color: theme.textSecondary }]}>
+            <Text style={[styles.bio, { color: theme.textSecondary }]}>
               {enhancedProfile.bio}
             </Text>
           )}
 
-          {/* Quick Stats - Redesigned */}
-          <View style={[styles.quickStatsGrid, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: `${theme.primary}15` }]}>
-                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)' }]}>
+              <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+              <Text style={[styles.statNumber, { color: theme.text }]}>
                 {formatTenure(enhancedProfile.tenureMonths)}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Tenure
-              </Text>
+              <Text style={[styles.statText, { color: theme.textSecondary }]}>Tenure</Text>
             </View>
             
-            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-            
-            <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: getAlphaColor(moduleColors.finance.main, 0.08) }]}>
-                <Ionicons name="briefcase-outline" size={20} color={moduleColors.finance.main} />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>
+            <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)' }]}>
+              <Ionicons name="briefcase-outline" size={18} color={moduleColors.finance.main} />
+              <Text style={[styles.statNumber, { color: theme.text }]}>
                 {projectStats.projectsCompleted}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Projects
-              </Text>
+              <Text style={[styles.statText, { color: theme.textSecondary }]}>Projects</Text>
             </View>
             
-            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-            
-            <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: getAlphaColor(moduleColors.projects.main, 0.08) }]}>
-                <Ionicons name="checkmark-circle-outline" size={20} color={moduleColors.projects.main} />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>
+            <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)' }]}>
+              <Ionicons name="checkmark-circle-outline" size={18} color={moduleColors.projects.main} />
+              <Text style={[styles.statNumber, { color: theme.text }]}>
                 {enhancedProfile.attendance_percentage.toFixed(0)}%
               </Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Attendance
-              </Text>
+              <Text style={[styles.statText, { color: theme.textSecondary }]}>Attendance</Text>
             </View>
           </View>
         </View>
@@ -344,6 +330,115 @@ export default function MyProfileScreen() {
         <View style={styles.tabContent}>
           {activeTab === 'overview' && (
             <View style={styles.tabPanel}>
+              {/* Performance Chart - NEW */}
+              <View style={styles.contentSection}>
+                <PerformanceChart
+                  title="Monthly Performance"
+                  subtitle="Last 6 months"
+                  data={[
+                    { label: 'Jul', value: 75 },
+                    { label: 'Aug', value: 82 },
+                    { label: 'Sep', value: 78 },
+                    { label: 'Oct', value: 88 },
+                    { label: 'Nov', value: 92 },
+                    { label: 'Dec', value: enhancedProfile.attendance_percentage },
+                  ]}
+                  color={moduleColors.projects.main}
+                />
+              </View>
+
+              {/* Goals & OKRs - NEW */}
+              <View style={styles.contentSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Current Goals
+                </Text>
+                <View style={styles.goalsGrid}>
+                  <GoalCard
+                    title="Project Completion"
+                    description="Complete assigned projects on time"
+                    progress={Math.min((projectStats.projectsCompleted / 10) * 100, 100)}
+                    current={projectStats.projectsCompleted.toString()}
+                    target="10"
+                    color={moduleColors.projects.main}
+                    icon="briefcase"
+                    dueDate="Dec 31"
+                  />
+                  <GoalCard
+                    title="Task Excellence"
+                    description="Maintain high task completion rate"
+                    progress={Math.min((projectStats.tasksCompleted / 50) * 100, 100)}
+                    current={projectStats.tasksCompleted.toString()}
+                    target="50"
+                    color={moduleColors.finance.main}
+                    icon="checkmark-circle"
+                    dueDate="Dec 31"
+                  />
+                  <GoalCard
+                    title="Attendance Target"
+                    description="Maintain 95%+ attendance"
+                    progress={enhancedProfile.attendance_percentage}
+                    current={`${enhancedProfile.attendance_percentage.toFixed(0)}%`}
+                    target="95%"
+                    color={moduleColors.hr.main}
+                    icon="calendar"
+                  />
+                </View>
+              </View>
+
+              {/* Activity Timeline - NEW */}
+              <View style={styles.contentSection}>
+                <ActivityTimeline
+                  activities={[
+                    {
+                      id: '1',
+                      type: 'task',
+                      title: 'Task Completed',
+                      description: 'Finished UI redesign for dashboard module',
+                      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+                      icon: 'checkmark-circle',
+                      color: moduleColors.finance.main,
+                    },
+                    {
+                      id: '2',
+                      type: 'project',
+                      title: 'Project Milestone',
+                      description: 'Reached 75% completion on Q4 objectives',
+                      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                      icon: 'trophy',
+                      color: moduleColors.projects.main,
+                    },
+                    {
+                      id: '3',
+                      type: 'leave',
+                      title: 'Leave Approved',
+                      description: 'Casual leave for 2 days approved',
+                      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+                      icon: 'calendar-outline',
+                      color: moduleColors.leave.main,
+                    },
+                    {
+                      id: '4',
+                      type: 'achievement',
+                      title: 'Achievement Unlocked',
+                      description: 'Completed 100 tasks this quarter',
+                      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+                      icon: 'star',
+                      color: moduleColors.events.main,
+                    },
+                    {
+                      id: '5',
+                      type: 'meeting',
+                      title: 'Team Meeting',
+                      description: 'Attended quarterly review meeting',
+                      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                      icon: 'people',
+                      color: moduleColors.hr.main,
+                    },
+                  ]}
+                  maxItems={5}
+                />
+              </View>
+
               {/* Performance Stats */}
               <View style={styles.contentSection}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -487,99 +582,85 @@ const styles = StyleSheet.create({
     ...getTypographyStyle('xl', 'bold'),
   },
   scrollContent: {
+    paddingTop: spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 100 : 80,
   },
-  profileHeader: {
+  profileCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    padding: spacing.xl,
+    borderRadius: borderRadius['2xl'],
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
-    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
   },
-  avatarSection: {
-    marginBottom: spacing.base,
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: spacing.md,
   },
-  avatarRing: {
-    borderWidth: 4,
-    borderRadius: 999,
-    padding: 4,
+  avatarGlow: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    top: -5,
+    left: -5,
+    zIndex: -1,
   },
   profileName: {
-    ...getTypographyStyle('2xl', 'bold'),
-    marginTop: spacing.lg,
+    ...getTypographyStyle('xl', 'bold'),
+    marginTop: spacing.sm,
     textAlign: 'center',
   },
-  profileDesignation: {
-    ...getTypographyStyle('base', 'medium'),
+  profileRole: {
+    ...getTypographyStyle('sm', 'medium'),
     marginTop: spacing.xs,
     textAlign: 'center',
-    opacity: 0.8,
   },
-  profileBadges: {
+  badgeRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
+    flexWrap: 'wrap',
     justifyContent: 'center',
   },
-  customBadge: {
+  infoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  badgeLabel: {
+    ...getTypographyStyle('2xs', 'medium'),
+    textTransform: 'capitalize',
   },
-  profileBio: {
+  bio: {
     ...getTypographyStyle('sm', 'regular'),
     textAlign: 'center',
-    marginTop: spacing.lg,
-    lineHeight: 22,
-    paddingHorizontal: spacing.xl,
-    opacity: 0.8,
+    marginTop: spacing.md,
+    lineHeight: 20,
   },
-  quickStatsGrid: {
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing['2xl'],
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.base,
-    borderRadius: 16,
-    borderWidth: 1,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    width: '100%',
   },
-  statItem: {
+  statBox: {
     flex: 1,
     alignItems: 'center',
-    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    borderRadius: borderRadius.lg,
+    gap: 4,
   },
-  statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
+  statNumber: {
+    ...getTypographyStyle('lg', 'bold'),
+    marginTop: 2,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 24,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    opacity: 0.7,
-  },
-  statDivider: {
-    width: 1,
-    height: 50,
+  statText: {
+    ...getTypographyStyle('2xs', 'medium'),
   },
   tabsContainer: {
     paddingHorizontal: spacing.lg,
@@ -598,11 +679,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...getTypographyStyle('lg', 'bold'),
-    marginBottom: spacing.xs,
+    marginBottom: spacing.base,
   },
   sectionDescription: {
     ...getTypographyStyle('sm', 'regular'),
     marginBottom: spacing.base,
+  },
+  goalsGrid: {
+    gap: spacing.md,
   },
   infoCard: {
     padding: spacing.base,

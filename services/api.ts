@@ -10,9 +10,9 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.182.126.83:8000/api';
+      return 'http://10.12.3.11:8000/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://10.182.126.83:8000/api';
+      return 'http://10.12.3.11:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
@@ -232,8 +232,20 @@ const apiWrapper = {
   },
   post: async <T>(url: string, data?: any): Promise<T> => {
     console.log(`📤 API POST: ${url}`);
-    console.log(`📦 Request data:`, JSON.stringify(data, null, 2));
-    const response = await api.post<T>(url, data);
+    if (data instanceof FormData) {
+      console.log(`📦 Request data: FormData`);
+    } else {
+      console.log(`📦 Request data:`, JSON.stringify(data, null, 2));
+    }
+    
+    // Set proper headers for FormData
+    const config = data instanceof FormData ? {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    } : undefined;
+    
+    const response = await api.post<T>(url, data, config);
     console.log(`✅ API POST Response for ${url}:`, {
       status: response.status,
       data: response.data
@@ -241,7 +253,13 @@ const apiWrapper = {
     return response.data;
   },
   put: async <T>(url: string, data?: any): Promise<T> => {
-    const response = await api.put<T>(url, data);
+    console.log(`🔄 API PUT: ${url}`);
+    const config = data instanceof FormData ? {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    } : undefined;
+    const response = await api.put<T>(url, data, config);
     return response.data;
   },
   patch: async <T>(url: string, data?: any): Promise<T> => {

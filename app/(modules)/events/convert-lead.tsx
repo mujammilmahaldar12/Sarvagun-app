@@ -23,6 +23,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { spacing, typography, borderRadius, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import eventsService from '@/services/events.service';
+import notificationsService from '@/services/notifications.service';
 import type { Lead, Venue, ClientCategory, Organisation } from '@/types/events';
 
 export default function ConvertLeadScreen() {
@@ -41,6 +42,7 @@ export default function ConvertLeadScreen() {
   }, [navigation, router]);
 
   const [loading, setLoading] = useState(true);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [lead, setLead] = useState<Lead | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [categories, setCategories] = useState<ClientCategory[]>([]);
@@ -101,12 +103,12 @@ export default function ConvertLeadScreen() {
       setCategories(categoriesData || []);
       setOrganisations(orgsData || []);
       
-      // Initialize venue from lead if available
-      if (leadData.venue) {
-        setSelectedVenue(leadData.venue);
+      // Initialize venue from lead's event if available
+      if (leadData.event && typeof leadData.event === 'object' && leadData.event.venue) {
+        setSelectedVenue(leadData.event.venue);
         setFormData(prev => ({
           ...prev,
-          venueId: leadData.venue?.id || 0,
+          venueId: leadData.event && typeof leadData.event === 'object' ? leadData.event.venue?.id || 0 : 0,
           typeOfEvent: '', // Start with empty field, let user type
         }));
       } else {
@@ -127,7 +129,7 @@ export default function ConvertLeadScreen() {
     if (!formData.categoryId || !categories) return false;
     const selectedCategory = categories.find(c => c.id === formData.categoryId);
     // B2B and B2G require organisation
-    return selectedCategory?.code === 'B2B' || selectedCategory?.code === 'B2G';
+    return selectedCategory?.code === 'b2b' || selectedCategory?.code === 'b2g';
   };
 
   const getSelectedCategory = () => {
@@ -200,8 +202,8 @@ export default function ConvertLeadScreen() {
       return;
     }
 
-    // Validate venue (use selected venue or venue from lead)
-    const venueToUse = selectedVenue || lead?.venue;
+    // Validate venue (use selected venue or venue from lead's event)
+    const venueToUse = selectedVenue || (lead?.event && typeof lead.event === 'object' ? lead.event.venue : null);
     if (!venueToUse) {
       Alert.alert('Error', 'Please select a venue');
       return;
@@ -216,7 +218,7 @@ export default function ConvertLeadScreen() {
       
       const payload = {
         company: formData.company,
-        client_category: selectedCategory?.code,
+        client_category: selectedCategory?.code as 'b2b' | 'b2c' | 'b2g',
         organisation: formData.organisationId || undefined,
         venue: venueToUse.id,
         start_date: formatDate(formData.startDate),
@@ -235,13 +237,39 @@ export default function ConvertLeadScreen() {
       
       console.log('✅ Lead converted successfully:', response);
 
-      // Navigate immediately after success
-      router.replace('/(modules)/events');
+      // Send notification to admins about lead conversion
+      try {
+        await notificationsService.notifyLeadConversion(
+          Number(leadId),
+          response.id || response.event_id,
+          formData.company
+        );
+        console.log('✅ Notification sent for lead conversion');
+      } catch (notifError) {
+        console.error('⚠️ Failed to send notification:', notifError);
+        // Don't fail the conversion if notification fails
+      }
+
+      // Show success animation
+      setShowSuccessAnimation(true);
       
-      // Show success message after navigation
+      // Wait for animation, then navigate to events tab
       setTimeout(() => {
-        Alert.alert('Success', 'Lead converted to event successfully!');
-      }, 300);
+        // Navigate to events module with events tab active
+        router.replace('/(modules)/events');
+        
+        // Show success message with event details
+        setTimeout(() => {
+          Alert.alert(
+            'Success! 🎉', 
+            `Lead converted to event successfully!\n\nEvent ID: ${response.eventId || response.id}\nClient: ${lead?.client?.name}`,
+            [
+              { text: 'View Events', onPress: () => router.push('/(modules)/events') },
+              { text: 'OK', style: 'default' }
+            ]
+          );
+        }, 400);
+      }, 1200);
     } catch (error: any) {
       console.error('❌ Error converting lead:', error);
       console.error('Error details:', {
@@ -671,7 +699,7 @@ export default function ConvertLeadScreen() {
             />
 
             {/* Venue Info from Lead */}
-            {(selectedVenue || lead.venue) && (
+            {(selectedVenue || (lead.event && typeof lead.event === 'object' && lead.event.venue)) && (
               <View style={{
                 backgroundColor: theme.surface,
                 padding: 14,
@@ -687,22 +715,22 @@ export default function ConvertLeadScreen() {
                   </Text>
                 </View>
                 <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginLeft: 28 }}>
-                  {(selectedVenue || lead.venue)?.name}
+                  {(selectedVenue || (lead.event && typeof lead.event === 'object' ? lead.event.venue : null))?.name}
                 </Text>
                 <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginLeft: 28 }}>
-                  {(selectedVenue || lead.venue)?.address}
+                  {(selectedVenue || (lead.event && typeof lead.event === 'object' ? lead.event.venue : null))?.address}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 16, marginLeft: 28, marginTop: 4 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Ionicons name="people" size={14} color={theme.textSecondary} />
                     <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                      {(selectedVenue || lead.venue)?.capacity} capacity
+                      {(selectedVenue || (lead.event && typeof lead.event === 'object' ? lead.event.venue : null))?.capacity} capacity
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Ionicons name="pricetag" size={14} color={theme.textSecondary} />
                     <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                      {(selectedVenue || lead.venue)?.type}
+                      {(selectedVenue || (lead.event && typeof lead.event === 'object' ? lead.event.venue : null))?.type_of_venue}
                     </Text>
                   </View>
                 </View>
@@ -896,9 +924,9 @@ export default function ConvertLeadScreen() {
                                 <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
                                   <Ionicons name="people" size={12} /> {venue.capacity} capacity
                                 </Text>
-                                {venue.type && (
+                                {venue.type_of_venue && (
                                   <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                                    <Ionicons name="pricetag" size={12} /> {venue.type}
+                                    <Ionicons name="pricetag" size={12} /> {venue.type_of_venue}
                                   </Text>
                                 )}
                               </View>
@@ -909,6 +937,56 @@ export default function ConvertLeadScreen() {
                     </View>
                   )}
                 </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Success Animation Modal */}
+          <Modal visible={showSuccessAnimation} animationType="fade" transparent>
+            <View style={{ 
+              flex: 1, 
+              backgroundColor: 'rgba(0,0,0,0.7)', 
+              justifyContent: 'center', 
+              alignItems: 'center' 
+            }}>
+              <View style={{
+                backgroundColor: theme.background,
+                borderRadius: 24,
+                padding: 32,
+                alignItems: 'center',
+                gap: 16,
+                minWidth: 280,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.3,
+                shadowRadius: 16,
+                elevation: 12,
+              }}>
+                <View style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: theme.success + '20',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Ionicons name="checkmark-circle" size={56} color={theme.success} />
+                </View>
+                <Text style={{ 
+                  ...getTypographyStyle('xl', 'bold'), 
+                  color: theme.text,
+                  textAlign: 'center'
+                }}>
+                  Conversion Successful!
+                </Text>
+                <Text style={{ 
+                  ...getTypographyStyle('base', 'regular'), 
+                  color: theme.textSecondary,
+                  textAlign: 'center'
+                }}>
+                  Lead has been converted to an event
+                </Text>
+                <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 8 }} />
               </View>
             </View>
           </Modal>

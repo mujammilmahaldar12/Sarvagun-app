@@ -62,6 +62,8 @@ export const useHapticFeedback = () => {
     triggerSuccess,
     triggerWarning,
     triggerError,
+    // Alias for compatibility
+    impact: triggerHaptic,
   };
 };
 

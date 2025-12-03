@@ -28,6 +28,9 @@ export default function ModulesLayout() {
       <Stack.Screen name="finance/[id]" options={{ title: 'Finance Details' }} />
       <Stack.Screen name="finance/add-expense" options={{ title: 'Add Expense' }} />
       <Stack.Screen name="finance/add-sale" options={{ title: 'Add Sale' }} />
+      
+      {/* Notifications Module */}
+      <Stack.Screen name="notifications/index" options={{ title: 'Notifications' }} />
     </Stack>
   );
 }

@@ -4,12 +4,12 @@
  * Extracted from monolithic events/index.tsx
  */
 import React, { useMemo } from 'react';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Table, type TableColumn, Badge, Button } from '@/components';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyState, LoadingState } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useEvents } from '@/store/eventsStore';
 import { useAuthStore } from '@/store/authStore';
@@ -306,14 +306,7 @@ const EventsList: React.FC<EventsListProps> = ({
 
   // Loading state
   if (loading && !refreshing) {
-    return (
-      <View style={[styles.centered, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing[2] }]}>
-          Loading events...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading events..." variant="skeleton" skeletonCount={6} />;
   }
 
   // Error state

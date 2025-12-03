@@ -2,11 +2,12 @@
  * Events Store - Centralized State Management
  * Professional Zustand store for event management module
  */
+import React from 'react';
 import { create } from "zustand";
 import eventsService from "../services/events.service";
 import type {
   Lead,
-  Event,
+  AppEvent,
   Client,
   Venue,
   ClientCategory,
@@ -56,7 +57,7 @@ type CacheState = {
 interface EventsState {
   // Data
   leads: Lead[];
-  events: Event[];
+  events: AppEvent[];
   clients: Client[];
   venues: Venue[];
   clientCategories: ClientCategory[];
@@ -82,7 +83,7 @@ interface EventsState {
   // Selected Items (for UI state)
   selectedItems: {
     lead?: Lead;
-    event?: Event;
+    event?: AppEvent;
     client?: Client;
     venue?: Venue;
   };
@@ -111,7 +112,7 @@ interface EventsState {
   updateVenue: (id: number, data: Partial<CreateVenueRequest>) => Promise<Venue>;
   deleteVenue: (id: number) => Promise<void>;
   
-  updateEvent: (id: number, data: Partial<Event>) => Promise<Event>;
+  updateEvent: (id: number, data: Partial<AppEvent>) => Promise<AppEvent>;
   deleteEvent: (id: number) => Promise<void>;
   
   // Actions - UI State
@@ -131,13 +132,13 @@ interface EventsState {
   
   // Computed getters
   getFilteredLeads: () => Lead[];
-  getFilteredEvents: () => Event[];
+  getFilteredEvents: () => AppEvent[];
   getFilteredClients: () => Client[];
   getFilteredVenues: () => Venue[];
   
   // Statistics helpers
   getLeadsByStatus: () => Record<string, Lead[]>;
-  getEventsByStatus: () => Record<string, Event[]>;
+  getEventsByStatus: () => Record<string, AppEvent[]>;
   getTotalCounts: () => {
     leads: number;
     events: number;
@@ -206,14 +207,18 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     fetchLeads: async (refresh = false) => {
       const cacheKey = `leads-${JSON.stringify(get().filters.leads)}`;
       
+      console.log('🔍 fetchLeads called:', { refresh, cacheKey, currentLeadsCount: get().leads.length });
+      
       if (!refresh) {
         const cached = get().getCachedData<Lead[]>(cacheKey);
         if (cached) {
+          console.log('✅ Using cached leads:', cached.length);
           set({ leads: cached });
           return;
         }
       }
       
+      console.log('📡 Fetching leads from API...');
       set((state) => ({
         loading: { ...state.loading, leads: true },
         errors: { ...state.errors, leads: null }
@@ -222,12 +227,15 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       try {
         const leads = await eventsService.getLeads({
           ...get().filters.leads,
-          page_size: 100  // Request 100 leads instead of default 10
+          page_size: 500  // Request 500 leads to get all data
         });
         
+        console.log('✅ Leads fetched successfully:', leads.length);
         set({ leads });
+        console.log('📦 Leads stored in state:', get().leads.length);
         get().setCachedData(cacheKey, leads);
       } catch (error) {
+        console.error('❌ Error fetching leads:', error);
         set((state) => ({
           errors: { 
             ...state.errors, 
@@ -244,14 +252,18 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     fetchEvents: async (refresh = false) => {
       const cacheKey = `events-${JSON.stringify(get().filters.events)}`;
       
+      console.log('🔍 fetchEvents called:', { refresh, cacheKey, currentEventsCount: get().events.length });
+      
       if (!refresh) {
-        const cached = get().getCachedData<Event[]>(cacheKey);
+        const cached = get().getCachedData<AppEvent[]>(cacheKey);
         if (cached) {
+          console.log('✅ Using cached events:', cached.length);
           set({ events: cached });
           return;
         }
       }
       
+      console.log('📡 Fetching events from API...');
       set((state) => ({
         loading: { ...state.loading, events: true },
         errors: { ...state.errors, events: null }
@@ -260,12 +272,14 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       try {
         const events = await eventsService.getEvents({
           ...get().filters.events,
-          page_size: 100  // Request 100 events instead of default 10
+          page_size: 500  // Request 500 events to get all data
         });
         
+        console.log('✅ Events fetched successfully:', events.length);
         set({ events });
         get().setCachedData(cacheKey, events);
       } catch (error) {
+        console.error('❌ Error fetching events:', error);
         set((state) => ({
           errors: { 
             ...state.errors, 
@@ -282,14 +296,18 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     fetchClients: async (refresh = false) => {
       const cacheKey = `clients-${JSON.stringify(get().filters.clients)}`;
       
+      console.log('🔍 fetchClients called:', { refresh, cacheKey, currentClientsCount: get().clients.length });
+      
       if (!refresh) {
         const cached = get().getCachedData<Client[]>(cacheKey);
         if (cached) {
+          console.log('✅ Using cached clients:', cached.length);
           set({ clients: cached });
           return;
         }
       }
       
+      console.log('📡 Fetching clients from API...');
       set((state) => ({
         loading: { ...state.loading, clients: true },
         errors: { ...state.errors, clients: null }
@@ -298,6 +316,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       try {
         const clients = await eventsService.getClients(get().filters.clients);
         
+        console.log('✅ Clients fetched successfully:', clients.length);
         set({ clients });
         get().setCachedData(cacheKey, clients);
       } catch (error) {
@@ -655,7 +674,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     },
     
     // CRUD Operations for Events
-    updateEvent: async (id: number, data: Partial<Event>) => {
+    updateEvent: async (id: number, data: Partial<AppEvent>) => {
       try {
         const updatedEvent = await eventsService.updateEvent(id, data);
         
@@ -789,14 +808,22 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     // Computed Getters
     getFilteredLeads: () => {
       const { leads, filters } = get();
+      console.log('🔍 getFilteredLeads called:', { 
+        totalLeads: leads.length, 
+        filters: filters.leads,
+        sampleLead: leads[0]
+      });
+      
       let filtered = [...leads];
       
-      if (filters.leads.status) {
+      if (filters.leads.status && filters.leads.status !== 'all') {
+        console.log('🔍 Filtering by status:', filters.leads.status);
         filtered = filtered.filter(lead => lead.status === filters.leads.status);
       }
       
       if (filters.leads.search) {
         const search = filters.leads.search.toLowerCase();
+        console.log('🔍 Filtering by search:', search);
         filtered = filtered.filter(lead => 
           lead.client.name.toLowerCase().includes(search) ||
           lead.source?.toLowerCase().includes(search) ||
@@ -804,6 +831,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
         );
       }
       
+      console.log('✅ getFilteredLeads returning:', filtered.length, 'leads');
       return filtered;
     },
     
@@ -833,7 +861,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       
       if (filters.clients.category) {
         filtered = filtered.filter(client => 
-          client.category?.some(cat => cat.id === filters.clients.category)
+          (client as any).category?.some((cat: any) => cat.id === filters.clients.category)
         );
       }
       
@@ -858,7 +886,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
         filtered = filtered.filter(venue => 
           venue.name.toLowerCase().includes(search) ||
           venue.address.toLowerCase().includes(search) ||
-          venue.type?.toLowerCase().includes(search)
+          venue.type_of_venue?.toLowerCase().includes(search)
         );
       }
       
@@ -883,7 +911,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
         if (!acc[status]) acc[status] = [];
         acc[status].push(event);
         return acc;
-      }, {} as Record<string, Event[]>);
+      }, {} as Record<string, AppEvent[]>);
     },
     
     getTotalCounts: () => ({
@@ -894,22 +922,75 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     }),
   }));
 
-// Custom hooks for easier usage
+// Custom hooks for easier usage - Fixed to properly subscribe to state changes
 export const useLeads = () => {
-  const store = useEventsStore();
+  // Subscribe to the specific state pieces we need
+  const leads = useEventsStore((state) => state.leads);
+  const filters = useEventsStore((state) => state.filters.leads);
+  const loading = useEventsStore((state) => state.loading.leads);
+  const error = useEventsStore((state) => state.errors.leads);
+  const statistics = useEventsStore((state) => state.leadStatistics);
+  
+  // Get the methods from the store
+  const fetchLeads = useEventsStore((state) => state.fetchLeads);
+  const createLead = useEventsStore((state) => state.createLead);
+  const updateLead = useEventsStore((state) => state.updateLead);
+  const deleteLead = useEventsStore((state) => state.deleteLead);
+  const convertLead = useEventsStore((state) => state.convertLead);
+  const rejectLead = useEventsStore((state) => state.rejectLead);
+  const setFilter = useEventsStore((state) => state.setFilter);
+  const clearFilters = useEventsStore((state) => state.clearFilters);
+  
+  // Apply filters to get the filtered leads
+  const filteredLeads = React.useMemo(() => {
+    console.log('🔍 useLeads filtering:', { totalLeads: leads.length, filters });
+    
+    let result = leads;
+    
+    // Apply status filter
+    if (filters?.status && filters.status !== 'all') {
+      result = result.filter(lead => lead.status === filters.status);
+      console.log(`  → After status filter (${filters.status}): ${result.length}`);
+    }
+    
+    // Apply search filter
+    if (filters?.search) {
+      const query = filters.search.toLowerCase();
+      result = result.filter(lead =>
+        lead.client?.name?.toLowerCase().includes(query) ||
+        lead.client?.email?.toLowerCase().includes(query) ||
+        lead.client?.leadperson?.toLowerCase().includes(query) ||
+        lead.source?.toLowerCase().includes(query) ||
+        lead.message?.toLowerCase().includes(query)
+      );
+      console.log(`  → After search filter (${query}): ${result.length}`);
+    }
+    
+    console.log(`✅ useLeads returning ${result.length} filtered leads`);
+    return result;
+  }, [leads, filters]);
+  
+  console.log('🎣 useLeads hook state:', {
+    rawLeadsCount: leads.length,
+    filteredLeadsCount: filteredLeads.length,
+    loading,
+    error,
+    hasFilters: !!(filters?.status || filters?.search)
+  });
+  
   return {
-    leads: store.getFilteredLeads(),
-    loading: store.loading.leads,
-    error: store.errors.leads,
-    statistics: store.leadStatistics,
-    fetch: store.fetchLeads,
-    create: store.createLead,
-    update: store.updateLead,
-    delete: store.deleteLead,
-    convert: store.convertLead,
-    reject: store.rejectLead,
-    setFilter: (filters: any) => store.setFilter('leads', filters),
-    clearFilter: () => store.clearFilters('leads'),
+    leads: filteredLeads,
+    loading,
+    error,
+    statistics,
+    fetch: fetchLeads,
+    create: createLead,
+    update: updateLead,
+    delete: deleteLead,
+    convert: convertLead,
+    reject: rejectLead,
+    setFilter: (filters: any) => setFilter('leads', filters),
+    clearFilter: () => clearFilters('leads'),
   };
 };
 

@@ -98,7 +98,7 @@ export const FAB: React.FC<FABProps> = ({
   };
 
   const getPositionStyle = () => {
-    const bottomOffset = Platform.OS === 'ios' ? 100 : 80;
+    const bottomOffset = Platform.OS === 'ios' ? 30 : 30;  // Fixed 30px from bottom
     switch (position) {
       case 'bottom-center':
         return {
@@ -108,7 +108,7 @@ export const FAB: React.FC<FABProps> = ({
       case 'bottom-left':
         return {
           bottom: bottomOffset,
-          left: 20,
+          left: 20,  // 20px from left as requested
         };
       case 'bottom-right':
       default:

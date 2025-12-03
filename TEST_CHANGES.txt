@@ -1,0 +1,26 @@
+CHANGES MADE - December 2, 2025
+
+1. TabBar.tsx - Fixed active tab colors
+   - Active: Purple (#6D376D) background with white text
+   - Inactive: Proper contrast colors for light/dark modes
+   - Location: components/layout/TabBar.tsx
+
+2. eventsStore.ts - Fixed data subscription issue
+   - Rewrote useLeads() hook to properly subscribe to Zustand state
+   - Each state piece now has individual subscription
+   - Added React.useMemo for filtered leads
+   - Location: store/eventsStore.ts
+   
+3. LeadsList.tsx - Added debugging
+   - Added useEffect to track component updates
+   - Location: app/(modules)/events/components/LeadsList.tsx
+
+TO TEST:
+1. Clear metro cache: npx expo start --clear
+2. Reload app (shake device -> reload, or r in terminal)
+3. Check console logs for:
+   - "🔍 fetchLeads called"
+   - "📦 Leads stored in state"
+   - "🎣 useLeads hook state"
+   - "🔥 LeadsList MOUNTED/UPDATED"
+4. Check if tabs show proper colors (purple active, gray inactive)

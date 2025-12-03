@@ -4,13 +4,22 @@ import type {
   Event,
   Client,
   Venue,
+  Vendor,
+  EventVendor,
+  GoodsList,
   ClientCategory,
   Organisation,
   CreateLeadRequest,
   ConvertLeadRequest,
   CreateClientRequest,
   CreateVenueRequest,
+  CreateGoodsListRequest,
   LeadStatistics,
+  EventStatistics,
+  ClientStatistics,
+  Sales,
+  Expense,
+  FinanceSummary,
 } from '@/types/events';
 
 // Enhanced service with React Query support
@@ -29,25 +38,33 @@ class EventsService {
     page_size?: number;
   }) {
     try {
-      const response = await apiClient.get<any>('/events/leads/', { params });
+      console.log('🌐 Calling API /events/leads/ with params:', params);
+      const response = await apiClient.get<Lead[]>('/events/leads/', { params });
       
-      console.log('📊 Leads API Response:', {
-        isPaginated: !!(response?.results),
-        count: response?.count,
-        resultsLength: response?.results?.length,
-        isDirectArray: Array.isArray(response),
+      console.log('📊 Leads API Response (after apiClient processing):', {
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        length: Array.isArray(response) ? response.length : 0,
+        firstItem: Array.isArray(response) && response.length > 0 ? response[0] : null
       });
       
-      // Handle DRF paginated response structure {count, next, previous, results}
-      if (response?.results && Array.isArray(response.results)) {
-        console.log('✅ Returning', response.results.length, 'leads from paginated response');
-        return response.results;
-      }
-      
-      // Fallback to direct array
-      return Array.isArray(response) ? response : [];
+      // apiClient.get already extracts 'results' from paginated responses
+      // So we just need to ensure it's an array
+      const leads = Array.isArray(response) ? response : [];
+      console.log('✅ Returning', leads.length, 'leads');
+      return leads;
     } catch (error) {
-      console.error('Error fetching leads:', error);
+      console.error('❌ Error fetching leads:', error);
+      throw error;
+    }
+  }
+
+  async getLeadById(id: number) {
+    try {
+      const response = await apiClient.get<Lead>(`/events/leads/${id}/`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching lead details:', error);
       throw error;
     }
   }
@@ -158,25 +175,20 @@ class EventsService {
     page_size?: number;
   }) {
     try {
-      const response = await apiClient.get<any>('/events/events/', { params });
+      console.log('🌐 Calling API /events/events/ with params:', params);
+      const response = await apiClient.get<Event[]>('/events/events/', { params });
       
-      // Debug: Log API response structure
-      console.log('📊 Events API Response:', {
-        isPaginated: !!(response?.results),
-        count: response?.count,
-        resultsLength: response?.results?.length,
-        isDirectArray: Array.isArray(response),
-        directLength: Array.isArray(response) ? response.length : 0,
+      console.log('📊 Events API Response (after apiClient processing):', {
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        length: Array.isArray(response) ? response.length : 0,
+        firstItem: Array.isArray(response) && response.length > 0 ? response[0] : null
       });
       
-      // Handle DRF paginated response structure
-      if (response?.results && Array.isArray(response.results)) {
-        console.log('✅ Returning paginated results:', response.results.length, 'events');
-        return response.results;
-      }
-      
-      // Fallback to direct array
-      return Array.isArray(response) ? response : [];
+      // apiClient.get already extracts 'results' from paginated responses
+      const events = Array.isArray(response) ? response : [];
+      console.log('✅ Returning', events.length, 'events');
+      return events;
     } catch (error) {
       console.error('❌ Error fetching events:', error);
       throw error;
@@ -231,7 +243,22 @@ class EventsService {
    * Get all clients
    */
   async getClients(params?: { category?: number; search?: string }) {
-    return await apiClient.get<Client[]>('/events/clients/', { params });
+    try {
+      console.log('🌐 Calling API /events/clients/ with params:', params);
+      const response = await apiClient.get<Client[]>('/events/clients/', { params });
+      
+      console.log('📊 Clients API Response:', {
+        isArray: Array.isArray(response),
+        length: Array.isArray(response) ? response.length : 0
+      });
+      
+      const clients = Array.isArray(response) ? response : [];
+      console.log('✅ Returning', clients.length, 'clients');
+      return clients;
+    } catch (error) {
+      console.error('❌ Error fetching clients:', error);
+      throw error;
+    }
   }
 
   /**
@@ -268,7 +295,22 @@ class EventsService {
    * Get all venues
    */
   async getVenues(params?: { search?: string }) {
-    return await apiClient.get<Venue[]>('/events/venues/', { params });
+    try {
+      console.log('🌐 Calling API /events/venues/ with params:', params);
+      const response = await apiClient.get<Venue[]>('/events/venues/', { params });
+      
+      console.log('📊 Venues API Response:', {
+        isArray: Array.isArray(response),
+        length: Array.isArray(response) ? response.length : 0
+      });
+      
+      const venues = Array.isArray(response) ? response : [];
+      console.log('✅ Returning', venues.length, 'venues');
+      return venues;
+    } catch (error) {
+      console.error('❌ Error fetching venues:', error);
+      throw error;
+    }
   }
 
   /**
@@ -329,6 +371,148 @@ class EventsService {
     return await apiClient.post<Organisation>('/events/organisations/', data);
   }
 
+  // ==================== EVENT VENDORS ====================
+
+  /**
+   * Get vendors assigned to an event
+   */
+  async getEventVendors(eventId: number) {
+    try {
+      return await apiClient.get<EventVendor[]>(`/events/events/${eventId}/vendors/`);
+    } catch (error) {
+      console.error('Error fetching event vendors:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Assign vendor to event
+   */
+  async assignVendorToEvent(eventId: number, data: {
+    vendor_id: number;
+    bill_value: number;
+    completion_date: string;
+    image?: any;
+  }) {
+    try {
+      const formData = new FormData();
+      formData.append('vendor', data.vendor_id.toString());
+      formData.append('bill_value', data.bill_value.toString());
+      formData.append('completion_date', data.completion_date);
+      if (data.image) {
+        formData.append('image', data.image);
+      }
+
+      return await apiClient.post<EventVendor>(
+        `/events/events/${eventId}/vendors/`, 
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      );
+    } catch (error) {
+      console.error('Error assigning vendor to event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update event vendor assignment
+   */
+  async updateEventVendor(eventId: number, vendorId: number, data: Partial<EventVendor>) {
+    try {
+      return await apiClient.patch<EventVendor>(
+        `/events/events/${eventId}/vendors/${vendorId}/`,
+        data
+      );
+    } catch (error) {
+      console.error('Error updating event vendor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove vendor from event (soft delete)
+   */
+  async removeVendorFromEvent(eventId: number, vendorId: number) {
+    try {
+      await apiClient.delete(`/events/events/${eventId}/vendors/${vendorId}/`);
+    } catch (error) {
+      console.error('Error removing vendor from event:', error);
+      throw error;
+    }
+  }
+
+  // ==================== GOODS LIST ====================
+
+  /**
+   * Get all goods lists with filtering
+   */
+  async getGoodsLists(params?: {
+    event_id?: number;
+    sender?: number;
+    receiver?: number;
+    start_date?: string;
+    end_date?: string;
+    search?: string;
+  }) {
+    try {
+      const response = await apiClient.get<GoodsList[]>('/events/goods/', { params });
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error('Error fetching goods lists:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get single goods list by ID
+   */
+  async getGoodsList(id: number) {
+    try {
+      return await apiClient.get<GoodsList>(`/events/goods/${id}/`);
+    } catch (error) {
+      console.error('Error fetching goods list:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create new goods list
+   */
+  async createGoodsList(data: CreateGoodsListRequest) {
+    try {
+      return await apiClient.post<GoodsList>('/events/goods/', data);
+    } catch (error) {
+      console.error('Error creating goods list:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update goods list
+   */
+  async updateGoodsList(id: number, data: Partial<CreateGoodsListRequest>) {
+    try {
+      return await apiClient.patch<GoodsList>(`/events/goods/${id}/`, data);
+    } catch (error) {
+      console.error('Error updating goods list:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete goods list (soft delete)
+   */
+  async deleteGoodsList(id: number) {
+    try {
+      return await apiClient.delete(`/events/goods/${id}/`);
+    } catch (error) {
+      console.error('Error deleting goods list:', error);
+      throw error;
+    }
+  }
+
   // ==================== ANALYTICS ====================
 
   /**
@@ -336,6 +520,93 @@ class EventsService {
    */
   async getEventsAnalytics(timeRange: string = '30days') {
     return await apiClient.get<any>(`/events/analytics/events/?range=${timeRange}`);
+  }
+
+  /**
+   * Get lead statistics
+   */
+  async getLeadStatistics() {
+    try {
+      return await apiClient.get<LeadStatistics>('/events/leads/statistics/');
+    } catch (error) {
+      console.error('Error fetching lead statistics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get event statistics
+   */
+  async getEventStatistics(params?: {
+    start_date?: string;
+    end_date?: string;
+    company?: string;
+  }) {
+    try {
+      return await apiClient.get<EventStatistics>('/events/statistics/', { params });
+    } catch (error) {
+      console.error('Error fetching event statistics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get client statistics
+   */
+  async getClientStatistics() {
+    try {
+      return await apiClient.get<ClientStatistics>('/events/clients/statistics/');
+    } catch (error) {
+      console.error('Error fetching client statistics:', error);
+      throw error;
+    }
+  }
+
+  // ==================== FINANCE ====================
+
+  /**
+   * Get sales records for an event
+   */
+  async getEventSales(eventId: number) {
+    try {
+      const response = await apiClient.get<any>(`/finance/sales/?event=${eventId}`);
+      return Array.isArray(response) ? response : response?.results || [];
+    } catch (error) {
+      console.error('Error fetching event sales:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get expenses for an event
+   */
+  async getEventExpenses(eventId: number) {
+    try {
+      const response = await apiClient.get<any>(`/finance/expenses/?event=${eventId}`);
+      return Array.isArray(response) ? response : response?.results || [];
+    } catch (error) {
+      console.error('Error fetching event expenses:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get finance summary for an event
+   */
+  async getEventFinanceSummary(eventId: number) {
+    try {
+      return await apiClient.get<any>(`/finance/events/${eventId}/summary/`);
+    } catch (error) {
+      console.error('Error fetching finance summary:', error);
+      // Return fallback summary
+      return {
+        total_sales: 0,
+        total_expenses: 0,
+        net_profit: 0,
+        payment_status: { completed: 0, pending: 0, not_yet: 0 },
+        expense_status: { paid: 0, not_paid: 0, partial_paid: 0 },
+      };
+    }
   }
 
   // ==================== SEARCH ====================

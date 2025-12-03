@@ -8,7 +8,7 @@ import { View, ActivityIndicator, Alert } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Table, type TableColumn, Badge, Button } from '@/components';
+import { Table, type TableColumn, Badge, Button, LoadingState, FAB } from '@/components';
 import ActionButton from '@/components/ui/ActionButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTheme } from '@/hooks/useTheme';
@@ -56,6 +56,18 @@ const LeadsList: React.FC<LeadsListProps> = ({
     delete: deleteLead,
     setFilter,
   } = useLeads();
+
+  // DEBUG: Force component to show data state
+  React.useEffect(() => {
+    console.log('🔥 LeadsList MOUNTED/UPDATED:', {
+      timestamp: new Date().toISOString(),
+      leadsCount: leads?.length || 0,
+      loading,
+      error,
+      isArray: Array.isArray(leads),
+      firstLead: leads?.[0]
+    });
+  }, [leads, loading, error]);
 
   // Permission checks using professional permission system
   const { canManageLeads, canConvertLeads, canCreateLeads } = usePermissions();
@@ -114,7 +126,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       source: lead.source,
       assignedTo: lead.user_name || 'Unassigned',
       createdDate: lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-IN') : 'N/A',
-      createdBy: lead.user || 'N/A',
+      createdBy: lead.user_name || 'N/A',
     }));
   }, [leads, selectedStatus, searchQuery, canManageLeads, user?.id]);
 
@@ -124,7 +136,21 @@ const LeadsList: React.FC<LeadsListProps> = ({
   };
 
   const handleConvertLead = (leadId: number) => {
-    router.push(`/(modules)/events/convert-lead?leadId=${leadId}` as any);
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    Alert.alert(
+      'Convert Lead to Event',
+      `Convert "${lead.client?.name || 'this lead'}" to an event?\n\nYou'll be able to review and edit all details before finalizing.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Continue', 
+          onPress: () => router.push(`/(modules)/events/convert-lead?leadId=${leadId}` as any),
+          style: 'default'
+        }
+      ]
+    );
   };
 
   const handleRejectLead = async (leadId: number) => {
@@ -189,7 +215,10 @@ const LeadsList: React.FC<LeadsListProps> = ({
       sortable: true,
       render: (value: string, row: LeadRowData) => (
         <View>
-          <Text style={[styles.cellTextPrimary, { color: theme.text }]} numberOfLines={1}>
+          <Text 
+            style={[styles.cellTextPrimary, { color: theme.text, fontWeight: '500', marginBottom: 2 }]} 
+            numberOfLines={1}
+          >
             {value}
           </Text>
           {row.contactPerson !== 'N/A' && row.contactPerson !== value && (
@@ -270,7 +299,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
     {
       key: 'actions',
       title: 'Actions',
-      width: 140,
+      width: 180,
       render: (value: any, row: LeadRowData) => (
         <View style={styles.actionsContainer}>
           <ActionButton
@@ -282,29 +311,45 @@ const LeadsList: React.FC<LeadsListProps> = ({
             accessibilityLabel={`View lead for ${row.clientName}`}
           />
           
-          {canApprove && row.status === 'pending' && (
+          {row.status === 'pending' && (
             <>
               <ActionButton
                 icon="checkmark-circle-outline"
-                title="Convert"
-                onPress={() => handleConvertLead(row.id)}
-                variant="success"
+                title={canApprove ? "Convert" : "Convert"}
+                onPress={canApprove ? () => handleConvertLead(row.id) : undefined}
+                variant={canApprove ? "success" : "secondary"}
                 size="small"
-                accessibilityLabel={`Convert lead for ${row.clientName}`}
+                disabled={!canApprove}
+                accessibilityLabel={canApprove ? `Convert lead for ${row.clientName}` : 'Conversion requires admin access'}
+                style={{ opacity: canApprove ? 1 : 0.5 }}
               />
               
-              <ActionButton
-                icon="close-circle-outline"
-                title="Reject"
-                onPress={() => handleRejectLead(row.id)}
-                variant="warning"
-                size="small"
-                accessibilityLabel={`Reject lead for ${row.clientName}`}
-              />
+              {canApprove && (
+                <ActionButton
+                  icon="close-circle-outline"
+                  title="Reject"
+                  onPress={() => handleRejectLead(row.id)}
+                  variant="warning"
+                  size="small"
+                  accessibilityLabel={`Reject lead for ${row.clientName}`}
+                />
+              )}
             </>
           )}
           
-          {canConvertLeads && (
+          {row.status === 'converted' && (
+            <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.success + '20', borderRadius: 6 }}>
+              <Text style={{ color: theme.success, fontSize: 10, fontWeight: '600' }}>Converted</Text>
+            </View>
+          )}
+          
+          {row.status === 'rejected' && (
+            <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.error + '20', borderRadius: 6 }}>
+              <Text style={{ color: theme.error, fontSize: 10, fontWeight: '600' }}>Rejected</Text>
+            </View>
+          )}
+          
+          {canManageLeads && (
             <ActionButton
               icon="trash-outline"
               title="Delete"
@@ -321,14 +366,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
 
   // Loading state
   if (loading && !refreshing) {
-    return (
-      <View style={[styles.centered, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary, marginTop: spacing[2] }]}>
-          Loading leads...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading leads..." variant="skeleton" skeletonCount={6} />;
   }
 
   // Error state
@@ -381,6 +419,17 @@ const LeadsList: React.FC<LeadsListProps> = ({
         exportable={user?.category === 'admin' || user?.category === 'hr'}
         pageSize={100}
       />
+      
+      {/* Add Lead FAB Button - positioned at bottom-left 30px from bottom, 20px from left */}
+      {canCreateLeads && (
+        <FAB
+          icon="add"
+          label="Add Lead"
+          variant="extended"
+          position="bottom-left"
+          onPress={() => router.push('/(modules)/events/add-lead' as any)}
+        />
+      )}
     </View>
   );
 };

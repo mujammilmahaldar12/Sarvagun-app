@@ -111,13 +111,18 @@ export default function EventManagementScreen() {
     }
     
     try {
-      console.log('🔄 Events: Fetching reference data...');
+      console.log('🔄 Events: Fetching reference data and initial tab data...');
       // Fetch reference data that's commonly needed
       await Promise.all([
         eventsStore.fetchClientCategories(),
         eventsStore.fetchOrganisations(),
       ]);
       console.log('✅ Events: Reference data loaded successfully');
+      
+      // Fetch initial tab data (leads by default)
+      console.log('🔄 Events: Fetching initial leads data...');
+      await eventsStore.fetchLeads(true); // true = force refresh
+      console.log('✅ Events: Initial data loaded successfully');
     } catch (error) {
       console.error('❌ Events: Error initializing data:', error);
     }
@@ -130,12 +135,18 @@ export default function EventManagementScreen() {
     try {
       switch (activeTab) {
         case 'analytics':
-          // Fetch only what's needed for analytics (use cached data when available)
+          // Fetch all data needed for analytics - force refresh if no data
+          console.log('🔄 Events: Fetching analytics data...');
+          const hasLeads = eventsStore.leads.length > 0;
+          const hasEvents = eventsStore.events.length > 0;
+          const hasClients = eventsStore.clients.length > 0;
+          
           await Promise.all([
-            eventsStore.fetchLeads(false), // false = use cache
-            eventsStore.fetchEvents(false),
-            eventsStore.fetchClients(false),
+            eventsStore.fetchLeads(!hasLeads), // force if empty
+            eventsStore.fetchEvents(!hasEvents), // force if empty
+            eventsStore.fetchClients(!hasClients), // force if empty
           ]);
+          console.log('✅ Events: Analytics data loaded');
           break;
         case 'leads':
           await eventsStore.fetchLeads(false);
@@ -230,8 +241,8 @@ export default function EventManagementScreen() {
 
     const configs = {
       leads: {
-        icon: 'person-add' as const,
-        onPress: () => router.push('/events/add-lead'),
+        icon: 'add' as const,
+        onPress: () => router.push('/(modules)/events/add-lead'),
         label: 'Add Lead',
       },
       events: {
@@ -378,7 +389,7 @@ export default function EventManagementScreen() {
         <FAB
           icon={fabConfig.icon}
           onPress={fabConfig.onPress}
-          position="bottom-right"
+          position="bottom-left"
         />
       )}
 

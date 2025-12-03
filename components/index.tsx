@@ -37,6 +37,34 @@ export type { DatePickerProps } from './core/DatePicker';
 export { Calendar } from './core/Calendar';
 export type { CalendarProps } from './core/Calendar';
 
+export { KPICard } from './core/KPICard';
+export type { KPICardProps } from './core/KPICard';
+
+export { EmptyState } from './core/EmptyState';
+export type { EmptyStateProps } from './core/EmptyState';
+
+export { LoadingState } from './core/LoadingState';
+export type { LoadingStateProps } from './core/LoadingState';
+
+export { ActionSheet } from './core/ActionSheet';
+export type { ActionSheetProps, ActionSheetAction } from './core/ActionSheet';
+
+export { NotificationBell } from './notifications/NotificationBell';
+
+export { FilterBar } from './core/FilterBar';
+export type { FilterBarProps, FilterConfig, FilterOption, ActiveFilters } from './core/FilterBar';
+
+// ═══════════════════════════════════════════════════════════════════
+// 🌟 GLASS MORPHISM COMPONENTS (New - iPhone/Uber Style)
+// ═══════════════════════════════════════════════════════════════════
+
+export { GlassCard, GlassKPICard } from './ui/GlassCard';
+export { QuickActionButton } from './ui/QuickActionButton';
+export { MiniChart } from './ui/MiniChart';
+export { PerformanceChart } from './ui/PerformanceChart';
+export { ActivityTimeline } from './ui/ActivityTimeline';
+export { GoalCard } from './ui/GoalCard';
+
 // ═══════════════════════════════════════════════════════════════════
 // 📐 LAYOUT COMPONENTS
 // ═══════════════════════════════════════════════════════════════════
@@ -57,14 +85,14 @@ export { default as SearchBar } from './ui/SearchBar';
 export { default as FloatingActionButton } from './ui/FloatingActionButton';
 export { default as StatusBadge } from './ui/StatusBadge';
 export type { StatusType } from './ui/StatusBadge';
-export { default as KPICard } from './ui/KPICard';
+// KPICard is already exported from './core/KPICard' at line 40
 export { default as ThemedDatePicker } from './ui/ThemedDatePicker';
 export { default as DropdownField } from './ui/DropdownField';
 export { default as CelebrationAnimation } from './ui/CelebrationAnimation';
 
 // Standardized UI Components (Professional Design System)
 export { FormField } from './ui/FormField';
-export { EmptyState } from './ui/EmptyState';
+// EmptyState is already exported from './core/EmptyState' at line 41
 export { Skeleton, SkeletonText, SkeletonCircle } from './ui/Skeleton';
 export { Avatar } from './ui/Avatar';
 export { ListItem } from './ui/ListItem';
@@ -92,7 +120,7 @@ export { VenueCard } from './ui/VenueCard';
 export { ClientCard } from './ui/ClientCard';
 
 // Enhanced Loading & Error States
-export { default as LoadingState } from './ui/LoadingState';
+// LoadingState is already exported from './core/LoadingState' at line 44
 export { ErrorBoundary, ErrorFallback, InlineError } from './ui/ErrorBoundary';
 export type { ErrorFallbackProps } from './ui/ErrorBoundary';
 

@@ -25,8 +25,8 @@ export default function AddClientScreen() {
     phone: '',
     email: '',
     address: '',
-    categoryId: 0,
-    organisationId: 0,
+    categoryIds: [] as number[],  // Changed to array for multi-select
+    organisationIds: [] as number[],  // Changed to array for multi-select
   });
 
   useEffect(() => {
@@ -50,6 +50,29 @@ export default function AddClientScreen() {
     setFormData({ ...formData, [field]: isNaN(Number(value)) ? value : Number(value) });
   };
 
+  const toggleCategory = (categoryId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      categoryIds: prev.categoryIds.includes(categoryId)
+        ? prev.categoryIds.filter(id => id !== categoryId)
+        : [...prev.categoryIds, categoryId],
+    }));
+  };
+
+  const toggleOrganisation = (orgId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      organisationIds: prev.organisationIds.includes(orgId)
+        ? prev.organisationIds.filter(id => id !== orgId)
+        : [...prev.organisationIds, orgId],
+    }));
+  };
+
+  const requiresOrganisation = () => {
+    const selectedCategories = categories.filter(c => formData.categoryIds.includes(c.id));
+    return selectedCategories.some(cat => ['B2B', 'B2G'].includes(cat.name));
+  };
+
   const handleAddOrganisation = async () => {
     if (!newOrgName.trim()) {
       Alert.alert('Error', 'Please enter organisation name');
@@ -59,7 +82,11 @@ export default function AddClientScreen() {
     try {
       const newOrg = await eventsService.createOrganisation({ name: newOrgName.trim() });
       setOrganisations([...organisations, newOrg]);
-      setFormData({ ...formData, organisationId: newOrg.id });
+      // Auto-select the new organisation
+      setFormData(prev => ({
+        ...prev,
+        organisationIds: [...prev.organisationIds, newOrg.id],
+      }));
       setNewOrgName('');
       setShowOrgInput(false);
       Alert.alert('Success', 'Organisation added successfully');
@@ -86,15 +113,14 @@ export default function AddClientScreen() {
       Alert.alert('Error', 'Please enter email address');
       return;
     }
-    if (!formData.categoryId) {
-      Alert.alert('Error', 'Please select client category');
+    if (formData.categoryIds.length === 0) {
+      Alert.alert('Error', 'Please select at least one client category');
       return;
     }
 
     // Check if B2B/B2G requires organisation
-    const selectedCategory = categories.find(c => c.id === formData.categoryId);
-    if (selectedCategory && ['B2B', 'B2G'].includes(selectedCategory.name) && !formData.organisationId) {
-      Alert.alert('Error', `${selectedCategory.name} clients require an organisation`);
+    if (requiresOrganisation() && formData.organisationIds.length === 0) {
+      Alert.alert('Error', 'B2B/B2G clients require at least one organisation');
       return;
     }
 
@@ -106,8 +132,8 @@ export default function AddClientScreen() {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         address: formData.address.trim() || undefined,
-        category_id: formData.categoryId,
-        organisation_id: formData.organisationId || undefined,
+        category_ids: formData.categoryIds,  // Send array
+        organisation_ids: formData.organisationIds.length > 0 ? formData.organisationIds : undefined,
       });
 
       Alert.alert('Success', 'Client created successfully', [
@@ -179,69 +205,104 @@ export default function AddClientScreen() {
             placeholder="Enter client/company name"
           />
           
-          {/* Client Category */}
+          {/* Client Categories - Multi-Select */}
           <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-              Client Category *
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                Client Categories *
+              </Text>
+              {formData.categoryIds.length > 0 && (
+                <View style={{
+                  backgroundColor: theme.primary + '20',
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: 12,
+                }}>
+                  <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '600' }}>
+                    {formData.categoryIds.length} selected
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
+              Select one or more categories (B2B, B2C, B2G)
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {categories.map((category) => (
-                <Pressable
-                  key={category.id}
-                  onPress={() => updateField('categoryId', category.id.toString())}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    borderWidth: 1,
-                    borderColor: formData.categoryId === category.id ? theme.primary : theme.border,
-                    backgroundColor: pressed
-                      ? theme.primary + '10'
-                      : formData.categoryId === category.id
-                      ? theme.primary + '20'
-                      : theme.surface,
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: formData.categoryId === category.id ? theme.primary : theme.text,
-                      fontWeight: formData.categoryId === category.id ? '600' : 'normal',
-                    }}
+              {categories.map((category) => {
+                const isSelected = formData.categoryIds.includes(category.id);
+                return (
+                  <Pressable
+                    key={category.id}
+                    onPress={() => toggleCategory(category.id)}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 24,
+                      borderWidth: 2,
+                      borderColor: isSelected ? theme.primary : theme.border,
+                      backgroundColor: pressed
+                        ? theme.primary + '10'
+                        : isSelected
+                        ? theme.primary + '15'
+                        : theme.surface,
+                    })}
                   >
-                    {category.name}
-                  </Text>
-                </Pressable>
-              ))}
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                    )}
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: isSelected ? theme.primary : theme.text,
+                        fontWeight: isSelected ? '600' : '500',
+                      }}
+                    >
+                      {category.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
-          {/* Organisation (for B2B/B2G) */}
-          {formData.categoryId && ['B2B', 'B2G'].includes(categories.find(c => c.id === formData.categoryId)?.name || '') && (
+          {/* Organisations - Multi-Select (for B2B/B2G) */}
+          {requiresOrganisation() && (
             <View style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-                  Organisation *
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                    Organisations *
+                  </Text>
+                  {formData.organisationIds.length > 0 && (
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                      {formData.organisationIds.length} organisation(s) selected
+                    </Text>
+                  )}
+                </View>
                 <Pressable
                   onPress={() => setShowOrgInput(!showOrgInput)}
                   style={({ pressed }) => ({
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 4,
-                    padding: 6,
-                    opacity: pressed ? 0.7 : 1,
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    backgroundColor: pressed ? theme.primary + '10' : 'transparent',
+                    borderRadius: 16,
                   })}
                 >
                   <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.primary} />
-                  <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '600' }}>
+                  <Text style={{ fontSize: 13, color: theme.primary, fontWeight: '600' }}>
                     {showOrgInput ? 'Cancel' : 'Add New'}
                   </Text>
                 </Pressable>
               </View>
 
               {showOrgInput ? (
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                   <TextInput
                     value={newOrgName}
                     onChangeText={setNewOrgName}
@@ -262,44 +323,73 @@ export default function AddClientScreen() {
                     onPress={handleAddOrganisation}
                     style={({ pressed }) => ({
                       backgroundColor: pressed ? theme.primary + 'dd' : theme.primary,
-                      paddingHorizontal: 16,
+                      paddingHorizontal: 20,
                       borderRadius: 8,
                       justifyContent: 'center',
+                      alignItems: 'center',
                     })}
                   >
-                    <Text style={{ color: theme.textInverse, fontSize: 14, fontWeight: '600' }}>Add</Text>
+                    <Ionicons name="checkmark" size={20} color="#fff" />
                   </Pressable>
                 </View>
-              ) : (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {organisations.map((org) => (
+              ) : null}
+
+              <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
+                Select one or more organisations for B2B/B2G clients
+              </Text>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {organisations.map((org) => {
+                  const isSelected = formData.organisationIds.includes(org.id);
+                  return (
                     <Pressable
                       key={org.id}
-                      onPress={() => updateField('organisationId', org.id.toString())}
+                      onPress={() => toggleOrganisation(org.id)}
                       style={({ pressed }) => ({
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: formData.organisationId === org.id ? theme.primary : theme.border,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 24,
+                        borderWidth: 2,
+                        borderColor: isSelected ? theme.primary : theme.border,
                         backgroundColor: pressed
                           ? theme.primary + '10'
-                          : formData.organisationId === org.id
-                          ? theme.primary + '20'
+                          : isSelected
+                          ? theme.primary + '15'
                           : theme.surface,
                       })}
                     >
+                      {isSelected && (
+                        <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
+                      )}
                       <Text
                         style={{
                           fontSize: 14,
-                          color: formData.organisationId === org.id ? theme.primary : theme.text,
-                          fontWeight: formData.organisationId === org.id ? '600' : 'normal',
+                          color: isSelected ? theme.primary : theme.text,
+                          fontWeight: isSelected ? '600' : '500',
                         }}
                       >
                         {org.name}
                       </Text>
                     </Pressable>
-                  ))}
+                  );
+                })}
+              </View>
+
+              {organisations.length === 0 && !showOrgInput && (
+                <View style={{
+                  padding: 16,
+                  backgroundColor: theme.surface,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderStyle: 'dashed',
+                }}>
+                  <Text style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center' }}>
+                    No organisations available. Tap "Add New" to create one.
+                  </Text>
                 </View>
               )}
             </View>

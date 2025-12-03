@@ -3,6 +3,7 @@ import { View, Text, Pressable, Platform, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import NotificationBell from './NotificationBell';
 
 interface ModuleHeaderProps {
   title: string;
@@ -11,6 +12,7 @@ interface ModuleHeaderProps {
   showBack?: boolean;
   onBack?: () => void;
   rightActions?: React.ReactNode;
+  showNotifications?: boolean;
 }
 
 export default function ModuleHeader({
@@ -20,6 +22,7 @@ export default function ModuleHeader({
   showBack = true,
   onBack,
   rightActions,
+  showNotifications = true,
 }: ModuleHeaderProps) {
   const router = useRouter();
   const { theme } = useTheme();
@@ -87,6 +90,9 @@ export default function ModuleHeader({
               >
                 <Ionicons name="options-outline" size={22} color={theme.text} />
               </Pressable>
+            )}
+            {showNotifications && (
+              <NotificationBell size={22} color={theme.text} />
             )}
           </View>
         )}
