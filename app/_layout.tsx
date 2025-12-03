@@ -14,6 +14,8 @@ import { QueryProvider } from '@/lib/queryClient';
 import { PushNotificationProvider } from '@/store/pushNotificationContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from "lottie-react-native";
+import { NetworkStatusBanner } from '@/components';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 // Keep the native splash screen visible until we're ready
 SplashScreen.preventAutoHideAsync();
@@ -292,6 +294,12 @@ function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   );
 }
 
+// Component to initialize push notifications
+function PushNotificationInitializer() {
+  usePushNotifications();
+  return null;
+}
+
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
@@ -322,7 +330,7 @@ export default function RootLayout() {
   };
 
   if (!appReady || showAnimatedSplash) {
-    return appReady ? <AnimatedSplash onFinish={handleSplashFinish} /> : null;
+    return <AnimatedSplash onFinish={handleSplashFinish} />;
   }
 
   return (
@@ -330,8 +338,10 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <QueryProvider>
           <PushNotificationProvider>
+            <PushNotificationInitializer />
             <ErrorBoundary>
               <View style={styles.container}>
+                <NetworkStatusBanner />
                 <Slot />
               </View>
             </ErrorBoundary>

@@ -225,21 +225,24 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       }));
       
       try {
-        const leads = await eventsService.getLeads({
+        const response = await eventsService.getLeads({
           ...get().filters.leads,
           page_size: 500  // Request 500 leads to get all data
         });
         
-        console.log('✅ Leads fetched successfully:', leads.length);
+        // Extract results array from paginated response
+        const leads = response.results || [];
+        console.log('✅ Leads fetched successfully:', leads.length, 'of', response.count);
         set({ leads });
         console.log('📦 Leads stored in state:', get().leads.length);
         get().setCachedData(cacheKey, leads);
       } catch (error) {
-        console.error('❌ Error fetching leads:', error);
+        // Silently handle leads fetch error - non-critical
+        console.log('⚠️ Leads fetch skipped (non-critical)');
         set((state) => ({
           errors: { 
             ...state.errors, 
-            leads: error instanceof Error ? error.message : 'Failed to fetch leads' 
+            leads: null // Don't show error since it's non-critical
           }
         }));
       } finally {

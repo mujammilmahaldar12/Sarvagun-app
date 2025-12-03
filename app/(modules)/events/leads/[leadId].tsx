@@ -445,13 +445,6 @@ export default function LeadDetailScreen() {
         {/* Quick Actions */}
         {lead.status === 'pending' && (
           <Animated.View entering={FadeIn.delay(300)} style={styles.quickActions}>
-            <TouchableOpacity
-              style={[styles.primaryActionButton, { backgroundColor: theme.primary }]}
-              onPress={handleConvert}
-            >
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
-              <Text style={styles.primaryActionButtonText}>Convert to Event</Text>
-            </TouchableOpacity>
             <View style={styles.secondaryActions}>
               <TouchableOpacity
                 style={[

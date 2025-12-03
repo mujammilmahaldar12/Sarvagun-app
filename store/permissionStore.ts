@@ -66,6 +66,8 @@ export type Role =
   | 'admin'
   | 'manager'
   | 'coordinator'
+  | 'intern'
+  | 'employee'
   | 'viewer'
   | 'client';
 
@@ -110,6 +112,22 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'leave:view', 'leave:view_own', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:approve',
   ],
   
+  intern: [
+    'events:view',
+    'leads:view', 'leads:create', 'leads:edit', 'leads:convert',
+    'clients:view', 'clients:create',
+    'venues:view',
+    'leave:view', 'leave:view_own', 'leave:create',
+  ],
+  
+  employee: [
+    'events:view',
+    'leads:view', 'leads:create', 'leads:convert',
+    'clients:view',
+    'venues:view',
+    'leave:view', 'leave:view_own', 'leave:create',
+  ],
+  
   viewer: [
     'events:view',
     'leads:view',
@@ -125,8 +143,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
 // Company-specific role mappings
 const COMPANY_ROLE_HIERARCHY: Record<string, Role[]> = {
-  'redmagic events': ['super_admin', 'admin', 'manager', 'coordinator', 'viewer'],
-  'bling square events': ['super_admin', 'admin', 'manager', 'coordinator', 'viewer'],
+  'redmagic events': ['super_admin', 'admin', 'manager', 'coordinator', 'employee', 'intern', 'viewer'],
+  'bling square events': ['super_admin', 'admin', 'manager', 'coordinator', 'employee', 'intern', 'viewer'],
   'client': ['client'],
 };
 

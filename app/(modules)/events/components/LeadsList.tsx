@@ -74,7 +74,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
 
   // Legacy permission mapping for transition
   const canManage = canManageLeads;
-  const canApprove = canManageLeads; // Approve permission is same as manage for leads
+  const canApprove = canConvertLeads; // Use convert permission for lead conversion
 
   // Process and filter leads data
   const processedLeads: LeadRowData[] = useMemo(() => {
@@ -299,7 +299,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
     {
       key: 'actions',
       title: 'Actions',
-      width: 180,
+      width: 200,
       render: (value: any, row: LeadRowData) => (
         <View style={styles.actionsContainer}>
           <ActionButton
@@ -309,6 +309,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
             variant="secondary"
             size="small"
             accessibilityLabel={`View lead for ${row.clientName}`}
+            style={{ minWidth: 60 }}
           />
           
           {row.status === 'pending' && (
@@ -321,7 +322,11 @@ const LeadsList: React.FC<LeadsListProps> = ({
                 size="small"
                 disabled={!canApprove}
                 accessibilityLabel={canApprove ? `Convert lead for ${row.clientName}` : 'Conversion requires admin access'}
-                style={{ opacity: canApprove ? 1 : 0.5 }}
+                style={{ 
+                  opacity: canApprove ? 1 : 0.5,
+                  minWidth: 70,
+                  marginLeft: 4,
+                }}
               />
               
               {canApprove && (
@@ -332,6 +337,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
                   variant="warning"
                   size="small"
                   accessibilityLabel={`Reject lead for ${row.clientName}`}
+                  style={{ marginLeft: 4 }}
                 />
               )}
             </>
@@ -467,7 +473,8 @@ const styles = {
   actionsContainer: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: designSystem.spacing[1],
+    gap: designSystem.spacing[2],
+    flexWrap: 'wrap' as const,
     flexWrap: 'wrap' as const,
   },
 } as const;

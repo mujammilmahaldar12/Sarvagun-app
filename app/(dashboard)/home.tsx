@@ -11,9 +11,10 @@ import NotificationBell from '@/components/layout/NotificationBell';
 import { BlurView } from 'expo-blur';
 import { spacing, borderRadius, iconSizes, typography, moduleColors, baseColors } from '@/constants/designSystem';
 import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
-import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard } from '@/hooks/useDashboardQueries';
+import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard, useBackendActivities } from '@/hooks/useDashboardQueries';
 import { formatDistanceToNow } from 'date-fns';
-import { activityStorage, LocalActivity } from '@/services/activityStorage.service';
+import { useAttendancePercentage } from '@/hooks/useHRQueries';
+import { useUnreadCount } from '@/hooks/useNotificationQueries';
 
 // Medal colors for leaderboard
 const MEDAL_COLORS = {
@@ -88,30 +89,13 @@ export default function HomeScreen() {
   // Fetch real data from backend with real-time updates
   const user = useAuthStore((state) => state.user);
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();
-  const [localActivities, setLocalActivities] = useState<LocalActivity[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const { data: backendActivities = [], isLoading: activitiesLoading, refetch: refetchActivities } = useBackendActivities(5);
   const { data: activeProjectsCount, refetch: refetchProjects } = useActiveProjectsCount();
-  const { data: leaderboardData = [], isLoading: leaderboardLoading } = useLeaderboard(5);
+  const { data: leaderboardData = [], isLoading: leaderboardLoading } = useLeaderboard(5, 'thisMonth', 'individual');
   const { mutate: refreshDashboard, isPending: isRefreshing } = useRefreshDashboard();
+  const { data: attendanceData, isLoading: attendanceLoading } = useAttendancePercentage();
 
-  const [notificationCount] = useState(0);
-  
-  // Load activities from local storage
-  useEffect(() => {
-    loadLocalActivities();
-  }, []);
-  
-  const loadLocalActivities = async () => {
-    setActivitiesLoading(true);
-    try {
-      const activities = await activityStorage.getRecentActivities(5);
-      setLocalActivities(activities);
-    } catch (error) {
-      console.error('Error loading activities:', error);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  };
+  const { data: notificationCount = 0 } = useUnreadCount();
   
   // Use auth store user as fallback
   const currentUser = user;
@@ -129,8 +113,8 @@ export default function HomeScreen() {
     // refetchUser();
     refetchLeave();
     refetchProjects();
-    loadLocalActivities();
-  }, [refreshDashboard, refetchLeave, refetchProjects]);
+    refetchActivities();
+  }, [refreshDashboard, refetchLeave, refetchProjects, refetchActivities]);
 
   // Loading state
   const isLoading = userLoading;
@@ -169,8 +153,8 @@ export default function HomeScreen() {
     return 0;
   }, [leaderboardData, displayUser]);
   
-  // Calculate real attendance percentage - would come from backend eventually
-  const attendancePercentage = 95; // TODO: Replace with real attendance API when available
+  // Real attendance percentage from backend API
+  const attendancePercentage = attendanceData?.percentage || 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -277,12 +261,12 @@ export default function HomeScreen() {
           >
             <GlassKPICard
               title="Attendance"
-              value={`${attendancePercentage}%`}
+              value={attendanceLoading ? '--' : `${Math.round(attendancePercentage)}%`}
               icon="calendar-outline"
               gradientColors={['#3B82F6', '#1D4ED8']}
-              trend="up"
-              trendValue="+2%"
-              subtitle="Last 7 days"
+              trend={attendancePercentage >= 90 ? "up" : attendancePercentage >= 75 ? "neutral" : "down"}
+              trendValue={attendanceData?.present_days ? `${attendanceData.present_days}/${attendanceData.total_days}` : undefined}
+              subtitle={attendanceData?.period === 'last_30_days' ? 'Last 30 days' : 'Last 7 days'}
               onPress={() => router.push('/(modules)/hr' as any)}
               style={styles.kpiCardHorizontal}
             />
@@ -323,6 +307,8 @@ export default function HomeScreen() {
             />
           </ScrollView>
         </Animated.View>
+
+
 
         {/* Modules Section - Single Row Horizontal Scroll */}
         <Animated.View 
@@ -373,7 +359,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Recent Activity Section - Glass Effect - Hide if no activities */}
-        {(!activitiesLoading && localActivities.length > 0) && (
+        {(!activitiesLoading && backendActivities.length > 0) && (
         <Animated.View 
           entering={FadeInUp.delay(500).duration(600).springify()}
           style={styles.section}
@@ -406,8 +392,8 @@ export default function HomeScreen() {
                   </View>
                 ))}
               </>
-            ) : localActivities.length > 0 ? (
-              localActivities.slice(0, 5).map((activity, index, arr) => {
+            ) : backendActivities.length > 0 ? (
+              backendActivities.slice(0, 5).map((activity, index, arr) => {
                 const activityIcon = getActivityIcon(activity.type);
                 const activityColor = getActivityColor(activity.type);
                 
@@ -578,16 +564,16 @@ export default function HomeScreen() {
                     </Text>
                     <View style={styles.leaderStats}>
                       <View style={styles.leaderStatItem}>
-                        <Ionicons name="briefcase-outline" size={iconSizes.xs} color={theme.textSecondary} />
+                        <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color={theme.success} />
                         <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
-                          {leader.projectsCompleted} projects
+                          {leader.completed_tasks || 0} completed
                         </Text>
                       </View>
                       <View style={styles.leaderStatDot} />
                       <View style={styles.leaderStatItem}>
-                        <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color={theme.success} />
+                        <Ionicons name="star" size={iconSizes.xs} color="#FFD700" />
                         <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
-                          {leader.tasksCompleted} tasks
+                          {leader.avg_rating ? leader.avg_rating.toFixed(1) : '0.0'} avg
                         </Text>
                       </View>
                     </View>
@@ -595,10 +581,10 @@ export default function HomeScreen() {
 
                   <View style={styles.leaderScore}>
                     <Text style={[styles.leaderScoreValue, { color: theme.primary }]}>
-                      {leader.score}
+                      {leader.total_stars_received || leader.score || 0}
                     </Text>
                     <Text style={[styles.leaderScoreLabel, { color: theme.textSecondary }]}>
-                      pts
+                      ★
                     </Text>
                   </View>
 
@@ -1017,6 +1003,29 @@ const styles = StyleSheet.create({
   },
   leaderRankText: {
     ...getTypographyStyle('sm', 'bold'),
+  },
+  // Quick Actions Styles
+  quickActionsRow: {
+    flexDirection: 'row',
+  },
+  quickActionCard: {
+    padding: spacing.sm,
+    alignItems: 'center',
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  quickActionTitle: {
+    ...getTypographyStyle('sm', 'semibold'),
+    marginBottom: 2,
+  },
+  quickActionSubtitle: {
+    ...getTypographyStyle('xs', 'regular'),
   },
   leaderInfo: {
     flex: 1,

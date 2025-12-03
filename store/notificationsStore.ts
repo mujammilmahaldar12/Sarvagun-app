@@ -1,6 +1,29 @@
 import { create } from 'zustand';
 import notificationsService from '@/services/notifications.service';
-import type { Notification, NotificationStats, NotificationPreferences } from '@/types/notifications';
+import type { Notification, NotificationStats, NotificationPreferences } from '@/types/notification';
+import type { NotificationData } from '@/services/notifications.service';
+
+// Transform backend NotificationData to frontend Notification
+const transformNotificationData = (data: NotificationData): Notification => {
+  const isRead = data.read || false;
+  return {
+    id: data.id,
+    user: data.related_user_id || 0,
+    type: data.notification.type_name as any || 'system_alert',
+    title: data.notification.title || 'Notification',
+    message: data.notification.message || 'You have a new notification',
+    priority: data.priority,
+    status: isRead ? 'read' : 'unread',
+    read: isRead, // Boolean convenience field
+    related_object_id: data.related_task_id || data.related_project_id || undefined,
+    related_object_type: data.related_task_id ? 'task' : data.related_project_id ? 'project' : undefined,
+    action_url: data.notification.url || undefined,
+    metadata: data.action_data,
+    created_at: data.notification.created_at,
+    read_at: data.read_at || undefined,
+    action_label: data.action_data?.label,
+  };
+};
 
 interface NotificationsState {
   notifications: Notification[];
@@ -34,10 +57,12 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   fetchNotifications: async (unreadOnly = false) => {
     set({ loading: true, error: null });
     try {
-      const notifications = await notificationsService.getNotifications({
+      const notificationData = await notificationsService.getNotifications({
         unread_only: unreadOnly,
         page_size: 50,
       });
+      // Transform backend data to frontend format
+      const notifications = notificationData.map(transformNotificationData);
       set({ notifications, loading: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch notifications', loading: false });
@@ -69,10 +94,10 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       // Update local state
       set((state) => ({
         notifications: state.notifications.map((n) =>
-          n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n
+          n.id === id ? { ...n, read: true, status: 'read', read_at: new Date().toISOString() } : n
         ),
         stats: state.stats
-          ? { ...state.stats, unread: Math.max(0, state.stats.unread - 1) }
+          ? { ...state.stats, unread: Math.max(0, state.stats.unread - 1), read: state.stats.read + 1 }
           : null,
       }));
     } catch (error: any) {
@@ -89,9 +114,10 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         notifications: state.notifications.map((n) => ({
           ...n,
           read: true,
+          status: 'read' as const,
           read_at: new Date().toISOString(),
         })),
-        stats: state.stats ? { ...state.stats, unread: 0 } : null,
+        stats: state.stats ? { ...state.stats, unread: 0, read: state.stats.total } : null,
       }));
     } catch (error: any) {
       console.error('Error marking all notifications as read:', error);

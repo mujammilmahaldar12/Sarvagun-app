@@ -101,10 +101,10 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
     const offlineLeads = filteredLeads.filter((l) => l.source === 'offline').length;
 
     // Events Analytics
-    const totalRevenue = filteredEvents.reduce((sum, e) => sum + (e.total_budget || 0), 0);
-    const activeEvents = filteredEvents.filter((e) => e.status === 'in-progress').length;
+    const totalRevenue = 0; // Budget not available in AppEvent type
+    const activeEvents = filteredEvents.filter((e) => e.status === 'ongoing').length;
     const completedEvents = filteredEvents.filter((e) => e.status === 'completed').length;
-    const plannedEvents = filteredEvents.filter((e) => e.status === 'planned').length;
+    const plannedEvents = filteredEvents.filter((e) => e.status === 'scheduled').length;
     const cancelledEvents = filteredEvents.filter((e) => e.status === 'cancelled').length;
 
     // Client Analytics
@@ -377,8 +377,8 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
         <View style={styles.chartWrapper}>
           <EventStatusPieChart
             data={[
-              { status: 'Planned', count: analyticsData.plannedEvents, color: designSystem.baseColors.info[500] },
-              { status: 'In Progress', count: analyticsData.activeEvents, color: designSystem.baseColors.warning[500] },
+              { status: 'Scheduled', count: analyticsData.plannedEvents, color: designSystem.baseColors.info[500] },
+              { status: 'Ongoing', count: analyticsData.activeEvents, color: designSystem.baseColors.warning[500] },
               { status: 'Completed', count: analyticsData.completedEvents, color: designSystem.baseColors.success[500] },
               { status: 'Cancelled', count: analyticsData.cancelledEvents, color: designSystem.baseColors.error[500] },
             ]}

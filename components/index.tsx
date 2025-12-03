@@ -51,6 +51,19 @@ export type { ActionSheetProps, ActionSheetAction } from './core/ActionSheet';
 
 export { NotificationBell } from './notifications/NotificationBell';
 
+// Network Status Components
+export { NetworkStatusBanner, NetworkStatusIndicator, SyncStatusCard } from './layout/NetworkStatusBanner';
+
+// Real-time Collaboration Components
+export { PresenceIndicator, OnlineUsersList } from './ui/PresenceIndicator';
+export { TypingIndicator, MiniTypingIndicator } from './ui/TypingIndicator';
+export { 
+  ActiveUsersIndicator, 
+  LiveEditingIndicator, 
+  ViewingIndicator, 
+  RealtimeUpdateBadge 
+} from './ui/CollaborationIndicators';
+
 export { FilterBar } from './core/FilterBar';
 export type { FilterBarProps, FilterConfig, FilterOption, ActiveFilters } from './core/FilterBar';
 

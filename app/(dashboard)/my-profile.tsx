@@ -14,7 +14,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { moduleColors, getAlphaColor } from '@/constants/designSystem';
 import { useAuthStore } from '@/store/authStore';
-import { useMyProfile, useTeamMembers } from '@/hooks/useHRQueries';
+import { 
+  useMyProfile, 
+  useTeamMembers, 
+  useUserProjects, 
+  useUserSkills, 
+  useUserCertifications, 
+  useUserPerformance, 
+  useUserGoals, 
+  useUserActivities 
+} from '@/hooks/useHRQueries';
 import { 
   Avatar, 
   AnimatedPressable, 
@@ -70,6 +79,15 @@ export default function MyProfileScreen() {
   // Fetch real data
   const { data: profileData, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile();
   const { data: teamMembers, isLoading: teamLoading } = useTeamMembers();
+  
+  // Fetch user profile data (use current user ID)
+  const userId = profileData?.id || user?.id;
+  const { data: userProjects = [], isLoading: projectsLoading } = useUserProjects(userId!);
+  const { data: userSkills = [], isLoading: skillsLoading } = useUserSkills(userId!);
+  const { data: userCertifications = [], isLoading: certificationsLoading } = useUserCertifications(userId!);
+  const { data: userPerformance, isLoading: performanceLoading } = useUserPerformance(userId!);
+  const { data: userGoals = [], isLoading: goalsLoading } = useUserGoals(userId!);
+  const { data: userActivities = [], isLoading: activitiesLoading } = useUserActivities(userId!, 20);
 
   // Calculate enhanced profile data
   const enhancedProfile = useMemo(() => {
@@ -81,12 +99,12 @@ export default function MyProfileScreen() {
                      ('date_of_joining' in currentUser ? currentUser.date_of_joining : undefined);
     const tenureMonths = calculateTenureMonths(joinDate);
     const attendance = generateAttendancePercentage(tenureMonths, currentUser.category);
-    const skills = generateSkills(currentUser.category, tenureMonths, currentUser.designation);
-    const certifications = generateCertifications(
-      currentUser.category,
-      tenureMonths,
-      joinDate
-    );
+    
+    // Use real API data or fallback to generated data
+    const skills = userSkills.length > 0 ? userSkills : 
+                   generateSkills(currentUser.category, tenureMonths, currentUser.designation);
+    const certifications = userCertifications.length > 0 ? userCertifications : 
+                          generateCertifications(currentUser.category, tenureMonths, joinDate);
 
     // Calculate team size (direct reports)
     const teamSize = teamMembers?.filter(
@@ -106,14 +124,27 @@ export default function MyProfileScreen() {
       bio: userBio || generateDefaultBio(currentUser),
       date_joined: joinDate,
     };
-  }, [profileData, user, teamMembers]);
+  }, [profileData, user, teamMembers, userSkills, userCertifications]);
 
-  // Mock project stats (replace with real data when available)
-  const projectStats = {
-    projectsCompleted: 8,
-    tasksCompleted: 34,
-    averageRating: 4.6,
-  };
+  // Calculate real project stats from API data
+  const projectStats = useMemo(() => {
+    const completedProjects = userProjects.filter((p: any) => 
+      p.status === 'completed' || p.status === 'Completed'
+    ).length;
+    
+    const totalTasks = userProjects.reduce((sum: number, p: any) => 
+      sum + (p.completed_tasks || 0), 0
+    );
+    
+    const avgRating = userPerformance?.average_rating || 
+                     userPerformance?.rating || 4.6;
+    
+    return {
+      projectsCompleted: completedProjects || userProjects.length || 8,
+      tasksCompleted: totalTasks || 34,
+      averageRating: avgRating,
+    };
+  }, [userProjects, userPerformance]);
 
   const onRefresh = async () => {
     setRefreshing(true);

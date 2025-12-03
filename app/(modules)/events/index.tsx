@@ -245,11 +245,7 @@ export default function EventManagementScreen() {
         onPress: () => router.push('/(modules)/events/add-lead'),
         label: 'Add Lead',
       },
-      events: {
-        icon: 'calendar' as const,
-        onPress: () => router.push('/events/add-event'),
-        label: 'Add Event',
-      },
+      events: null, // Events are created only by converting leads
       clients: {
         icon: 'people' as const,
         onPress: () => router.push('/events/add-client'),

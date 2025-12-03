@@ -3,7 +3,7 @@ import { getToken, storeToken, removeToken } from "../../utils/storage";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__ 
-  ? "http://10.12.3.11:8000/api"  // Your PC's current local IP
+  ? "http://10.121.1.106:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
@@ -86,6 +86,14 @@ api.interceptors.response.use(
   }
 );
 
+// Pagination response type
+export interface PaginatedResponse<T> {
+  results: T[];
+  count: number;
+  next: string | null;
+  previous: string | null;
+}
+
 // API helper functions
 export const apiClient = {
   get: <T>(url: string, config?: AxiosRequestConfig) =>
@@ -98,10 +106,10 @@ export const apiClient = {
         directLength: Array.isArray(res.data) ? res.data.length : undefined,
       });
       
-      // Handle paginated responses - extract results array
+      // Return full paginated response if it has pagination metadata
       if (res.data && typeof res.data === 'object' && 'results' in res.data) {
-        console.log(`✅ Extracting results array: ${(res.data as any).results.length} items`);
-        return (res.data as any).results as T;
+        console.log(`✅ Returning paginated response: ${(res.data as any).results.length} items, total: ${(res.data as any).count}`);
+        return res.data;
       }
       console.log(`✅ Returning data directly`);
       return res.data;

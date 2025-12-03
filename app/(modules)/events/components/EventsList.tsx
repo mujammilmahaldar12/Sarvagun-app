@@ -15,7 +15,7 @@ import { useEvents } from '@/store/eventsStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePermissions } from '@/store/permissionStore';
 import { designSystem } from '@/constants/designSystem';
-import type { Event } from '@/types/events';
+import type { AppEvent } from '@/types/events';
 
 interface EventsListProps {
   searchQuery?: string;
@@ -90,7 +90,7 @@ const EventsList: React.FC<EventsListProps> = ({
         event.name?.toLowerCase().includes(query) ||
         event.client?.name?.toLowerCase().includes(query) ||
         event.venue?.name?.toLowerCase().includes(query) ||
-        event.description?.toLowerCase().includes(query)
+        event.type_of_event?.toLowerCase().includes(query)
       );
     }
 
@@ -105,9 +105,9 @@ const EventsList: React.FC<EventsListProps> = ({
       startDate: event.start_date ? new Date(event.start_date).toLocaleDateString('en-IN') : 'N/A',
       endDate: event.end_date ? new Date(event.end_date).toLocaleDateString('en-IN') : 'N/A',
       venue: event.venue?.name || 'N/A',
-      status: event.status || 'planned',
-      budget: event.total_budget || 0,
-      createdBy: event.created_by || 'N/A',
+      status: event.status || 'scheduled',
+      budget: 0, // Budget not available in AppEvent type
+      createdBy: event.created_by_name || event.eventlead || 'N/A',
     }));
   }, [events, selectedStatus, searchQuery]);
 
@@ -157,7 +157,7 @@ const EventsList: React.FC<EventsListProps> = ({
 
   const handleStatusChange = async (eventId: number, newStatus: string) => {
     try {
-      await updateEvent(eventId, { status: newStatus as Event['status'] });
+      await updateEvent(eventId, { status: newStatus as AppEvent['status'] });
       Alert.alert('Success', 'Event status updated successfully');
     } catch (error) {
       console.error('Error updating event status:', error);
@@ -316,9 +316,11 @@ const EventsList: React.FC<EventsListProps> = ({
         <EmptyState
           icon="alert-circle-outline"
           title="Error Loading Events"
-          description={error}
-          actionTitle="Try Again"
-          onActionPress={() => setFilter({})} // Trigger refetch
+          subtitle={error}
+          action={{
+            label: "Try Again",
+            onPress: () => setFilter({})
+          }}
         />
       </View>
     );
@@ -333,13 +335,11 @@ const EventsList: React.FC<EventsListProps> = ({
         <EmptyState
           icon="calendar-outline"
           title={isFiltered ? 'No Events Found' : 'No Events Yet'}
-          description={
+          subtitle={
             isFiltered
               ? 'Try adjusting your filters to see more results'
-              : 'Create your first event to get started'
+              : 'Events are created by converting leads. Go to the Leads tab and convert a lead to create your first event.'
           }
-          actionTitle={!isFiltered ? 'Add Event' : undefined}
-          onActionPress={!isFiltered ? () => router.push('/events/add-event') : undefined}
         />
       </View>
     );

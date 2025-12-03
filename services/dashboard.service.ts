@@ -186,64 +186,23 @@ class DashboardService {
   }
 
   /**
-   * Get leaderboard data with real-time project completion scores
+   * Get leaderboard data from unified backend API (star-based ranking)
    */
-  async getLeaderboard(limit: number = 10): Promise<any[]> {
+  async getLeaderboard(
+    limit: number = 10, 
+    timeRange: 'thisWeek' | 'thisMonth' | 'thisQuarter' | 'lastSixMonths' | 'thisYear' = 'thisMonth',
+    filter: 'individual' | 'team' | 'leaders' = 'individual'
+  ): Promise<any[]> {
     try {
-      console.log('🏆 Dashboard Service: Fetching leaderboard...');
-      // Fetch all users - using correct endpoint
-      const usersResponse = await api.get<any[]>('/hr/users/employees/');
-      let users = Array.isArray(usersResponse) ? usersResponse : 
-                  (usersResponse as any)?.data ? (usersResponse as any).data : [];
+      console.log(`🏆 Fetching ${filter} leaderboard for ${timeRange}...`);
       
-      console.log('📊 Leaderboard: Fetched users:', users.length);
-      
-      // Fetch project data for scoring
-      const projectsResponse = await api.get<any[]>('/project_management/projects/');
-      let allProjects = Array.isArray(projectsResponse) ? projectsResponse : 
-                       (projectsResponse as any)?.data ? (projectsResponse as any).data : [];
-      
-      console.log('📊 Leaderboard: Fetched projects:', allProjects.length);
-      
-      // Calculate scores for each user
-      const leaderboardData = users.map((user: any) => {
-        // Count projects where user is assigned
-        const userProjects = allProjects.filter((p: any) => 
-          p.assigned_to === user.id || 
-          (Array.isArray(p.team_members) && p.team_members.includes(user.id))
-        );
-        
-        const completedProjects = userProjects.filter((p: any) => 
-          p.status === 'Completed'
-        ).length;
-        
-        // Calculate score (you can customize this formula)
-        const score = (completedProjects * 250) + (userProjects.length * 50);
-        
-        return {
-          id: user.id,
-          name: user.full_name || user.username,
-          photo: user.photo || user.profile_picture,
-          projectsCompleted: completedProjects,
-          tasksCompleted: Math.floor(completedProjects * 8), // Estimate
-          score: score,
-          isOnline: user.is_active || false,
-          designation: user.designation,
-          department: user.department,
-        };
+      const response = await api.get('/project_management/leaderboard/', {
+        params: { filter, time_range: timeRange, limit }
       });
       
-      // Sort by score and assign ranks
-      const sortedLeaderboard = leaderboardData
-        .sort((a: any, b: any) => b.score - a.score)
-        .slice(0, limit)
-        .map((user: any, index: number) => ({
-          ...user,
-          rank: index + 1,
-        }));
-      
-      console.log('✅ Leaderboard calculated:', sortedLeaderboard.length, 'leaders');
-      return sortedLeaderboard;
+      const data = response?.results || response || [];
+      console.log('✅ Leaderboard fetched:', data.length, 'entries');
+      return data;
     } catch (error) {
       console.log('❌ Leaderboard error:', error);
       return [];
@@ -251,11 +210,47 @@ class DashboardService {
   }
 
   /**
-   * Get recent activities with real-time data
+   * Get recent activities from backend API
+   * First tries dedicated endpoint, falls back to aggregation if not available
+   */
+  async getRecentActivitiesFromBackend(limit: number = 10): Promise<RecentActivity[]> {
+    try {
+      console.log('📡 Fetching activities from backend API...');
+      // Try dedicated endpoint first
+      const response = await api.get<RecentActivity[]>('/dashboard/activities/recent/', {
+        params: { limit }
+      });
+      
+      if (response && Array.isArray(response)) {
+        console.log('✅ Activities from dedicated API:', response.length);
+        return response;
+      }
+      
+      // If response has data property
+      if ((response as any)?.data && Array.isArray((response as any).data)) {
+        console.log('✅ Activities from dedicated API:', (response as any).data.length);
+        return (response as any).data;
+      }
+      
+      // If endpoint doesn't exist, fall back to old aggregation method
+      return await this.getRecentActivitiesRealtime(limit);
+    } catch (error: any) {
+      // If 404, endpoint doesn't exist yet - use fallback
+      if (error.response?.status === 404) {
+        console.log('⚠️ Activities API not available, using aggregation fallback');
+        return await this.getRecentActivitiesRealtime(limit);
+      }
+      console.log('❌ Activities API error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recent activities with real-time data (fallback method)
    */
   async getRecentActivitiesRealtime(limit: number = 10): Promise<RecentActivity[]> {
     try {
-      console.log('📡 Fetching real-time activities...');
+      console.log('📡 Fetching real-time activities (aggregation method)...');
       const activities: RecentActivity[] = [];
       
       // Fetch recent leave requests
@@ -345,12 +340,28 @@ class DashboardService {
 
   /**
    * Get intern leaderboard (individual rankings)
-   * Returns all interns, no limit
+   * Maps frontend time ranges to backend format
    */
-  async getInternLeaderboard(): Promise<any[]> {
+  async getInternLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any[]> {
     try {
       console.log('🏆 Fetching intern leaderboard...');
-      const response = await api.get<any>('/project_management/leaderboard/?filter=individual&limit=1000');
+      
+      const timeRangeMap: Record<string, string> = {
+        'daily': 'thisWeek',
+        'weekly': 'thisWeek',
+        'monthly': 'thisMonth',
+        'yearly': 'thisYear'
+      };
+      
+      const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
+      
+      const params: any = { 
+        filter: 'individual', 
+        time_range: backendTimeRange,
+        limit: 1000 
+      };
+      
+      const response = await api.get<any>('/project_management/leaderboard/', { params });
       const data = response?.results || (Array.isArray(response) ? response : []);
       console.log('✅ Intern leaderboard fetched:', data.length, 'interns');
       return data;
@@ -362,12 +373,28 @@ class DashboardService {
 
   /**
    * Get team leaderboard (aggregated by team)
-   * Returns all teams, no limit
+   * Maps frontend time ranges to backend format
    */
-  async getTeamLeaderboard(): Promise<any[]> {
+  async getTeamLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any[]> {
     try {
       console.log('🏆 Fetching team leaderboard...');
-      const response = await api.get<any>('/project_management/leaderboard/?filter=team&limit=1000');
+      
+      const timeRangeMap: Record<string, string> = {
+        'daily': 'thisWeek',
+        'weekly': 'thisWeek',
+        'monthly': 'thisMonth',
+        'yearly': 'thisYear'
+      };
+      
+      const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
+      
+      const params: any = { 
+        filter: 'team', 
+        time_range: backendTimeRange,
+        limit: 1000 
+      };
+      
+      const response = await api.get<any>('/project_management/leaderboard/', { params });
       const data = response?.results || (Array.isArray(response) ? response : []);
       console.log('✅ Team leaderboard fetched:', data.length, 'teams');
       return data;
@@ -378,12 +405,61 @@ class DashboardService {
   }
 
   /**
-   * Get individual intern ranking (current user's rank)
+   * Get leaders leaderboard (team leaders only)
+   * Maps frontend time ranges to backend format
    */
-  async getIndividualInternRanking(userId: number): Promise<any | null> {
+  async getLeadersLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any[]> {
+    try {
+      console.log('👑 Fetching leaders leaderboard...');
+      
+      const timeRangeMap: Record<string, string> = {
+        'daily': 'thisWeek',
+        'weekly': 'thisWeek',
+        'monthly': 'thisMonth',
+        'yearly': 'thisYear'
+      };
+      
+      const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
+      
+      const params: any = { 
+        filter: 'leaders', 
+        time_range: backendTimeRange,
+        limit: 1000 
+      };
+      
+      const response = await api.get<any>('/project_management/leaderboard/', { params });
+      const data = response?.results || (Array.isArray(response) ? response : []);
+      console.log('✅ Leaders leaderboard fetched:', data.length, 'leaders');
+      return data;
+    } catch (error) {
+      console.error('❌ Failed to fetch leaders leaderboard:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get individual intern ranking (current user's rank)
+   * Maps frontend time ranges to backend format
+   */
+  async getIndividualInternRanking(userId: number, timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any | null> {
     try {
       console.log('🏆 Fetching my rank...');
-      const response = await api.get<any>('/project_management/leaderboard/my-rank/');
+      
+      const timeRangeMap: Record<string, string> = {
+        'daily': 'thisWeek',
+        'weekly': 'thisWeek',
+        'monthly': 'thisMonth',
+        'yearly': 'thisYear'
+      };
+      
+      const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
+      
+      const params: any = {
+        time_range: backendTimeRange
+      };
+      
+      const response = await api.get<any>('/project_management/leaderboard/my-rank/', { params });
+      console.log('✅ My rank fetched:', response);
       return response;
     } catch (error) {
       console.error('❌ Failed to fetch individual ranking:', error);

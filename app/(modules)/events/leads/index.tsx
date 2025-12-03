@@ -7,6 +7,7 @@ import {
   RefreshControl,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import eventsService from '@/services/events.service';
 import { useTheme } from '@/hooks/useTheme';
+import { useDebounce } from '@/hooks/useDebounce';
 import { KPICard, EmptyState, LoadingState, FilterBar, StatusBadge } from '@/components';
 import type { Lead, LeadStatistics } from '@/types/events';
 import { formatDate } from '@/utils/formatters';
@@ -28,20 +30,51 @@ export default function LeadsManagementScreen() {
   const [activeTab, setActiveTab] = useState<LeadStatusTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<any>({});
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Fetch leads
+  // Debounce search query to prevent API calls on every keystroke
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Fetch leads with pagination
   const {
-    data: leads = [],
+    data: leadsResponse,
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['leads', activeTab, filters],
-    queryFn: () => {
+    queryKey: ['leads', activeTab, filters, page, pageSize, debouncedSearch],
+    queryFn: async () => {
+      console.log('🔍 Fetching leads with params:', { activeTab, page, pageSize, search: debouncedSearch });
       const status = activeTab === 'all' ? undefined : activeTab;
-      return eventsService.getLeads({ status, ...filters });
+      const response = await eventsService.getLeads({ 
+        status, 
+        ...filters,
+        search: debouncedSearch || undefined, // Server-side search
+        page,
+        page_size: pageSize 
+      });
+      
+      console.log('📦 Leads response:', { 
+        resultsCount: response.results?.length, 
+        totalCount: response.count,
+        page,
+        currentAllLeadsCount: allLeads.length 
+      });
+      
+      // Accumulate leads when loading more
+      if (page === 1) {
+        setAllLeads(response.results || []);
+      } else {
+        setAllLeads(prev => [...prev, ...(response.results || [])]);
+      }
+      
+      return response;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: true, // Always enabled
   });
 
   // Fetch statistics
@@ -51,19 +84,45 @@ export default function LeadsManagementScreen() {
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  // Filter leads by search
-  const filteredLeads = useMemo(() => {
-    if (!searchQuery.trim()) return leads;
+  // Use server-filtered leads directly (no client-side filtering)
+  const filteredLeads = allLeads;
 
-    const query = searchQuery.toLowerCase();
-    return leads.filter(
-      (lead: Lead) =>
-        lead.client?.name?.toLowerCase().includes(query) ||
-        lead.message?.toLowerCase().includes(query) ||
-        lead.referral?.toLowerCase().includes(query) ||
-        lead.source?.toLowerCase().includes(query)
-    );
-  }, [leads, searchQuery]);
+  // Load more function
+  const handleLoadMore = async () => {
+    if (loadingMore || !leadsResponse?.next) return;
+    
+    setLoadingMore(true);
+    setPage(prev => prev + 1);
+    setTimeout(() => setLoadingMore(false), 500);
+  };
+
+  // Load all function
+  const handleLoadAll = async () => {
+    if (loadingMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const status = activeTab === 'all' ? undefined : activeTab;
+      const response = await eventsService.getLeads({ 
+        status, 
+        ...filters, 
+        page: 1,
+        page_size: 9999 // Load all
+      });
+      setAllLeads(response.results || []);
+      setPage(1);
+    } catch (err) {
+      console.error('Error loading all leads:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Reset pagination when tab, filters, or search change
+  React.useEffect(() => {
+    console.log('🔄 Resetting page to 1 due to filter change');
+    setPage(1);
+  }, [activeTab, filters, debouncedSearch]);
 
   // Tab configuration
   const tabs: Array<{ key: LeadStatusTab; label: string; icon: keyof typeof Ionicons.glyphMap; count?: number }> = [
@@ -247,7 +306,7 @@ export default function LeadsManagementScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {isLoading && !leads.length ? (
+        {isLoading && page === 1 && !allLeads.length ? (
           <LoadingState variant="skeleton" skeletonCount={5} />
         ) : error ? (
           <EmptyState
@@ -280,7 +339,8 @@ export default function LeadsManagementScreen() {
             }
           />
         ) : (
-          <View style={styles.leadsList}>
+          <>
+            <View style={styles.leadsList}>
             {filteredLeads.map((lead: Lead, index: number) => (
               <Animated.View
                 key={lead.id}
@@ -382,13 +442,6 @@ export default function LeadsManagementScreen() {
                   {lead.status === 'pending' && (
                     <View style={styles.leadCardActions}>
                       <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: theme.primary }]}
-                        onPress={() => handleConvertLead(lead.id)}
-                      >
-                        <Ionicons name="checkmark" size={16} color="#fff" />
-                        <Text style={styles.actionButtonText}>Convert</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}
                         onPress={() => handleLeadDetails(lead.id)}
                       >
@@ -420,6 +473,62 @@ export default function LeadsManagementScreen() {
                 </Pressable>
               </Animated.View>
             ))}
+
+            {/* Debug Info */}
+            {__DEV__ && (
+              <View style={{ padding: 16, backgroundColor: '#f0f0f0', margin: 16 }}>
+                <Text>🔍 Debug Info:</Text>
+                <Text>isLoading: {isLoading ? 'true' : 'false'}</Text>
+                <Text>allLeads.length: {allLeads.length}</Text>
+                <Text>filteredLeads.length: {filteredLeads.length}</Text>
+                <Text>leadsResponse?.count: {leadsResponse?.count || 'N/A'}</Text>
+                <Text>leadsResponse?.next: {leadsResponse?.next ? 'YES' : 'NO'}</Text>
+                <Text>page: {page}</Text>
+              </View>
+            )}
+          </View>
+          </>
+        )}
+
+        {/* Pagination Controls - Always show when we have leads */}
+        {filteredLeads.length > 0 && (
+          <View style={[styles.paginationContainer, { marginHorizontal: 16, backgroundColor: theme.surface, padding: 16, borderRadius: 12 }]}>
+            <Text style={[styles.paginationInfo, { color: theme.textSecondary, marginBottom: 12 }]}>
+              Showing {allLeads.length} of {leadsResponse?.count || allLeads.length} leads
+            </Text>
+
+            <View style={styles.paginationButtons}>
+              {leadsResponse?.next && !loadingMore && (
+                <TouchableOpacity
+                  style={[styles.paginationButton, { backgroundColor: theme.primary }]}
+                  onPress={handleLoadMore}
+                >
+                  <Ionicons name="arrow-down" size={16} color="#fff" />
+                  <Text style={styles.paginationButtonText}>Load More 50</Text>
+                </TouchableOpacity>
+              )}
+
+              {leadsResponse && allLeads.length < (leadsResponse?.count || 0) && !loadingMore && (
+                <TouchableOpacity
+                  style={[styles.paginationButton, styles.paginationButtonSecondary, { borderColor: theme.primary }]}
+                  onPress={handleLoadAll}
+                >
+                  <Ionicons name="download" size={16} color={theme.primary} />
+                  <Text style={[styles.paginationButtonTextSecondary, { color: theme.primary }]}>
+                    Load All
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingMore && (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color={theme.primary} />
+                <Text style={[styles.loadingMoreText, { color: theme.textSecondary }]}>
+                  Loading more leads...
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -614,5 +723,52 @@ const styles = StyleSheet.create({
   },
   leadFooterText: {
     fontSize: 13,
+  },
+  paginationContainer: {
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 16,
+    alignItems: 'center',
+  },
+  paginationInfo: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  paginationButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  paginationButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  paginationButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+  },
+  paginationButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  paginationButtonTextSecondary: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  loadingMoreText: {
+    fontSize: 14,
   },
 });

@@ -29,8 +29,10 @@ export default function NotificationBell({ size = 24, color }: NotificationBellP
 
   const fetchUnreadCount = async () => {
     try {
+      console.log('🔔 NotificationBell: Fetching unread count...');
       setLoading(true);
       const count = await notificationsService.getUnreadCount();
+      console.log('🔔 NotificationBell: Received count:', count);
       setUnreadCount(count);
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -40,7 +42,7 @@ export default function NotificationBell({ size = 24, color }: NotificationBellP
   };
 
   const handlePress = () => {
-    router.push('/(modules)/notifications');
+    router.push('/(dashboard)/notifications');
   };
 
   return (

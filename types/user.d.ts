@@ -44,6 +44,15 @@ export interface User {
   certifications?: Certification[];
   attendance_percentage?: number;
   team_size?: number; // Number of team members if team lead/manager
+  
+  // Leaderboard fields
+  total_stars_received?: number; // Star-based ranking score
+  rank?: number; // User's rank in leaderboard
+  score?: number; // Alias for total_stars_received
+  completed_tasks?: number;
+  in_progress_tasks?: number;
+  avg_rating?: number;
+  is_online?: boolean;
 }
 
 // Skill interface for professional competencies

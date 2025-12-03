@@ -35,6 +35,7 @@ export interface Notification {
   message: string;
   priority: NotificationPriority;
   status: NotificationStatus;
+  read: boolean; // Convenience boolean for status === 'read'
   
   // Metadata for deep linking
   related_object_id?: number;
@@ -48,6 +49,7 @@ export interface Notification {
   
   // Additional data
   metadata?: Record<string, any>;
+  action_label?: string;
   
   // Timestamps
   created_at: string;
@@ -59,6 +61,7 @@ export interface NotificationStats {
   total: number;
   unread: number;
   read: number;
+  high_priority: number;
   by_type: Record<NotificationType, number>;
   by_priority: Record<NotificationPriority, number>;
 }

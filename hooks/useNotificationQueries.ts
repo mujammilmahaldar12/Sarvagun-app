@@ -55,14 +55,30 @@ export function useNotification(id: number) {
 }
 
 /**
- * Fetch notification statistics
+ * Fetch notification statistics with real-time updates
  */
 export function useNotificationStats() {
   return useQuery({
     queryKey: notificationQueryKeys.stats(),
     queryFn: () => notificationService.getNotificationStats(),
     staleTime: 30000,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 30000, // Refetch every 30 seconds for real-time feel
+    refetchIntervalInBackground: true, // Continue polling in background
+  });
+}
+
+/**
+ * Real-time notification polling with aggressive refresh
+ */
+export function useRealtimeNotifications(filters?: NotificationFilters) {
+  return useQuery({
+    queryKey: notificationQueryKeys.list(filters),
+    queryFn: () => notificationService.getNotifications(filters),
+    staleTime: 15000, // 15 seconds
+    refetchInterval: 15000, // Poll every 15 seconds
+    refetchIntervalInBackground: true,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 

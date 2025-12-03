@@ -27,10 +27,14 @@ import notificationsService from '@/services/notifications.service';
 import type { Lead, Venue, ClientCategory, Organisation } from '@/types/events';
 
 export default function ConvertLeadScreen() {
+  console.log('🎬 ConvertLeadScreen RENDERED');
+  
   const { theme } = useTheme();
   const router = useRouter();
   const navigation = useNavigation();
   const { leadId } = useLocalSearchParams<{ leadId: string }>();
+  
+  console.log('📋 Lead ID from params:', leadId);
 
   // Safe back navigation helper
   const safeGoBack = useCallback(() => {
@@ -82,6 +86,14 @@ export default function ConvertLeadScreen() {
     fetchData();
   }, []);
 
+  // Track loading state changes visually
+  useEffect(() => {
+    if (!loading && lead) {
+      // Data loaded successfully
+      Alert.alert('✅ Data Loaded', `Lead loaded: ${lead.client?.name || 'Unknown'}`);
+    }
+  }, [loading, lead]);
+
   const fetchData = async () => {
     if (!leadId) {
       Alert.alert('Error', 'No lead ID provided');
@@ -98,10 +110,12 @@ export default function ConvertLeadScreen() {
         eventsService.getOrganisations(),
       ]);
       
+      console.log('✅ Lead data fetched:', leadData);
       setLead(leadData);
       setVenues(venuesData || []);
       setCategories(categoriesData || []);
       setOrganisations(orgsData || []);
+      console.log('📊 Data loaded - Venues:', venuesData?.length, 'Categories:', categoriesData?.length, 'Orgs:', orgsData?.length);
       
       // Initialize venue from lead's event if available
       if (leadData.event && typeof leadData.event === 'object' && leadData.event.venue) {
@@ -150,14 +164,16 @@ export default function ConvertLeadScreen() {
   };
 
   const handleSubmit = async () => {
+    console.log('🔵 Convert button clicked!');
+    
     // Prevent double submission
     if (loading) {
       console.log('⚠️ Already processing, ignoring duplicate click');
       return;
     }
 
-    console.log('🔵 handleSubmit called');
-    console.log('Form data:', formData);
+    console.log('✅ Not loading, proceeding with submission');
+    console.log('Form data:', JSON.stringify(formData, null, 2));
     console.log('Event dates:', eventDates);
     console.log('Selected venue:', selectedVenue);
     console.log('Lead:', lead);
@@ -418,7 +434,10 @@ export default function ConvertLeadScreen() {
     labelExtractor: (item: any) => string;
   }) => (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <View 
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+        pointerEvents={visible ? 'auto' : 'none'}
+      >
         <View
           style={{
             flex: 1,
@@ -501,6 +520,16 @@ export default function ConvertLeadScreen() {
     </Modal>
   );
 
+  // Debug: Log modal states to identify blocking issues
+  console.log('🔍 Modal States:', {
+    showCategoryModal,
+    showEventCategoryModal,
+    showOrganisationModal,
+    showVenueModal,
+    showSuccessAnimation,
+    loading
+  });
+
   if (loading || !lead) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -528,12 +557,39 @@ export default function ConvertLeadScreen() {
       <View style={{ flex: 1 }}>
         <ModuleHeader title="Convert Lead to Event" showBack onBack={safeGoBack} />
 
+        {/* VISUAL DEBUG BANNER - Shows state without console */}
+        <View style={{ 
+          backgroundColor: '#000000', 
+          padding: 10,
+          borderBottomWidth: 2,
+          borderBottomColor: '#FFD700',
+        }}>
+          <Text style={{ color: '#00FF00', fontSize: 11, fontWeight: 'bold' }}>
+            🟢 SCREEN ACTIVE | Loading: {loading ? '🔴 TRUE' : '🟢 FALSE'} | Lead: {lead ? '✅ EXISTS' : '❌ NULL'}
+          </Text>
+          <Text style={{ color: '#FFFF00', fontSize: 10 }}>
+            Modals → Cat: {showCategoryModal ? '🔴' : '⚪'} EventCat: {showEventCategoryModal ? '🔴' : '⚪'} Org: {showOrganisationModal ? '🔴' : '⚪'} Venue: {showVenueModal ? '🔴' : '⚪'} Success: {showSuccessAnimation ? '🔴' : '⚪'}
+          </Text>
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                'Debug Info',
+                `Loading: ${loading}\nLead: ${lead ? 'EXISTS' : 'NULL'}\nLead ID: ${leadId}\nClient: ${lead?.client?.name || 'N/A'}\n\nModal States:\nCategory: ${showCategoryModal}\nEventCat: ${showEventCategoryModal}\nOrg: ${showOrganisationModal}\nVenue: ${showVenueModal}\nSuccess: ${showSuccessAnimation}`
+              );
+            }}
+            style={{ backgroundColor: '#FFD700', padding: 6, marginTop: 4, borderRadius: 4 }}
+          >
+            <Text style={{ color: '#000000', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>
+              📊 TAP FOR FULL DEBUG INFO
+            </Text>
+          </Pressable>
+        </View>
+
         <ScrollView 
           style={{ flex: 1 }} 
-          contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 80 }}
-          keyboardShouldPersistTaps="always"
+          contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 16 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
         >
             {/* Lead Info */}
             <View style={{
@@ -747,16 +803,197 @@ export default function ConvertLeadScreen() {
               maxDate={formData.endDate || undefined}
               required
             />
-
-            {/* Submit Button */}
-            <Button
-              title="Convert to Event"
-              onPress={handleSubmit}
-              loading={loading}
-              size="md"
-              leftIcon="swap-horizontal"
-            />
           </ScrollView>
+
+          {/* EMERGENCY MODAL CLOSER - If any modal is open */}
+          {(showCategoryModal || showEventCategoryModal || showOrganisationModal || 
+            showVenueModal || showSuccessAnimation) && (
+            <View style={{
+              position: 'absolute',
+              top: 60,
+              left: 0,
+              right: 0,
+              backgroundColor: '#FF0000',
+              padding: 16,
+              zIndex: 999999,
+              elevation: 999999,
+              borderBottomWidth: 4,
+              borderBottomColor: '#FFFFFF',
+            }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}>
+                ⚠️ MODAL IS OPEN - BLOCKING BUTTON ⚠️
+              </Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                {showCategoryModal && 'Category Modal is Open | '}
+                {showEventCategoryModal && 'Event Category Modal is Open | '}
+                {showOrganisationModal && 'Organisation Modal is Open | '}
+                {showVenueModal && 'Venue Modal is Open | '}
+                {showSuccessAnimation && 'Success Animation is Showing'}
+              </Text>
+              <Pressable 
+                onPress={() => {
+                  setShowCategoryModal(false);
+                  setShowEventCategoryModal(false);
+                  setShowOrganisationModal(false);
+                  setShowVenueModal(false);
+                  setShowSuccessAnimation(false);
+                  Alert.alert('✅ Modals Closed', 'All modals have been force-closed. Try the button now!');
+                }}
+                style={{ 
+                  backgroundColor: '#FFFFFF', 
+                  padding: 12, 
+                  marginTop: 12, 
+                  borderRadius: 8,
+                  borderWidth: 2,
+                  borderColor: '#FF0000',
+                }}
+              >
+                <Text style={{ color: '#FF0000', fontSize: 14, fontWeight: 'bold', textAlign: 'center' }}>
+                  🚨 FORCE CLOSE ALL MODALS - TAP HERE
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* TEST BUTTON - Absolute positioned with max z-index */}
+          <View style={{
+            position: 'absolute',
+            bottom: Platform.OS === 'ios' ? 110 : 90,
+            left: 16,
+            right: 16,
+            zIndex: 999999,
+            elevation: 999999,
+          }}>
+            <Pressable
+              onPress={() => {
+                const modalStates = `Cat: ${showCategoryModal} | EventCat: ${showEventCategoryModal} | Org: ${showOrganisationModal} | Venue: ${showVenueModal} | Success: ${showSuccessAnimation}`;
+                Alert.alert(
+                  '🟢 TEST BUTTON WORKS!',
+                  `This button has maximum z-index.\n\nIf you see this alert, touch events work!\n\nStates:\nLoading: ${loading}\nLead: ${lead ? 'EXISTS' : 'NULL'}\n\nModals:\n${modalStates}`,
+                  [
+                    {
+                      text: 'Close All Modals',
+                      onPress: () => {
+                        setShowCategoryModal(false);
+                        setShowEventCategoryModal(false);
+                        setShowOrganisationModal(false);
+                        setShowVenueModal(false);
+                        setShowSuccessAnimation(false);
+                      }
+                    },
+                    {
+                      text: 'Try Convert Now',
+                      onPress: () => {
+                        Alert.alert('Converting...', 'Calling handleSubmit()');
+                        handleSubmit();
+                      }
+                    },
+                    { text: 'Cancel', style: 'cancel' }
+                  ]
+                );
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? '#FF6600' : '#FF0000',
+                paddingVertical: 16,
+                paddingHorizontal: 20,
+                borderRadius: 12,
+                alignItems: 'center',
+                borderWidth: 4,
+                borderColor: '#FFFFFF',
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.8,
+                shadowRadius: 10,
+                elevation: 999,
+              })}
+            >
+              <Text style={{ 
+                color: '#FFFFFF', 
+                fontSize: 18, 
+                fontWeight: 'bold',
+                textAlign: 'center',
+              }}>
+                🧪 TEST BUTTON - TAP ME FIRST
+              </Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                If this works, the main button is blocked
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Fixed Submit Button */}
+          <View style={{ 
+            padding: 16, 
+            paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+            backgroundColor: theme.background,
+            borderTopWidth: 1,
+            borderTopColor: theme.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 4,
+            zIndex: 1000,
+            position: 'relative',
+          }}>
+            <Pressable
+              onPress={() => {
+                try {
+                  Alert.alert(
+                    '🔵 Main Button Clicked!',
+                    `Time: ${new Date().toLocaleTimeString()}\n\nLoading: ${loading}\nLead: ${lead?.client?.name || 'Unknown'}\n\nProceed with conversion?`,
+                    [
+                      {
+                        text: 'Yes, Convert',
+                        onPress: () => {
+                          Alert.alert('Processing...', 'Starting conversion');
+                          handleSubmit();
+                        }
+                      },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
+                  );
+                } catch (error) {
+                  Alert.alert('Error', `Button error: ${error}`);
+                }
+              }}
+              disabled={loading}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? theme.primary + 'DD' : theme.primary,
+                paddingVertical: 16,
+                paddingHorizontal: 24,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 10,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+                opacity: loading ? 0.7 : 1,
+                shadowColor: theme.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 9999,
+                zIndex: 9999,
+              })}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-done-circle" size={26} color="#FFFFFF" />
+                  <Text style={{ 
+                    color: '#FFFFFF', 
+                    fontSize: 18, 
+                    fontWeight: '700',
+                    letterSpacing: 0.5,
+                  }}>
+                    Convert to Event
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
 
           {/* Category Modal */}
           <ModalSelector
@@ -805,7 +1042,10 @@ export default function ConvertLeadScreen() {
 
           {/* Venue Modal */}
           <Modal visible={showVenueModal} animationType="slide" transparent>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View 
+              style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+              pointerEvents={showVenueModal ? 'auto' : 'none'}
+            >
               <View
                 style={{
                   flex: 1,
@@ -948,7 +1188,9 @@ export default function ConvertLeadScreen() {
               backgroundColor: 'rgba(0,0,0,0.7)', 
               justifyContent: 'center', 
               alignItems: 'center' 
-            }}>
+            }}
+            pointerEvents={showSuccessAnimation ? 'auto' : 'none'}
+            >
               <View style={{
                 backgroundColor: theme.background,
                 borderRadius: 24,

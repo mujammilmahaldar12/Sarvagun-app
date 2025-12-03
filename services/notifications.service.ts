@@ -3,8 +3,8 @@ import type {
   Notification,
   NotificationStats,
   CreateNotificationRequest,
-} from '@/types/notifications';
-import type { NotificationPreferences as NotificationPreferencesType } from '@/types/notifications';
+} from '@/types/notification';
+import type { NotificationPreferences as NotificationPreferencesType } from '@/types/notification';
 
 export interface NotificationData {
   id: number;
@@ -53,12 +53,30 @@ class NotificationService {
   /**
    * Get all notifications for current user
    */
-  async getNotifications(): Promise<NotificationData[]> {
+  async getNotifications(filters?: { unread_only?: boolean; page_size?: number }): Promise<NotificationData[]> {
     try {
-      console.log('🔔 Notification Service: Fetching notifications...');
-      const response = await apiClient.get<NotificationData[]>('/core/notifications/');
-      console.log('✅ Notification Service: Fetched notifications:', response?.length || 0);
-      return Array.isArray(response) ? response : (response as any)?.data || [];
+      console.log('🔔 Notification Service: Fetching notifications...', filters);
+      const params = new URLSearchParams();
+      if (filters?.unread_only) params.append('unread_only', 'true');
+      if (filters?.page_size) params.append('page_size', filters.page_size.toString());
+      
+      const url = `/core/notifications/${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await apiClient.get<any>(url);
+      console.log('✅ Notification Service: Fetched notifications response:', response);
+      
+      // Handle both array and paginated response
+      if (Array.isArray(response)) {
+        return response;
+      }
+      if (response?.results && Array.isArray(response.results)) {
+        return response.results;
+      }
+      if ((response as any)?.data) {
+        const data = (response as any).data;
+        if (Array.isArray(data)) return data;
+        if (data?.results) return data.results;
+      }
+      return [];
     } catch (error: any) {
       // Silently handle missing backend endpoint
       if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
@@ -94,8 +112,12 @@ class NotificationService {
   async getUnreadCount(): Promise<number> {
     try {
       const response = await apiClient.get<{ unread_count: number }>('/core/notifications/unread_count/');
+      console.log('🔔 Unread count raw response:', response);
       const data = (response as any)?.data || response;
-      return data?.unread_count || 0;
+      console.log('🔔 Unread count data:', data);
+      const count = data?.unread_count || 0;
+      console.log('🔔 Final unread count:', count);
+      return count;
     } catch (error: any) {
       // Silently handle 404 or network errors - backend endpoint may not exist yet
       if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
@@ -146,13 +168,64 @@ class NotificationService {
   }
 
   /**
+   * Get notification statistics
+   */
+  async getNotificationStats(): Promise<NotificationStats> {
+    try {
+      console.log('🔔 Notification Service: Fetching notification stats...');
+      const response = await apiClient.get<NotificationStats>('/core/notifications/stats/');
+      const data = (response as any)?.data || response;
+      console.log('✅ Notification Service: Fetched stats:', data);
+      
+      // Ensure high_priority field exists
+      const stats = data || {
+        total: 0,
+        unread: 0,
+        read: 0,
+        high_priority: 0,
+        by_type: {} as any,
+        by_priority: {} as any,
+      };
+      
+      // Calculate high_priority if not provided
+      if (!stats.high_priority && stats.by_priority) {
+        stats.high_priority = (stats.by_priority.high || 0) + (stats.by_priority.urgent || 0);
+      }
+      
+      return stats;
+    } catch (error: any) {
+      // Silently handle missing backend endpoint
+      if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {
+        return {
+          total: 0,
+          unread: 0,
+          read: 0,
+          high_priority: 0,
+          by_type: {} as any,
+          by_priority: {} as any,
+        };
+      }
+      console.log('❌ Notification Service: Error fetching stats:', error);
+      return {
+        total: 0,
+        unread: 0,
+        read: 0,
+        high_priority: 0,
+        by_type: {} as any,
+        by_priority: {} as any,
+      };
+    }
+  }
+
+  /**
    * Mark specific notification(s) as read
    */
-  async markAsRead(notificationIds: number[]): Promise<boolean> {
+  async markAsRead(notificationId: number | number[]): Promise<boolean> {
     try {
-      console.log('🔔 Notification Service: Marking notifications as read:', notificationIds);
+      const ids = Array.isArray(notificationId) ? notificationId : [notificationId];
+      console.log('🔔 Notification Service: Marking notifications as read:', ids);
       await apiClient.post('/core/notifications/mark_selected_as_read/', {
-        notification_ids: notificationIds
+        notification_ids: ids
       });
       console.log('✅ Notification Service: Marked notifications as read');
       return true;
@@ -196,14 +269,45 @@ class NotificationService {
   /**
    * Update notification preferences
    */
-  async updatePreferences(preferences: Partial<NotificationPreferences>): Promise<boolean> {
+  async updatePreferences(preferences: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
     try {
       console.log('🔔 Notification Service: Updating preferences:', preferences);
-      await apiClient.post('/core/notification-preferences/update_preferences/', preferences);
+      const response = await apiClient.post<NotificationPreferences>('/core/notification-preferences/update_preferences/', preferences);
+      const data = (response as any)?.data || response;
       console.log('✅ Notification Service: Updated preferences');
-      return true;
+      return data || { ...this.getDefaultPreferences(), ...preferences };
     } catch (error) {
       console.log('❌ Notification Service: Error updating preferences:', error);
+      return { ...this.getDefaultPreferences(), ...preferences };
+    }
+  }
+
+  /**
+   * Delete a notification
+   */
+  async deleteNotification(notificationId: number): Promise<boolean> {
+    try {
+      console.log('🔔 Notification Service: Deleting notification:', notificationId);
+      await apiClient.delete(`/core/notifications/${notificationId}/`);
+      console.log('✅ Notification Service: Deleted notification');
+      return true;
+    } catch (error) {
+      console.log('❌ Notification Service: Error deleting notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear all read notifications
+   */
+  async clearReadNotifications(): Promise<boolean> {
+    try {
+      console.log('🔔 Notification Service: Clearing read notifications...');
+      await apiClient.post('/core/notifications/clear_read/');
+      console.log('✅ Notification Service: Cleared read notifications');
+      return true;
+    } catch (error) {
+      console.log('❌ Notification Service: Error clearing read notifications:', error);
       return false;
     }
   }

@@ -17,6 +17,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { AnimatedPressable, Avatar, GlassCard, Skeleton } from '@/components';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { designSystem, baseColors } from '@/constants/designSystem';
+import { useGlobalSearch } from '@/hooks/useSearchQueries';
+import type { SearchPerson, SearchProject, SearchTask, SearchDocument } from '@/services/search.service';
 
 const { spacing, borderRadius, iconSizes } = designSystem;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -25,52 +27,42 @@ export default function SearchScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'people' | 'projects' | 'tasks' | 'documents'>('all');
 
-  // Mock search results - replace with real API call
-  const results = searchQuery.length > 0 ? [
-    {
-      id: '1',
-      name: 'John Doe',
-      designation: 'Senior Developer',
-      department: 'Engineering',
-      avatar: null,
-      isOnline: true,
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      designation: 'HR Manager',
-      department: 'Human Resources',
-      avatar: null,
-      isOnline: false,
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      designation: 'Project Manager',
-      department: 'Projects',
-      avatar: null,
-      isOnline: true,
-    },
-  ] : [];
+  // Real API search with React Query
+  const { data: searchResults, isLoading: isSearching } = useGlobalSearch(searchQuery, {
+    category: selectedCategory,
+    limit: 20,
+  });
 
   // Quick search categories
   const categories = [
-    { id: '1', label: 'People', icon: 'people-outline' },
-    { id: '2', label: 'Projects', icon: 'briefcase-outline' },
-    { id: '3', label: 'Documents', icon: 'document-text-outline' },
-    { id: '4', label: 'Tasks', icon: 'checkmark-circle-outline' },
+    { id: 'people', label: 'People', icon: 'people-outline' },
+    { id: 'projects', label: 'Projects', icon: 'briefcase-outline' },
+    { id: 'documents', label: 'Documents', icon: 'document-text-outline' },
+    { id: 'tasks', label: 'Tasks', icon: 'checkmark-circle-outline' },
   ];
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    // Simulate API call
-    if (text.length > 0) {
-      setIsSearching(true);
-      setTimeout(() => setIsSearching(false), 500);
+  };
+
+  const handleCategoryPress = (categoryId: string) => {
+    setSelectedCategory(categoryId as any);
+    if (searchQuery.length > 0) {
+      // React Query will automatically refetch with new category
     }
   };
+
+  // Get all results flattened for display
+  const allResults = searchResults ? [
+    ...searchResults.people,
+    ...searchResults.projects,
+    ...searchResults.tasks,
+    ...searchResults.documents,
+  ] : [];
+
+  const totalResults = searchResults?.total_count || 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -161,7 +153,7 @@ export default function SearchScreen() {
                     entering={FadeInUp.delay(200 + index * 50).duration(400)}
                   >
                     <AnimatedPressable
-                      onPress={() => console.log('Category:', category.label)}
+                      onPress={() => handleCategoryPress(category.id)}
                       hapticType="light"
                     >
                       <GlassCard 
@@ -216,7 +208,7 @@ export default function SearchScreen() {
               style={styles.section}
             >
               <Text style={[styles.resultsCount, { color: theme.textSecondary }]}>
-                {isSearching ? 'Searching...' : `${results.length} results for "${searchQuery}"`}
+                {isSearching ? 'Searching...' : `${totalResults} results for "${searchQuery}"`}
               </Text>
 
               {isSearching ? (
@@ -234,61 +226,193 @@ export default function SearchScreen() {
                     </GlassCard>
                   ))}
                 </>
-              ) : results.length > 0 ? (
-                // Results
-                results.map((person, index) => (
-                  <Animated.View
-                    key={person.id}
-                    entering={FadeInUp.delay(200 + index * 50).duration(400)}
-                  >
-                    <AnimatedPressable
-                      onPress={() => console.log('Person:', person.name)}
-                      hapticType="light"
-                    >
-                      <GlassCard 
-                        variant="default" 
-                        intensity="light"
-                        style={styles.resultCard}
-                      >
-                        <View style={styles.resultContent}>
-                          {/* Avatar */}
-                          <Avatar
-                            size={56}
-                            source={person.avatar ? { uri: person.avatar } : undefined}
-                            name={person.name}
-                            onlineStatus={person.isOnline}
-                          />
+              ) : allResults.length > 0 ? (
+                // Render results based on type
+                <>
+                  {/* People Results */}
+                  {searchResults?.people && searchResults.people.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>People ({searchResults.people.length})</Text>
+                      {searchResults.people.map((person: SearchPerson, index) => (
+                        <Animated.View
+                          key={`person-${person.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => router.push(`/(dashboard)/profile?id=${person.id}`)}
+                            hapticType="light"
+                          >
+                            <GlassCard 
+                              variant="default" 
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <Avatar
+                                  size={56}
+                                  source={person.avatar ? { uri: person.avatar } : undefined}
+                                  name={person.name}
+                                  onlineStatus={person.isOnline}
+                                />
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {person.name}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
+                                    {person.designation || 'N/A'}
+                                  </Text>
+                                  {person.department && (
+                                    <View style={styles.resultMeta}>
+                                      <Ionicons 
+                                        name="business-outline" 
+                                        size={14} 
+                                        color={theme.textSecondary} 
+                                      />
+                                      <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                        {person.department}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
 
-                          {/* Person Info */}
-                          <View style={styles.resultInfo}>
-                            <Text style={[styles.resultName, { color: theme.text }]}>
-                              {person.name}
-                            </Text>
-                            <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
-                              {person.designation}
-                            </Text>
-                            <View style={styles.resultMeta}>
-                              <Ionicons 
-                                name="business-outline" 
-                                size={14} 
-                                color={theme.textSecondary} 
-                              />
-                              <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
-                                {person.department}
-                              </Text>
-                            </View>
-                          </View>
+                  {/* Projects Results */}
+                  {searchResults?.projects && searchResults.projects.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Projects ({searchResults.projects.length})</Text>
+                      {searchResults.projects.map((project: SearchProject, index) => (
+                        <Animated.View
+                          key={`project-${project.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => router.push(`/(modules)/projects/${project.id}`)}
+                            hapticType="light"
+                          >
+                            <GlassCard 
+                              variant="default" 
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <View style={[styles.projectIcon, { backgroundColor: `${theme.primary}15` }]}>
+                                  <Ionicons name="briefcase" size={24} color={theme.primary} />
+                                </View>
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {project.name}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]} numberOfLines={1}>
+                                    {project.description || 'No description'}
+                                  </Text>
+                                  <View style={styles.resultMeta}>
+                                    <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                      {project.status || 'Active'} • Progress: {project.progress || 0}%
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
 
-                          <Ionicons
-                            name="chevron-forward"
-                            size={20}
-                            color={theme.textSecondary}
-                          />
-                        </View>
-                      </GlassCard>
-                    </AnimatedPressable>
-                  </Animated.View>
-                ))
+                  {/* Tasks Results */}
+                  {searchResults?.tasks && searchResults.tasks.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Tasks ({searchResults.tasks.length})</Text>
+                      {searchResults.tasks.map((task: SearchTask, index) => (
+                        <Animated.View
+                          key={`task-${task.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => console.log('Task:', task.title)}
+                            hapticType="light"
+                          >
+                            <GlassCard 
+                              variant="default" 
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <View style={[styles.taskIcon, { backgroundColor: `${theme.primary}15` }]}>
+                                  <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                                </View>
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {task.title}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]} numberOfLines={1}>
+                                    {task.project_name || 'No project'}
+                                  </Text>
+                                  <View style={styles.resultMeta}>
+                                    <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                      {task.status || 'Pending'} • {task.priority || 'Normal'} Priority
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Documents Results */}
+                  {searchResults?.documents && searchResults.documents.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Documents ({searchResults.documents.length})</Text>
+                      {searchResults.documents.map((doc: SearchDocument, index) => (
+                        <Animated.View
+                          key={`doc-${doc.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => console.log('Document:', doc.name)}
+                            hapticType="light"
+                          >
+                            <GlassCard 
+                              variant="default" 
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <View style={[styles.docIcon, { backgroundColor: `${theme.primary}15` }]}>
+                                  <Ionicons name="document-text" size={24} color={theme.primary} />
+                                </View>
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {doc.name}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
+                                    {doc.type || 'File'} • {doc.module || 'General'}
+                                  </Text>
+                                  {doc.uploaded_by && (
+                                    <View style={styles.resultMeta}>
+                                      <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                        Uploaded by {doc.uploaded_by}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
+                </>
               ) : (
                 // No Results
                 <Animated.View 
@@ -470,5 +594,31 @@ const styles = StyleSheet.create({
   },
   noResultsSubtext: {
     ...getTypographyStyle('sm', 'regular'),
+  },
+  categoryTitle: {
+    ...getTypographyStyle('base', 'semibold'),
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+  },
+  projectIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  docIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -201,6 +201,60 @@ export default function DashboardLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="goals"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="goal-detail"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="performance-metrics"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics-projects"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics-hr"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics-events"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics-finance"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="realtime-demo"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
 
       {/* Floating AI Chat Button - Hidden when on AI chat page */}

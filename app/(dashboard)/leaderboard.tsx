@@ -28,14 +28,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { useInternLeaderboard, useTeamLeaderboard, useIndividualInternRanking } from '@/hooks/useDashboardQueries';
+import { useInternLeaderboard, useTeamLeaderboard, useLeadersLeaderboard, useIndividualInternRanking } from '@/hooks/useDashboardQueries';
 import { Avatar, AnimatedPressable, Skeleton } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type FilterType = 'individual' | 'team';
+type FilterType = 'individual' | 'team' | 'leaders';
+type TimeRange = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 // Filter Tab Component
 const FilterTab = ({ 
@@ -335,6 +336,92 @@ const InternRow = ({ leader, index }: { leader: any; index: number }) => {
   );
 };
 
+// Leader Row Component
+const LeaderRow = ({ leader, index }: { leader: any; index: number }) => {
+  const { theme } = useTheme();
+  const router = useRouter();
+
+  const getRankColor = (rank: number) => {
+    if (rank <= 3) return theme.primary;
+    return theme.textSecondary;
+  };
+
+  return (
+    <Animated.View entering={FadeInDown.delay(index * 80).springify()}>
+      <AnimatedPressable
+        onPress={() => router.push(`/(dashboard)/my-profile?userId=${leader.id}` as any)}
+        style={[
+          styles.internRow,
+          getCardStyle(theme.surface, 'md', 'xl'),
+          { marginBottom: spacing.sm },
+        ]}
+        hapticType="light"
+        springConfig="bouncy"
+      >
+        {/* Leader Rank */}
+        <View style={[styles.rankCircle, { backgroundColor: getRankColor(leader.leader_rank) + '15' }]}>
+          <Text style={[styles.rankNumber, { color: getRankColor(leader.leader_rank) }]}>
+            {leader.leader_rank}
+          </Text>
+        </View>
+
+        {/* Avatar */}
+        <Avatar
+          size={48}
+          source={leader.photo ? { uri: leader.photo } : undefined}
+          name={leader.name}
+        />
+
+        {/* Info */}
+        <View style={styles.internInfo}>
+          <View style={styles.internNameRow}>
+            <Text style={[styles.internName, { color: theme.text }]} numberOfLines={1}>
+              {leader.name}
+            </Text>
+            <View style={[styles.leaderBadge, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="shield-checkmark" size={10} color={theme.primary} />
+              <Text style={[styles.leaderBadgeText, { color: theme.primary }]}>Leader</Text>
+            </View>
+          </View>
+          
+          {leader.team_name && (
+            <View style={styles.teamIndicator}>
+              <Ionicons name="people" size={12} color={theme.textSecondary} />
+              <Text style={[styles.teamText, { color: theme.textSecondary }]} numberOfLines={1}>
+                {leader.team_name}
+              </Text>
+            </View>
+          )}
+          
+          <View style={styles.taskStats}>
+            <View style={styles.taskStatItem}>
+              <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+              <Text style={[styles.taskStatText, { color: theme.textSecondary }]}>
+                {leader.completed_tasks || 0} done
+              </Text>
+            </View>
+            <View style={styles.taskStatItem}>
+              <Ionicons name="time" size={12} color="#F59E0B" />
+              <Text style={[styles.taskStatText, { color: theme.textSecondary }]}>
+                {leader.in_progress_tasks || 0} active
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Stars */}
+        <View style={[styles.scoreBadge, { backgroundColor: theme.primary + '15' }]}>
+          <Text style={[styles.scoreBadgeValue, { color: theme.primary }]}>
+            ★ {leader.total_stars_received || 0}
+          </Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+      </AnimatedPressable>
+    </Animated.View>
+  );
+};
+
 // Team Card Component
 const TeamCard = ({ team, index }: { team: any; index: number }) => {
   const { theme } = useTheme();
@@ -421,38 +508,57 @@ const TeamCard = ({ team, index }: { team: any; index: number }) => {
 export default function LeaderboardScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  const [filter, setFilter] = useState<FilterType>('individual');
+  const [filter, setFilter] = useState<FilterType | 'leaders'>('individual');
+  const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch data based on filter
+  // Fetch data based on filter and time range
   const { 
     data: internData = [], 
     isLoading: internLoading, 
     refetch: refetchInterns 
-  } = useInternLeaderboard();
+  } = useInternLeaderboard(timeRange);
   
   const { 
     data: teamData = [], 
     isLoading: teamLoading, 
     refetch: refetchTeams 
-  } = useTeamLeaderboard();
+  } = useTeamLeaderboard(timeRange);
+  
+  const { 
+    data: leadersData = [], 
+    isLoading: leadersLoading, 
+    refetch: refetchLeaders 
+  } = useLeadersLeaderboard(timeRange);
   
   const { 
     data: currentUserRank 
-  } = useIndividualInternRanking(user?.id || 0);
+  } = useIndividualInternRanking(user?.id || 0, timeRange);
 
-  const isLoading = filter === 'individual' ? internLoading : teamLoading;
-  const data = filter === 'individual' ? internData : teamData;
+  const isLoading = filter === 'individual' ? internLoading : (filter === 'team' ? teamLoading : leadersLoading);
+  const data = filter === 'individual' ? internData : (filter === 'team' ? teamData : leadersData);
 
   const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
     if (filter === 'individual') {
       await refetchInterns();
-    } else {
+    } else if (filter === 'team') {
       await refetchTeams();
+    } else {
+      await refetchLeaders();
     }
     setIsRefreshing(false);
-  }, [filter, refetchInterns, refetchTeams]);
+  }, [filter, timeRange, refetchInterns, refetchTeams]);
+
+  const getTimeRangeLabel = () => {
+    const labels: Record<TimeRange, string> = {
+      daily: 'Today',
+      weekly: 'This Week',
+      monthly: 'This Month',
+      yearly: 'This Year',
+    };
+    return labels[timeRange];
+  };
 
   const topThree = filter === 'individual' ? internData.slice(0, 3) : [];
   const remaining = filter === 'individual' ? internData.slice(3) : [];
@@ -474,7 +580,7 @@ export default function LeaderboardScreen() {
           <View style={styles.headerTextContainer}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>🏆 Leadership Board</Text>
             <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-              Top performing interns this month
+              Top performers - {getTimeRangeLabel()}
             </Text>
           </View>
         </View>
@@ -493,7 +599,51 @@ export default function LeaderboardScreen() {
             isActive={filter === 'team'}
             onPress={() => setFilter('team')}
           />
+          <FilterTab
+            label="Leaders"
+            icon="shield-checkmark"
+            isActive={filter === 'leaders'}
+            onPress={() => setFilter('leaders')}
+          />
         </View>
+
+        {/* Time Range Filter */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.timeRangeContainer}
+        >
+          {[{ value: 'daily', label: 'Today', icon: 'today' }, 
+            { value: 'weekly', label: 'Week', icon: 'calendar' },
+            { value: 'monthly', label: 'Month', icon: 'calendar-outline' },
+            { value: 'yearly', label: 'Year', icon: 'calendar-sharp' }].map((range) => (
+            <TouchableOpacity
+              key={range.value}
+              onPress={() => setTimeRange(range.value as TimeRange)}
+              style={[
+                styles.timeRangeTab,
+                {
+                  backgroundColor: timeRange === range.value ? theme.primary : 'transparent',
+                  borderColor: timeRange === range.value ? theme.primary : theme.border,
+                },
+              ]}
+            >
+              <Ionicons 
+                name={range.icon as any} 
+                size={16} 
+                color={timeRange === range.value ? '#FFFFFF' : theme.textSecondary} 
+              />
+              <Text
+                style={[
+                  styles.timeRangeText,
+                  { color: timeRange === range.value ? '#FFFFFF' : theme.textSecondary },
+                ]}
+              >
+                {range.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </LinearGradient>
 
       <ScrollView
@@ -585,7 +735,7 @@ export default function LeaderboardScreen() {
                   ))}
                 </View>
               </>
-            ) : (
+            ) : filter === 'team' ? (
               <View style={styles.teamListSection}>
                 {[1, 2, 3].map((i) => (
                   <View key={i} style={[styles.teamCard, getCardStyle(theme.surface, 'md', 'xl'), { marginBottom: spacing.md }]}>
@@ -604,18 +754,38 @@ export default function LeaderboardScreen() {
                   </View>
                 ))}
               </View>
+            ) : (
+              <View style={styles.rankingsSection}>
+                {[1, 2, 3, 4].map((i) => (
+                  <View key={i} style={[styles.internRow, getCardStyle(theme.surface, 'md', 'xl'), { marginBottom: spacing.sm }]}>
+                    <Skeleton width={36} height={36} borderRadius={18} style={{ marginRight: spacing.sm }} />
+                    <Skeleton width={48} height={48} borderRadius={24} style={{ marginRight: spacing.sm }} />
+                    <View style={{ flex: 1 }}>
+                      <Skeleton width={140} height={16} style={{ marginBottom: spacing.xs }} />
+                      <Skeleton width={100} height={12} />
+                    </View>
+                    <Skeleton width={50} height={36} borderRadius={borderRadius.lg} />
+                  </View>
+                ))}
+              </View>
             )}
           </View>
-        ) : data.length === 0 ? (
+        ) : (data.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name={filter === 'individual' ? 'school-outline' : 'people-outline'} size={64} color={theme.textSecondary} />
+            <Ionicons 
+              name={filter === 'individual' ? 'school-outline' : (filter === 'team' ? 'people-outline' : 'shield-checkmark-outline')} 
+              size={64} 
+              color={theme.textSecondary} 
+            />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              {filter === 'individual' ? 'No Interns Yet' : 'No Teams Yet'}
+              {filter === 'individual' ? 'No Interns Yet' : (filter === 'team' ? 'No Teams Yet' : 'No Leaders Yet')}
             </Text>
             <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
               {filter === 'individual' 
                 ? 'Intern rankings will appear here once tasks are assigned' 
-                : 'Team rankings will appear once teams have active interns'}
+                : (filter === 'team' 
+                  ? 'Team rankings will appear once teams have active interns'
+                  : 'Leader rankings will appear once teams are created and led by leaders')}
             </Text>
           </View>
         ) : (
@@ -675,9 +845,19 @@ export default function LeaderboardScreen() {
               </View>
             )}
 
+            {/* Leaders Leaderboard */}
+            {filter === 'leaders' && (
+              <View style={styles.rankingsSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>👑 Team Leaders</Text>
+                {leadersData.map((leader: any, index: number) => (
+                  <LeaderRow key={leader.id} leader={leader} index={index} />
+                ))}
+              </View>
+            )}
+
             <View style={{ height: 40 }} />
           </>
-        )}
+        ))}
       </ScrollView>
     </View>
   );
@@ -727,6 +907,26 @@ const styles = StyleSheet.create({
   },
   filterTabText: {
     ...getTypographyStyle('sm', 'semibold'),
+  },
+  
+  // Time Range Tabs
+  timeRangeContainer: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  timeRangeTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  timeRangeText: {
+    ...getTypographyStyle('xs', 'medium'),
   },
   
   // Status Badge
@@ -1145,5 +1345,18 @@ const styles = StyleSheet.create({
   },
   activeMembersText: {
     ...getTypographyStyle('sm', 'medium'),
+  },
+  
+  // Leader Badge
+  leaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  leaderBadgeText: {
+    ...getTypographyStyle('xs', 'semibold'),
   },
 });

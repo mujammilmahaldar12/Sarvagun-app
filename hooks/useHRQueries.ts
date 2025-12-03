@@ -51,6 +51,12 @@ export const hrQueryKeys = {
   
   // Holidays
   holidays: (year?: number) => [...hrQueryKeys.all, 'holidays', year] as const,
+  
+  // Attendance
+  attendance: () => [...hrQueryKeys.all, 'attendance'] as const,
+  attendancePercentage: () => [...hrQueryKeys.attendance(), 'percentage'] as const,
+  attendanceRecords: (fromDate?: string, toDate?: string) => 
+    [...hrQueryKeys.attendance(), 'records', { fromDate, toDate }] as const,
 };
 
 // ============================================================================
@@ -487,6 +493,197 @@ export const useUploadReimbursementPhoto = () => {
       hrService.uploadReimbursementPhoto(reimbursementId, photo),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
+    },
+  });
+};
+
+// ============================================================================
+// ATTENDANCE QUERIES
+// ============================================================================
+
+/**
+ * Get attendance percentage for current user
+ */
+export const useAttendancePercentage = () => {
+  return useQuery({
+    queryKey: hrQueryKeys.attendancePercentage(),
+    queryFn: () => hrService.getAttendancePercentage(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+/**
+ * Get detailed attendance records
+ */
+export const useMyAttendance = (fromDate?: string, toDate?: string) => {
+  return useQuery({
+    queryKey: hrQueryKeys.attendanceRecords(fromDate, toDate),
+    queryFn: () => hrService.getMyAttendance(fromDate, toDate),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!fromDate && !!toDate,
+  });
+};
+
+// ============================================================================
+// USER PROFILE DATA HOOKS
+// ============================================================================
+
+/**
+ * Query keys for user profile data
+ */
+export const userProfileKeys = {
+  all: ['userProfile'] as const,
+  projects: (userId: string | number) => [...userProfileKeys.all, 'projects', userId] as const,
+  skills: (userId: string | number) => [...userProfileKeys.all, 'skills', userId] as const,
+  certifications: (userId: string | number) => [...userProfileKeys.all, 'certifications', userId] as const,
+  performance: (userId: string | number) => [...userProfileKeys.all, 'performance', userId] as const,
+  goals: (userId: string | number) => [...userProfileKeys.all, 'goals', userId] as const,
+  activities: (userId: string | number) => [...userProfileKeys.all, 'activities', userId] as const,
+};
+
+/**
+ * Get user's project contributions
+ */
+export const useUserProjects = (userId: string | number) => {
+  return useQuery({
+    queryKey: userProfileKeys.projects(userId),
+    queryFn: () => hrService.getUserProjects(userId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
+  });
+};
+
+/**
+ * Get user's skills
+ */
+export const useUserSkills = (userId: string | number) => {
+  return useQuery({
+    queryKey: userProfileKeys.skills(userId),
+    queryFn: () => hrService.getUserSkills(userId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
+  });
+};
+
+/**
+ * Get user's certifications
+ */
+export const useUserCertifications = (userId: string | number) => {
+  return useQuery({
+    queryKey: userProfileKeys.certifications(userId),
+    queryFn: () => hrService.getUserCertifications(userId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
+  });
+};
+
+/**
+ * Get user's performance metrics
+ */
+export const useUserPerformance = (userId: string | number) => {
+  return useQuery({
+    queryKey: userProfileKeys.performance(userId),
+    queryFn: () => hrService.getUserPerformance(userId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
+  });
+};
+
+/**
+ * Get user's goals/OKRs
+ */
+export const useUserGoals = (userId: string | number) => {
+  return useQuery({
+    queryKey: userProfileKeys.goals(userId),
+    queryFn: () => hrService.getUserGoals(userId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
+  });
+};
+
+/**
+ * Get user's activity timeline
+ */
+export const useUserActivities = (userId: string | number, limit: number = 20) => {
+  return useQuery({
+    queryKey: userProfileKeys.activities(userId),
+    queryFn: () => hrService.getUserActivities(userId, limit),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!userId,
+  });
+};
+
+// ============================================================================
+// GOAL MUTATIONS
+// ============================================================================
+
+/**
+ * Create a new goal
+ */
+export const useCreateGoal = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (goalData: {
+      title: string;
+      description: string;
+      category: string;
+      targetDate: string;
+      milestones?: any[];
+    }) => hrService.createGoal(goalData),
+    onSuccess: () => {
+      // Invalidate all user goals queries
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'goals'] });
+    },
+  });
+};
+
+/**
+ * Update an existing goal
+ */
+export const useUpdateGoal = (goalId: string | number) => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (goalData: {
+      title?: string;
+      description?: string;
+      status?: string;
+      progress?: number;
+      milestones?: any[];
+    }) => hrService.updateGoal(goalId, goalData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'goals'] });
+    },
+  });
+};
+
+/**
+ * Delete a goal
+ */
+export const useDeleteGoal = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (goalId: string | number) => hrService.deleteGoal(goalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'goals'] });
+    },
+  });
+};
+
+/**
+ * Toggle milestone completion status
+ */
+export const useToggleMilestone = (goalId: string | number) => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ milestoneId, completed }: { milestoneId: string; completed: boolean }) => 
+      hrService.toggleMilestone(goalId, milestoneId, completed),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'goals'] });
     },
   });
 };

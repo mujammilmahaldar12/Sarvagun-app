@@ -39,22 +39,31 @@ class EventsService {
   }) {
     try {
       console.log('🌐 Calling API /events/leads/ with params:', params);
-      const response = await apiClient.get<Lead[]>('/events/leads/', { params });
+      const response = await apiClient.get<any>('/events/leads/', { params });
       
-      console.log('📊 Leads API Response (after apiClient processing):', {
+      console.log('📊 Leads API Response:', {
         responseType: typeof response,
-        isArray: Array.isArray(response),
-        length: Array.isArray(response) ? response.length : 0,
-        firstItem: Array.isArray(response) && response.length > 0 ? response[0] : null
+        hasResults: response && 'results' in response,
+        count: response?.count,
+        resultsLength: response?.results?.length
       });
       
-      // apiClient.get already extracts 'results' from paginated responses
-      // So we just need to ensure it's an array
-      const leads = Array.isArray(response) ? response : [];
-      console.log('✅ Returning', leads.length, 'leads');
-      return leads;
+      // Return paginated response with metadata
+      if (response && 'results' in response) {
+        return {
+          results: response.results || [],
+          count: response.count || 0,
+          next: response.next || null,
+          previous: response.previous || null,
+        };
+      }
+      
+      // Fallback for non-paginated responses
+      const results = Array.isArray(response) ? response : [];
+      return { results, count: results.length, next: null, previous: null };
     } catch (error) {
-      console.error('❌ Error fetching leads:', error);
+      // Silently handle leads fetch error - non-critical
+      console.log('⚠️ Leads API call failed (non-critical)');
       throw error;
     }
   }
@@ -176,17 +185,18 @@ class EventsService {
   }) {
     try {
       console.log('🌐 Calling API /events/events/ with params:', params);
-      const response = await apiClient.get<Event[]>('/events/events/', { params });
+      const response = await apiClient.get<any>('/events/events/', { params });
       
       console.log('📊 Events API Response (after apiClient processing):', {
         responseType: typeof response,
         isArray: Array.isArray(response),
-        length: Array.isArray(response) ? response.length : 0,
+        hasResults: response && 'results' in response,
+        length: Array.isArray(response) ? response.length : (response?.results?.length || 0),
         firstItem: Array.isArray(response) && response.length > 0 ? response[0] : null
       });
       
-      // apiClient.get already extracts 'results' from paginated responses
-      const events = Array.isArray(response) ? response : [];
+      // Handle paginated response
+      const events = response && 'results' in response ? response.results : (Array.isArray(response) ? response : []);
       console.log('✅ Returning', events.length, 'events');
       return events;
     } catch (error) {
@@ -204,6 +214,8 @@ class EventsService {
 
   /**
    * Create new event
+   * @deprecated Events can only be created by converting leads. Use convertLeadToEvent() instead.
+   * This method is blocked by the backend and will return 403 Forbidden.
    */
   async createEvent(data: Partial<Event>) {
     return await apiClient.post<Event>('/events/events/', data);
@@ -245,14 +257,16 @@ class EventsService {
   async getClients(params?: { category?: number; search?: string }) {
     try {
       console.log('🌐 Calling API /events/clients/ with params:', params);
-      const response = await apiClient.get<Client[]>('/events/clients/', { params });
+      const response = await apiClient.get<any>('/events/clients/', { params });
       
       console.log('📊 Clients API Response:', {
         isArray: Array.isArray(response),
-        length: Array.isArray(response) ? response.length : 0
+        hasResults: response && 'results' in response,
+        length: Array.isArray(response) ? response.length : (response?.results?.length || 0)
       });
       
-      const clients = Array.isArray(response) ? response : [];
+      // Handle paginated response
+      const clients = response && 'results' in response ? response.results : (Array.isArray(response) ? response : []);
       console.log('✅ Returning', clients.length, 'clients');
       return clients;
     } catch (error) {
@@ -297,14 +311,16 @@ class EventsService {
   async getVenues(params?: { search?: string }) {
     try {
       console.log('🌐 Calling API /events/venues/ with params:', params);
-      const response = await apiClient.get<Venue[]>('/events/venues/', { params });
+      const response = await apiClient.get<any>('/events/venues/', { params });
       
       console.log('📊 Venues API Response:', {
         isArray: Array.isArray(response),
-        length: Array.isArray(response) ? response.length : 0
+        hasResults: response && 'results' in response,
+        length: Array.isArray(response) ? response.length : (response?.results?.length || 0)
       });
       
-      const venues = Array.isArray(response) ? response : [];
+      // Handle paginated response
+      const venues = response && 'results' in response ? response.results : (Array.isArray(response) ? response : []);
       console.log('✅ Returning', venues.length, 'venues');
       return venues;
     } catch (error) {

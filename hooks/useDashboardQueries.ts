@@ -155,12 +155,16 @@ export function useActiveProjectsCount() {
 /**
  * Hook to fetch leaderboard with real-time project scores
  */
-export function useLeaderboard(limit: number = 10) {
+export function useLeaderboard(
+  limit: number = 10, 
+  timeRange: 'thisWeek' | 'thisMonth' | 'thisQuarter' | 'lastSixMonths' | 'thisYear' = 'thisMonth',
+  filter: 'individual' | 'team' | 'leaders' = 'individual'
+) {
   const { isAuthenticated } = useAuthStore();
 
   return useQuery({
-    queryKey: ['dashboard', 'leaderboard', limit],
-    queryFn: () => dashboardService.getLeaderboard(limit),
+    queryKey: ['dashboard', 'leaderboard', limit, timeRange, filter],
+    queryFn: () => dashboardService.getLeaderboard(limit, timeRange, filter),
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
@@ -170,12 +174,12 @@ export function useLeaderboard(limit: number = 10) {
 /**
  * Hook to fetch intern leaderboard (individual rankings)
  */
-export function useInternLeaderboard() {
+export function useInternLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly') {
   const { isAuthenticated } = useAuthStore();
 
   return useQuery({
-    queryKey: ['dashboard', 'intern-leaderboard'],
-    queryFn: () => dashboardService.getInternLeaderboard(),
+    queryKey: ['dashboard', 'intern-leaderboard', timeRange],
+    queryFn: () => dashboardService.getInternLeaderboard(timeRange),
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
@@ -185,12 +189,27 @@ export function useInternLeaderboard() {
 /**
  * Hook to fetch team leaderboard (aggregated by team)
  */
-export function useTeamLeaderboard() {
+export function useTeamLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly') {
   const { isAuthenticated } = useAuthStore();
 
   return useQuery({
-    queryKey: ['dashboard', 'team-leaderboard'],
-    queryFn: () => dashboardService.getTeamLeaderboard(),
+    queryKey: ['dashboard', 'team-leaderboard', timeRange],
+    queryFn: () => dashboardService.getTeamLeaderboard(timeRange),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+}
+
+/**
+ * Hook to fetch leaders leaderboard (team leaders only)
+ */
+export function useLeadersLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly') {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'leaders-leaderboard', timeRange],
+    queryFn: () => dashboardService.getLeadersLeaderboard(timeRange),
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
@@ -200,12 +219,12 @@ export function useTeamLeaderboard() {
 /**
  * Hook to fetch individual intern ranking
  */
-export function useIndividualInternRanking(userId: number) {
+export function useIndividualInternRanking(userId: number, timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly') {
   const { isAuthenticated } = useAuthStore();
 
   return useQuery({
-    queryKey: ['dashboard', 'intern-ranking', userId],
-    queryFn: () => dashboardService.getIndividualInternRanking(userId),
+    queryKey: ['dashboard', 'intern-ranking', userId, timeRange],
+    queryFn: () => dashboardService.getIndividualInternRanking(userId, timeRange),
     enabled: isAuthenticated && !!userId,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
@@ -213,7 +232,23 @@ export function useIndividualInternRanking(userId: number) {
 }
 
 /**
- * Hook to fetch real-time activities from multiple sources
+ * Hook to fetch activities from backend API (with fallback to aggregation)
+ */
+export function useBackendActivities(limit: number = 10) {
+  const { isAuthenticated } = useAuthStore();
+
+  return useQuery({
+    queryKey: ['dashboard', 'backend-activities', limit],
+    queryFn: () => dashboardService.getRecentActivitiesFromBackend(limit),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    retry: 1,
+  });
+}
+
+/**
+ * Hook to fetch real-time activities from multiple sources (fallback method)
+ * @deprecated Use useBackendActivities instead
  */
 export function useRealtimeActivities(limit: number = 10) {
   const { isAuthenticated } = useAuthStore();
