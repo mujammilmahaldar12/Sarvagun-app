@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,14 +17,16 @@ import {
 } from '@/hooks/useFinanceQueries';
 import { useEvents } from '@/hooks/useEventsQueries';
 import type { InvoiceItem } from '@/types/finance';
+import type { Event } from '@/types/events';
 import type { SelectOption } from '@/components/core/Select';
 
-const INVOICE_STATUS_OPTIONS: SelectOption[] = [
-  { label: 'Draft', value: 'draft' },
-  { label: 'Sent', value: 'sent' },
-  { label: 'Paid', value: 'paid' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
+// Form-specific type for invoice items with editable fields
+interface FormInvoiceItem {
+  particulars: string;
+  quantity: number;
+  unit_price?: number;
+  amount: number;
+}
 
 export default function AddInvoiceScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -41,48 +43,52 @@ export default function AddInvoiceScreen() {
   const [formData, setFormData] = useState({
     invoice_number: '',
     client_name: '',
-    client_email: '',
-    client_phone: '',
-    client_address: '',
     event: null as number | null,
-    invoice_date: '',
-    due_date: '',
-    status: 'draft' as 'draft' | 'sent' | 'paid' | 'cancelled',
+    date: '',
+    total_amount: 0,
+    discount: 0,
+    final_amount: 0,
+    cgst: '9',
+    sgst: '9',
     notes: '',
-    terms_conditions: '',
-    gst_percentage: '18',
   });
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [items, setItems] = useState<Partial<InvoiceItem>[]>([]);
+  const [items, setItems] = useState<FormInvoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Modal states
   const [showEventModal, setShowEventModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [eventSearchQuery, setEventSearchQuery] = useState('');
-  const [editingItem, setEditingItem] = useState<Partial<InvoiceItem> | null>(null);
+  const [editingItem, setEditingItem] = useState<FormInvoiceItem | null>(null);
   const [editingIndex, setEditingIndex] = useState(-1);
 
   // Load existing invoice data
   useEffect(() => {
     if (invoice && isEditMode) {
+      const eventData = typeof invoice.event === 'object' ? invoice.event : null;
       setFormData({
         invoice_number: invoice.invoice_number || '',
         client_name: invoice.client_name || '',
-        client_email: invoice.client_email || '',
-        client_phone: invoice.client_phone || '',
-        client_address: invoice.client_address || '',
-        event: invoice.event?.id || null,
-        invoice_date: invoice.invoice_date || '',
-        due_date: invoice.due_date || '',
-        status: invoice.status || 'draft',
-        notes: invoice.notes || '',
-        terms_conditions: invoice.terms_conditions || '',
-        gst_percentage: String(invoice.gst_percentage || 18),
+        event: typeof invoice.event === 'number' ? invoice.event : invoice.event?.id || null,
+        date: invoice.date || '',
+        total_amount: invoice.total_amount || 0,
+        discount: invoice.discount || 0,
+        final_amount: invoice.final_amount || 0,
+        cgst: invoice.cgst || '9',
+        sgst: invoice.sgst || '9',
+        notes: '',
       });
-      setSelectedEvent(invoice.event || null);
-      setItems(invoice.invoice_items || []);
+      setSelectedEvent(eventData);
+      // Convert InvoiceItem to FormInvoiceItem
+      const formItems: FormInvoiceItem[] = (invoice.items || []).map(item => ({
+        particulars: item.particulars,
+        quantity: Number(item.quantity) || 0,
+        unit_price: 0, // Not available in InvoiceItem, calculate from amount/quantity if needed
+        amount: item.amount
+      }));
+      setItems(formItems);
     }
   }, [invoice, isEditMode]);
 
@@ -103,9 +109,6 @@ export default function AddInvoiceScreen() {
     // Auto-fill client details from event
     if (event.client) {
       updateField('client_name', event.client.name);
-      updateField('client_email', event.client.email || '');
-      updateField('client_phone', event.client.phone || '');
-      updateField('client_address', event.client.address || '');
     }
     setShowEventModal(false);
     setEventSearchQuery('');
@@ -113,7 +116,7 @@ export default function AddInvoiceScreen() {
 
   const handleAddItem = () => {
     setEditingItem({
-      description: '',
+      particulars: '',
       quantity: 1,
       unit_price: 0,
       amount: 0,
@@ -129,7 +132,7 @@ export default function AddInvoiceScreen() {
   };
 
   const handleSaveItem = () => {
-    if (!editingItem?.description?.trim()) {
+    if (!editingItem?.particulars?.trim()) {
       Alert.alert('Error', 'Please enter item description');
       return;
     }
@@ -181,8 +184,10 @@ export default function AddInvoiceScreen() {
   }, [items]);
 
   const gstAmount = useMemo(() => {
-    return (subtotal * (Number(formData.gst_percentage) || 0)) / 100;
-  }, [subtotal, formData.gst_percentage]);
+    const cgst = (subtotal * (Number(formData.cgst) || 0)) / 100;
+    const sgst = (subtotal * (Number(formData.sgst) || 0)) / 100;
+    return cgst + sgst;
+  }, [subtotal, formData.cgst, formData.sgst]);
 
   const totalAmount = useMemo(() => {
     return subtotal + gstAmount;
@@ -198,12 +203,8 @@ export default function AddInvoiceScreen() {
       Alert.alert('Error', 'Please enter client name');
       return;
     }
-    if (!formData.invoice_date) {
+    if (!formData.date) {
       Alert.alert('Error', 'Please select invoice date');
-      return;
-    }
-    if (!formData.due_date) {
-      Alert.alert('Error', 'Please select due date');
       return;
     }
     if (items.length === 0) {
@@ -217,24 +218,17 @@ export default function AddInvoiceScreen() {
       const invoiceData = {
         invoice_number: formData.invoice_number,
         client_name: formData.client_name,
-        client_email: formData.client_email || null,
-        client_phone: formData.client_phone || null,
-        client_address: formData.client_address || null,
         event: formData.event,
-        invoice_date: formData.invoice_date,
-        due_date: formData.due_date,
-        subtotal,
-        gst_percentage: Number(formData.gst_percentage) || 0,
-        gst_amount: gstAmount,
-        total_amount: totalAmount,
-        paid_amount: 0,
-        status: formData.status,
-        notes: formData.notes || null,
-        terms_conditions: formData.terms_conditions || null,
-        invoice_items: items.map(item => ({
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
+        date: formData.date,
+        total_amount: subtotal,
+        discount: formData.discount,
+        final_amount: totalAmount,
+        cgst: formData.cgst,
+        sgst: formData.sgst,
+        items: items.map((item, index) => ({
+          sr_no: index + 1,
+          particulars: item.particulars,
+          quantity: String(item.quantity),
           amount: item.amount,
         })),
       };
@@ -346,69 +340,21 @@ export default function AddInvoiceScreen() {
         <View style={{ gap: 16 }}>
           <SectionHeader title="Invoice Details" />
           
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Invoice Number"
-                value={formData.invoice_number}
-                onChangeText={(text: string) => updateField('invoice_number', text)}
-                placeholder="INV-001"
-                required
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ gap: 8 }}>
-                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                  Status <Text style={{ color: '#EF4444' }}>*</Text>
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {INVOICE_STATUS_OPTIONS.map((option) => (
-                    <Pressable
-                      key={option.value}
-                      onPress={() => updateField('status', option.value)}
-                      style={({ pressed }) => ({
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 8,
-                        borderWidth: 1,
-                        borderColor: formData.status === option.value ? theme.primary : theme.border,
-                        backgroundColor: pressed
-                          ? theme.primary + '10'
-                          : formData.status === option.value
-                          ? theme.primary + '20'
-                          : theme.surface,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          ...getTypographyStyle('xs', formData.status === option.value ? 'semibold' : 'regular'),
-                          color: formData.status === option.value ? theme.primary : theme.text,
-                        }}
-                      >
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            </View>
-          </View>
+          <FormInput
+            label="Invoice Number"
+            value={formData.invoice_number}
+            onChangeText={(text: string) => updateField('invoice_number', text)}
+            placeholder="INV-001"
+            required
+          />
 
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <DatePickerInput
+              <DatePicker
                 label="Invoice Date"
-                value={formData.invoice_date}
-                onDateSelect={(date) => updateField('invoice_date', date)}
+                value={formData.date}
+                onChange={(date) => updateField('date', date)}
                 placeholder="Select invoice date"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <DatePickerInput
-                label="Due Date"
-                value={formData.due_date}
-                onDateSelect={(date) => updateField('due_date', date)}
-                placeholder="Select due date"
               />
             </View>
           </View>
@@ -421,12 +367,29 @@ export default function AddInvoiceScreen() {
             subtitle="Link this invoice to an event"
           />
           
-          <DropdownField
-            label="Select Event"
-            value={selectedEvent?.name || ''}
-            placeholder="Tap to select event (optional)"
-            onPress={() => setShowEventModal(true)}
-          />
+          <View style={{ gap: 4 }}>
+            <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary }]}>
+              Select Event
+            </Text>
+            <Pressable
+              onPress={() => setShowEventModal(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+                borderRadius: 8,
+                backgroundColor: theme.surface,
+              }}
+            >
+              <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedEvent?.name ? theme.text : theme.textSecondary }]}>
+                {selectedEvent?.name || 'Tap to select event (optional)'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+            </Pressable>
+          </View>
 
           {selectedEvent && (
             <View style={{
@@ -456,35 +419,6 @@ export default function AddInvoiceScreen() {
             onChangeText={(text: string) => updateField('client_name', text)}
             placeholder="Enter client name"
             required
-          />
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Email"
-                value={formData.client_email}
-                onChangeText={(text: string) => updateField('client_email', text)}
-                placeholder="client@example.com"
-                keyboardType="email-address"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FormInput
-                label="Phone"
-                value={formData.client_phone}
-                onChangeText={(text: string) => updateField('client_phone', text)}
-                placeholder="1234567890"
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
-
-          <FormInput
-            label="Address"
-            value={formData.client_address}
-            onChangeText={(text: string) => updateField('client_address', text)}
-            placeholder="Enter client address"
-            multiline
           />
         </View>
 
@@ -520,10 +454,10 @@ export default function AddInvoiceScreen() {
                 >
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                      {item.description}
+                      {item.particulars}
                     </Text>
                     <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                      Qty: {item.quantity} × ₹{Number(item.unit_price).toLocaleString('en-IN')} = ₹{Number(item.amount).toLocaleString('en-IN')}
+                      Qty: {item.quantity} × ₹{Number(item.unit_price || 0).toLocaleString('en-IN')} = ₹{Number(item.amount).toLocaleString('en-IN')}
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -546,7 +480,11 @@ export default function AddInvoiceScreen() {
               backgroundColor: theme.surface,
               borderRadius: 12,
               gap: 12,
-              ...designSystem.shadows.sm,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
@@ -559,7 +497,7 @@ export default function AddInvoiceScreen() {
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                  GST ({formData.gst_percentage}%)
+                  GST (CGST {formData.cgst}% + SGST {formData.sgst}%)
                 </Text>
                 <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
                   ₹{gstAmount.toLocaleString('en-IN')}
@@ -579,14 +517,26 @@ export default function AddInvoiceScreen() {
             </View>
           )}
 
-          <FormInput
-            label="GST Percentage"
-            value={formData.gst_percentage}
-            onChangeText={(text: string) => updateField('gst_percentage', text)}
-            placeholder="18"
-            keyboardType="numeric"
-            prefix="%"
-          />
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <FormInput
+                label="CGST %"
+                value={formData.cgst}
+                onChangeText={(text: string) => updateField('cgst', text)}
+                placeholder="9"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <FormInput
+                label="SGST %"
+                value={formData.sgst}
+                onChangeText={(text: string) => updateField('sgst', text)}
+                placeholder="9"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
         </View>
 
         {/* Additional Details */}
@@ -594,19 +544,12 @@ export default function AddInvoiceScreen() {
           <SectionHeader title="Additional Details (Optional)" />
           
           <FormInput
-            label="Notes"
-            value={formData.notes}
-            onChangeText={(text: string) => updateField('notes', text)}
-            placeholder="Add any notes for the client"
-            multiline
-          />
-
-          <FormInput
-            label="Terms & Conditions"
-            value={formData.terms_conditions}
-            onChangeText={(text: string) => updateField('terms_conditions', text)}
-            placeholder="Enter payment terms and conditions"
-            multiline
+            label="Discount"
+            value={String(formData.discount)}
+            onChangeText={(text: string) => updateField('discount', Number(text) || 0)}
+            placeholder="0"
+            keyboardType="numeric"
+            prefix="₹"
           />
         </View>
 
@@ -746,9 +689,9 @@ export default function AddInvoiceScreen() {
 
                 <FormInput
                   label="Description"
-                  value={editingItem?.description || ''}
+                  value={editingItem?.particulars || ''}
                   onChangeText={(text: string) => 
-                    setEditingItem({ ...editingItem, description: text })
+                    setEditingItem({ ...editingItem, particulars: text } as FormInvoiceItem)
                   }
                   placeholder="Enter item description"
                   multiline
@@ -761,7 +704,7 @@ export default function AddInvoiceScreen() {
                       label="Quantity"
                       value={String(editingItem?.quantity || '')}
                       onChangeText={(text: string) => 
-                        setEditingItem({ ...editingItem, quantity: Number(text) || 0 })
+                        setEditingItem({ ...editingItem, quantity: Number(text) || 0 } as FormInvoiceItem)
                       }
                       placeholder="1"
                       keyboardType="numeric"
@@ -773,7 +716,7 @@ export default function AddInvoiceScreen() {
                       label="Unit Price"
                       value={String(editingItem?.unit_price || '')}
                       onChangeText={(text: string) => 
-                        setEditingItem({ ...editingItem, unit_price: Number(text) || 0 })
+                        setEditingItem({ ...editingItem, unit_price: Number(text) || 0 } as FormInvoiceItem)
                       }
                       placeholder="0"
                       keyboardType="numeric"

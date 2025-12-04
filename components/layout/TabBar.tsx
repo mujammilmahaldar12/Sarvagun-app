@@ -1,115 +1,165 @@
 import React, { memo, useCallback } from 'react';
-import { View, ScrollView, Pressable, Text } from 'react-native';
+import { View, ScrollView, Pressable, Text, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
-import { designSystem, baseColors } from '@/constants/designSystem';
+import { designSystem } from '@/constants/designSystem';
 
 export interface Tab {
-  key: string;
+  key?: string;
+  id?: string;
   label: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  badge?: number;
 }
 
 interface TabBarProps {
   tabs: Tab[];
   activeTab: string;
   onTabChange: (tabKey: string) => void;
+  style?: any;
+  variant?: 'pill' | 'underline';
 }
 
 // Memoized tab item to prevent unnecessary re-renders
-const TabItem = memo(({ 
-  tab, 
-  isActive, 
-  onPress, 
-  theme, 
+const TabItem = memo(({
+  tab,
+  isActive,
+  onPress,
+  theme,
   isDark,
-  isLast 
-}: { 
-  tab: Tab; 
-  isActive: boolean; 
-  onPress: () => void; 
+  variant = 'pill',
+}: {
+  tab: Tab;
+  isActive: boolean;
+  onPress: () => void;
   theme: any;
   isDark: boolean;
-  isLast: boolean;
+  variant?: 'pill' | 'underline';
 }) => {
-  // Fixed contrast colors - Active tab always stands out
-  const colors = {
-    active: {
-      background: '#6D376D',  // Purple
-      text: '#FFFFFF',        // White
-      icon: '#FFFFFF',        // White
-      border: '#6D376D',      // Purple
-    },
-    inactive: {
-      background: isDark ? '#1F2937' : '#F3F4F6',  // Dark gray / Light gray
-      text: isDark ? '#9CA3AF' : '#374151',        // Light gray / Dark gray
-      icon: isDark ? '#6B7280' : '#6D376D',        // Gray / Purple
-      border: isDark ? '#374151' : '#E5E7EB',      // Border
-    }
-  }
+  // Premium subtle look
+  const activeBg = theme.primary + '15'; // 15% opacity primary
 
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+  if (variant === 'underline') {
+    return (
       <Pressable
         onPress={onPress}
         style={({ pressed }) => ({
-          paddingHorizontal: 20,
-          paddingVertical: 12,
-          borderRadius: 12,
-          backgroundColor: isActive ? colors.active.background : colors.inactive.background,
-          flexDirection: 'column',
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
           gap: 6,
-          minWidth: 90,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          borderBottomWidth: 2,
+          borderBottomColor: isActive ? theme.primary : 'transparent',
           opacity: pressed ? 0.7 : 1,
-          shadowColor: isActive ? '#6D376D' : '#000',
-          shadowOffset: { width: 0, height: isActive ? 4 : 2 },
-          shadowOpacity: isActive ? 0.3 : 0.1,
-          shadowRadius: isActive ? 8 : 3,
-          elevation: isActive ? 6 : 2,
-          borderWidth: isActive ? 0 : 1,
-          borderColor: colors.inactive.border,
         })}
       >
         {tab.icon && (
-          <View style={{
-            backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-            borderRadius: 20,
-            padding: isActive ? 6 : 0,
-          }}>
-            <Ionicons
-              name={tab.icon}
-              size={24}
-              color={isActive ? colors.active.icon : colors.inactive.icon}
-            />
-          </View>
+          <Ionicons
+            name={tab.icon}
+            size={18}
+            color={isActive ? theme.primary : theme.textSecondary}
+          />
         )}
         <Text
           style={{
-            color: isActive ? colors.active.text : colors.inactive.text,
-            fontSize: designSystem.typography.sizes.sm,
-            fontWeight: isActive ? '700' : '600',
-            textAlign: 'center',
+            fontSize: 14,
+            fontWeight: '600', // Match Finance module style
+            color: isActive ? theme.primary : theme.text,
           }}
         >
           {tab.label}
         </Text>
+        {tab.badge !== undefined && (
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 2,
+              borderRadius: 12,
+              minWidth: 24,
+              alignItems: 'center',
+              backgroundColor: isActive ? theme.primary : theme.textSecondary + '20',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '600',
+                color: isActive ? '#fff' : theme.textSecondary,
+              }}
+            >
+              {tab.badge}
+            </Text>
+          </View>
+        )}
       </Pressable>
-      {/* Vertical Divider */}
-      {!isLast && (
-        <View style={{
-          width: 1,
-          height: 40,
-          backgroundColor: isDark ? '#374151' : '#E5E7EB',
-          marginHorizontal: 8,
-        }} />
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16, // Adjusted padding
+        paddingVertical: 12, // Increased height
+        borderRadius: 12,
+        backgroundColor: isActive ? activeBg : 'transparent',
+        gap: 8,
+        opacity: pressed ? 0.7 : 1,
+        borderWidth: 1,
+        borderColor: isActive ? theme.primary : 'transparent',
+        minHeight: 48, // Fixed minimum height
+      })}
+    >
+      {tab.icon && (
+        <Ionicons
+          name={tab.icon}
+          size={20}
+          color={isActive ? theme.primary : (isDark ? '#9CA3AF' : '#6B7280')}
+          style={{ marginTop: -1 }}
+        />
       )}
-    </View>
+      <Text
+        style={{
+          color: isActive ? theme.primary : (isDark ? '#9CA3AF' : '#6B7280'),
+          fontSize: designSystem.typography.sizes.sm,
+          fontWeight: isActive ? '600' : '500',
+          textAlign: 'center',
+          includeFontPadding: false,
+          textAlignVertical: 'center',
+        }}
+      >
+        {tab.label}
+      </Text>
+      {tab.badge !== undefined && (
+        <View
+          style={{
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 10,
+            backgroundColor: isActive ? theme.primary : theme.textSecondary + '20',
+            marginLeft: 4,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: '600',
+              color: isActive ? '#fff' : theme.textSecondary,
+            }}
+          >
+            {tab.badge}
+          </Text>
+        </View>
+      )}
+    </Pressable>
   );
 });
 
-function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
+function TabBar({ tabs, activeTab, onTabChange, style, variant = 'pill' }: TabBarProps) {
   const { theme, isDark } = useTheme();
 
   const handleTabPress = useCallback((key: string) => {
@@ -117,32 +167,37 @@ function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
   }, [onTabChange]);
 
   return (
-    <View style={{ 
+    <View style={[{
       backgroundColor: theme.background,
-      paddingVertical: 12,
-    }}>
+      paddingVertical: variant === 'pill' ? 12 : 0,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#374151' : '#E5E7EB',
+    }, style]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ 
+        contentContainerStyle={{
+          flexDirection: 'row',
           paddingHorizontal: 16,
-          gap: 8,
+          gap: variant === 'pill' ? 12 : 0,
           alignItems: 'center',
-          justifyContent: 'center',
-          flexGrow: 1,
+          minWidth: '100%',
         }}
       >
-        {tabs.map((tab, index) => (
-          <TabItem
-            key={tab.key}
-            tab={tab}
-            isActive={activeTab === tab.key}
-            onPress={() => handleTabPress(tab.key)}
-            theme={theme}
-            isDark={isDark}
-            isLast={index === tabs.length - 1}
-          />
-        ))}
+        {tabs.map((tab) => {
+          const tabKey = tab.key || tab.id || tab.label;
+          return (
+            <TabItem
+              key={tabKey}
+              tab={{ ...tab, key: tabKey }}
+              isActive={activeTab === tabKey}
+              onPress={() => handleTabPress(tabKey)}
+              theme={theme}
+              isDark={isDark}
+              variant={variant}
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );

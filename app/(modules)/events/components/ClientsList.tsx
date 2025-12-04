@@ -22,6 +22,7 @@ interface ClientsListProps {
   searchQuery?: string;
   selectedCategory?: number;
   refreshing?: boolean;
+  headerComponent?: React.ReactNode;
 }
 
 interface ClientRowData {
@@ -40,11 +41,12 @@ const ClientsList: React.FC<ClientsListProps> = ({
   searchQuery = '',
   selectedCategory,
   refreshing = false,
+  headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  
+
   const {
     clients,
     categories,
@@ -105,11 +107,11 @@ const ClientsList: React.FC<ClientsListProps> = ({
 
   // Handle client actions
   const handleClientDetails = (clientId: number) => {
-    router.push(`/events/clients/${clientId}`);
+    router.push(`/(modules)/events/${clientId}?type=clients` as any);
   };
 
   const handleEditClient = (clientId: number) => {
-    router.push(`/events/add-client?clientId=${clientId}`);
+    router.push(`/(modules)/events/add-client?clientId=${clientId}` as any);
   };
 
   const handleDeleteClient = async (clientId: number) => {
@@ -156,14 +158,14 @@ const ClientsList: React.FC<ClientsListProps> = ({
 
   // Table configuration
   const columns = [
-    { 
-      key: 'name', 
-      title: 'Client Name', 
+    {
+      key: 'name',
+      title: 'Client Name',
       width: 150,
       sortable: true,
       render: (value: string, row: ClientRowData) => (
         <View>
-          <Text style={[styles.cellTextPrimary, { 
+          <Text style={[styles.cellTextPrimary, {
             color: row.isActive ? theme.text : theme.textSecondary,
             opacity: row.isActive ? 1 : 0.6
           }]} numberOfLines={1}>
@@ -177,9 +179,9 @@ const ClientsList: React.FC<ClientsListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'email', 
-      title: 'Contact', 
+    {
+      key: 'email',
+      title: 'Contact',
       width: 130,
       sortable: true,
       render: (value: string, row: ClientRowData) => (
@@ -195,9 +197,9 @@ const ClientsList: React.FC<ClientsListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'categories', 
-      title: 'Categories', 
+    {
+      key: 'categories',
+      title: 'Categories',
       width: 120,
       render: (value: string[], row: ClientRowData) => (
         <View style={styles.chipsContainer}>
@@ -223,9 +225,9 @@ const ClientsList: React.FC<ClientsListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'organisations', 
-      title: 'Organisation', 
+    {
+      key: 'organisations',
+      title: 'Organisation',
       width: 120,
       render: (value: string[]) => (
         <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={1}>
@@ -233,12 +235,12 @@ const ClientsList: React.FC<ClientsListProps> = ({
         </Text>
       ),
     },
-    { 
-      key: 'bookingsCount', 
-      title: 'Bookings', 
+    {
+      key: 'bookingsCount',
+      title: 'Bookings',
       width: 80,
       render: (value: number) => (
-        <Text style={[styles.cellTextSecondary, { 
+        <Text style={[styles.cellTextSecondary, {
           color: value > 0 ? designSystem.baseColors.success[600] : theme.textSecondary,
           fontWeight: value > 0 ? designSystem.typography.weights.medium : designSystem.typography.weights.regular
         }]}>
@@ -246,9 +248,9 @@ const ClientsList: React.FC<ClientsListProps> = ({
         </Text>
       ),
     },
-    { 
-      key: 'isActive', 
-      title: 'Status', 
+    {
+      key: 'isActive',
+      title: 'Status',
       width: 80,
       render: (value: boolean) => (
         <Chip
@@ -271,7 +273,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
             variant="secondary"
             size="small"
           />
-          
+
           {canEditClients && (
             <>
               <ActionButton
@@ -281,7 +283,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
                 variant="secondary"
                 size="small"
               />
-              
+
               <ActionButton
                 icon={row.isActive ? "pause-outline" : "play-outline"}
                 title={row.isActive ? "Deactivate" : "Activate"}
@@ -291,7 +293,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
               />
             </>
           )}
-          
+
           {canManageClients && (
             <ActionButton
               icon="trash-outline"
@@ -329,7 +331,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
   // Empty state
   if (processedClients.length === 0 && !loading) {
     const isFiltered = selectedCategory || searchQuery.trim() !== '';
-    
+
     return (
       <View style={[styles.centered, { backgroundColor: theme.background }]}>
         <EmptyState
@@ -341,7 +343,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
               : 'Add your first client to get started'
           }
           actionTitle={!isFiltered ? 'Add Client' : undefined}
-          onActionPress={!isFiltered ? () => router.push('/events/add-client') : undefined}
+          onActionPress={!isFiltered ? () => router.push('/(modules)/events/add-client' as any) : undefined}
         />
       </View>
     );
@@ -359,6 +361,9 @@ const ClientsList: React.FC<ClientsListProps> = ({
         searchable={true}
         searchPlaceholder="Search clients..."
         exportable={user?.category === 'admin' || user?.category === 'hr'}
+        paginated={true}
+        pageSize={20}
+        ListHeaderComponent={headerComponent}
       />
     </View>
   );

@@ -22,7 +22,10 @@ import {
   useUserCertifications, 
   useUserPerformance, 
   useUserGoals, 
-  useUserActivities 
+  useUserActivities,
+  useUserEducation,
+  useUserExperience,
+  useUserSocialLinks 
 } from '@/hooks/useHRQueries';
 import { 
   Avatar, 
@@ -40,15 +43,14 @@ import { Badge } from '@/components/core/Badge';
 import { ProfileStats } from '@/components/ui/ProfileStats';
 import { SkillsDisplay } from '@/components/ui/SkillsDisplay';
 import { CertificationCard } from '@/components/ui/CertificationCard';
+import { EducationCard } from '@/components/ui/EducationCard';
+import { ExperienceCard } from '@/components/ui/ExperienceCard';
 import { CollaborationTree } from '@/components/ui/CollaborationTree';
 import { spacing, borderRadius } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 import {
   calculateTenureMonths,
   formatTenure,
-  generateAttendancePercentage,
-  generateSkills,
-  generateCertifications,
 } from '@/utils/profileMockData';
 
 // Generate default bio based on user role
@@ -85,9 +87,13 @@ export default function MyProfileScreen() {
   const { data: userProjects = [], isLoading: projectsLoading } = useUserProjects(userId!);
   const { data: userSkills = [], isLoading: skillsLoading } = useUserSkills(userId!);
   const { data: userCertifications = [], isLoading: certificationsLoading } = useUserCertifications(userId!);
+  const { data: userEducation = [], isLoading: educationLoading } = useUserEducation(userId);
+  const { data: userExperience = [], isLoading: experienceLoading } = useUserExperience(userId);
+  const { data: userSocialLinks, isLoading: socialLinksLoading } = useUserSocialLinks(userId);
   const { data: userPerformance, isLoading: performanceLoading } = useUserPerformance(userId!);
   const { data: userGoals = [], isLoading: goalsLoading } = useUserGoals(userId!);
   const { data: userActivities = [], isLoading: activitiesLoading } = useUserActivities(userId!, 20);
+  const { data: attendanceData, isLoading: attendanceLoading } = useAttendancePercentage();
 
   // Calculate enhanced profile data
   const enhancedProfile = useMemo(() => {
@@ -98,13 +104,11 @@ export default function MyProfileScreen() {
     const joinDate = 'date_joined' in currentUser ? currentUser.date_joined : 
                      ('date_of_joining' in currentUser ? currentUser.date_of_joining : undefined);
     const tenureMonths = calculateTenureMonths(joinDate);
-    const attendance = generateAttendancePercentage(tenureMonths, currentUser.category);
     
-    // Use real API data or fallback to generated data
-    const skills = userSkills.length > 0 ? userSkills : 
-                   generateSkills(currentUser.category, tenureMonths, currentUser.designation);
-    const certifications = userCertifications.length > 0 ? userCertifications : 
-                          generateCertifications(currentUser.category, tenureMonths, joinDate);
+    // Use real API data only
+    const skills = userSkills;
+    const certifications = userCertifications;
+    const attendance = attendanceData?.percentage || 0;
 
     // Calculate team size (direct reports)
     const teamSize = teamMembers?.filter(
@@ -124,7 +128,7 @@ export default function MyProfileScreen() {
       bio: userBio || generateDefaultBio(currentUser),
       date_joined: joinDate,
     };
-  }, [profileData, user, teamMembers, userSkills, userCertifications]);
+  }, [profileData, user, teamMembers, userSkills, userCertifications, attendanceData]);
 
   // Calculate real project stats from API data
   const projectStats = useMemo(() => {
@@ -169,7 +173,7 @@ export default function MyProfileScreen() {
     );
   }
 
-  // Filter team data
+  // Filter real team data only
   const directReports = teamMembers?.filter(
     (member) => member.reports_to === enhancedProfile.id
   ) || [];
@@ -183,55 +187,14 @@ export default function MyProfileScreen() {
       member.reports_to !== enhancedProfile.id
   ) || [];
   
-  // Mock top management if manager exists (for hierarchy visualization)
-  const topManagement = manager ? {
-    id: 'ceo-001',
-    name: 'Rajesh Kumar',
-    designation: 'Chief Executive Officer',
-    department: 'Executive Management',
-    profile_picture: undefined,
-  } as any : undefined;
-
-  // Mock manager if none exists (for demo purposes)
-  const displayManager = manager || {
-    id: 'mgr-001',
-    name: 'Priya Sharma',
-    designation: 'Senior Manager',
-    department: 'Engineering',
-    profile_picture: undefined,
-  } as any;
-
-  // Mock team members if none exist (for demo purposes)
-  const displayTeamMembers = directReports.length > 0 ? directReports : [
-    {
-      id: 'tm-001',
-      name: 'Amit Patel',
-      designation: 'Software Developer',
-      department: 'Mobile Development',
-      profile_picture: undefined,
-    },
-    {
-      id: 'tm-002',
-      name: 'Sneha Gupta',
-      designation: 'UI/UX Designer',
-      department: 'Design',
-      profile_picture: undefined,
-    },
-    {
-      id: 'tm-003',
-      name: 'Rahul Singh',
-      designation: 'QA Engineer',
-      department: 'Quality Assurance',
-      profile_picture: undefined,
-    },
-  ] as any[];
+  // Check if we have any team data to display
+  const hasTeamData = !!manager || directReports.length > 0 || peers.length > 0;
 
   console.log('My Profile Data:', {
     hasManager: !!manager,
-    hasTopManagement: !!topManagement,
     directReportsCount: directReports.length,
     peersCount: peers.length,
-    displayTeamCount: displayTeamMembers.length,
+    hasTeamData,
     activeTab,
   });
 
@@ -291,9 +254,15 @@ export default function MyProfileScreen() {
             {enhancedProfile.full_name || 'User Name'}
           </Text>
           
-          <Text style={[styles.profileRole, { color: theme.textSecondary }]}>
-            {enhancedProfile.designation || 'Team Member'}
-          </Text>
+          {'headline' in enhancedProfile && enhancedProfile.headline ? (
+            <Text style={[styles.profileHeadline, { color: theme.primary }]}>
+              {enhancedProfile.headline}
+            </Text>
+          ) : (
+            <Text style={[styles.profileRole, { color: theme.textSecondary }]}>
+              {enhancedProfile.designation || 'Team Member'}
+            </Text>
+          )}
           
           <View style={styles.badgeRow}>
             {enhancedProfile.department && (
@@ -350,6 +319,8 @@ export default function MyProfileScreen() {
               { key: 'overview', label: 'Overview' },
               { key: 'skills', label: 'Skills' },
               { key: 'certifications', label: 'Certifications' },
+              { key: 'education', label: 'Education' },
+              { key: 'experience', label: 'Experience' },
               { key: 'team', label: 'Team' },
             ]}
             activeTab={activeTab}
@@ -361,113 +332,125 @@ export default function MyProfileScreen() {
         <View style={styles.tabContent}>
           {activeTab === 'overview' && (
             <View style={styles.tabPanel}>
-              {/* Performance Chart - NEW */}
+              {/* Performance Metrics */}
               <View style={styles.contentSection}>
-                <PerformanceChart
-                  title="Monthly Performance"
-                  subtitle="Last 6 months"
-                  data={[
-                    { label: 'Jul', value: 75 },
-                    { label: 'Aug', value: 82 },
-                    { label: 'Sep', value: 78 },
-                    { label: 'Oct', value: 88 },
-                    { label: 'Nov', value: 92 },
-                    { label: 'Dec', value: enhancedProfile.attendance_percentage },
-                  ]}
-                  color={moduleColors.projects.main}
-                />
+                {performanceLoading ? (
+                  <LoadingState />
+                ) : userPerformance ? (
+                  <Card style={styles.performanceCard}>
+                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: spacing.md }]}>
+                      Performance Metrics
+                    </Text>
+                    <View style={styles.performanceGrid}>
+                      {userPerformance.productivity_score !== undefined && (
+                        <View style={styles.metricBox}>
+                          <Ionicons name="trending-up" size={24} color={moduleColors.projects.main} />
+                          <Text style={[styles.metricValue, { color: theme.text }]}>
+                            {userPerformance.productivity_score}%
+                          </Text>
+                          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                            Productivity
+                          </Text>
+                        </View>
+                      )}
+                      {userPerformance.average_rating !== undefined && (
+                        <View style={styles.metricBox}>
+                          <Ionicons name="star" size={24} color={moduleColors.events.main} />
+                          <Text style={[styles.metricValue, { color: theme.text }]}>
+                            {userPerformance.average_rating.toFixed(1)}
+                          </Text>
+                          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                            Avg Rating
+                          </Text>
+                        </View>
+                      )}
+                      {attendanceData?.percentage !== undefined && (
+                        <View style={styles.metricBox}>
+                          <Ionicons name="calendar-outline" size={24} color={moduleColors.hr.main} />
+                          <Text style={[styles.metricValue, { color: theme.text }]}>
+                            {attendanceData.percentage.toFixed(0)}%
+                          </Text>
+                          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                            Attendance
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </Card>
+                ) : null}
               </View>
 
-              {/* Goals & OKRs - NEW */}
+              {/* Goals & OKRs - Real API Data */}
               <View style={styles.contentSection}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
                   Current Goals
                 </Text>
-                <View style={styles.goalsGrid}>
-                  <GoalCard
-                    title="Project Completion"
-                    description="Complete assigned projects on time"
-                    progress={Math.min((projectStats.projectsCompleted / 10) * 100, 100)}
-                    current={projectStats.projectsCompleted.toString()}
-                    target="10"
-                    color={moduleColors.projects.main}
-                    icon="briefcase"
-                    dueDate="Dec 31"
-                  />
-                  <GoalCard
-                    title="Task Excellence"
-                    description="Maintain high task completion rate"
-                    progress={Math.min((projectStats.tasksCompleted / 50) * 100, 100)}
-                    current={projectStats.tasksCompleted.toString()}
-                    target="50"
-                    color={moduleColors.finance.main}
-                    icon="checkmark-circle"
-                    dueDate="Dec 31"
-                  />
-                  <GoalCard
-                    title="Attendance Target"
-                    description="Maintain 95%+ attendance"
-                    progress={enhancedProfile.attendance_percentage}
-                    current={`${enhancedProfile.attendance_percentage.toFixed(0)}%`}
-                    target="95%"
-                    color={moduleColors.hr.main}
-                    icon="calendar"
-                  />
-                </View>
+                {goalsLoading ? (
+                  <LoadingState />
+                ) : userGoals.length > 0 ? (
+                  <View style={styles.goalsGrid}>
+                    {userGoals.slice(0, 6).map((goal: any) => (
+                      <GoalCard
+                        key={goal.id}
+                        title={goal.title}
+                        description={goal.description || ''}
+                        progress={goal.progress || 0}
+                        current={goal.current_value?.toString() || '0'}
+                        target={goal.target_value?.toString() || '100'}
+                        color={goal.category === 'personal' ? moduleColors.projects.main : 
+                               goal.category === 'quarterly' ? moduleColors.finance.main : 
+                               goal.category === 'team' ? moduleColors.events.main : 
+                               moduleColors.hr.main}
+                        icon={goal.category === 'personal' ? 'person' : 
+                              goal.category === 'quarterly' ? 'calendar' : 
+                              goal.category === 'team' ? 'people' : 'briefcase'}
+                        dueDate={goal.target_date ? new Date(goal.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <Card style={styles.emptyState}>
+                    <Ionicons name="flag-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      No goals set yet. Set goals to track your progress!
+                    </Text>
+                  </Card>
+                )}
               </View>
 
-              {/* Activity Timeline - NEW */}
+              {/* Activity Timeline - Real API Data */}
               <View style={styles.contentSection}>
-                <ActivityTimeline
-                  activities={[
-                    {
-                      id: '1',
-                      type: 'task',
-                      title: 'Task Completed',
-                      description: 'Finished UI redesign for dashboard module',
-                      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-                      icon: 'checkmark-circle',
-                      color: moduleColors.finance.main,
-                    },
-                    {
-                      id: '2',
-                      type: 'project',
-                      title: 'Project Milestone',
-                      description: 'Reached 75% completion on Q4 objectives',
-                      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                      icon: 'trophy',
-                      color: moduleColors.projects.main,
-                    },
-                    {
-                      id: '3',
-                      type: 'leave',
-                      title: 'Leave Approved',
-                      description: 'Casual leave for 2 days approved',
-                      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-                      icon: 'calendar-outline',
-                      color: moduleColors.leave.main,
-                    },
-                    {
-                      id: '4',
-                      type: 'achievement',
-                      title: 'Achievement Unlocked',
-                      description: 'Completed 100 tasks this quarter',
-                      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-                      icon: 'star',
-                      color: moduleColors.events.main,
-                    },
-                    {
-                      id: '5',
-                      type: 'meeting',
-                      title: 'Team Meeting',
-                      description: 'Attended quarterly review meeting',
-                      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                      icon: 'people',
-                      color: moduleColors.hr.main,
-                    },
-                  ]}
-                  maxItems={5}
-                />
+                {activitiesLoading ? (
+                  <LoadingState />
+                ) : userActivities.length > 0 ? (
+                  <ActivityTimeline
+                    activities={userActivities.map((activity: any) => ({
+                      id: activity.id?.toString() || Math.random().toString(),
+                      type: activity.type || activity.activity_type || 'task',
+                      title: activity.title || activity.action || 'Activity',
+                      description: activity.description || activity.message || '',
+                      timestamp: activity.timestamp || activity.created_at || new Date(),
+                      icon: activity.icon || (activity.type === 'task' ? 'checkmark-circle' : 
+                                             activity.type === 'project' ? 'briefcase' : 
+                                             activity.type === 'leave' ? 'calendar-outline' : 
+                                             activity.type === 'event' ? 'calendar' : 
+                                             activity.type === 'achievement' ? 'star' : 'flash'),
+                      color: activity.color || (activity.type === 'task' ? moduleColors.finance.main : 
+                                               activity.type === 'project' ? moduleColors.projects.main : 
+                                               activity.type === 'leave' ? moduleColors.leave.main : 
+                                               activity.type === 'event' ? moduleColors.events.main : 
+                                               moduleColors.hr.main),
+                    }))}
+                    maxItems={10}
+                  />
+                ) : (
+                  <Card style={styles.emptyState}>
+                    <Ionicons name="time-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      No recent activities to display
+                    </Text>
+                  </Card>
+                )}
               </View>
 
               {/* Performance Stats */}
@@ -558,10 +541,148 @@ export default function MyProfileScreen() {
                   {enhancedProfile.certifications.length} certification
                   {enhancedProfile.certifications.length !== 1 ? 's' : ''} earned
                 </Text>
-                {enhancedProfile.certifications.map((cert) => (
-                  <CertificationCard key={cert.id} certification={cert} />
-                ))}
+                {certificationsLoading ? (
+                  <LoadingState />
+                ) : enhancedProfile.certifications.length > 0 ? (
+                  enhancedProfile.certifications.map((cert) => (
+                    <CertificationCard key={cert.id} certification={cert} />
+                  ))
+                ) : (
+                  <Card style={styles.emptyState}>
+                    <Ionicons name="ribbon-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      No certifications added yet
+                    </Text>
+                  </Card>
+                )}
               </View>
+            </View>
+          )}
+
+          {activeTab === 'education' && (
+            <View style={styles.tabPanel}>
+              <View style={styles.contentSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Education & Academic Background
+                </Text>
+                <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+                  {userEducation.length} education record{userEducation.length !== 1 ? 's' : ''}
+                </Text>
+                {educationLoading ? (
+                  <LoadingState />
+                ) : userEducation.length > 0 ? (
+                  userEducation.map((edu: any) => (
+                    <EducationCard key={edu.id} education={edu} />
+                  ))
+                ) : (
+                  <Card style={styles.emptyState}>
+                    <Ionicons name="school-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      No education records added yet
+                    </Text>
+                  </Card>
+                )}
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'experience' && (
+            <View style={styles.tabPanel}>
+              <View style={styles.contentSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Work Experience & Career History
+                </Text>
+                <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+                  {userExperience.length} work experience record{userExperience.length !== 1 ? 's' : ''}
+                </Text>
+                {experienceLoading ? (
+                  <LoadingState />
+                ) : userExperience.length > 0 ? (
+                  userExperience.map((exp: any) => (
+                    <ExperienceCard key={exp.id} experience={exp} />
+                  ))
+                ) : (
+                  <Card style={styles.emptyState}>
+                    <Ionicons name="briefcase-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      No work experience added yet
+                    </Text>
+                  </Card>
+                )}
+              </View>
+
+              {/* Social Links Section */}
+              {userSocialLinks && Object.keys(userSocialLinks).some(key => 
+                key !== 'id' && key !== 'user' && userSocialLinks[key as keyof typeof userSocialLinks]
+              ) && (
+                <View style={styles.contentSection}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                    Professional Links
+                  </Text>
+                  <Card style={styles.socialLinksCard}>
+                    {userSocialLinks.linkedin && (
+                      <Pressable 
+                        style={styles.socialLinkRow}
+                        onPress={() => console.log('Open LinkedIn:', userSocialLinks.linkedin)}
+                      >
+                        <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
+                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                          LinkedIn
+                        </Text>
+                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                      </Pressable>
+                    )}
+                    {userSocialLinks.github && (
+                      <Pressable 
+                        style={styles.socialLinkRow}
+                        onPress={() => console.log('Open GitHub:', userSocialLinks.github)}
+                      >
+                        <Ionicons name="logo-github" size={24} color={isDark ? '#FFF' : '#000'} />
+                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                          GitHub
+                        </Text>
+                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                      </Pressable>
+                    )}
+                    {userSocialLinks.portfolio && (
+                      <Pressable 
+                        style={styles.socialLinkRow}
+                        onPress={() => console.log('Open Portfolio:', userSocialLinks.portfolio)}
+                      >
+                        <Ionicons name="briefcase-outline" size={24} color={theme.primary} />
+                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                          Portfolio
+                        </Text>
+                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                      </Pressable>
+                    )}
+                    {userSocialLinks.twitter && (
+                      <Pressable 
+                        style={styles.socialLinkRow}
+                        onPress={() => console.log('Open Twitter:', userSocialLinks.twitter)}
+                      >
+                        <Ionicons name="logo-twitter" size={24} color="#1DA1F2" />
+                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                          Twitter
+                        </Text>
+                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                      </Pressable>
+                    )}
+                    {userSocialLinks.website && (
+                      <Pressable 
+                        style={styles.socialLinkRow}
+                        onPress={() => console.log('Open Website:', userSocialLinks.website)}
+                      >
+                        <Ionicons name="globe-outline" size={24} color={theme.primary} />
+                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                          Website
+                        </Text>
+                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                      </Pressable>
+                    )}
+                  </Card>
+                </View>
+              )}
             </View>
           )}
 
@@ -571,16 +692,32 @@ export default function MyProfileScreen() {
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
                   Team & Collaboration
                 </Text>
-                <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
-                  Organizational hierarchy and reporting structure
-                </Text>
-                <CollaborationTree
-                  currentUser={enhancedProfile as any}
-                  manager={displayManager}
-                  teamMembers={displayTeamMembers}
-                  peers={peers}
-                  topManagement={topManagement}
-                />
+                {teamLoading ? (
+                  <LoadingState />
+                ) : hasTeamData ? (
+                  <>
+                    <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+                      Organizational hierarchy and reporting structure
+                    </Text>
+                    <CollaborationTree
+                      currentUser={enhancedProfile as any}
+                      manager={manager}
+                      teamMembers={directReports}
+                      peers={peers}
+                      topManagement={undefined}
+                    />
+                  </>
+                ) : (
+                  <Card style={styles.emptyState}>
+                    <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      No team hierarchy data available
+                    </Text>
+                    <Text style={[styles.emptyStateSubtext, { color: theme.textSecondary }]}>
+                      Team relationships will appear here when configured
+                    </Text>
+                  </Card>
+                )}
               </View>
             </View>
           )}
@@ -644,6 +781,11 @@ const styles = StyleSheet.create({
   },
   profileRole: {
     ...getTypographyStyle('sm', 'medium'),
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  profileHeadline: {
+    ...getTypographyStyle('sm', 'semibold'),
     marginTop: spacing.xs,
     textAlign: 'center',
   },
@@ -737,5 +879,54 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     ...getTypographyStyle('base', 'semibold'),
+  },
+  emptyState: {
+    padding: spacing['3xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  emptyStateText: {
+    ...getTypographyStyle('base', 'medium'),
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    ...getTypographyStyle('sm', 'regular'),
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  performanceCard: {
+    padding: spacing.lg,
+  },
+  performanceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    justifyContent: 'space-around',
+  },
+  metricBox: {
+    alignItems: 'center',
+    minWidth: 100,
+    gap: spacing.xs,
+  },
+  metricValue: {
+    ...getTypographyStyle('2xl', 'bold'),
+  },
+  metricLabel: {
+    ...getTypographyStyle('xs', 'medium'),
+  },
+  socialLinksCard: {
+    padding: spacing.sm,
+  },
+  socialLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    gap: spacing.base,
+  },
+  socialLinkText: {
+    ...getTypographyStyle('base', 'medium'),
+    flex: 1,
   },
 });

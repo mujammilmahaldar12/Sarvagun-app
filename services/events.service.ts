@@ -25,29 +25,31 @@ import type {
 // Enhanced service with React Query support
 class EventsService {
   // ==================== LEADS ====================
-  
+
   /**
    * Get all leads with pagination support
    */
-  async getLeads(params?: { 
-    status?: string; 
-    search?: string; 
+  async getLeads(params?: {
+    status?: string;
+    search?: string;
     company?: string;
     created_date?: string;
     page?: number;
     page_size?: number;
+    start_date?: string;
+    end_date?: string;
   }) {
     try {
       console.log('🌐 Calling API /events/leads/ with params:', params);
       const response = await apiClient.get<any>('/events/leads/', { params });
-      
+
       console.log('📊 Leads API Response:', {
         responseType: typeof response,
         hasResults: response && 'results' in response,
         count: response?.count,
         resultsLength: response?.results?.length
       });
-      
+
       // Return paginated response with metadata
       if (response && 'results' in response) {
         return {
@@ -57,7 +59,7 @@ class EventsService {
           previous: response.previous || null,
         };
       }
-      
+
       // Fallback for non-paginated responses
       const results = Array.isArray(response) ? response : [];
       return { results, count: results.length, next: null, previous: null };
@@ -156,9 +158,9 @@ class EventsService {
    * Reject a lead
    */
   async rejectLead(leadId: number, reason?: string) {
-    return await apiClient.patch<Lead>(`/events/leads/${leadId}/`, { 
+    return await apiClient.patch<Lead>(`/events/leads/${leadId}/`, {
       reject: true,
-      message: reason 
+      message: reason
     });
   }
 
@@ -170,13 +172,13 @@ class EventsService {
   }
 
   // ==================== EVENTS ====================
-  
+
   /**
    * Get all events with pagination support
    */
-  async getEvents(params?: { 
-    status?: string; 
-    search?: string; 
+  async getEvents(params?: {
+    status?: string;
+    search?: string;
     company?: string;
     start_date?: string;
     end_date?: string;
@@ -186,7 +188,7 @@ class EventsService {
     try {
       console.log('🌐 Calling API /events/events/ with params:', params);
       const response = await apiClient.get<any>('/events/events/', { params });
-      
+
       console.log('📊 Events API Response (after apiClient processing):', {
         responseType: typeof response,
         isArray: Array.isArray(response),
@@ -194,7 +196,7 @@ class EventsService {
         length: Array.isArray(response) ? response.length : (response?.results?.length || 0),
         firstItem: Array.isArray(response) && response.length > 0 ? response[0] : null
       });
-      
+
       // Handle paginated response
       const events = response && 'results' in response ? response.results : (Array.isArray(response) ? response : []);
       console.log('✅ Returning', events.length, 'events');
@@ -250,7 +252,7 @@ class EventsService {
   }
 
   // ==================== CLIENTS ====================
-  
+
   /**
    * Get all clients
    */
@@ -258,13 +260,13 @@ class EventsService {
     try {
       console.log('🌐 Calling API /events/clients/ with params:', params);
       const response = await apiClient.get<any>('/events/clients/', { params });
-      
+
       console.log('📊 Clients API Response:', {
         isArray: Array.isArray(response),
         hasResults: response && 'results' in response,
         length: Array.isArray(response) ? response.length : (response?.results?.length || 0)
       });
-      
+
       // Handle paginated response
       const clients = response && 'results' in response ? response.results : (Array.isArray(response) ? response : []);
       console.log('✅ Returning', clients.length, 'clients');
@@ -304,7 +306,7 @@ class EventsService {
   }
 
   // ==================== VENUES ====================
-  
+
   /**
    * Get all venues
    */
@@ -312,13 +314,13 @@ class EventsService {
     try {
       console.log('🌐 Calling API /events/venues/ with params:', params);
       const response = await apiClient.get<any>('/events/venues/', { params });
-      
+
       console.log('📊 Venues API Response:', {
         isArray: Array.isArray(response),
         hasResults: response && 'results' in response,
         length: Array.isArray(response) ? response.length : (response?.results?.length || 0)
       });
-      
+
       // Handle paginated response
       const venues = response && 'results' in response ? response.results : (Array.isArray(response) ? response : []);
       console.log('✅ Returning', venues.length, 'venues');
@@ -358,7 +360,7 @@ class EventsService {
   }
 
   // ==================== REFERENCE DATA ====================
-  
+
   /**
    * Get all client categories (alias for React Query)
    */
@@ -369,15 +371,30 @@ class EventsService {
   /**
    * Get all client categories (B2B, B2C, B2G)
    */
+  /**
+   * Get all client categories (B2B, B2C, B2G)
+   */
   async getClientCategories() {
-    return await apiClient.get<ClientCategory[]>('/events/client-categories/');
+    try {
+      const response = await apiClient.get<any>('/events/client-categories/');
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching client categories:', error);
+      return [];
+    }
   }
 
   /**
    * Get all organisations
    */
   async getOrganisations(params?: { search?: string }) {
-    return await apiClient.get<Organisation[]>('/events/organisations/', { params });
+    try {
+      const response = await apiClient.get<any>('/events/organisations/', { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching organisations:', error);
+      return [];
+    }
   }
 
   /**
@@ -420,7 +437,7 @@ class EventsService {
       }
 
       return await apiClient.post<EventVendor>(
-        `/events/events/${eventId}/vendors/`, 
+        `/events/events/${eventId}/vendors/`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -583,9 +600,12 @@ class EventsService {
   /**
    * Get sales records for an event
    */
+  /**
+   * Get sales records for an event
+   */
   async getEventSales(eventId: number) {
     try {
-      const response = await apiClient.get<any>(`/finance/sales/?event=${eventId}`);
+      const response = await apiClient.get<any>(`/finance_management/sales/?event=${eventId}`);
       return Array.isArray(response) ? response : response?.results || [];
     } catch (error) {
       console.error('Error fetching event sales:', error);
@@ -598,7 +618,7 @@ class EventsService {
    */
   async getEventExpenses(eventId: number) {
     try {
-      const response = await apiClient.get<any>(`/finance/expenses/?event=${eventId}`);
+      const response = await apiClient.get<any>(`/finance_management/expenses/?event=${eventId}`);
       return Array.isArray(response) ? response : response?.results || [];
     } catch (error) {
       console.error('Error fetching event expenses:', error);
@@ -611,7 +631,7 @@ class EventsService {
    */
   async getEventFinanceSummary(eventId: number) {
     try {
-      return await apiClient.get<any>(`/finance/events/${eventId}/summary/`);
+      return await apiClient.get<any>(`/finance_management/events/${eventId}/summary/`);
     } catch (error) {
       console.error('Error fetching finance summary:', error);
       // Return fallback summary

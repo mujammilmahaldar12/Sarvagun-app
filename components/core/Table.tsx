@@ -60,6 +60,9 @@ export interface TableProps<T = any> {
   // Style
   maxHeight?: number;
   refreshControl?: React.ReactElement<any>;
+
+  // Custom Header
+  ListHeaderComponent?: React.ReactNode;
 }
 
 export const Table = <T extends any>({
@@ -87,6 +90,7 @@ export const Table = <T extends any>({
   searchPlaceholder = 'Search...',
   maxHeight = 600,
   refreshControl,
+  ListHeaderComponent,
 }: TableProps<T>) => {
   const { colors } = useThemeStore();
 
@@ -97,6 +101,10 @@ export const Table = <T extends any>({
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [editingCell, setEditingCell] = useState<{ rowKey: string | number; columnKey: string } | null>(null);
+
+  // Refs for synced scrolling
+  const headerScrollViewRef = useRef<ScrollView>(null);
+  const bodyScrollViewRef = useRef<ScrollView>(null);
 
   // Filter data
   const filteredData = useMemo(() => {
@@ -188,26 +196,6 @@ export const Table = <T extends any>({
     }
     setSelectedRows(newSelection);
     onSelectionChange?.(newSelection);
-  };
-
-  // Export to CSV (simplified - shows data in Alert)
-  const exportToCSV = async () => {
-    const headers = columns.map((col) => col.title).join(',');
-    const rows = sortedData.map((item) =>
-      columns.map((col) => {
-        const value = (item as any)[col.key];
-        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
-      }).join(',')
-    );
-    const csv = [headers, ...rows].join('\n');
-
-    // Show preview in Alert (or you can install expo-sharing later)
-    Alert.alert(
-      'Export CSV',
-      'CSV export requires expo-sharing package. Preview:\n\n' + csv.substring(0, 200) + '...',
-      [{ text: 'OK' }]
-    );
-    onExport?.('csv');
   };
 
   // Render cell
@@ -306,70 +294,100 @@ export const Table = <T extends any>({
     );
   };
 
-  // Debug logging to track data flow
-  React.useEffect(() => {
-    console.log('📊 TABLE RENDER:', {
-      dataLength: data.length,
-      filteredLength: filteredData.length,
-      sortedLength: sortedData.length,
-      paginatedLength: paginatedData.length,
-      loading,
-      searchQuery,
-      paginated,
-      pageSize,
-      currentPage,
-    });
-  }, [data, filteredData, sortedData, paginatedData, loading, searchQuery]);
+  // Sync scroll handlers
+  const isHeaderScrolling = useRef(false);
+  const isBodyScrolling = useRef(false);
+  const syncTimeout = useRef<any>(null);
+
+  const handleHeaderScroll = (event: any) => {
+    if (isBodyScrolling.current) return;
+
+    isHeaderScrolling.current = true;
+    const x = event.nativeEvent.contentOffset.x;
+    bodyScrollViewRef.current?.scrollTo({ x, animated: false });
+
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
+    syncTimeout.current = setTimeout(() => {
+      isHeaderScrolling.current = false;
+    }, 50);
+  };
+
+  const handleBodyScroll = (event: any) => {
+    if (isHeaderScrolling.current) return;
+
+    isBodyScrolling.current = true;
+    const x = event.nativeEvent.contentOffset.x;
+    headerScrollViewRef.current?.scrollTo({ x, animated: false });
+
+    if (syncTimeout.current) clearTimeout(syncTimeout.current);
+    syncTimeout.current = setTimeout(() => {
+      isBodyScrolling.current = false;
+    }, 50);
+  };
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Toolbar - Search Only */}
-      {searchable && (
-        <View style={{ padding: spacing[2], paddingBottom: spacing[2], backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: borderRadius.full, paddingHorizontal: spacing[3], borderWidth: 1, borderColor: colors.border, height: 48 }}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
-            <TextInput
-              placeholder={searchPlaceholder}
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                onSearch?.(text);
-              }}
-              style={{ flex: 1, paddingVertical: spacing[2], paddingHorizontal: spacing[2], color: colors.text, fontSize: typography.sizes.sm }}
-            />
-            {searchQuery ? (
-              <Pressable onPress={() => {
-                setSearchQuery('');
-                onSearch?.('');
-              }}>
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-              </Pressable>
-            ) : null}
+    <ScrollView
+      style={{ flex: 1 }}
+      stickyHeaderIndices={[1]} // Make the search bar and header sticky (index 1 because index 0 is ListHeaderComponent)
+      refreshControl={refreshControl}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+    >
+      {/* 0. ListHeaderComponent (Tabs) - Scrolls away */}
+      <View>
+        {ListHeaderComponent}
+      </View>
+
+      {/* 1. Sticky Header Container (Search + Column Headers) */}
+      <View style={{ backgroundColor: colors.background, zIndex: 100 }}>
+        {/* Toolbar - Search Only */}
+        {searchable && (
+          <View style={{ padding: spacing[2], paddingBottom: spacing[2], backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: borderRadius.full, paddingHorizontal: spacing[3], borderWidth: 1, borderColor: colors.border, height: 48 }}>
+              <Ionicons name="search" size={20} color={colors.textSecondary} />
+              <TextInput
+                placeholder={searchPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  onSearch?.(text);
+                }}
+                style={{ flex: 1, paddingVertical: spacing[2], paddingHorizontal: spacing[2], color: colors.text, fontSize: typography.sizes.sm }}
+              />
+              {searchQuery ? (
+                <Pressable onPress={() => {
+                  setSearchQuery('');
+                  onSearch?.('');
+                }}>
+                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Selection Info */}
-      {selectable && selectedRows.size > 0 && (
-        <View style={{ backgroundColor: `${colors.primary}20`, padding: spacing[2], flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: colors.primary, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold }}>
-            {selectedRows.size} selected
-          </Text>
-          <Pressable onPress={() => { setSelectedRows(new Set()); onSelectionChange?.(new Set()); }}>
-            <Text style={{ color: colors.primary, fontSize: typography.sizes.sm }}>Clear</Text>
-          </Pressable>
-        </View>
-      )}
+        {/* Selection Info */}
+        {selectable && selectedRows.size > 0 && (
+          <View style={{ backgroundColor: `${colors.primary}20`, padding: spacing[2], flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ color: colors.primary, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold }}>
+              {selectedRows.size} selected
+            </Text>
+            <Pressable onPress={() => { setSelectedRows(new Set()); onSelectionChange?.(new Set()); }}>
+              <Text style={{ color: colors.primary, fontSize: typography.sizes.sm }}>Clear</Text>
+            </Pressable>
+          </View>
+        )}
 
-      {/* Table Body */}
-      <ScrollView
-        horizontal
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsHorizontalScrollIndicator={true}
-      >
-        <View>
-          {/* Header */}
+        {/* Column Headers - Horizontal Scroll */}
+        <ScrollView
+          ref={headerScrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={handleHeaderScroll}
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
           <View
             style={{
               flexDirection: 'row',
@@ -429,37 +447,41 @@ export const Table = <T extends any>({
               </Pressable>
             ))}
           </View>
+        </ScrollView>
+      </View>
 
-          {/* Body */}
+      {/* 2. Body - Horizontal Scroll (Synced) */}
+      <ScrollView
+        ref={bodyScrollViewRef}
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        scrollEventThrottle={16}
+        onScroll={handleBodyScroll}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <View>
           {loading ? (
             <View style={{ padding: spacing[8], alignItems: 'center', width: '100%' }}>
               <Text style={{ color: colors.textSecondary }}>Loading...</Text>
             </View>
           ) : (
-            <FlatList
-              data={paginatedData}
-              keyExtractor={(item, index) => String(keyExtractor(item, index))}
-              renderItem={({ item, index }) => <TableRow item={item} index={index} />}
-              ListEmptyComponent={
+            <View style={{ minHeight: 200 }}>
+              {paginatedData.length === 0 ? (
                 <View style={{ padding: spacing[8], alignItems: 'center', width: '100%' }}>
                   <Ionicons name="folder-open-outline" size={64} color={colors.textSecondary} />
                   <Text style={{ color: colors.textSecondary, marginTop: spacing[2] }}>{emptyMessage}</Text>
                 </View>
-              }
-              scrollEnabled={true}
-              refreshControl={refreshControl}
-              contentContainerStyle={{ flexGrow: 1 }}
-              style={{ minHeight: 200, flex: 1 }}
-              removeClippedSubviews={false}
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-            />
+              ) : (
+                paginatedData.map((item, index) => (
+                  <TableRow key={String(keyExtractor(item, index))} item={item} index={index} />
+                ))
+              )}
+            </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Pagination */}
+      {/* Pagination Controls */}
       {paginated && totalPages > 1 && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: spacing[3], gap: spacing[2], backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>
           <Pressable onPress={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
@@ -473,7 +495,7 @@ export const Table = <T extends any>({
           </Pressable>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 };
 

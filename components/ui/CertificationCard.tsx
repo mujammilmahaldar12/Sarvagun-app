@@ -74,21 +74,30 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
         <View style={styles.header}>
           <View style={[styles.iconContainer, { backgroundColor: theme.primary + '15' }]}>
             <Ionicons 
-              name="ribbon-outline" 
+              name={certification.certificate_type === 'company_issued' ? 'shield-checkmark-outline' : 'ribbon-outline'} 
               size={24} 
               color={isExpired ? theme.textSecondary : theme.primary} 
             />
           </View>
           <View style={styles.headerContent}>
-            <Text 
-              style={[
-                styles.title, 
-                { color: isExpired ? theme.textSecondary : theme.text }
-              ]}
-              numberOfLines={2}
-            >
-              {certification.title}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text 
+                style={[
+                  styles.title, 
+                  { color: isExpired ? theme.textSecondary : theme.text }
+                ]}
+                numberOfLines={2}
+              >
+                {certification.title}
+              </Text>
+              {certification.certificate_type === 'company_issued' && (
+                <View style={[styles.typeBadge, { backgroundColor: '#6D376D' + '20' }]}>
+                  <Text style={[styles.typeBadgeText, { color: '#6D376D' }]}>
+                    Company
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.issuer, { color: theme.textSecondary }]}>
               {certification.issued_by}
             </Text>
@@ -141,8 +150,8 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
           {getValidityBadge()}
         </View>
 
-        {/* Credential ID */}
-        {certification.credential_id && (
+        {/* Credential ID or Verification Code */}
+        {certification.certificate_type === 'external' && certification.credential_id && (
           <View style={[styles.credentialContainer, { backgroundColor: theme.surfaceElevated }]}>
             <Text style={[styles.credentialLabel, { color: theme.textSecondary }]}>
               Credential ID:
@@ -154,6 +163,49 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
               {certification.credential_id}
             </Text>
           </View>
+        )}
+
+        {certification.certificate_type === 'company_issued' && certification.verification_code && (
+          <View style={[styles.credentialContainer, { backgroundColor: '#6D376D' + '10' }]}>
+            <Ionicons name="shield-checkmark" size={16} color="#6D376D" />
+            <Text style={[styles.credentialLabel, { color: '#6D376D' }]}>
+              Verification:
+            </Text>
+            <Text 
+              style={[styles.credentialId, { color: '#6D376D', fontWeight: '600' }]}
+              selectable
+            >
+              {certification.verification_code}
+            </Text>
+          </View>
+        )}
+
+        {/* View Certificate Button for Company-Issued */}
+        {certification.certificate_type === 'company_issued' && certification.generated_certificate_url && (
+          <Pressable 
+            style={[styles.viewCertButton, { backgroundColor: theme.primary }]}
+            onPress={() => {
+              // TODO: Open certificate viewer modal or download
+              console.log('View certificate:', certification.generated_certificate_url);
+            }}
+          >
+            <Ionicons name="document-text-outline" size={18} color="#FFF" />
+            <Text style={styles.viewCertButtonText}>View Certificate</Text>
+          </Pressable>
+        )}
+
+        {/* Credential URL for External */}
+        {certification.certificate_type === 'external' && certification.credential_url && (
+          <Pressable 
+            style={[styles.viewCertButton, { backgroundColor: theme.primary + '15', borderWidth: 1, borderColor: theme.primary }]}
+            onPress={() => {
+              // TODO: Open URL
+              console.log('Open URL:', certification.credential_url);
+            }}
+          >
+            <Ionicons name="link-outline" size={18} color={theme.primary} />
+            <Text style={[styles.viewCertButtonText, { color: theme.primary }]}>Verify Credential</Text>
+          </Pressable>
         )}
       </Card>
       </View>
@@ -245,5 +297,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'monospace',
     flex: 1,
+  },
+  viewCertButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  viewCertButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

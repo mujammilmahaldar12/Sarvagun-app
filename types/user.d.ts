@@ -40,8 +40,12 @@ export interface User {
   
   // Enhanced profile fields
   bio?: string;
+  headline?: string; // Professional headline/tagline
   skills?: Skill[];
   certifications?: Certification[];
+  education?: Education[];
+  work_experience?: WorkExperience[];
+  social_links?: SocialLink;
   attendance_percentage?: number;
   team_size?: number; // Number of team members if team lead/manager
   
@@ -71,9 +75,100 @@ export interface Certification {
   issued_by: string; // Organization/Company
   issue_date: string; // ISO date
   expiry_date?: string; // ISO date, optional for non-expiring certs
+  description?: string;
+  
+  // Type indicator
+  certificate_type: 'external' | 'company_issued';
+  
+  // External certifications
   credential_id?: string;
   credential_url?: string;
+  certificate_file?: string; // URL to uploaded file
+  
+  // Company-issued certificates
+  verification_code?: string;
+  generated_certificate_url?: string; // URL to generated PDF
+  issued_by_admin?: number;
+  issued_by_admin_name?: string;
+  related_module?: string;
+  related_module_id?: number;
+  
+  // Helper
+  is_expired?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Education interface
+export interface Education {
+  id: string;
+  institution: string;
+  degree: 'high_school' | 'diploma' | 'associate' | 'bachelor' | 'master' | 'doctorate' | 'certification' | 'other';
+  field_of_study: string;
+  start_date: string; // ISO date
+  end_date?: string; // ISO date, null if currently studying
+  grade?: string;
   description?: string;
+  is_current?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Work Experience interface
+export interface WorkExperience {
+  id: string;
+  company: string;
+  position: string;
+  employment_type: 'full_time' | 'part_time' | 'contract' | 'freelance' | 'internship';
+  location?: string;
+  start_date: string; // ISO date
+  end_date?: string; // ISO date, null if currently working
+  description: string;
+  is_current?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Resume Upload interface
+export interface ResumeUpload {
+  id: string;
+  resume_file: string; // URL
+  extraction_status: 'pending' | 'processing' | 'completed' | 'failed';
+  extracted_data?: {
+    skills?: Partial<Skill>[];
+    education?: Partial<Education>[];
+    experience?: Partial<WorkExperience>[];
+    certifications?: Partial<Certification>[];
+  };
+  error_message?: string;
+  uploaded_at: string;
+  processed_at?: string;
+}
+
+// Social Links interface
+export interface SocialLink {
+  id: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  twitter?: string;
+  website?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Goal Report interface
+export interface GoalReport {
+  id: string;
+  goal_id: number;
+  goal_title: string;
+  report_period_start: string;
+  report_period_end: string;
+  report_html: string;
+  report_pdf?: string; // URL
+  generated_at: string;
+  generated_by?: number;
+  generated_by_name?: string;
 }
 
 // Authentication types

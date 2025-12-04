@@ -21,6 +21,7 @@ interface EventsListProps {
   searchQuery?: string;
   selectedStatus?: string;
   refreshing?: boolean;
+  headerComponent?: React.ReactNode;
 }
 
 interface EventRowData {
@@ -39,12 +40,13 @@ const EventsList: React.FC<EventsListProps> = ({
   searchQuery = '',
   selectedStatus = 'all',
   refreshing = false,
+  headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const { canEditEvents, canManageEvents } = usePermissions();
-  
+
   const {
     events,
     loading,
@@ -70,7 +72,7 @@ const EventsList: React.FC<EventsListProps> = ({
       userId: user?.id,
       userCategory: user?.category
     });
-    
+
     if (!Array.isArray(events)) {
       console.log('⚠️ Events is not an array:', typeof events, events);
       return [];
@@ -170,100 +172,100 @@ const EventsList: React.FC<EventsListProps> = ({
 
   // Table configuration - Optimized columns with fixed widths
   const columns: TableColumn<EventRowData>[] = [
-    { 
-      key: 'clientName', 
-      title: 'Client', 
+    {
+      key: 'clientName',
+      title: 'Client',
       width: 110,
       sortable: true,
       render: (value: string) => (
-        <Text 
-          style={[styles.cellText, { 
+        <Text
+          style={[styles.cellText, {
             color: theme.text,
-            fontSize: designSystem.typography.sizes.sm 
-          }]} 
-          numberOfLines={1} 
+            fontSize: designSystem.typography.sizes.sm
+          }]}
+          numberOfLines={1}
           ellipsizeMode="tail"
         >
           {value || 'N/A'}
         </Text>
       ),
     },
-    { 
-      key: 'startDate', 
-      title: 'Start', 
+    {
+      key: 'startDate',
+      title: 'Start',
       width: 90,
       sortable: true,
       render: (value: string) => (
-        <Text 
-          style={[styles.cellText, { 
+        <Text
+          style={[styles.cellText, {
             color: theme.text,
             fontSize: 11,
-            fontWeight: designSystem.typography.weights.medium 
-          }]} 
+            fontWeight: designSystem.typography.weights.medium
+          }]}
           numberOfLines={1}
         >
           {value || 'N/A'}
         </Text>
       ),
     },
-    { 
-      key: 'endDate', 
-      title: 'End', 
+    {
+      key: 'endDate',
+      title: 'End',
       width: 90,
       sortable: true,
       render: (value: string) => (
-        <Text 
-          style={[styles.cellText, { 
+        <Text
+          style={[styles.cellText, {
             color: theme.text,
             fontSize: 11,
-            fontWeight: designSystem.typography.weights.medium 
-          }]} 
+            fontWeight: designSystem.typography.weights.medium
+          }]}
           numberOfLines={1}
         >
           {value || 'N/A'}
         </Text>
       ),
     },
-    { 
-      key: 'venue', 
-      title: 'Venue', 
+    {
+      key: 'venue',
+      title: 'Venue',
       width: 110,
       sortable: true,
       render: (value: string) => (
-        <Text 
-          style={[styles.cellText, { 
+        <Text
+          style={[styles.cellText, {
             color: theme.text,
-            fontSize: designSystem.typography.sizes.sm 
-          }]} 
-          numberOfLines={1} 
+            fontSize: designSystem.typography.sizes.sm
+          }]}
+          numberOfLines={1}
           ellipsizeMode="tail"
         >
           {value || 'TBD'}
         </Text>
       ),
     },
-    { 
-      key: 'status', 
-      title: 'Status', 
+    {
+      key: 'status',
+      title: 'Status',
       width: 100,
       sortable: true,
       render: (value: string, row: EventRowData) => (
-        <Badge 
+        <Badge
           label={value || 'planned'}
           status={value as any}
           size="sm"
         />
       ),
     },
-    { 
-      key: 'budget', 
-      title: 'Budget', 
+    {
+      key: 'budget',
+      title: 'Budget',
       width: 100,
       sortable: true,
       align: 'right' as const,
       render: (value: number) => (
-        <Text 
-          style={[styles.cellText, { 
+        <Text
+          style={[styles.cellText, {
             color: value > 0 ? designSystem.baseColors.success[600] : theme.textSecondary,
             fontWeight: value > 0 ? designSystem.typography.weights.medium : designSystem.typography.weights.regular,
             fontSize: designSystem.typography.sizes.xs,
@@ -288,7 +290,7 @@ const EventsList: React.FC<EventsListProps> = ({
             variant="ghost"
             size="sm"
           />
-          
+
           {canEditEvents && (
             <Button
               title=""
@@ -329,7 +331,7 @@ const EventsList: React.FC<EventsListProps> = ({
   // Empty state
   if (processedEvents.length === 0 && !loading) {
     const isFiltered = selectedStatus !== 'all' || searchQuery.trim() !== '';
-    
+
     return (
       <View style={[styles.centered, { backgroundColor: theme.background }]}>
         <EmptyState
@@ -357,7 +359,9 @@ const EventsList: React.FC<EventsListProps> = ({
         searchable={true}
         searchPlaceholder="Search events..."
         exportable={user?.category === 'admin' || user?.category === 'hr'}
-        pageSize={100}
+        paginated={true}
+        pageSize={20}
+        ListHeaderComponent={headerComponent}
       />
     </View>
   );

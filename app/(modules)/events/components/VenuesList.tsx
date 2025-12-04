@@ -19,6 +19,7 @@ import type { Venue } from '@/types/events';
 interface VenuesListProps {
   searchQuery?: string;
   refreshing?: boolean;
+  headerComponent?: React.ReactNode;
 }
 
 interface VenueRowData {
@@ -36,11 +37,12 @@ interface VenueRowData {
 const VenuesList: React.FC<VenuesListProps> = ({
   searchQuery = '',
   refreshing = false,
+  headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  
+
   const {
     venues,
     loading,
@@ -90,11 +92,11 @@ const VenuesList: React.FC<VenuesListProps> = ({
 
   // Handle venue actions
   const handleVenueDetails = (venueId: number) => {
-    router.push(`/events/venues/${venueId}`);
+    router.push(`/(modules)/events/${venueId}?type=venues` as any);
   };
 
   const handleEditVenue = (venueId: number) => {
-    router.push(`/events/add-venue?venueId=${venueId}`);
+    router.push(`/(modules)/events/add-venue?venueId=${venueId}` as any);
   };
 
   const handleDeleteVenue = async (venueId: number) => {
@@ -131,9 +133,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
 
   // Table configuration
   const columns = [
-    { 
-      key: 'name', 
-      title: 'Venue Name', 
+    {
+      key: 'name',
+      title: 'Venue Name',
       width: 140,
       sortable: true,
       render: (value: string, row: VenueRowData) => (
@@ -149,9 +151,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'address', 
-      title: 'Location', 
+    {
+      key: 'address',
+      title: 'Location',
       width: 150,
       sortable: true,
       render: (value: string) => (
@@ -160,13 +162,13 @@ const VenuesList: React.FC<VenuesListProps> = ({
         </Text>
       ),
     },
-    { 
-      key: 'capacity', 
-      title: 'Capacity', 
+    {
+      key: 'capacity',
+      title: 'Capacity',
       width: 80,
       sortable: true,
       render: (value?: number) => (
-        <Text style={[styles.cellTextSecondary, { 
+        <Text style={[styles.cellTextSecondary, {
           color: value && value > 0 ? theme.text : theme.textSecondary,
           fontWeight: value && value > 0 ? designSystem.typography.weights.medium : designSystem.typography.weights.regular
         }]}>
@@ -174,9 +176,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
         </Text>
       ),
     },
-    { 
-      key: 'contactPerson', 
-      title: 'Contact', 
+    {
+      key: 'contactPerson',
+      title: 'Contact',
       width: 120,
       render: (value: string | undefined, row: VenueRowData) => (
         <View>
@@ -198,9 +200,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'facilities', 
-      title: 'Facilities', 
+    {
+      key: 'facilities',
+      title: 'Facilities',
       width: 120,
       render: (value: string | undefined, row: VenueRowData) => {
         if (!value) {
@@ -210,14 +212,14 @@ const VenuesList: React.FC<VenuesListProps> = ({
             </Text>
           );
         }
-        
+
         const facilities = value.split(',').map(f => f.trim()).slice(0, 2);
         return (
           <View>
             {facilities.map((facility, index) => (
-              <Text 
+              <Text
                 key={`${row.id}-facility-${index}-${facility}`}
-                style={[styles.cellTextSecondary, { color: theme.textSecondary }]} 
+                style={[styles.cellTextSecondary, { color: theme.textSecondary }]}
                 numberOfLines={1}
               >
                 {facility}
@@ -245,7 +247,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
             variant="secondary"
             size="small"
           />
-          
+
           {canEdit && (
             <ActionButton
               icon="create-outline"
@@ -255,7 +257,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
               size="small"
             />
           )}
-          
+
           {canManage && (
             <ActionButton
               icon="trash-outline"
@@ -295,7 +297,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
   // Empty state
   if (processedVenues.length === 0 && !loading) {
     const isFiltered = searchQuery.trim() !== '';
-    
+
     return (
       <View style={[styles.centered, { backgroundColor: theme.background }]}>
         <EmptyState
@@ -309,9 +311,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
           action={
             !isFiltered
               ? {
-                  label: 'Add Venue',
-                  onPress: () => router.push('/events/add-venue'),
-                }
+                label: 'Add Venue',
+                onPress: () => router.push('/(modules)/events/add-venue' as any),
+              }
               : undefined
           }
         />
@@ -331,6 +333,9 @@ const VenuesList: React.FC<VenuesListProps> = ({
         searchable={true}
         searchPlaceholder="Search venues..."
         exportable={user?.category === 'admin' || user?.category === 'hr'}
+        paginated={true}
+        pageSize={20}
+        ListHeaderComponent={headerComponent}
       />
     </View>
   );

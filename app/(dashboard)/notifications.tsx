@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { Avatar, AnimatedPressable, Card, Badge, Button } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
@@ -40,30 +41,29 @@ const NotificationIcon = ({ type, isRead }: { type: NotificationType; isRead: bo
       case 'mention':
         return { name: 'at-circle' as const, color: '#6366F1' };
       case 'task':
-        return { name: 'checkmark-circle' as const, color: '#8B5CF6' };
+        return { name: 'checkmark-circle' as const, color: '#10B981' };
       case 'success':
         return { name: 'checkmark-circle' as const, color: '#10B981' };
       case 'warning':
-        return { name: 'warning' as const, color: '#F59E0B' };
+        return { name: 'alert-circle' as const, color: '#F59E0B' };
       case 'error':
         return { name: 'close-circle' as const, color: '#EF4444' };
       case 'event':
         return { name: 'calendar' as const, color: '#3B82F6' };
       case 'leave':
-        return { name: 'time' as const, color: '#A855F7' };
+        return { name: 'airplane' as const, color: '#A855F7' };
       case 'project':
         return { name: 'briefcase' as const, color: '#4F46E5' };
       default:
-        return { name: 'information-circle' as const, color: '#6B7280' };
+        return { name: 'notifications' as const, color: '#6B7280' };
     }
   };
 
   const { name, color } = getIconConfig();
 
   return (
-    <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-      <Ionicons name={name} size={24} color={color} />
-      {!isRead && <View style={styles.unreadDot} />}
+    <View style={[styles.iconContainer, { backgroundColor: color + '12' }]}>
+      <Ionicons name={name} size={20} color={color} />
     </View>
   );
 };
@@ -73,7 +73,7 @@ const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: {
   onPress: () => void;
   onMarkAsRead: () => void;
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   
   const timeAgo = (() => {
     try {
@@ -84,59 +84,68 @@ const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: {
   })();
 
   return (
-    <Card
+    <AnimatedPressable
       onPress={onPress}
-      variant="elevated"
-      shadow="sm"
-      padding="base"
-      animated={true}
-      style={!notification.is_read ? { backgroundColor: theme.primary + '08' } : undefined}
+      springConfig="smooth"
+      hapticType="light"
     >
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <NotificationIcon type={notification.type} isRead={notification.is_read} />
-        
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
+      <View style={[
+        styles.notificationCard,
+        notification.is_read && styles.readNotification
+      ]}>
+        <View style={styles.cardContent}>
+          <NotificationIcon type={notification.type} isRead={notification.is_read} />
+          
+          <View style={{ flex: 1 }}>
             <Text 
-              style={[
-                { 
-                  fontSize: 14, 
-                  fontWeight: !notification.is_read ? '700' : '600',
-                  color: theme.text,
-                  flex: 1,
-                  marginRight: spacing.xs,
-                }
-              ]} 
-              numberOfLines={1}
+              style={{ 
+                fontSize: 14, 
+                fontWeight: notification.is_read ? '500' : '600',
+                color: notification.is_read ? theme.textSecondary : theme.text,
+                lineHeight: 19,
+                marginBottom: 3,
+              }} 
+              numberOfLines={2}
             >
               {notification.title}
             </Text>
-            {!notification.is_read && (
-              <Badge variant="dot" size="sm" color={theme.primary} />
+            
+            {notification.message && (
+              <Text 
+                style={{ 
+                  fontSize: 13, 
+                  color: theme.textSecondary,
+                  lineHeight: 18,
+                  marginBottom: 8,
+                }} 
+                numberOfLines={2}
+              >
+                {notification.message}
+              </Text>
             )}
-          </View>
-          
-          <Text 
-            style={{ 
-              fontSize: 13, 
-              color: theme.textSecondary,
-              lineHeight: 18,
-              marginBottom: spacing.xs,
-            }} 
-            numberOfLines={2}
-          >
-            {notification.message}
-          </Text>
-          
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
-            <Text style={{ fontSize: 12, color: theme.textSecondary }}>
-              {timeAgo}
-            </Text>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text 
+                style={{ 
+                  fontSize: 11, 
+                  color: theme.textTertiary,
+                }}
+              >
+                {timeAgo}{notification.user_name && ` • ${notification.user_name}`}
+              </Text>
+              {!notification.is_read && (
+                <View style={{ 
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: theme.primary,
+                }} />
+              )}
+            </View>
           </View>
         </View>
       </View>
-    </Card>
+    </AnimatedPressable>
   );
 };
 
@@ -159,14 +168,14 @@ export default function NotificationsScreen() {
   // Transform API data to match our interface
   const notifications: NotificationItem[] = notificationsData.map((n: any) => ({
     id: n.id,
-    type: (n.type || 'info') as NotificationType,
-    title: n.title || 'Notification',
-    message: n.message || n.content || '',
-    created_at: n.created_at || n.timestamp || new Date().toISOString(),
-    is_read: n.is_read || n.read || false,
-    avatar: n.avatar,
-    user_name: n.user_name || n.sender_name,
-    action_url: n.action_url || n.url,
+    type: (n.notification?.type_name || n.type || 'info') as NotificationType,
+    title: n.notification?.title || 'Notification',
+    message: n.notification?.message || '',
+    created_at: n.notification?.created_at || new Date().toISOString(),
+    is_read: n.read !== undefined ? n.read : false,
+    avatar: n.actor_avatar || n.avatar,
+    user_name: n.actor_name || n.user_name || n.sender_name,
+    action_url: n.notification?.url || n.action_url,
   }));
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -204,55 +213,48 @@ export default function NotificationsScreen() {
       />
 
       {/* Header */}
-      <LinearGradient
-        colors={isDark ? ['#1F2937', '#111827'] : [theme.primary + '10', theme.background]}
-        style={styles.header}
-      >
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
         <View style={styles.headerContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
             {unreadCount > 0 && (
-              <Badge 
-                label={unreadCount.toString()} 
-                variant="filled" 
-                size="sm" 
-                color={theme.primary}
-              />
+              <View style={{ backgroundColor: theme.primary, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>{unreadCount}</Text>
+              </View>
             )}
           </View>
           
-          {unreadCount > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <AnimatedPressable
-              onPress={handleMarkAllAsRead}
+              onPress={() => setFilter('all')}
               hapticType="light"
-              springConfig="bouncy"
+              style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: filter === 'all' ? theme.primary + '15' : 'transparent' }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.primary }}>
-                Mark all read
+              <Text style={{ fontSize: 13, fontWeight: '600', color: filter === 'all' ? theme.primary : theme.textSecondary }}>
+                All
               </Text>
             </AnimatedPressable>
-          )}
+            <AnimatedPressable
+              onPress={() => setFilter('unread')}
+              hapticType="light"
+              style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: filter === 'unread' ? theme.primary + '15' : 'transparent' }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: filter === 'unread' ? theme.primary : theme.textSecondary }}>
+                Unread
+              </Text>
+            </AnimatedPressable>
+            {unreadCount > 0 && (
+              <AnimatedPressable
+                onPress={handleMarkAllAsRead}
+                hapticType="light"
+                style={{ paddingVertical: 4, paddingHorizontal: 6 }}
+              >
+                <Ionicons name="checkmark-done" size={18} color={theme.primary} />
+              </AnimatedPressable>
+            )}
+          </View>
         </View>
-
-        {/* Filter Tabs */}
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Button
-            title="All"
-            variant={filter === 'all' ? 'primary' : 'outline'}
-            size="sm"
-            onPress={() => setFilter('all')}
-            style={{ flex: 1 }}
-          />
-          
-          <Button
-            title={`Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
-            variant={filter === 'unread' ? 'primary' : 'outline'}
-            size="sm"
-            onPress={() => setFilter('unread')}
-            style={{ flex: 1 }}
-          />
-        </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -274,13 +276,17 @@ export default function NotificationsScreen() {
           </View>
         ) : notifications.length > 0 ? (
           <View style={styles.notificationsList}>
-            {notifications.map((notification) => (
-              <NotificationItemComponent
+            {notifications.map((notification, index) => (
+              <Animated.View
                 key={notification.id}
-                notification={notification}
-                onPress={() => handleNotificationPress(notification)}
-                onMarkAsRead={() => handleMarkAsRead(notification.id)}
-              />
+                entering={FadeInDown.delay(index * 50).springify()}
+              >
+                <NotificationItemComponent
+                  notification={notification}
+                  onPress={() => handleNotificationPress(notification)}
+                  onMarkAsRead={() => handleMarkAsRead(notification.id)}
+                />
+              </Animated.View>
             ))}
           </View>
         ) : (
@@ -309,46 +315,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
-    paddingBottom: spacing.base,
-    paddingHorizontal: spacing.lg,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 54,
+    paddingBottom: 16,
+    paddingHorizontal: 18,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.base,
   },
   headerTitle: {
-    ...getTypographyStyle('2xl', 'bold'),
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
   },
   notificationsList: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.base,
-    gap: spacing.sm,
+    paddingHorizontal: 0,
+  },
+  notificationWrapper: {
+    marginBottom: 0,
+  },
+  notificationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#6366F1',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  readNotification: {
+    backgroundColor: '#F9FAFB',
+    borderLeftColor: '#D1D5DB',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    padding: 16,
+    alignItems: 'flex-start',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.lg,
-    justifyContent: 'center',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
-    position: 'relative',
+    justifyContent: 'center',
+    marginRight: 14,
+    flexShrink: 0,
   },
-  unreadDot: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#EF4444',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
+
   emptyState: {
     flex: 1,
     justifyContent: 'center',

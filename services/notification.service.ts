@@ -14,14 +14,14 @@ import {
 } from '@/types/notification';
 
 const NOTIFICATION_ENDPOINTS = {
-  LIST: '/notifications/',
-  DETAIL: (id: number) => `/notifications/${id}/`,
-  MARK_READ: (id: number) => `/notifications/${id}/mark-read/`,
-  MARK_ALL_READ: '/notifications/mark-all-read/',
-  DELETE: (id: number) => `/notifications/${id}/`,
-  DELETE_ALL: '/notifications/delete-all/',
-  STATS: '/notifications/stats/',
-  PREFERENCES: '/notifications/preferences/',
+  LIST: '/core/notifications/',
+  DETAIL: (id: number) => `/core/notifications/${id}/`,
+  MARK_READ: (id: number) => `/core/notifications/${id}/mark-read/`,
+  MARK_ALL_READ: '/core/notifications/mark-all-read/',
+  DELETE: (id: number) => `/core/notifications/${id}/`,
+  DELETE_ALL: '/core/notifications/delete-all/',
+  STATS: '/core/notifications/stats/',
+  PREFERENCES: '/core/notifications/preferences/',
 };
 
 class NotificationService {

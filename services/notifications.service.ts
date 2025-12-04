@@ -61,22 +61,9 @@ class NotificationService {
       if (filters?.page_size) params.append('page_size', filters.page_size.toString());
       
       const url = `/core/notifications/${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await apiClient.get<any>(url);
-      console.log('✅ Notification Service: Fetched notifications response:', response);
-      
-      // Handle both array and paginated response
-      if (Array.isArray(response)) {
-        return response;
-      }
-      if (response?.results && Array.isArray(response.results)) {
-        return response.results;
-      }
-      if ((response as any)?.data) {
-        const data = (response as any).data;
-        if (Array.isArray(data)) return data;
-        if (data?.results) return data.results;
-      }
-      return [];
+      const response = await apiClient.get<NotificationData[]>(url);
+      console.log('✅ Notification Service: Fetched notifications:', response?.length || 0);
+      return Array.isArray(response) ? response : (response as any)?.data || [];
     } catch (error: any) {
       // Silently handle missing backend endpoint
       if (error?.response?.status === 404 || error?.code === 'ERR_NETWORK') {

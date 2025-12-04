@@ -14,7 +14,6 @@ import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleH
 import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard, useBackendActivities } from '@/hooks/useDashboardQueries';
 import { formatDistanceToNow } from 'date-fns';
 import { useAttendancePercentage } from '@/hooks/useHRQueries';
-import { useUnreadCount } from '@/hooks/useNotificationQueries';
 
 // Medal colors for leaderboard
 const MEDAL_COLORS = {
@@ -95,7 +94,7 @@ export default function HomeScreen() {
   const { mutate: refreshDashboard, isPending: isRefreshing } = useRefreshDashboard();
   const { data: attendanceData, isLoading: attendanceLoading } = useAttendancePercentage();
 
-  const { data: notificationCount = 0 } = useUnreadCount();
+  const [notificationCount] = useState(0);
   
   // Use auth store user as fallback
   const currentUser = user;
@@ -526,69 +525,54 @@ export default function HomeScreen() {
                   springConfig="gentle"
                   animateOnMount={true}
                 >
-                  <View style={[
-                    styles.leaderboardItemCard,
-                    {
-                      backgroundColor: isTopThree 
-                        ? (isDark ? 'rgba(255,215,0,0.08)' : 'rgba(255,215,0,0.05)')
-                        : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'),
-                      marginBottom: index < leaderboardData.length - 1 ? spacing.sm : 0,
-                    }
-                  ]}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 14,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderRadius: 12,
+                    marginBottom: index < leaderboardData.length - 1 ? 8 : 0,
+                    borderLeftWidth: 3,
+                    borderLeftColor: isTopThree ? rankColor : 'transparent',
+                  }}>
                   
-                  <View style={styles.leaderRankContainer}>
-                    <View style={[
-                      styles.leaderRankBadge,
-                      { backgroundColor: rankColor + (isTopThree ? '20' : '10') }
-                    ]}>
-                      {isTopThree ? (
-                        <Ionicons name={getRankIcon(leader.rank)} size={iconSizes.md} color={rankColor} />
-                      ) : (
-                        <Text style={[styles.leaderRankText, { color: rankColor }]}>
-                          {leader.rank}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
+                  <Text style={{ 
+                    fontSize: 18, 
+                    fontWeight: '700', 
+                    color: isTopThree ? rankColor : theme.textSecondary,
+                    width: 32,
+                    textAlign: 'center',
+                  }}>
+                    {isTopThree ? (
+                      leader.rank === 1 ? '🥇' : leader.rank === 2 ? '🥈' : '🥉'
+                    ) : (
+                      leader.rank
+                    )}
+                  </Text>
 
                   <Avatar
-                    size={48}
+                    size={44}
                     source={leader.photo ? { uri: leader.photo } : undefined}
                     name={leader.name}
-                    onlineStatus={leader.isOnline}
                   />
 
-                  <View style={styles.leaderInfo}>
-                    <Text style={[styles.leaderName, { color: theme.text }]} numberOfLines={1}>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 }} numberOfLines={1}>
                       {leader.name}
                     </Text>
-                    <View style={styles.leaderStats}>
-                      <View style={styles.leaderStatItem}>
-                        <Ionicons name="checkmark-circle-outline" size={iconSizes.xs} color={theme.success} />
-                        <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
-                          {leader.completed_tasks || 0} completed
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                        {leader.completed_tasks || 0} tasks
+                      </Text>
+                      <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: theme.textTertiary }} />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFD700' }}>
+                          {leader.total_stars_received || leader.score || 0}
                         </Text>
-                      </View>
-                      <View style={styles.leaderStatDot} />
-                      <View style={styles.leaderStatItem}>
-                        <Ionicons name="star" size={iconSizes.xs} color="#FFD700" />
-                        <Text style={[styles.leaderStatText, { color: theme.textSecondary }]}>
-                          {leader.avg_rating ? leader.avg_rating.toFixed(1) : '0.0'} avg
-                        </Text>
+                        <Ionicons name="star" size={14} color="#FFD700" />
                       </View>
                     </View>
                   </View>
-
-                  <View style={styles.leaderScore}>
-                    <Text style={[styles.leaderScoreValue, { color: theme.primary }]}>
-                      {leader.total_stars_received || leader.score || 0}
-                    </Text>
-                    <Text style={[styles.leaderScoreLabel, { color: theme.textSecondary }]}>
-                      ★
-                    </Text>
-                  </View>
-
-                  <Ionicons name="chevron-forward" size={iconSizes.sm} color={theme.textSecondary} />
                   </View>
                 </AnimatedPressable>
               );
@@ -989,21 +973,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: borderRadius.lg,
   },
-  leaderRankContainer: {
-    width: 40,
-    alignItems: 'center',
-  },
-  leaderRankBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  leaderRankText: {
-    ...getTypographyStyle('sm', 'bold'),
-  },
+
   // Quick Actions Styles
   quickActionsRow: {
     flexDirection: 'row',
@@ -1027,41 +997,5 @@ const styles = StyleSheet.create({
   quickActionSubtitle: {
     ...getTypographyStyle('xs', 'regular'),
   },
-  leaderInfo: {
-    flex: 1,
-    marginLeft: spacing.sm,
-  },
-  leaderName: {
-    ...getTypographyStyle('base', 'semibold'),
-    marginBottom: spacing.xs,
-  },
-  leaderStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  leaderStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  leaderStatText: {
-    ...getTypographyStyle('xs', 'regular'),
-  },
-  leaderStatDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: baseColors.neutral[300],
-  },
-  leaderScore: {
-    alignItems: 'flex-end',
-    marginRight: spacing.sm,
-  },
-  leaderScoreValue: {
-    ...getTypographyStyle('xl', 'bold'),
-  },
-  leaderScoreLabel: {
-    ...getTypographyStyle('xs', 'regular'),
-  },
+
 });

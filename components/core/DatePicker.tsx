@@ -27,7 +27,7 @@ interface DatePickerProps {
   format?: 'short' | 'long' | 'full';
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({
+export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
   label,
   value,
   onChange,
@@ -39,6 +39,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   required = false,
   disabled = false,
   format = 'long',
+  inline = false,
 }) => {
   const { colors } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -65,6 +66,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   const handleSelect = (date: Date) => {
     setSelectedDate(date);
+    if (inline) {
+      onChange?.(date);
+      onDateChange?.(date);
+    }
   };
 
   const handleConfirm = () => {
@@ -79,6 +84,52 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     setSelectedDate(value || null);
     setIsOpen(false);
   };
+
+  if (inline) {
+    return (
+      <View style={{ marginBottom: spacing[4] }}>
+        {label && (
+          <Text
+            style={{
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.semibold,
+              color: colors.text,
+              marginBottom: spacing[2],
+            }}
+          >
+            {label}
+            {required && <Text style={{ color: colors.error }}> *</Text>}
+          </Text>
+        )}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: 'hidden',
+        }}>
+          <Calendar
+            selectedDate={selectedDate}
+            onSelectDate={handleSelect}
+            minDate={minDate}
+            maxDate={maxDate}
+          />
+        </View>
+        {error && (
+          <Text
+            style={{
+              fontSize: typography.sizes.xs,
+              color: colors.error,
+              marginTop: spacing[1],
+              marginLeft: spacing[1],
+            }}
+          >
+            {error}
+          </Text>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={{ marginBottom: spacing[4] }}>

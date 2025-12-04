@@ -21,6 +21,7 @@ import type { Lead, Client } from '@/types/events';
 
 interface EventsAnalyticsProps {
   refreshing?: boolean;
+  headerComponent?: React.ReactNode;
 }
 
 interface AnalyticsData {
@@ -42,17 +43,18 @@ interface AnalyticsData {
   offlineLeads: number;
 }
 
-const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({ 
-  refreshing = false 
+const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
+  refreshing = false,
+  headerComponent
 }) => {
   const { theme, spacing } = useTheme();
   const store = useEventsStore();
-  
-  const { 
-    leads, 
-    events, 
+
+  const {
+    leads,
+    events,
     clients,
-    loading 
+    loading
   } = store;
 
   // Debug logging
@@ -95,7 +97,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
     const convertedLeads = filteredLeads.filter((l) => l.status === 'converted').length;
     const rejectedLeads = filteredLeads.filter((l) => l.status === 'rejected').length;
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
-    
+
     // Source Analytics
     const onlineLeads = filteredLeads.filter((l) => l.source === 'online').length;
     const offlineLeads = filteredLeads.filter((l) => l.source === 'offline').length;
@@ -145,15 +147,15 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
     try {
       // Simulate export - in real app, would generate CSV/PDF
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       const exportData = {
-        dateRange: dateRange.startDate && dateRange.endDate 
+        dateRange: dateRange.startDate && dateRange.endDate
           ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
           : 'All Time',
         ...analyticsData,
         exportedAt: new Date().toISOString(),
       };
-      
+
       console.log('Exporting analytics:', exportData);
       Alert.alert('Success', 'Analytics exported successfully!');
     } catch (error) {
@@ -186,11 +188,17 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      stickyHeaderIndices={[0]} // Make the header component sticky
     >
+      {/* Header Component (TabBar) */}
+      <View style={{ backgroundColor: theme.background, zIndex: 10 }}>
+        {headerComponent}
+      </View>
+
       {/* Filters and Export Section */}
       <View style={styles.headerSection}>
         {/* Header with Export Button */}
@@ -200,7 +208,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
               Analytics Overview
             </Text>
             <Text style={[styles.pageSubtitle, { color: theme.textSecondary }]}>
-              {dateRange.startDate && dateRange.endDate 
+              {dateRange.startDate && dateRange.endDate
                 ? `${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`
                 : 'All Time Data'}
             </Text>
@@ -237,10 +245,10 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
               </View>
             )}
           </View>
-          <Ionicons 
-            name={showFilters ? 'chevron-up' : 'chevron-down'} 
-            size={20} 
-            color={theme.textSecondary} 
+          <Ionicons
+            name={showFilters ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={theme.textSecondary}
           />
         </Pressable>
 
@@ -286,7 +294,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.kpiGrid}>
           <KPICard
             title="Total Leads"
@@ -296,7 +304,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             icon="people-outline"
             gradientColors={[theme.primary, designSystem.baseColors.purple[600]]}
           />
-          
+
           <KPICard
             title="Conversion Rate"
             value={formatPercentage(analyticsData.conversionRate)}
@@ -305,7 +313,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             icon="trending-up"
             gradientColors={[designSystem.baseColors.success[500], designSystem.baseColors.success[600]]}
           />
-          
+
           <KPICard
             title="Online Sources"
             value={analyticsData.onlineLeads.toString()}
@@ -343,7 +351,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.kpiGrid}>
           <KPICard
             title="Total Revenue"
@@ -353,7 +361,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             icon="cash-outline"
             gradientColors={[designSystem.baseColors.success[500], designSystem.baseColors.success[600]]}
           />
-          
+
           <KPICard
             title="Active Events"
             value={analyticsData.activeEvents.toString()}
@@ -362,7 +370,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             icon="calendar-outline"
             gradientColors={[designSystem.baseColors.warning[500], designSystem.baseColors.warning[600]]}
           />
-          
+
           <KPICard
             title="Completed"
             value={analyticsData.completedEvents.toString()}
@@ -401,7 +409,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.kpiGrid}>
           <KPICard
             title="Total Clients"
@@ -411,7 +419,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             icon="briefcase-outline"
             gradientColors={[theme.primary, designSystem.baseColors.purple[600]]}
           />
-          
+
           <KPICard
             title="B2B Segment"
             value={analyticsData.b2bClients.toString()}
@@ -420,7 +428,7 @@ const EventsAnalytics: React.FC<EventsAnalyticsProps> = ({
             icon="business-outline"
             gradientColors={[designSystem.baseColors.purple[500], designSystem.baseColors.purple[600]]}
           />
-          
+
           <KPICard
             title="B2C Segment"
             value={analyticsData.b2cClients.toString()}

@@ -1,4 +1,4 @@
-import React, { View, Text, StyleSheet, Animated } from "react-native";
+import React, { View, Text, StyleSheet } from "react-native";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
@@ -6,79 +6,96 @@ import { useTheme } from '@/hooks/useTheme';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { spacing } from '@/constants/designSystem';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+  withDelay,
+  withRepeat,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
+import { ParticleSystem } from '@/components/ui/ParticleSystem';
+import { GRADIENT_PRESETS } from '@/utils/gradientAnimations';
 
 export default function Splash() {
   const { theme, isDark } = useTheme();
   const animationRef = useRef(null);
   const [animationError, setAnimationError] = useState(false);
   
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.3)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const letterAnims = useRef([...Array(8)].map(() => new Animated.Value(0))).current;
+  // Minimal professional animations
+  const logoOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(0.95);
+  const contentOpacity = useSharedValue(0);
+  const contentY = useSharedValue(20);
 
   useEffect(() => {
-    // Start animations sequence
-    Animated.parallel([
-      // Fade in
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      // Scale up
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      // Slide up
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Clean, professional fade-in
+    logoOpacity.value = withTiming(1, { 
+      duration: 800, 
+      easing: Easing.out(Easing.cubic) 
+    });
+    
+    logoScale.value = withTiming(1, { 
+      duration: 800, 
+      easing: Easing.out(Easing.cubic) 
+    });
 
-    // Animate letters one by one (typing effect)
-    const letterAnimations = letterAnims.map((anim, index) =>
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 150,
-        delay: index * 100 + 300,
-        useNativeDriver: true,
+    // Content follows smoothly
+    contentOpacity.value = withDelay(
+      400,
+      withTiming(1, { 
+        duration: 800, 
+        easing: Easing.out(Easing.cubic) 
       })
     );
-    Animated.stagger(50, letterAnimations).start();
+    
+    contentY.value = withDelay(
+      400,
+      withTiming(0, { 
+        duration: 800, 
+        easing: Easing.out(Easing.cubic) 
+      })
+    );
 
-    // Navigate after animation
+    // Navigate after minimal delay
     const timer = setTimeout(() => {
       router.replace("/");
-    }, 3000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const letters = "SARVAGUN".split("");
+  // Clean animated styles
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
+
+  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentY.value }],
+  }));
 
   return (
     <LinearGradient
-      colors={isDark ? ['#0F172A', '#1E293B', '#334155'] : ['#FFFFFF', '#F1F5F9', '#E2E8F0']}
+      colors={isDark 
+        ? ['#1A0B2E', '#2D1545', '#3E1F5C', '#4A276E'] 
+        : ['#FFFFFF', '#FCF9FD', '#F8F4F9', '#F0E6F2']
+      }
       style={styles.container}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      end={{ x: 0, y: 1 }}
     >
-      {/* Animated Logo/Icon (if you want to keep Lottie) */}
+      {/* Subtle purple gradient blur circles in background */}
+      <Animated.View style={[styles.bgCircle, styles.bgCircle1, logoAnimatedStyle]} />
+      <Animated.View style={[styles.bgCircle, styles.bgCircle2, subtitleAnimatedStyle]} />
+
+      {/* Clean Logo */}
       {!animationError && (
-        <Animated.View
-          style={{
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-            marginBottom: spacing.xl,
-          }}
-        >
+        <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
           <LottieView
             ref={animationRef}
             autoPlay
@@ -95,149 +112,99 @@ export default function Splash() {
         </Animated.View>
       )}
 
-      {/* Animated Text with Letter-by-Letter Effect */}
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim },
-          ],
-        }}
-      >
-        <View style={styles.textContainer}>
-          {letters.map((letter, index) => (
-            <Animated.Text
-              key={index}
-              style={[
-                styles.letter,
-                { color: theme.primary },
-                {
-                  opacity: letterAnims[index],
-                  transform: [
-                    {
-                      translateY: letterAnims[index].interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {letter}
-            </Animated.Text>
-          ))}
-        </View>
+      {/* Clean Text - Single fade in */}
+      <Animated.View style={[styles.contentContainer, subtitleAnimatedStyle]}>
+        <Text style={[styles.brandName, { color: theme.text }]}>
+          SARVAGUN
+        </Text>
 
-        {/* Subtitle with fade effect */}
-        <Animated.Text
-          style={[
-            styles.subtitle,
-            { color: theme.textSecondary },
-            { opacity: fadeAnim },
-          ]}
-        >
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           Enterprise Resource Planning
-        </Animated.Text>
+        </Text>
 
-        {/* Tagline */}
-        <Animated.Text
-          style={[
-            styles.tagline,
-            { color: theme.textSecondary },
-            {
-              opacity: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.7],
-              }),
-            },
-          ]}
-        >
+        {/* Minimal loading indicator */}
+        <Animated.View style={[styles.loadingBar, subtitleAnimatedStyle]}>
+          <Animated.View style={[styles.loadingProgress, { backgroundColor: theme.primary }]} />
+        </Animated.View>
+
+        <Text style={[styles.tagline, { color: theme.textSecondary }]}>
           Powered by BlingSquare
-        </Animated.Text>
-      </Animated.View>
-
-      {/* Loading dots animation */}
-      <Animated.View
-        style={[
-          styles.loadingContainer,
-          { opacity: fadeAnim },
-        ]}
-      >
-        {[0, 1, 2].map((i) => (
-          <Animated.View
-            key={i}
-            style={[
-              styles.dot,
-              { backgroundColor: theme.primary },
-              {
-                opacity: fadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.3, 1],
-                }),
-                transform: [
-                  {
-                    scale: fadeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.5, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          />
-        ))}
+        </Text>
       </Animated.View>
     </LinearGradient>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  bgCircle: {
+    position: 'absolute',
+    borderRadius: 9999,
+    opacity: 0.06,
+  },
+  bgCircle1: {
+    width: 400,
+    height: 400,
+    backgroundColor: '#6D376D',
+    top: -100,
+    right: -100,
+  },
+  bgCircle2: {
+    width: 350,
+    height: 350,
+    backgroundColor: '#8B5CF6',
+    bottom: -80,
+    left: -80,
+  },
+  logoContainer: {
+    marginBottom: spacing.xl * 1.5,
   },
   lottieAnimation: {
-    width: 200,
-    height: 200,
+    width: 160,
+    height: 160,
   },
-  textContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  contentContainer: {
     alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  brandName: {
+    fontSize: 42,
+    fontWeight: '700',
+    letterSpacing: 4,
     marginBottom: spacing.md,
   },
-  letter: {
-    fontSize: 48,
-    fontWeight: '900',
-    letterSpacing: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
   subtitle: {
-    ...getTypographyStyle('base', 'semibold'),
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  tagline: {
     ...getTypographyStyle('sm', 'medium'),
     textAlign: 'center',
-    marginTop: spacing.xs,
     letterSpacing: 0.5,
+    fontSize: 13,
+    marginBottom: spacing.xl,
+    opacity: 0.6,
   },
-  loadingContainer: {
-    flexDirection: 'row',
-    marginTop: spacing.xl,
-    gap: spacing.sm,
+  loadingBar: {
+    width: 200,
+    height: 2,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginVertical: spacing.xl,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  loadingProgress: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 2,
+  },
+  tagline: {
+    ...getTypographyStyle('xs', 'regular'),
+    letterSpacing: 0.5,
+    opacity: 0.4,
+    marginTop: spacing.md,
   },
 });

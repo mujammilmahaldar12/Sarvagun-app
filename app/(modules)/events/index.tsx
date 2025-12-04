@@ -4,7 +4,7 @@
  * Refactored from monolithic component to orchestrate specialized components
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, RefreshControl, BackHandler, Modal, Pressable, Text, Platform } from 'react-native';
+import { View, ScrollView, RefreshControl, BackHandler, Modal, Pressable, Text, Platform, TouchableOpacity } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import { FAB } from '@/components';
+import { FAB, FilterBar } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useEventsStore } from '@/store/eventsStore';
@@ -33,14 +33,12 @@ export default function EventManagementScreen() {
   const { user, isAuthenticated } = useAuthStore();
   const eventsStore = useEventsStore();
   const insets = useSafeAreaInsets();
-  
+
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('leads');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
+  const [filters, setFilters] = useState<any>({});
   const [refreshing, setRefreshing] = useState(false);
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
 
   // Permission checks
@@ -60,12 +58,12 @@ export default function EventManagementScreen() {
   // Fetch data when tab changes - debounced to prevent rapid switching issues
   useEffect(() => {
     if (!isAuthenticated || !user || !initialLoadDone) return;
-    
+
     const timeoutId = setTimeout(() => {
       console.log(`🔄 Events: Fetching data for tab: ${activeTab}`);
       fetchTabData();
     }, 100); // Small delay to prevent rapid tab switching issues
-    
+
     return () => clearTimeout(timeoutId);
   }, [activeTab, initialLoadDone]);
 
@@ -109,7 +107,7 @@ export default function EventManagementScreen() {
       console.log('⚠️ Events: Not authenticated, skipping data initialization');
       return;
     }
-    
+
     try {
       console.log('🔄 Events: Fetching reference data and initial tab data...');
       // Fetch reference data that's commonly needed
@@ -118,7 +116,7 @@ export default function EventManagementScreen() {
         eventsStore.fetchOrganisations(),
       ]);
       console.log('✅ Events: Reference data loaded successfully');
-      
+
       // Fetch initial tab data (leads by default)
       console.log('🔄 Events: Fetching initial leads data...');
       await eventsStore.fetchLeads(true); // true = force refresh
@@ -131,7 +129,7 @@ export default function EventManagementScreen() {
   // Fetch data based on active tab - optimized to use cache
   const fetchTabData = async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       switch (activeTab) {
         case 'analytics':
@@ -140,7 +138,7 @@ export default function EventManagementScreen() {
           const hasLeads = eventsStore.leads.length > 0;
           const hasEvents = eventsStore.events.length > 0;
           const hasClients = eventsStore.clients.length > 0;
-          
+
           await Promise.all([
             eventsStore.fetchLeads(!hasLeads), // force if empty
             eventsStore.fetchEvents(!hasEvents), // force if empty
@@ -183,7 +181,7 @@ export default function EventManagementScreen() {
   // Handle search changes with debouncing
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    
+
     // Update store filters based on active tab
     switch (activeTab) {
       case 'leads':
@@ -201,38 +199,38 @@ export default function EventManagementScreen() {
     }
   }, [activeTab, eventsStore]);
 
-  // Handle status filter changes
-  const handleStatusChange = useCallback((status: string) => {
-    setSelectedStatus(status);
-    
-    const statusValue = status === 'all' ? undefined : status;
-    
+  // Handle filter changes
+  useEffect(() => {
+    const statusValue = filters.status === 'all' ? undefined : filters.status;
+    const start_date = filters.dateRange?.start;
+    const end_date = filters.dateRange?.end;
+
+    console.log('Applying filters:', { activeTab, statusValue, start_date, end_date });
+
     switch (activeTab) {
       case 'leads':
-        eventsStore.setFilter('leads', { status: statusValue });
+        eventsStore.setFilter('leads', {
+          status: statusValue,
+          start_date,
+          end_date
+        });
         break;
       case 'events':
-        eventsStore.setFilter('events', { status: statusValue });
+        eventsStore.setFilter('events', {
+          status: statusValue,
+          start_date,
+          end_date
+        });
         break;
     }
-  }, [activeTab, eventsStore]);
-
-  // Handle category filter changes
-  const handleCategoryChange = useCallback((categoryId: number | undefined) => {
-    setSelectedCategory(categoryId);
-    
-    if (activeTab === 'clients') {
-      eventsStore.setFilter('clients', { category: categoryId });
-    }
-  }, [activeTab, eventsStore]);
+  }, [filters, activeTab]);
 
   // Handle tab changes
   const handleTabChange = useCallback((tabKey: string) => {
     setActiveTab(tabKey as TabType);
     // Reset filters when changing tabs
     setSearchQuery('');
-    setSelectedStatus('all');
-    setSelectedCategory(undefined);
+    setFilters({});
   }, []);
 
   // Get FAB configuration based on active tab
@@ -271,6 +269,53 @@ export default function EventManagementScreen() {
     { key: 'venues', label: 'Venues', icon: 'location' },
   ];
 
+  // Filter configuration
+  const getFilterConfigs = () => {
+    if (activeTab === 'leads') {
+      return [
+        {
+          key: 'status',
+          label: 'Status',
+          icon: 'funnel',
+          type: 'select',
+          options: [
+            { label: 'Pending', value: 'pending', color: '#f59e0b' },
+            { label: 'Converted', value: 'converted', color: '#10b981' },
+            { label: 'Rejected', value: 'rejected', color: '#ef4444' },
+          ],
+        },
+        {
+          key: 'dateRange',
+          label: 'Date Range',
+          icon: 'calendar-outline',
+          type: 'daterange',
+        },
+      ];
+    } else if (activeTab === 'events') {
+      return [
+        {
+          key: 'status',
+          label: 'Status',
+          icon: 'funnel',
+          type: 'select',
+          options: [
+            { label: 'Upcoming', value: 'upcoming', color: '#3b82f6' },
+            { label: 'Ongoing', value: 'ongoing', color: '#10b981' },
+            { label: 'Completed', value: 'completed', color: '#6b7280' },
+            { label: 'Cancelled', value: 'cancelled', color: '#ef4444' },
+          ],
+        },
+        {
+          key: 'dateRange',
+          label: 'Date Range',
+          icon: 'calendar-outline',
+          type: 'daterange',
+        },
+      ];
+    }
+    return [];
+  };
+
   // Render active tab content
   const renderTabContent = () => {
     const commonProps = {
@@ -278,107 +323,82 @@ export default function EventManagementScreen() {
       refreshing,
     };
 
+    const filterConfigs = getFilterConfigs();
+
+    const headerComponent = (
+      <View>
+        <TabBar
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          variant="pill"
+        />
+
+        {filterConfigs.length > 0 && (
+          <FilterBar
+            configs={filterConfigs}
+            activeFilters={filters}
+            onFiltersChange={setFilters}
+          />
+        )}
+      </View>
+    );
+
     switch (activeTab) {
       case 'analytics':
-        return <EventsAnalytics {...commonProps} />;
-        
+        return <EventsAnalytics {...commonProps} headerComponent={headerComponent} />;
+
       case 'leads':
         return (
-          <LeadsList 
+          <LeadsList
             {...commonProps}
-            selectedStatus={selectedStatus}
+            selectedStatus={filters.status || 'all'}
+            headerComponent={headerComponent}
           />
         );
-        
+
       case 'events':
         return (
-          <EventsList 
+          <EventsList
             {...commonProps}
-            selectedStatus={selectedStatus}
+            selectedStatus={filters.status || 'all'}
+            headerComponent={headerComponent}
           />
         );
-        
+
       case 'clients':
         return (
-          <ClientsList 
+          <ClientsList
             {...commonProps}
-            selectedCategory={selectedCategory}
+            selectedCategory={filters.category}
+            headerComponent={headerComponent}
           />
         );
-        
+
       case 'venues':
-        return <VenuesList {...commonProps} />;
-        
+        return <VenuesList {...commonProps} headerComponent={headerComponent} />;
+
       default:
         return null;
     }
   };
 
-  const handleFilter = () => {
-    setFilterModalVisible(true);
-  };
-
-  const applyFilter = (status: string) => {
-    handleStatusChange(status);
-    setFilterModalVisible(false);
-  };
-
-  const clearFilters = () => {
-    setSelectedStatus('all');
-    setSearchQuery('');
-    setSelectedCategory(undefined);
-    setFilterModalVisible(false);
-    
-    // Clear store filters
-    eventsStore.setFilter('leads', { search: '', status: undefined });
-    eventsStore.setFilter('events', { search: '', status: undefined });
-    eventsStore.setFilter('clients', { search: '', category: undefined });
-    eventsStore.setFilter('venues', { search: '' });
-  };
-
   const fabConfig = getFABConfig();
 
   return (
-    <Animated.View 
+    <Animated.View
       entering={FadeIn.duration(400)}
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       {/* Header */}
       <ModuleHeader
         title="Event Management"
-        onFilter={handleFilter}
-      />
-
-      {/* Tab Navigation */}
-      <TabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
       />
 
       {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 16) }}
-        onScroll={(event) => {
-          const offsetY = event.nativeEvent.contentOffset.y;
-          setIsAtTop(offsetY <= 0);
-        }}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.primary}
-            colors={[theme.primary]}
-            enabled={isAtTop}
-            progressViewOffset={0}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.content}>
         {renderTabContent()}
-      </ScrollView>
+      </View>
 
       {/* Floating Action Button */}
       {fabConfig && (
@@ -388,187 +408,6 @@ export default function EventManagementScreen() {
           position="bottom-left"
         />
       )}
-
-      {/* Filter Modal */}
-      <Modal
-        visible={filterModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setFilterModalVisible(false)}
-      >
-        <Pressable
-          style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onPress={() => setFilterModalVisible(false)}
-        >
-          <Pressable
-            style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <Text style={[getTypographyStyle('xl', 'bold'), { color: theme.text }]}>
-                Filter by Status
-              </Text>
-              <Pressable onPress={() => setFilterModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.text} />
-              </Pressable>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* All */}
-              <Pressable
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  padding: 16,
-                  borderRadius: 12,
-                  marginBottom: 8,
-                  backgroundColor: selectedStatus === 'all' ? `${theme.primary}20` : theme.background,
-                }}
-                onPress={() => applyFilter('all')}
-              >
-                <Ionicons
-                  name={selectedStatus === 'all' ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={24}
-                  color={selectedStatus === 'all' ? theme.primary : theme.textSecondary}
-                />
-                <Text
-                  style={[
-                    getTypographyStyle('base', 'semibold'),
-                    { color: selectedStatus === 'all' ? theme.primary : theme.text, marginLeft: 12 }
-                  ]}
-                >
-                  All {activeTab === 'leads' ? 'Leads' : activeTab === 'events' ? 'Events' : activeTab}
-                </Text>
-              </Pressable>
-
-              {/* Status filters based on active tab */}
-              {(activeTab === 'leads' || activeTab === 'events') && (
-                <>
-                  <Pressable
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 16,
-                      borderRadius: 12,
-                      marginBottom: 8,
-                      backgroundColor: selectedStatus === 'pending' ? `${theme.primary}20` : theme.background,
-                    }}
-                    onPress={() => applyFilter('pending')}
-                  >
-                    <Ionicons
-                      name={selectedStatus === 'pending' ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={24}
-                      color={selectedStatus === 'pending' ? theme.primary : theme.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        getTypographyStyle('base', 'semibold'),
-                        { color: selectedStatus === 'pending' ? theme.primary : theme.text, marginLeft: 12 }
-                      ]}
-                    >
-                      Pending
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 16,
-                      borderRadius: 12,
-                      marginBottom: 8,
-                      backgroundColor: selectedStatus === 'confirmed' ? `${theme.primary}20` : theme.background,
-                    }}
-                    onPress={() => applyFilter('confirmed')}
-                  >
-                    <Ionicons
-                      name={selectedStatus === 'confirmed' ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={24}
-                      color={selectedStatus === 'confirmed' ? theme.primary : theme.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        getTypographyStyle('base', 'semibold'),
-                        { color: selectedStatus === 'confirmed' ? theme.primary : theme.text, marginLeft: 12 }
-                      ]}
-                    >
-                      Confirmed
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 16,
-                      borderRadius: 12,
-                      marginBottom: 8,
-                      backgroundColor: selectedStatus === 'completed' ? `${theme.primary}20` : theme.background,
-                    }}
-                    onPress={() => applyFilter('completed')}
-                  >
-                    <Ionicons
-                      name={selectedStatus === 'completed' ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={24}
-                      color={selectedStatus === 'completed' ? theme.primary : theme.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        getTypographyStyle('base', 'semibold'),
-                        { color: selectedStatus === 'completed' ? theme.primary : theme.text, marginLeft: 12 }
-                      ]}
-                    >
-                      Completed
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 16,
-                      borderRadius: 12,
-                      marginBottom: 8,
-                      backgroundColor: selectedStatus === 'cancelled' ? `${theme.primary}20` : theme.background,
-                    }}
-                    onPress={() => applyFilter('cancelled')}
-                  >
-                    <Ionicons
-                      name={selectedStatus === 'cancelled' ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={24}
-                      color={selectedStatus === 'cancelled' ? theme.primary : theme.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        getTypographyStyle('base', 'semibold'),
-                        { color: selectedStatus === 'cancelled' ? theme.primary : theme.text, marginLeft: 12 }
-                      ]}
-                    >
-                      Cancelled
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-            </ScrollView>
-
-            {/* Clear Filters Button */}
-            <Pressable
-              style={{
-                marginTop: 16,
-                padding: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-                backgroundColor: theme.background,
-              }}
-              onPress={clearFilters}
-            >
-              <Text style={[getTypographyStyle('base', 'semibold'), { color: theme.textSecondary }]}>
-                Clear All Filters
-              </Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </Animated.View>
   );
 }

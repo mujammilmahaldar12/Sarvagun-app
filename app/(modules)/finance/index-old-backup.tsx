@@ -1,0 +1,348 @@
+/**
+ * Finance Management Screen
+ * Professional implementation with real API integration
+ * Follows Event Management patterns for consistency
+ */
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { View, ScrollView, Pressable, Modal, Alert, Platform, RefreshControl } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Input, FAB } from '@/components';
+import ModuleHeader from '@/components/layout/ModuleHeader';
+import TabBar, { Tab } from '@/components/layout/TabBar';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuthStore } from '@/store/authStore';
+import { getTypographyStyle } from '@/utils/styleHelpers';
+import { designSystem } from '@/constants/designSystem';
+
+// Import modular components
+import FinanceAnalytics from './components/FinanceAnalytics';
+import SalesList from './components/SalesList';
+import ExpensesList from './components/ExpensesList';
+import VendorsList from './components/VendorsList';
+
+// Hooks for data fetching
+import { useSales, useExpenses, financeCacheUtils } from '@/hooks/useFinanceQueries';
+
+type TabType = 'analytics' | 'sales' | 'expenses' | 'vendors';
+
+export default function FinanceManagementScreen() {
+  const { theme } = useTheme();
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  
+  // UI State
+  const [activeTab, setActiveTab] = useState<TabType>('analytics');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [refreshing, setRefreshing] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  // Permission checks
+  const canManage = user?.category === 'hr' || user?.category === 'admin';
+
+  // Fetch data for summary cards based on active tab
+  const { data: salesData } = useSales({ status: selectedStatus !== 'all' ? selectedStatus : undefined });
+  const { data: expensesData } = useExpenses({ status: selectedStatus !== 'all' ? selectedStatus : undefined });
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Clear cache and refetch
+      financeCacheUtils.clearAll();
+      // Data will auto-refetch via React Query
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('Error refreshing finance data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Handle search with debouncing
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  // Track scroll position to enable/disable refresh
+  const handleScroll = useCallback((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setIsAtTop(offsetY <= 0);
+  }, []);
+
+  // Render active tab content
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'analytics':
+        return <FinanceAnalytics />;
+      
+      case 'sales':
+        return (
+          <SalesList
+            searchQuery={searchQuery}
+            selectedStatus={selectedStatus}
+            refreshing={refreshing}
+          />
+        );
+      
+      case 'expenses':
+        return (
+          <ExpensesList
+            searchQuery={searchQuery}
+            filterStatus={selectedStatus !== 'all' ? selectedStatus : undefined}
+          />
+        );
+      
+      case 'vendors':
+        return (
+          <VendorsList
+            searchQuery={searchQuery}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  // Handle FAB press
+  const handleAddNew = () => {
+    switch (activeTab) {
+      case 'sales':
+        router.push('/(modules)/finance/add-sale' as any);
+        break;
+      case 'expenses':
+        router.push('/(modules)/finance/add-expense' as any);
+        break;
+      case 'vendors':
+        router.push('/(modules)/finance/add-vendor' as any);
+        break;
+    }
+  };
+
+  // Tab configuration
+  const tabs: Tab[] = [
+    { key: 'analytics', label: 'Analytics', icon: 'analytics' as const },
+    { key: 'sales', label: 'Sales', icon: 'trending-up' as const },
+    { key: 'expenses', label: 'Expenses', icon: 'wallet' as const },
+    { key: 'vendors', label: 'Vendors', icon: 'people' as const },
+  ];
+
+  // Status options based on tab
+  const getStatusOptions = () => {
+    switch (activeTab) {
+      case 'sales':
+        return [
+          { label: 'All Sales', value: 'all', icon: 'list' as const },
+          { label: 'New', value: 'not_yet', icon: 'add-circle' as const, color: '#3B82F6' },
+          { label: 'Pending', value: 'pending', icon: 'time' as const, color: '#F59E0B' },
+          { label: 'Completed', value: 'completed', icon: 'checkmark-circle' as const, color: '#10B981' },
+        ];
+      case 'expenses':
+        return [
+          { label: 'All Expenses', value: 'all', icon: 'list' as const },
+          { label: 'Paid', value: 'paid', icon: 'checkmark-circle' as const, color: '#10B981' },
+          { label: 'Not Paid', value: 'not_paid', icon: 'close-circle' as const, color: '#EF4444' },
+          { label: 'Partial Paid', value: 'partial_paid', icon: 'time' as const, color: '#F59E0B' },
+        ];
+      default:
+        return [{ label: 'All', value: 'all', icon: 'list' as const }];
+    }
+  };
+
+  // Calculate summary totals for current tab
+  const summaryTotals = useMemo(() => {
+    if (activeTab === 'sales' && salesData) {
+      const sales = Array.isArray(salesData) ? salesData : salesData.results || [];
+      const total = sales.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+      const pending = sales
+        .filter((item: any) => item.payment_status === 'pending' || item.payment_status === 'not_yet')
+        .reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+      const completed = sales
+        .filter((item: any) => item.payment_status === 'completed')
+        .reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+      return { total, pending, completed, label: 'Sales' };
+    } else if (activeTab === 'expenses' && expensesData) {
+      const expenses = Array.isArray(expensesData) ? expensesData : expensesData.results || [];
+      const total = expenses.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+      const pending = expenses
+        .filter((item: any) => item.payment_status === 'not_paid')
+        .reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+      const completed = expenses
+        .filter((item: any) => item.payment_status === 'paid')
+        .reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+      return { total, pending, completed, label: 'Expenses' };
+    }
+    return { total: 0, pending: 0, completed: 0, label: 'Total' };
+  }, [activeTab, salesData, expensesData]);
+
+  return (
+    <Animated.View 
+      entering={FadeIn.duration(400)}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
+      {/* Header */}
+      <ModuleHeader
+        title="Finance Management"
+        rightActions={
+          <Pressable
+            onPress={() => setFilterModalVisible(true)}
+            style={({ pressed }) => ({
+              padding: 8,
+              borderRadius: 8,
+              backgroundColor: pressed ? theme.surface : 'transparent',
+            })}
+          >
+            <Ionicons name="filter" size={24} color={theme.text} />
+          </Pressable>
+        }
+      />
+
+      {/* Tabs */}
+      <TabBar
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={(key) => setActiveTab(key as TabType)}
+      />
+
+      {/* Summary Cards - Only show for sales and expenses tabs */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 16) }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[theme.primary]}
+            enabled={isAtTop}
+            progressViewOffset={0}
+          />
+        }
+      >
+        {renderTabContent()}
+      </ScrollView>
+
+      {/* Floating Action Button - Hide for analytics tab */}
+      {activeTab !== 'analytics' && canManage && (
+        <FAB
+          icon="add"
+          onPress={handleAddNew}
+          position="bottom-right"
+        />
+      )}
+
+      {/* Filter Modal */}
+      <Modal
+        visible={filterModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setFilterModalVisible(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '80%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 20 }}>
+                Filter {activeTab}
+              </Text>
+
+              {/* Status Filter */}
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginBottom: 10 }}>
+                Filter by Status
+              </Text>
+              <View style={{ gap: 10, marginBottom: 20 }}>
+                {getStatusOptions().map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setSelectedStatus(option.value)}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 14,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: selectedStatus === option.value ? (option.color || theme.primary) : theme.border,
+                      backgroundColor: pressed
+                        ? (option.color || theme.primary) + '10'
+                        : selectedStatus === option.value
+                        ? (option.color || theme.primary) + '15'
+                        : theme.background,
+                    })}
+                  >
+                    <Ionicons
+                      name={selectedStatus === option.value ? 'checkmark-circle' : option.icon}
+                      size={22}
+                      color={selectedStatus === option.value ? (option.color || theme.primary) : theme.textSecondary}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{
+                        ...getTypographyStyle('base', 'semibold'),
+                        color: selectedStatus === option.value ? (option.color || theme.primary) : theme.text,
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Actions */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    setSelectedStatus('all');
+                    setSearchQuery('');
+                    setFilterModalVisible(false);
+                  }}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    padding: 14,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    backgroundColor: pressed ? theme.surface : 'transparent',
+                    alignItems: 'center',
+                  })}
+                >
+                  <Text style={{ color: theme.text, fontWeight: '600' }}>Reset</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setFilterModalVisible(false)}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    padding: 14,
+                    borderRadius: 8,
+                    backgroundColor: pressed ? theme.primary + 'dd' : theme.primary,
+                    alignItems: 'center',
+                  })}
+                >
+                  <Text style={{ color: theme.textInverse, fontWeight: '600' }}>Apply</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </Animated.View>
+  );
+}

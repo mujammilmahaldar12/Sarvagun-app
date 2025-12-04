@@ -103,6 +103,9 @@ export { default as ThemedDatePicker } from './ui/ThemedDatePicker';
 export { default as DropdownField } from './ui/DropdownField';
 export { default as CelebrationAnimation } from './ui/CelebrationAnimation';
 
+// Animation & Visual Effects
+export { ParticleSystem } from './ui/ParticleSystem';
+
 // Standardized UI Components (Professional Design System)
 export { FormField } from './ui/FormField';
 // EmptyState is already exported from './core/EmptyState' at line 41
@@ -121,6 +124,10 @@ export { SkillsDisplay } from './ui/SkillsDisplay';
 export type { SkillsDisplayProps } from './ui/SkillsDisplay';
 export { CertificationCard } from './ui/CertificationCard';
 export type { CertificationCardProps } from './ui/CertificationCard';
+export { EducationCard } from './ui/EducationCard';
+export type { EducationCardProps } from './ui/EducationCard';
+export { ExperienceCard } from './ui/ExperienceCard';
+export type { ExperienceCardProps } from './ui/ExperienceCard';
 export { CollaborationTree } from './ui/CollaborationTree';
 export type { CollaborationTreeProps } from './ui/CollaborationTree';
 

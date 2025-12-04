@@ -38,12 +38,16 @@ class FinanceService {
   // ==================== SALES ====================
   
   /**
-   * Get all sales with optional filtering
+   * Get all sales with optional filtering and pagination
    */
   async getSales(params?: SalesFilters) {
     try {
-      const response = await apiClient.get<Sale[]>('/finance_management/sales/', { params });
-      return response;
+      const response = await apiClient.get<{ results: Sale[]; count: number; next: string | null; previous: string | null }>('/finance_management/sales/', { params });
+      // Handle both paginated and array responses for backward compatibility
+      if (response && 'results' in response) {
+        return response;
+      }
+      return { results: Array.isArray(response) ? response : [], count: Array.isArray(response) ? response.length : 0, next: null, previous: null };
     } catch (error) {
       console.error('Error fetching sales:', error);
       throw error;
@@ -170,12 +174,16 @@ class FinanceService {
   // ==================== EXPENSES ====================
   
   /**
-   * Get all expenses with optional filtering
+   * Get all expenses with optional filtering and pagination
    */
   async getExpenses(params?: ExpensesFilters) {
     try {
-      const response = await apiClient.get<Expense[]>('/finance_management/expenses/', { params });
-      return response;
+      const response = await apiClient.get<{ results: Expense[]; count: number; next: string | null; previous: string | null }>('/finance_management/expenses/', { params });
+      // Handle both paginated and array responses for backward compatibility
+      if (response && 'results' in response) {
+        return response;
+      }
+      return { results: Array.isArray(response) ? response : [], count: Array.isArray(response) ? response.length : 0, next: null, previous: null };
     } catch (error) {
       console.error('Error fetching expenses:', error);
       throw error;

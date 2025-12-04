@@ -687,3 +687,248 @@ export const useToggleMilestone = (goalId: string | number) => {
     },
   });
 };
+
+// ============================================================================
+// PROFILE DATA QUERIES
+// ============================================================================
+
+/**
+ * Get user's education records
+ */
+export const useUserEducation = (userId?: number) => {
+  return useQuery({
+    queryKey: ['hr', 'user-profile', 'education', userId || 'me'],
+    queryFn: () => userId ? hrService.getUserEducation(userId) : hrService.getUserEducation(),
+  });
+};
+
+/**
+ * Get user's work experience records
+ */
+export const useUserExperience = (userId?: number) => {
+  return useQuery({
+    queryKey: ['hr', 'user-profile', 'experience', userId || 'me'],
+    queryFn: () => userId ? hrService.getUserExperience(userId) : hrService.getUserExperience(),
+  });
+};
+
+/**
+ * Get user's social links
+ */
+export const useUserSocialLinks = (userId?: number) => {
+  return useQuery({
+    queryKey: ['hr', 'user-profile', 'social-links', userId || 'me'],
+    queryFn: () => userId ? hrService.getUserSocialLinks(userId) : hrService.getUserSocialLinks(),
+  });
+};
+
+/**
+ * Create education record
+ */
+export const useCreateEducation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => hrService.createEducation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'education'] });
+    },
+  });
+};
+
+/**
+ * Update education record
+ */
+export const useUpdateEducation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateEducation(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'education'] });
+    },
+  });
+};
+
+/**
+ * Delete education record
+ */
+export const useDeleteEducation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: number) => hrService.deleteEducation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'education'] });
+    },
+  });
+};
+
+/**
+ * Create work experience record
+ */
+export const useCreateExperience = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => hrService.createExperience(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'experience'] });
+    },
+  });
+};
+
+/**
+ * Update work experience record
+ */
+export const useUpdateExperience = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateExperience(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'experience'] });
+    },
+  });
+};
+
+/**
+ * Delete work experience record
+ */
+export const useDeleteExperience = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: number) => hrService.deleteExperience(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'experience'] });
+    },
+  });
+};
+
+/**
+ * Update social links
+ */
+export const useUpdateSocialLinks = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => hrService.updateSocialLinks(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'social-links'] });
+    },
+  });
+};
+
+/**
+ * Create skill
+ */
+export const useCreateSkill = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => hrService.createSkill(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'skills'] });
+    },
+  });
+};
+
+/**
+ * Update skill
+ */
+export const useUpdateSkill = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateSkill(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'skills'] });
+    },
+  });
+};
+
+/**
+ * Delete skill
+ */
+export const useDeleteSkill = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: number) => hrService.deleteSkill(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'skills'] });
+    },
+  });
+};
+
+/**
+ * Create certification
+ */
+export const useCreateCertification = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => hrService.createCertification(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'certifications'] });
+    },
+  });
+};
+
+/**
+ * Update certification
+ */
+export const useUpdateCertification = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateCertification(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'certifications'] });
+    },
+  });
+};
+
+/**
+ * Delete certification
+ */
+export const useDeleteCertification = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: number) => hrService.deleteCertification(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'certifications'] });
+    },
+  });
+};
+
+/**
+ * Upload resume for AI extraction
+ */
+export const useUploadResume = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (formData: FormData) => hrService.uploadResume(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'resume'] });
+    },
+  });
+};
+
+/**
+ * Apply extracted resume data to profile
+ */
+export const useApplyResumeData = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: { resume_id: number; apply_skills?: boolean; apply_education?: boolean; apply_experience?: boolean; apply_certifications?: boolean }) => 
+      hrService.applyResumeData(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile'] });
+    },
+  });
+};

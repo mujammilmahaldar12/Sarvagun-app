@@ -885,6 +885,411 @@ class HRService {
       return [];
     }
   }
+
+  // ============================================================================
+  // PROFILE MANAGEMENT - Skills, Certifications, Education, Experience
+  // ============================================================================
+
+  /**
+   * Get user's education records
+   */
+  async getUserEducation(userId: string | number): Promise<any[]> {
+    try {
+      console.log('🎓 Fetching education for user:', userId);
+      const response = await api.get(`/hr/users/${userId}/education/`);
+      const data = Array.isArray(response) ? response : (response as any)?.data || [];
+      console.log('✅ User education:', data.length);
+      return data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log('⚠️ User education API not available');
+        return [];
+      }
+      console.log('❌ User education error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's work experience records
+   */
+  async getUserExperience(userId: string | number): Promise<any[]> {
+    try {
+      console.log('💼 Fetching work experience for user:', userId);
+      const response = await api.get(`/hr/users/${userId}/experience/`);
+      const data = Array.isArray(response) ? response : (response as any)?.data || [];
+      console.log('✅ User experience:', data.length);
+      return data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log('⚠️ User experience API not available');
+        return [];
+      }
+      console.log('❌ User experience error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's social links
+   */
+  async getUserSocialLinks(userId: string | number): Promise<any> {
+    try {
+      console.log('🔗 Fetching social links for user:', userId);
+      const response = await api.get(`/hr/users/${userId}/social-links/`);
+      console.log('✅ User social links');
+      return response;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log('⚠️ User social links API not available');
+        return null;
+      }
+      console.log('❌ User social links error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create or update user's skill
+   */
+  async createSkill(skillData: {
+    name: string;
+    category: 'technical' | 'soft' | 'domain';
+    level: 1 | 2 | 3 | 4 | 5;
+    years_experience?: number;
+  }): Promise<any> {
+    try {
+      console.log('➕ Creating skill:', skillData.name);
+      const response = await api.post('/hr/skills/', skillData);
+      console.log('✅ Skill created');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Create skill error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a skill
+   */
+  async updateSkill(skillId: string | number, skillData: Partial<any>): Promise<any> {
+    try {
+      console.log('🔄 Updating skill:', skillId);
+      const response = await api.patch(`/hr/skills/${skillId}/`, skillData);
+      console.log('✅ Skill updated');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Update skill error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a skill
+   */
+  async deleteSkill(skillId: string | number): Promise<void> {
+    try {
+      console.log('🗑️ Deleting skill:', skillId);
+      await api.delete(`/hr/skills/${skillId}/`);
+      console.log('✅ Skill deleted');
+    } catch (error: any) {
+      console.log('❌ Delete skill error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create certification (external or company-issued)
+   */
+  async createCertification(certData: any): Promise<any> {
+    try {
+      console.log('➕ Creating certification:', certData.title);
+      const response = await api.post('/hr/certifications/', certData);
+      console.log('✅ Certification created');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Create certification error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update certification
+   */
+  async updateCertification(certId: string | number, certData: Partial<any>): Promise<any> {
+    try {
+      console.log('🔄 Updating certification:', certId);
+      const response = await api.patch(`/hr/certifications/${certId}/`, certData);
+      console.log('✅ Certification updated');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Update certification error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete certification
+   */
+  async deleteCertification(certId: string | number): Promise<void> {
+    try {
+      console.log('🗑️ Deleting certification:', certId);
+      await api.delete(`/hr/certifications/${certId}/`);
+      console.log('✅ Certification deleted');
+    } catch (error: any) {
+      console.log('❌ Delete certification error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify certificate by verification code
+   */
+  async verifyCertificate(verificationCode: string): Promise<any> {
+    try {
+      console.log('🔍 Verifying certificate:', verificationCode);
+      const response = await api.get(`/hr/certifications/verify/${verificationCode}/`);
+      console.log('✅ Certificate verified');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Verify certificate error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create education record
+   */
+  async createEducation(eduData: any): Promise<any> {
+    try {
+      console.log('➕ Creating education:', eduData.institution);
+      const response = await api.post('/hr/education/', eduData);
+      console.log('✅ Education created');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Create education error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update education record
+   */
+  async updateEducation(eduId: string | number, eduData: Partial<any>): Promise<any> {
+    try {
+      console.log('🔄 Updating education:', eduId);
+      const response = await api.patch(`/hr/education/${eduId}/`, eduData);
+      console.log('✅ Education updated');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Update education error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete education record
+   */
+  async deleteEducation(eduId: string | number): Promise<void> {
+    try {
+      console.log('🗑️ Deleting education:', eduId);
+      await api.delete(`/hr/education/${eduId}/`);
+      console.log('✅ Education deleted');
+    } catch (error: any) {
+      console.log('❌ Delete education error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create work experience record
+   */
+  async createExperience(expData: any): Promise<any> {
+    try {
+      console.log('➕ Creating experience:', expData.company);
+      const response = await api.post('/hr/experience/', expData);
+      console.log('✅ Experience created');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Create experience error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update work experience record
+   */
+  async updateExperience(expId: string | number, expData: Partial<any>): Promise<any> {
+    try {
+      console.log('🔄 Updating experience:', expId);
+      const response = await api.patch(`/hr/experience/${expId}/`, expData);
+      console.log('✅ Experience updated');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Update experience error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete work experience record
+   */
+  async deleteExperience(expId: string | number): Promise<void> {
+    try {
+      console.log('🗑️ Deleting experience:', expId);
+      await api.delete(`/hr/experience/${expId}/`);
+      console.log('✅ Experience deleted');
+    } catch (error: any) {
+      console.log('❌ Delete experience error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create or update social links
+   */
+  async updateSocialLinks(socialData: {
+    linkedin?: string;
+    github?: string;
+    portfolio?: string;
+    twitter?: string;
+    website?: string;
+  }): Promise<any> {
+    try {
+      console.log('🔄 Updating social links');
+      const response = await api.post('/hr/social-links/', socialData);
+      console.log('✅ Social links updated');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Update social links error:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // RESUME UPLOAD & AI EXTRACTION
+  // ============================================================================
+
+  /**
+   * Upload resume for AI extraction
+   */
+  async uploadResume(file: File | Blob): Promise<any> {
+    try {
+      console.log('📤 Uploading resume');
+      const formData = new FormData();
+      formData.append('resume_file', file);
+      
+      const response = await api.post('/hr/resume/upload/', formData);
+      console.log('✅ Resume uploaded');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Upload resume error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check resume extraction status
+   */
+  async getResumeStatus(resumeId: string | number): Promise<any> {
+    try {
+      console.log('🔍 Checking resume status:', resumeId);
+      const response = await api.get(`/hr/resume/${resumeId}/status/`);
+      console.log('✅ Resume status:', response);
+      return response;
+    } catch (error: any) {
+      console.log('❌ Resume status error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get extracted data from resume
+   */
+  async getExtractedData(resumeId: string | number): Promise<any> {
+    try {
+      console.log('📥 Getting extracted data:', resumeId);
+      const response = await api.get(`/hr/resume/${resumeId}/extracted-data/`);
+      console.log('✅ Extracted data retrieved');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Get extracted data error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Apply extracted resume data to profile
+   */
+  async applyResumeData(resumeId: string | number, selectedData: {
+    skills?: boolean;
+    education?: boolean;
+    experience?: boolean;
+    certifications?: boolean;
+  }): Promise<any> {
+    try {
+      console.log('✨ Applying resume data:', resumeId);
+      const response = await api.post(`/hr/resume/${resumeId}/apply/`, selectedData);
+      console.log('✅ Resume data applied');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Apply resume data error:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // GOAL REPORTS
+  // ============================================================================
+
+  /**
+   * Generate report for a goal
+   */
+  async generateGoalReport(goalId: string | number, periodStart: string, periodEnd: string): Promise<any> {
+    try {
+      console.log('📊 Generating goal report:', goalId);
+      const response = await api.post(`/hr/goals/${goalId}/generate-report/`, {
+        period_start: periodStart,
+        period_end: periodEnd,
+      });
+      console.log('✅ Goal report generated');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Generate goal report error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get reports for a goal
+   */
+  async getGoalReports(goalId: string | number): Promise<any[]> {
+    try {
+      console.log('📋 Fetching goal reports:', goalId);
+      const response = await api.get(`/hr/goals/${goalId}/reports/`);
+      const data = Array.isArray(response) ? response : (response as any)?.data || [];
+      console.log('✅ Goal reports:', data.length);
+      return data;
+    } catch (error: any) {
+      console.log('❌ Goal reports error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get specific goal report
+   */
+  async getGoalReport(reportId: string | number): Promise<any> {
+    try {
+      console.log('📄 Fetching goal report:', reportId);
+      const response = await api.get(`/hr/goal-reports/${reportId}/`);
+      console.log('✅ Goal report retrieved');
+      return response;
+    } catch (error: any) {
+      console.log('❌ Get goal report error:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

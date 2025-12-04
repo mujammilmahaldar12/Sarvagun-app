@@ -11,7 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePicker } from './DatePicker';
+import { DateRangePicker } from './DateRangePicker';
 
 export interface FilterOption {
   label: string;
@@ -124,7 +125,7 @@ export function FilterBar({
   // Get active filter display text
   const getActiveFilterText = (config: FilterConfig): string | null => {
     const value = activeFilters[config.key];
-    
+
     if (!value) return null;
 
     if (config.type === 'select') {
@@ -221,46 +222,23 @@ export function FilterBar({
 
       return (
         <View style={styles.modalContent}>
-          <TouchableOpacity
-            style={[styles.dateRangeButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => setShowDatePicker('start')}
-          >
-            <Text style={[styles.dateRangeLabel, { color: theme.textSecondary }]}>Start Date</Text>
-            <Text style={[styles.dateRangeValue, { color: theme.text }]}>
-              {range.start || 'Select date'}
-            </Text>
-            <Ionicons name="calendar" size={20} color={theme.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.dateRangeButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => setShowDatePicker('end')}
-          >
-            <Text style={[styles.dateRangeLabel, { color: theme.textSecondary }]}>End Date</Text>
-            <Text style={[styles.dateRangeValue, { color: theme.text }]}>
-              {range.end || 'Select date'}
-            </Text>
-            <Ionicons name="calendar" size={20} color={theme.primary} />
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={
-                showDatePicker === 'start' && range.start
-                  ? new Date(range.start)
-                  : showDatePicker === 'end' && range.end
-                  ? new Date(range.end)
-                  : new Date()
-              }
-              mode="date"
-              display="default"
-              onChange={(event, date) => {
-                if (date && showDatePicker) {
-                  handleDateChange(selectedFilter.key, showDatePicker, date);
-                }
-              }}
-            />
-          )}
+          <DateRangePicker
+            label="Date Range"
+            value={{
+              startDate: range.start ? new Date(range.start) : undefined,
+              endDate: range.end ? new Date(range.end) : undefined
+            }}
+            onChange={(range) => {
+              onFiltersChange({
+                ...activeFilters,
+                [selectedFilter.key]: {
+                  start: range.startDate?.toISOString().split('T')[0],
+                  end: range.endDate?.toISOString().split('T')[0],
+                },
+              });
+            }}
+            placeholder="Select start and end date"
+          />
         </View>
       );
     }
@@ -400,6 +378,7 @@ const styles = StyleSheet.create({
     maxHeight: 60,
   },
   contentContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,

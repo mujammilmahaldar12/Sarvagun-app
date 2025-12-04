@@ -22,6 +22,7 @@ interface LeadsListProps {
   searchQuery?: string;
   selectedStatus?: string;
   refreshing?: boolean;
+  headerComponent?: React.ReactNode;
 }
 
 interface LeadRowData {
@@ -41,11 +42,12 @@ const LeadsList: React.FC<LeadsListProps> = ({
   searchQuery = '',
   selectedStatus = 'all',
   refreshing = false,
+  headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  
+
   const {
     leads,
     loading,
@@ -87,7 +89,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       canManage,
       userId: user?.id
     });
-    
+
     if (!Array.isArray(leads)) {
       console.log('⚠️ Leads is not an array:', typeof leads, leads);
       return [];
@@ -135,88 +137,17 @@ const LeadsList: React.FC<LeadsListProps> = ({
     router.push(`/(modules)/events/${leadId}?type=leads` as any);
   };
 
-  const handleConvertLead = (leadId: number) => {
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
-
-    Alert.alert(
-      'Convert Lead to Event',
-      `Convert "${lead.client?.name || 'this lead'}" to an event?\n\nYou'll be able to review and edit all details before finalizing.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Continue', 
-          onPress: () => router.push(`/(modules)/events/convert-lead?leadId=${leadId}` as any),
-          style: 'default'
-        }
-      ]
-    );
-  };
-
-  const handleRejectLead = async (leadId: number) => {
-    Alert.prompt(
-      'Reject Lead',
-      'Please provide a reason for rejecting this lead (optional):',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async (reason?: string) => {
-            try {
-              await rejectLead(leadId, reason || '');
-              Alert.alert('Success', 'Lead rejected successfully');
-            } catch (error) {
-              console.error('Error rejecting lead:', error);
-              Alert.alert(
-                'Error',
-                error instanceof Error ? error.message : 'Failed to reject lead'
-              );
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
-  };
-
-  const handleDeleteLead = async (leadId: number) => {
-    Alert.alert(
-      'Delete Lead',
-      'Are you sure you want to delete this lead? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteLead(leadId);
-              Alert.alert('Success', 'Lead deleted successfully');
-            } catch (error) {
-              console.error('Error deleting lead:', error);
-              Alert.alert(
-                'Error',
-                error instanceof Error ? error.message : 'Failed to delete lead'
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
-
   // Table configuration
   const columns = [
-    { 
-      key: 'clientName', 
-      title: 'Client Name', 
+    {
+      key: 'clientName',
+      title: 'Client Name',
       width: 140,
       sortable: true,
       render: (value: string, row: LeadRowData) => (
         <View>
-          <Text 
-            style={[styles.cellTextPrimary, { color: theme.text, fontWeight: '500', marginBottom: 2 }]} 
+          <Text
+            style={[styles.cellTextPrimary, { color: theme.text, fontWeight: '500', marginBottom: 2 }]}
             numberOfLines={1}
           >
             {value}
@@ -229,9 +160,9 @@ const LeadsList: React.FC<LeadsListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'email', 
-      title: 'Contact', 
+    {
+      key: 'email',
+      title: 'Contact',
       width: 130,
       sortable: true,
       render: (value: string, row: LeadRowData) => (
@@ -247,9 +178,9 @@ const LeadsList: React.FC<LeadsListProps> = ({
         </View>
       ),
     },
-    { 
-      key: 'source', 
-      title: 'Source', 
+    {
+      key: 'source',
+      title: 'Source',
       width: 80,
       sortable: true,
       render: (value: string | undefined) => (
@@ -258,9 +189,9 @@ const LeadsList: React.FC<LeadsListProps> = ({
         </Text>
       ),
     },
-    { 
-      key: 'status', 
-      title: 'Status', 
+    {
+      key: 'status',
+      title: 'Status',
       width: 100,
       sortable: true,
       render: (value: string) => (
@@ -271,9 +202,9 @@ const LeadsList: React.FC<LeadsListProps> = ({
         />
       ),
     },
-    { 
-      key: 'assignedTo', 
-      title: 'Assigned To', 
+    {
+      key: 'assignedTo',
+      title: 'Assigned To',
       width: 100,
       sortable: true,
       render: (value: string) => (
@@ -282,13 +213,13 @@ const LeadsList: React.FC<LeadsListProps> = ({
         </Text>
       ),
     },
-    { 
-      key: 'createdDate', 
-      title: 'Created', 
+    {
+      key: 'createdDate',
+      title: 'Created',
       width: 90,
       sortable: true,
       render: (value: string) => (
-        <Text style={[styles.cellTextSecondary, { 
+        <Text style={[styles.cellTextSecondary, {
           color: theme.textSecondary,
           fontSize: designSystem.typography.sizes.xs
         }]}>
@@ -299,7 +230,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
     {
       key: 'actions',
       title: 'Actions',
-      width: 200,
+      width: 80, // Reduced width since only one action
       render: (value: any, row: LeadRowData) => (
         <View style={styles.actionsContainer}>
           <ActionButton
@@ -311,60 +242,6 @@ const LeadsList: React.FC<LeadsListProps> = ({
             accessibilityLabel={`View lead for ${row.clientName}`}
             style={{ minWidth: 60 }}
           />
-          
-          {row.status === 'pending' && (
-            <>
-              <ActionButton
-                icon="checkmark-circle-outline"
-                title={canApprove ? "Convert" : "Convert"}
-                onPress={canApprove ? () => handleConvertLead(row.id) : undefined}
-                variant={canApprove ? "success" : "secondary"}
-                size="small"
-                disabled={!canApprove}
-                accessibilityLabel={canApprove ? `Convert lead for ${row.clientName}` : 'Conversion requires admin access'}
-                style={{ 
-                  opacity: canApprove ? 1 : 0.5,
-                  minWidth: 70,
-                  marginLeft: 4,
-                }}
-              />
-              
-              {canApprove && (
-                <ActionButton
-                  icon="close-circle-outline"
-                  title="Reject"
-                  onPress={() => handleRejectLead(row.id)}
-                  variant="warning"
-                  size="small"
-                  accessibilityLabel={`Reject lead for ${row.clientName}`}
-                  style={{ marginLeft: 4 }}
-                />
-              )}
-            </>
-          )}
-          
-          {row.status === 'converted' && (
-            <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.success + '20', borderRadius: 6 }}>
-              <Text style={{ color: theme.success, fontSize: 10, fontWeight: '600' }}>Converted</Text>
-            </View>
-          )}
-          
-          {row.status === 'rejected' && (
-            <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: theme.error + '20', borderRadius: 6 }}>
-              <Text style={{ color: theme.error, fontSize: 10, fontWeight: '600' }}>Rejected</Text>
-            </View>
-          )}
-          
-          {canManageLeads && (
-            <ActionButton
-              icon="trash-outline"
-              title="Delete"
-              onPress={() => handleDeleteLead(row.id)}
-              variant="danger"
-              size="small"
-              accessibilityLabel={`Delete lead for ${row.clientName}`}
-            />
-          )}
         </View>
       ),
     },
@@ -393,7 +270,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
   // Empty state
   if (processedLeads.length === 0 && !loading) {
     const isFiltered = selectedStatus !== 'all' || searchQuery.trim() !== '';
-    
+
     return (
       <View style={[styles.centered, { backgroundColor: theme.background }]}>
         <EmptyState
@@ -423,9 +300,11 @@ const LeadsList: React.FC<LeadsListProps> = ({
         searchable={true}
         searchPlaceholder="Search leads..."
         exportable={user?.category === 'admin' || user?.category === 'hr'}
-        pageSize={100}
+        paginated={true}
+        pageSize={20}
+        ListHeaderComponent={headerComponent}
       />
-      
+
       {/* Add Lead FAB Button - positioned at bottom-left 30px from bottom, 20px from left */}
       {canCreateLeads && (
         <FAB

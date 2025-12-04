@@ -19,6 +19,81 @@ import type { Sales, Expense } from '@/types/events';
 type TabType = 'info' | 'timeline' | 'documents';
 
 // Finance Section Component
+interface DetailSectionProps {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  children: React.ReactNode;
+  delay?: number;
+}
+
+const DetailSection = ({ title, icon, children, delay = 0 }: DetailSectionProps) => {
+  const { theme } = useTheme();
+  return (
+    <Animated.View
+      entering={FadeIn.delay(delay).springify()}
+      style={{
+        backgroundColor: theme.surface,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
+        shadowColor: theme.text,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <View style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: theme.primary + '15',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Ionicons name={icon} size={18} color={theme.primary} />
+        </View>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>{title}</Text>
+      </View>
+      <View style={{ gap: 12 }}>
+        {children}
+      </View>
+    </Animated.View>
+  );
+};
+
+interface DetailRowProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string | null | undefined;
+  isLast?: boolean;
+}
+
+const DetailRow = ({ icon, label, value, isLast }: DetailRowProps) => {
+  const { theme } = useTheme();
+  if (!value) return null;
+  return (
+    <View style={{
+      flexDirection: 'row',
+      gap: 12,
+      paddingBottom: isLast ? 0 : 12,
+      borderBottomWidth: isLast ? 0 : 1,
+      borderBottomColor: theme.border,
+    }}>
+      <View style={{ width: 20, alignItems: 'center' }}>
+        <Ionicons name={icon} size={18} color={theme.textSecondary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 2 }}>{label}</Text>
+        <Text style={{ fontSize: 14, color: theme.text, fontWeight: '500', lineHeight: 20 }}>{value}</Text>
+      </View>
+    </View>
+  );
+};
+
 interface FinanceSectionProps {
   eventId: number;
 }
@@ -140,9 +215,9 @@ const FinanceSection: React.FC<FinanceSectionProps> = ({ eventId }) => {
                 padding: 12,
                 borderRadius: 8,
                 borderLeftWidth: 3,
-                borderLeftColor: 
+                borderLeftColor:
                   sale.payment_status === 'completed' ? '#10b981' :
-                  sale.payment_status === 'pending' ? '#f59e0b' : '#94a3b8',
+                    sale.payment_status === 'pending' ? '#f59e0b' : '#94a3b8',
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -161,15 +236,15 @@ const FinanceSection: React.FC<FinanceSectionProps> = ({ eventId }) => {
                   </Text>
                 )}
               </View>
-              <Ionicons 
+              <Ionicons
                 name={
                   sale.payment_status === 'completed' ? 'checkmark-circle' :
-                  sale.payment_status === 'pending' ? 'time' : 'alert-circle'
+                    sale.payment_status === 'pending' ? 'time' : 'alert-circle'
                 }
                 size={20}
                 color={
                   sale.payment_status === 'completed' ? '#10b981' :
-                  sale.payment_status === 'pending' ? '#f59e0b' : '#94a3b8'
+                    sale.payment_status === 'pending' ? '#f59e0b' : '#94a3b8'
                 }
               />
             </View>
@@ -198,7 +273,7 @@ const FinanceSection: React.FC<FinanceSectionProps> = ({ eventId }) => {
                 borderLeftWidth: 3,
                 borderLeftColor:
                   expense.payment_status === 'paid' ? '#10b981' :
-                  expense.payment_status === 'partial_paid' ? '#f59e0b' : '#ef4444',
+                    expense.payment_status === 'partial_paid' ? '#f59e0b' : '#ef4444',
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -220,15 +295,15 @@ const FinanceSection: React.FC<FinanceSectionProps> = ({ eventId }) => {
                   </Text>
                 )}
               </View>
-              <Ionicons 
+              <Ionicons
                 name={
                   expense.payment_status === 'paid' ? 'checkmark-circle' :
-                  expense.payment_status === 'partial_paid' ? 'time' : 'close-circle'
+                    expense.payment_status === 'partial_paid' ? 'time' : 'close-circle'
                 }
                 size={20}
                 color={
                   expense.payment_status === 'paid' ? '#10b981' :
-                  expense.payment_status === 'partial_paid' ? '#f59e0b' : '#ef4444'
+                    expense.payment_status === 'partial_paid' ? '#f59e0b' : '#ef4444'
                 }
               />
             </View>
@@ -258,7 +333,7 @@ export default function EventDetailScreen() {
   const navigation = useNavigation();
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const user = useAuthStore((state) => state.user);
-  
+
   const [activeTab, setActiveTab] = useState<TabType>('info');
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -285,11 +360,11 @@ export default function EventDetailScreen() {
 
   const fetchItemDetails = async () => {
     setLoading(true);
-    
+
     try {
       let data;
       const itemId = parseInt(id);
-      
+
       switch (itemType) {
         case 'leads':
           data = await eventsService.getLead(itemId);
@@ -307,7 +382,7 @@ export default function EventDetailScreen() {
           safeGoBack();
           return;
       }
-      
+
       setItem(data);
     } catch (error: any) {
       safeGoBack();
@@ -348,8 +423,7 @@ export default function EventDetailScreen() {
     }
   };
 
-
-
+  // UI Helper Components
   const renderInfoTab = () => {
     if (!item) return null;
 
@@ -358,270 +432,108 @@ export default function EventDetailScreen() {
         <View style={{ padding: 16 }}>
           {/* Quick Actions - Only show for pending leads */}
           {item.status === 'pending' && !item.reject && !item.convert && (
-          <Animated.View entering={FadeIn.delay(300)} style={{ gap: 12, marginBottom: 16 }}>
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: theme.primary,
-              }}
-              onPress={() => router.push(`/(modules)/events/convert-lead?leadId=${id}` as any)}
-            >
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Convert to Event</Text>
-            </TouchableOpacity>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Animated.View entering={FadeIn.delay(300)} style={{ gap: 12, marginBottom: 24 }}>
               <TouchableOpacity
                 style={{
-                  flex: 1,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
-                  paddingVertical: 12,
-                  borderRadius: 8,
-                  backgroundColor: theme.surface,
-                  borderWidth: 1,
-                  borderColor: theme.border,
+                  gap: 10,
+                  paddingVertical: 16,
+                  borderRadius: 14,
+                  backgroundColor: theme.primary,
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 8,
+                  elevation: 4,
                 }}
-                onPress={handleEdit}
+                onPress={() => router.push(`/(modules)/events/convert-lead?leadId=${id}` as any)}
               >
-                <Ionicons name="create" size={18} color={theme.text} />
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>Edit</Text>
+                <Ionicons name="checkmark-circle" size={22} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Convert to Event</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  paddingVertical: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#ef4444' + '20',
-                  borderWidth: 1,
-                  borderColor: '#ef4444',
-                }}
-                onPress={handleDelete}
-              >
-                <Ionicons name="close-circle" size={18} color="#ef4444" />
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>Reject</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-          )}
-
-          {/* Client Information Section */}
-          <Animated.View
-            entering={FadeIn}
-            style={{
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-              backgroundColor: theme.surface,
-              marginBottom: 16,
-              overflow: 'hidden',
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, paddingBottom: 12 }}>
-              <Ionicons name="person-circle" size={24} color={theme.primary} />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>Client Information</Text>
-            </View>
-            <View style={{ padding: 16, paddingTop: 0, gap: 16 }}>
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Ionicons name="person" size={18} color={theme.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Name</Text>
-                  <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                    {item.client?.name || 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {item.client?.number && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="call" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Phone</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                      {item.client.number}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {item.client?.email && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="mail" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Email</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                      {item.client.email}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {item.client?.alternate_number && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="call-outline" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Alternate Phone</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                      {item.client.alternate_number}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          </Animated.View>
-
-          {/* Lead Details Section */}
-          <Animated.View
-            entering={FadeIn.delay(100)}
-            style={{
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-              backgroundColor: theme.surface,
-              marginBottom: 16,
-              overflow: 'hidden',
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, paddingBottom: 12 }}>
-              <Ionicons name="document-text" size={24} color={theme.primary} />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>Lead Details</Text>
-            </View>
-            <View style={{ padding: 16, paddingTop: 0, gap: 16 }}>
-              {item.source && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Source</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                      {item.source.charAt(0).toUpperCase() + item.source.slice(1)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {item.status && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Status</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                      {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {item.user_name && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Created By</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>{item.user_name}</Text>
-                  </View>
-                </View>
-              )}
-
-              {item.message && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="chatbubble-ellipses" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Message</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>{item.message}</Text>
-                  </View>
-                </View>
-              )}
-
-              {item.referral && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="ribbon" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Referral Source</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>{item.referral}</Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Ionicons name="calendar" size={18} color={theme.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Created Date</Text>
-                  <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                    {item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    }) : 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {item.updated_at && item.updated_at !== item.created_at && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="time" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Last Updated</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>
-                      {new Date(item.updated_at).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          </Animated.View>
-
-          {/* Conversion Info (if converted) */}
-          {item.convert && item.event_id && (
-            <Animated.View
-              entering={FadeIn.delay(200)}
-              style={{
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme.border,
-                backgroundColor: theme.surface,
-                overflow: 'hidden',
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, paddingBottom: 12 }}>
-                <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>Conversion Info</Text>
-              </View>
-              <View style={{ padding: 16, paddingTop: 0, gap: 16 }}>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Ionicons name="calendar-sharp" size={18} color={theme.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, marginBottom: 4, color: theme.textSecondary }}>Converted Event ID</Text>
-                    <Text style={{ fontSize: 15, lineHeight: 22, color: theme.text }}>#{item.event_id}</Text>
-                  </View>
-                </View>
-                <Pressable
-                  style={({ pressed }) => ({
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    paddingVertical: 12,
-                    borderRadius: 8,
-                    marginTop: 8,
-                    backgroundColor: pressed ? theme.primary + '90' : theme.primary,
-                  })}
-                  onPress={() => router.push(`/(modules)/events/${item.event_id}?type=events` as any)}
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: theme.surface,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                  }}
+                  onPress={handleEdit}
                 >
-                  <Ionicons name="eye" size={18} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>View Event</Text>
-                </Pressable>
+                  <Ionicons name="create-outline" size={20} color={theme.text} />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: '#ef4444' + '10',
+                    borderWidth: 1,
+                    borderColor: '#ef4444' + '30',
+                  }}
+                  onPress={handleDelete}
+                >
+                  <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#ef4444' }}>Reject</Text>
+                </TouchableOpacity>
               </View>
             </Animated.View>
+          )}
+
+          {/* Client Information Section */}
+          <DetailSection title="Client Information" icon="person" delay={0}>
+            <DetailRow icon="person-outline" label="Name" value={item.client?.name} />
+            <DetailRow icon="call-outline" label="Phone" value={item.client?.number} />
+            <DetailRow icon="mail-outline" label="Email" value={item.client?.email} />
+            <DetailRow icon="call-outline" label="Alternate Phone" value={item.client?.alternate_number} isLast />
+          </DetailSection>
+
+          {/* Lead Details Section */}
+          <DetailSection title="Lead Details" icon="document-text" delay={100}>
+            <DetailRow icon="globe-outline" label="Source" value={item.source ? item.source.charAt(0).toUpperCase() + item.source.slice(1) : null} />
+            <DetailRow icon="flag-outline" label="Status" value={item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : null} />
+            <DetailRow icon="person-circle-outline" label="Created By" value={item.user_name} />
+            <DetailRow icon="chatbubble-ellipses-outline" label="Message" value={item.message} />
+            <DetailRow icon="ribbon-outline" label="Referral Source" value={item.referral} />
+            <DetailRow icon="calendar-outline" label="Created Date" value={item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+            <DetailRow icon="time-outline" label="Last Updated" value={item.updated_at && item.updated_at !== item.created_at ? new Date(item.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} isLast />
+          </DetailSection>
+
+          {/* Conversion Info (if converted) */}
+          {item.convert && item.event_id && (
+            <DetailSection title="Conversion Info" icon="checkmark-circle" delay={200}>
+              <DetailRow icon="calendar-outline" label="Converted Event ID" value={`#${item.event_id}`} isLast />
+              <Pressable
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  marginTop: 8,
+                  backgroundColor: pressed ? theme.primary + '90' : theme.primary,
+                })}
+                onPress={() => router.push(`/(modules)/events/${item.event_id}?type=events` as any)}
+              >
+                <Ionicons name="eye-outline" size={20} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>View Event</Text>
+              </Pressable>
+            </DetailSection>
           )}
         </View>
       );
@@ -680,7 +592,7 @@ export default function EventDetailScreen() {
                 Active Days
               </Text>
               <Text style={{ fontSize: 14, color: theme.text }}>
-                {item.active_days.map((day: any) => 
+                {item.active_days.map((day: any) =>
                   new Date(day.date).toLocaleDateString('en-IN')
                 ).join(', ')}
               </Text>
@@ -694,9 +606,9 @@ export default function EventDetailScreen() {
                 Assigned Vendors
               </Text>
               {item.vendors.map((vendor: any, index: number) => (
-                <View key={index} style={{ 
-                  backgroundColor: theme.surface, 
-                  padding: 12, 
+                <View key={index} style={{
+                  backgroundColor: theme.surface,
+                  padding: 12,
                   borderRadius: 8,
                   borderLeftWidth: 3,
                   borderLeftColor: theme.primary,
@@ -792,9 +704,9 @@ export default function EventDetailScreen() {
   );
 
   const tabs = [
-    { key: 'info' as TabType, label: 'Info', icon: 'information-circle' as const },
-    { key: 'timeline' as TabType, label: 'Timeline', icon: 'time' as const },
-    { key: 'documents' as TabType, label: 'Documents', icon: 'document' as const },
+    { key: 'info' as TabType, label: 'Info' },
+    { key: 'timeline' as TabType, label: 'Timeline' },
+    { key: 'documents' as TabType, label: 'Documents' },
   ];
 
   if (loading) {
@@ -884,7 +796,7 @@ export default function EventDetailScreen() {
                   style={({ pressed }) => ({
                     padding: 8,
                     borderRadius: 8,
-                    backgroundColor: pressed ? '#f59e0b' + '20' : '#f59e0b',
+                    backgroundColor: pressed ? theme.primary + '20' : theme.primary,
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 4,
@@ -895,30 +807,6 @@ export default function EventDetailScreen() {
                 </Pressable>
               </>
             )}
-            {canEdit && itemType !== 'leads' && (
-              <Pressable
-                onPress={handleEdit}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? theme.primary + '20' : 'transparent',
-                })}
-              >
-                <Ionicons name="pencil-outline" size={24} color={theme.primary} />
-              </Pressable>
-            )}
-            {canDelete && itemType !== 'leads' && (
-              <Pressable
-                onPress={handleDelete}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? baseColors.error[100] : 'transparent',
-                })}
-              >
-                <Ionicons name="trash-outline" size={24} color={baseColors.error[500]} />
-              </Pressable>
-            )}
           </View>
         }
       />
@@ -928,10 +816,15 @@ export default function EventDetailScreen() {
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={(key) => setActiveTab(key as TabType)}
+        variant="underline"
       />
 
       {/* Content */}
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {activeTab === 'info' && renderInfoTab()}
         {activeTab === 'timeline' && renderTimelineTab()}
         {activeTab === 'documents' && renderDocumentsTab()}
@@ -951,13 +844,19 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: 8,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   content: {
-    padding: spacing.lg,
-    gap: spacing.xl,
+    padding: 16,
+    gap: 24,
   },
   section: {
-    gap: spacing.md,
+    gap: 12,
   },
 });

@@ -29,14 +29,14 @@ import Animated, {
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useInternLeaderboard, useTeamLeaderboard, useLeadersLeaderboard, useIndividualInternRanking } from '@/hooks/useDashboardQueries';
-import { Avatar, AnimatedPressable, Skeleton } from '@/components';
+import { Avatar, AnimatedPressable, Skeleton, DatePicker } from '@/components';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type FilterType = 'individual' | 'team' | 'leaders';
-type TimeRange = 'daily' | 'weekly' | 'monthly' | 'yearly';
+type TimeRange = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
 // Filter Tab Component
 const FilterTab = ({ 
@@ -511,6 +511,9 @@ export default function LeaderboardScreen() {
   const [filter, setFilter] = useState<FilterType | 'leaders'>('individual');
   const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
   // Fetch data based on filter and time range
   const { 
@@ -616,10 +619,16 @@ export default function LeaderboardScreen() {
           {[{ value: 'daily', label: 'Today', icon: 'today' }, 
             { value: 'weekly', label: 'Week', icon: 'calendar' },
             { value: 'monthly', label: 'Month', icon: 'calendar-outline' },
-            { value: 'yearly', label: 'Year', icon: 'calendar-sharp' }].map((range) => (
+            { value: 'yearly', label: 'Year', icon: 'calendar-sharp' },
+            { value: 'custom', label: 'Custom', icon: 'calendar-number' }].map((range) => (
             <TouchableOpacity
               key={range.value}
-              onPress={() => setTimeRange(range.value as TimeRange)}
+              onPress={() => {
+                setTimeRange(range.value as TimeRange);
+                if (range.value === 'custom') {
+                  setShowDatePicker(true);
+                }
+              }}
               style={[
                 styles.timeRangeTab,
                 {
@@ -644,6 +653,50 @@ export default function LeaderboardScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* Custom Date Range Picker */}
+        {showDatePicker && (
+          <View style={{ padding: spacing.lg, backgroundColor: theme.surface, borderRadius: borderRadius.lg, marginHorizontal: spacing.lg, marginTop: spacing.base }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>Select Date Range</Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Ionicons name="close-circle" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ gap: spacing.md }}>
+              <DatePicker
+                label="Start Date"
+                value={startDate}
+                onChange={setStartDate}
+                placeholder="Select start date"
+                maxDate={endDate || undefined}
+              />
+              <DatePicker
+                label="End Date"
+                value={endDate}
+                onChange={setEndDate}
+                placeholder="Select end date"
+                minDate={startDate || undefined}
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  if (startDate && endDate) {
+                    setShowDatePicker(false);
+                    // Refetch with custom date range
+                    onRefresh();
+                  }
+                }}
+                style={[
+                  styles.applyButton,
+                  { backgroundColor: theme.primary, opacity: (startDate && endDate) ? 1 : 0.5 }
+                ]}
+                disabled={!startDate || !endDate}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Apply Date Range</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </LinearGradient>
 
       <ScrollView
@@ -927,6 +980,12 @@ const styles = StyleSheet.create({
   },
   timeRangeText: {
     ...getTypographyStyle('xs', 'medium'),
+  },
+  applyButton: {
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Status Badge

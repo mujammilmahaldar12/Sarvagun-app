@@ -15,6 +15,7 @@ interface InfoRowProps {
   value: string | React.ReactNode;
   icon?: keyof typeof Ionicons.glyphMap;
   multiline?: boolean;
+  valueStyle?: any;
 }
 
 export const InfoRow: React.FC<InfoRowProps> = ({
@@ -22,6 +23,7 @@ export const InfoRow: React.FC<InfoRowProps> = ({
   value,
   icon,
   multiline = false,
+  valueStyle,
 }) => {
   const { theme } = useTheme();
 
@@ -47,6 +49,7 @@ export const InfoRow: React.FC<InfoRowProps> = ({
             getTypographyStyle('base', 'regular'),
             { color: theme.text },
             multiline && styles.multilineValue,
+            valueStyle,
           ]}
           numberOfLines={multiline ? undefined : 1}
         >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Alert, Image, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, Pressable, Alert, Image, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +15,12 @@ import {
   useExpense, 
   useCreateExpense, 
   useUpdateExpense, 
-  useVendors,
-  useEvents 
+  useVendors
 } from '@/hooks/useFinanceQueries';
+import { useEvents } from '@/hooks/useEventsQueries';
 import FinanceService from '@/services/finance.service';
-import type { Vendor, Event } from '@/types/finance';
+import type { Vendor } from '@/types/finance';
+import type { Event } from '@/types/events';
 
 import type { SelectOption } from '@/components/core/Select';
 
@@ -46,10 +47,14 @@ export default function AddExpenseScreen() {
 
   // Fetch data
   const { data: expense, isLoading: expenseLoading } = useExpense(Number(id), { enabled: isEditMode });
-  const { data: vendors = [] } = useVendors();
-  const { data: events = [] } = useEvents();
+  const { data: vendorsData } = useVendors();
+  const { data: eventsData } = useEvents();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
+  
+  // Extract arrays from paginated responses
+  const vendors = Array.isArray(vendorsData) ? vendorsData : (vendorsData as any)?.results || [];
+  const events = Array.isArray(eventsData) ? eventsData : (eventsData as any)?.results || [];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -126,12 +131,12 @@ export default function AddExpenseScreen() {
   };
 
   // Filtered lists
-  const filteredVendors = vendors.filter((vendor) =>
+  const filteredVendors = (vendors || []).filter((vendor) =>
     vendor.name?.toLowerCase().includes(vendorSearchQuery.toLowerCase()) ||
     vendor.contact_person?.toLowerCase().includes(vendorSearchQuery.toLowerCase())
   );
 
-  const filteredEvents = events.filter((event) =>
+  const filteredEvents = (events || []).filter((event) =>
     event.name?.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
     event.client?.name?.toLowerCase().includes(eventSearchQuery.toLowerCase())
   );
@@ -412,13 +417,28 @@ export default function AddExpenseScreen() {
           />
           
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <DropdownField
-                label="Select Vendor"
-                value={selectedVendor?.name || ''}
-                placeholder="Tap to select vendor"
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary }]}>
+                Select Vendor
+              </Text>
+              <Pressable
                 onPress={() => setShowVendorModal(true)}
-              />
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: 8,
+                  backgroundColor: theme.surface,
+                }}
+              >
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedVendor?.name ? theme.text : theme.textSecondary }]}>
+                  {selectedVendor?.name || 'Tap to select vendor'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+              </Pressable>
             </View>
             <Pressable
               onPress={() => setShowCreateVendorModal(true)}
@@ -470,12 +490,29 @@ export default function AddExpenseScreen() {
             subtitle="Link this expense to an event"
           />
           
-          <DropdownField
-            label="Select Event"
-            value={selectedEvent?.name || ''}
-            placeholder="Tap to select event (optional)"
-            onPress={() => setShowEventModal(true)}
-          />
+          <View style={{ gap: 4 }}>
+            <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary }]}>
+              Select Event
+            </Text>
+            <Pressable
+              onPress={() => setShowEventModal(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+                borderRadius: 8,
+                backgroundColor: theme.surface,
+              }}
+            >
+              <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedEvent?.name ? theme.text : theme.textSecondary }]}>
+                {selectedEvent?.name || 'Tap to select event (optional)'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+            </Pressable>
+          </View>
 
           {selectedEvent && (
             <View style={{
@@ -567,7 +604,7 @@ export default function AddExpenseScreen() {
           </Pressable>
 
           {formData.bill_evidence && (
-            <FormInput
+            <Input
               label="Bill Number"
               value={formData.bill_no}
               onChangeText={(text: string) => updateField('bill_no', text)}
