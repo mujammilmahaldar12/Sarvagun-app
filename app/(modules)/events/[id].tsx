@@ -448,7 +448,7 @@ export default function EventDetailScreen() {
                   shadowRadius: 8,
                   elevation: 4,
                 }}
-                onPress={() => router.push(`/(modules)/events/convert-lead?leadId=${id}` as any)}
+                onPress={() => router.push(`/(modules)/events/add-event?fromLead=${id}` as any)}
               >
                 <Ionicons name="checkmark-circle" size={22} color="#fff" />
                 <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Convert to Event</Text>

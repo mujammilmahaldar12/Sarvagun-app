@@ -31,6 +31,14 @@ interface Module {
   bgColor: string;
 }
 
+interface LocalActivity {
+  id: string | number;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
 const MODULES: Module[] = [
   {
     id: 'hr',
@@ -82,9 +90,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user: authUser } = useAuthStore();
   const { theme, isDark } = useTheme();
-  
+
   // Dashboard data fetching
-  
+
   // Fetch real data from backend with real-time updates
   const user = useAuthStore((state) => state.user);
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();
@@ -95,7 +103,7 @@ export default function HomeScreen() {
   const { data: attendanceData, isLoading: attendanceLoading } = useAttendancePercentage();
 
   const [notificationCount] = useState(0);
-  
+
   // Use auth store user as fallback
   const currentUser = user;
   const userLoading = false;
@@ -120,29 +128,29 @@ export default function HomeScreen() {
 
   // Get REAL user data - priority: API response > Auth store
   const displayUser = currentUser || authUser;
-  
+
   // Helper to capitalize first letter of each word
   const capitalizeName = (name: string) => {
     return name.split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
-  
-  const rawName = displayUser?.full_name || 
-                  (displayUser?.first_name && displayUser?.last_name 
-                    ? `${displayUser.first_name} ${displayUser.last_name}` 
-                    : (displayUser as any)?.username || 'User');
+
+  const rawName = displayUser?.full_name ||
+    (displayUser?.first_name && displayUser?.last_name
+      ? `${displayUser.first_name} ${displayUser.last_name}`
+      : (displayUser as any)?.username || 'User');
   const fullName = capitalizeName(rawName);
-  
+
   // Real leave balance calculation - handle different response types
-  const totalLeaves = (leaveBalance as any)?.annual_leave_available || 
-                     (leaveBalance as any)?.total || 
-                     0;
+  const totalLeaves = (leaveBalance as any)?.annual_leave_available ||
+    (leaveBalance as any)?.total ||
+    0;
   const leaveDays = totalLeaves;
-  
+
   // Active projects from backend
   const activeProjects = activeProjectsCount ?? 0;
-  
+
   // Calculate real productivity score from leaderboard data
   const myProductivityScore = React.useMemo(() => {
     if (leaderboardData.length > 0 && displayUser) {
@@ -151,7 +159,7 @@ export default function HomeScreen() {
     }
     return 0;
   }, [leaderboardData, displayUser]);
-  
+
   // Real attendance percentage from backend API
   const attendancePercentage = attendanceData?.percentage || 0;
 
@@ -164,7 +172,7 @@ export default function HomeScreen() {
       />
 
       {/* Glass Morphism Header */}
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.duration(600).springify()}
         style={styles.header}
       >
@@ -173,25 +181,25 @@ export default function HomeScreen() {
           tint={isDark ? 'dark' : 'light'}
           style={styles.headerBlur}
         >
-        <View style={styles.headerContent}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              <Text style={[styles.appTitle, { color: theme.text }]}>Sarvagun</Text>
-            </View>
-            <View style={styles.headerActions}>
-              <AnimatedPressable
-                onPress={() => router.push('/(dashboard)/search' as any)}
-                style={[styles.iconButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
-                hapticType="light"
-              >
-                <Ionicons name="search-outline" size={20} color={theme.text} />
-              </AnimatedPressable>
-              <View style={[styles.iconButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
-                <NotificationBell size={20} color={theme.text} />
+          <View style={styles.headerContent}>
+            <View style={styles.headerRow}>
+              <View style={styles.headerLeft}>
+                <Text style={[styles.appTitle, { color: theme.text }]}>Sarvagun</Text>
+              </View>
+              <View style={styles.headerActions}>
+                <AnimatedPressable
+                  onPress={() => router.push('/(dashboard)/search' as any)}
+                  style={[styles.iconButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
+                  hapticType="light"
+                >
+                  <Ionicons name="search-outline" size={20} color={theme.text} />
+                </AnimatedPressable>
+                <View style={[styles.iconButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+                  <NotificationBell size={20} color={theme.text} />
+                </View>
               </View>
             </View>
           </View>
-        </View>
         </BlurView>
       </Animated.View>
 
@@ -208,7 +216,7 @@ export default function HomeScreen() {
         }
       >
         {/* Welcome Header - Clean & Simple */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(100).duration(600).springify()}
           style={styles.section}
         >
@@ -238,7 +246,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Your Stats Title */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(150).duration(600).springify()}
           style={styles.section}
         >
@@ -246,12 +254,12 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* KPI Cards - Horizontal Scroll */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(200).duration(600).springify()}
           style={styles.sectionNoPadding}
         >
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.kpiScrollContainer}
             decelerationRate="fast"
@@ -262,19 +270,19 @@ export default function HomeScreen() {
               title="Attendance"
               value={attendanceLoading ? '--' : `${Math.round(attendancePercentage)}%`}
               icon="calendar-outline"
-              gradientColors={['#3B82F6', '#1D4ED8']}
+              gradientColors={['#4F46E5', '#2563EB']}
               trend={attendancePercentage >= 90 ? "up" : attendancePercentage >= 75 ? "neutral" : "down"}
               trendValue={attendanceData?.present_days ? `${attendanceData.present_days}/${attendanceData.total_days}` : undefined}
               subtitle={attendanceData?.period === 'last_30_days' ? 'Last 30 days' : 'Last 7 days'}
               onPress={() => router.push('/(modules)/hr' as any)}
               style={styles.kpiCardHorizontal}
             />
-            
+
             <GlassKPICard
               title="Productivity Score"
               value={myProductivityScore > 0 ? myProductivityScore.toString() : '0'}
               icon="trending-up-outline"
-              gradientColors={['#10B981', '#059669']}
+              gradientColors={['#10B981', '#047857']}
               trend={myProductivityScore > 0 ? "up" : "neutral"}
               trendValue={myProductivityScore > 0 ? `${Math.floor(myProductivityScore / 10)} pts` : undefined}
               subtitle="Project score"
@@ -286,18 +294,18 @@ export default function HomeScreen() {
               title="Leave Balance"
               value={leaveDays}
               icon="time-outline"
-              gradientColors={['#F59E0B', '#D97706']}
+              gradientColors={['#F59E0B', '#B45309']}
               trend="neutral"
               subtitle="Days remaining"
               onPress={() => router.push('/(modules)/leave' as any)}
               style={styles.kpiCardHorizontal}
             />
-            
+
             <GlassKPICard
               title="Active Projects"
               value={activeProjects}
               icon="briefcase-outline"
-              gradientColors={['#8B5CF6', '#7C3AED']}
+              gradientColors={['#8B5CF6', '#6D28D9']}
               trend="up"
               trendValue="+1"
               subtitle="In progress"
@@ -310,7 +318,7 @@ export default function HomeScreen() {
 
 
         {/* Modules Section - Single Row Horizontal Scroll */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(300).duration(600).springify()}
           style={styles.sectionNoPadding}
         >
@@ -321,8 +329,8 @@ export default function HomeScreen() {
             </AnimatedPressable>
           </View>
 
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.modulesHorizontalContainer}
           >
@@ -359,115 +367,115 @@ export default function HomeScreen() {
 
         {/* Recent Activity Section - Glass Effect - Hide if no activities */}
         {(!activitiesLoading && backendActivities.length > 0) && (
-        <Animated.View 
-          entering={FadeInUp.delay(500).duration(600).springify()}
-          style={styles.section}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
-          </View>
+          <Animated.View
+            entering={FadeInUp.delay(500).duration(600).springify()}
+            style={styles.section}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
+            </View>
 
-          <GlassCard variant="default" intensity="medium">
-            <View style={styles.activityContainer}>
-              {activitiesLoading ? (
-              <>
-                {[1, 2, 3].map((index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.activityItem,
-                      {
-                        borderBottomWidth: index < 3 ? 1 : 0,
-                        borderBottomColor: theme.border,
-                      },
-                    ]}
-                  >
-                    <Skeleton width={48} height={48} borderRadius={24} />
-                    <View style={styles.activityContent}>
-                      <Skeleton width={180} height={16} style={{ marginBottom: spacing.xs }} />
-                      <Skeleton width={240} height={14} style={{ marginBottom: spacing.xs }} />
-                      <Skeleton width={80} height={12} />
-                    </View>
-                  </View>
-                ))}
-              </>
-            ) : backendActivities.length > 0 ? (
-              backendActivities.slice(0, 5).map((activity, index, arr) => {
-                const activityIcon = getActivityIcon(activity.type);
-                const activityColor = getActivityColor(activity.type);
-                
-                // Safe date parsing with fallback
-                let timeAgo = 'Recently';
-                try {
-                  const date = new Date(activity.timestamp);
-                  if (!isNaN(date.getTime())) {
-                    timeAgo = formatDistanceToNow(date, { addSuffix: true });
-                  }
-                } catch (e) {
-                  console.log('Invalid date for activity:', activity.timestamp);
-                }
-
-                return (
-                  <AnimatedPressable
-                    key={activity.id}
-                    onPress={() => handleActivityPress(activity)}
-                    hapticType="light"
-                    springConfig="gentle"
-                  >
-                    <View style={[
-                      styles.activityItemCard,
-                      { 
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                        marginBottom: index < arr.length - 1 ? spacing.sm : 0,
-                      }
-                    ]}>
-                      <View style={[styles.activityIcon, { backgroundColor: activityColor + '20' }]}>
-                        <Ionicons name={activityIcon} size={22} color={activityColor} />
-                      </View>
-                      <View style={styles.activityContent}>
-                        <Text style={[styles.activityTitle, { color: theme.text }]}>
-                          {activity.title}
-                        </Text>
-                        <Text style={[styles.activityDescription, { color: theme.textSecondary }]} numberOfLines={1}>
-                          {activity.description}
-                        </Text>
-                        <View style={styles.activityMeta}>
-                          <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
-                          <Text style={[styles.activityTime, { color: theme.textSecondary }]}>
-                            {timeAgo}
-                          </Text>
+            <GlassCard variant="default" intensity="medium">
+              <View style={styles.activityContainer}>
+                {activitiesLoading ? (
+                  <>
+                    {[1, 2, 3].map((index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.activityItem,
+                          {
+                            borderBottomWidth: index < 3 ? 1 : 0,
+                            borderBottomColor: theme.border,
+                          },
+                        ]}
+                      >
+                        <Skeleton width={48} height={48} borderRadius={24} />
+                        <View style={styles.activityContent}>
+                          <Skeleton width={180} height={16} style={{ marginBottom: spacing.xs }} />
+                          <Skeleton width={240} height={14} style={{ marginBottom: spacing.xs }} />
+                          <Skeleton width={80} height={12} />
                         </View>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-                    </View>
-                  </AnimatedPressable>
-                );
-              })
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="flash-outline" size={48} color={theme.textSecondary} />
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  No recent activities
-                </Text>
-                <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-                  Your activities will appear here
-                </Text>
+                    ))}
+                  </>
+                ) : backendActivities.length > 0 ? (
+                  backendActivities.slice(0, 5).map((activity, index, arr) => {
+                    const activityIcon = getActivityIcon(activity.type);
+                    const activityColor = getActivityColor(activity.type);
+
+                    // Safe date parsing with fallback
+                    let timeAgo = 'Recently';
+                    try {
+                      const date = new Date(activity.timestamp);
+                      if (!isNaN(date.getTime())) {
+                        timeAgo = formatDistanceToNow(date, { addSuffix: true });
+                      }
+                    } catch (e) {
+                      console.log('Invalid date for activity:', activity.timestamp);
+                    }
+
+                    return (
+                      <AnimatedPressable
+                        key={activity.id}
+                        onPress={() => handleActivityPress(activity)}
+                        hapticType="light"
+                        springConfig="gentle"
+                      >
+                        <View style={[
+                          styles.activityItemCard,
+                          {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'transparent',
+                            marginBottom: index < arr.length - 1 ? spacing.sm : 0,
+                          }
+                        ]}>
+                          <View style={[styles.activityIcon, { backgroundColor: activityColor + '20' }]}>
+                            <Ionicons name={activityIcon} size={22} color={activityColor} />
+                          </View>
+                          <View style={styles.activityContent}>
+                            <Text style={[styles.activityTitle, { color: theme.text }]}>
+                              {activity.title}
+                            </Text>
+                            <Text style={[styles.activityDescription, { color: theme.textSecondary }]} numberOfLines={1}>
+                              {activity.description}
+                            </Text>
+                            <View style={styles.activityMeta}>
+                              <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+                              <Text style={[styles.activityTime, { color: theme.textSecondary }]}>
+                                {timeAgo}
+                              </Text>
+                            </View>
+                          </View>
+                          <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                        </View>
+                      </AnimatedPressable>
+                    );
+                  })
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="flash-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                      No recent activities
+                    </Text>
+                    <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+                      Your activities will appear here
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-            </View>
-          </GlassCard>
-        </Animated.View>
+            </GlassCard>
+          </Animated.View>
         )}
 
         {/* Leadership Board Preview - Glass Effect */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(600).duration(600).springify()}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Leadership Board</Text>
-            <AnimatedPressable 
-              onPress={() => router.push('/(dashboard)/leaderboard')} 
+            <AnimatedPressable
+              onPress={() => router.push('/(dashboard)/leaderboard')}
               hapticType="selection"
             >
               <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
@@ -477,117 +485,117 @@ export default function HomeScreen() {
           <GlassCard variant="default" intensity="medium">
             <View style={styles.leaderboardContainer}>
               {leaderboardLoading ? (
-              <>
-                {[1, 2, 3].map((index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.leaderboardItem,
-                      {
-                        borderBottomWidth: index < 3 ? 1 : 0,
-                        borderBottomColor: theme.border,
-                      },
-                    ]}
-                  >
-                    <Skeleton width={40} height={40} borderRadius={20} style={{ marginRight: spacing.sm }} />
-                    <Skeleton width={48} height={48} borderRadius={24} />
-                    <View style={styles.leaderInfo}>
-                      <Skeleton width={150} height={16} style={{ marginBottom: spacing.xs }} />
-                      <Skeleton width={200} height={14} />
-                    </View>
-                  </View>
-                ))}
-              </>
-            ) : leaderboardData && leaderboardData.length > 0 ? (
-              leaderboardData.map((leader, index) => {
-              const getRankColor = (rank: number) => {
-                if (rank === 1) return MEDAL_COLORS.gold;
-                if (rank === 2) return MEDAL_COLORS.silver;
-                if (rank === 3) return MEDAL_COLORS.bronze;
-                return theme.primary;
-              };
-
-              const getRankIcon = (rank: number): keyof typeof Ionicons.glyphMap => {
-                if (rank === 1) return 'trophy';
-                if (rank === 2) return 'medal';
-                if (rank === 3) return 'ribbon';
-                return 'star';
-              };
-
-              const rankColor = getRankColor(leader.rank);
-              const isTopThree = leader.rank <= 3;
-
-              return (
-                <AnimatedPressable
-                  key={leader.id}
-                  onPress={() => router.push('/(dashboard)/leaderboard')}
-                  hapticType="light"
-                  springConfig="gentle"
-                  animateOnMount={true}
-                >
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    padding: 14,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                    borderRadius: 12,
-                    marginBottom: index < leaderboardData.length - 1 ? 8 : 0,
-                    borderLeftWidth: 3,
-                    borderLeftColor: isTopThree ? rankColor : 'transparent',
-                  }}>
-                  
-                  <Text style={{ 
-                    fontSize: 18, 
-                    fontWeight: '700', 
-                    color: isTopThree ? rankColor : theme.textSecondary,
-                    width: 32,
-                    textAlign: 'center',
-                  }}>
-                    {isTopThree ? (
-                      leader.rank === 1 ? '🥇' : leader.rank === 2 ? '🥈' : '🥉'
-                    ) : (
-                      leader.rank
-                    )}
-                  </Text>
-
-                  <Avatar
-                    size={44}
-                    source={leader.photo ? { uri: leader.photo } : undefined}
-                    name={leader.name}
-                  />
-
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 }} numberOfLines={1}>
-                      {leader.name}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ fontSize: 12, color: theme.textSecondary }}>
-                        {leader.completed_tasks || 0} tasks
-                      </Text>
-                      <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: theme.textTertiary }} />
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFD700' }}>
-                          {leader.total_stars_received || leader.score || 0}
-                        </Text>
-                        <Ionicons name="star" size={14} color="#FFD700" />
+                <>
+                  {[1, 2, 3].map((index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.leaderboardItem,
+                        {
+                          borderBottomWidth: index < 3 ? 1 : 0,
+                          borderBottomColor: theme.border,
+                        },
+                      ]}
+                    >
+                      <Skeleton width={40} height={40} borderRadius={20} style={{ marginRight: spacing.sm }} />
+                      <Skeleton width={48} height={48} borderRadius={24} />
+                      <View style={styles.leaderInfo}>
+                        <Skeleton width={150} height={16} style={{ marginBottom: spacing.xs }} />
+                        <Skeleton width={200} height={14} />
                       </View>
                     </View>
-                  </View>
-                  </View>
-                </AnimatedPressable>
-              );
-            })
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="trophy-outline" size={48} color={theme.textSecondary} />
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  No leaderboard data yet
-                </Text>
-                <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-                  Complete projects to appear on the leaderboard
-                </Text>
-              </View>
-            )}
+                  ))}
+                </>
+              ) : leaderboardData && leaderboardData.length > 0 ? (
+                leaderboardData.map((leader, index) => {
+                  const getRankColor = (rank: number) => {
+                    if (rank === 1) return MEDAL_COLORS.gold;
+                    if (rank === 2) return MEDAL_COLORS.silver;
+                    if (rank === 3) return MEDAL_COLORS.bronze;
+                    return theme.primary;
+                  };
+
+                  const getRankIcon = (rank: number): keyof typeof Ionicons.glyphMap => {
+                    if (rank === 1) return 'trophy';
+                    if (rank === 2) return 'medal';
+                    if (rank === 3) return 'ribbon';
+                    return 'star';
+                  };
+
+                  const rankColor = getRankColor(leader.rank);
+                  const isTopThree = leader.rank <= 3;
+
+                  return (
+                    <AnimatedPressable
+                      key={leader.id}
+                      onPress={() => router.push('/(dashboard)/leaderboard')}
+                      hapticType="light"
+                      springConfig="gentle"
+                      animateOnMount={true}
+                    >
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 14,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        borderRadius: 12,
+                        marginBottom: index < leaderboardData.length - 1 ? 8 : 0,
+                        borderLeftWidth: 3,
+                        borderLeftColor: isTopThree ? rankColor : 'transparent',
+                      }}>
+
+                        <Text style={{
+                          fontSize: 18,
+                          fontWeight: '700',
+                          color: isTopThree ? rankColor : theme.textSecondary,
+                          width: 32,
+                          textAlign: 'center',
+                        }}>
+                          {isTopThree ? (
+                            leader.rank === 1 ? '🥇' : leader.rank === 2 ? '🥈' : '🥉'
+                          ) : (
+                            leader.rank
+                          )}
+                        </Text>
+
+                        <Avatar
+                          size={44}
+                          source={leader.photo ? { uri: leader.photo } : undefined}
+                          name={leader.name}
+                        />
+
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 }} numberOfLines={1}>
+                            {leader.name}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                              {leader.completed_tasks || 0} tasks
+                            </Text>
+                            <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: theme.textTertiary }} />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                              <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFD700' }}>
+                                {leader.total_stars_received || leader.score || 0}
+                              </Text>
+                              <Ionicons name="star" size={14} color="#FFD700" />
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    </AnimatedPressable>
+                  );
+                })
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="trophy-outline" size={48} color={theme.textSecondary} />
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    No leaderboard data yet
+                  </Text>
+                  <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+                    Complete projects to appear on the leaderboard
+                  </Text>
+                </View>
+              )}
             </View>
           </GlassCard>
         </Animated.View>
@@ -736,17 +744,19 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
   section: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
   },
   sectionNoPadding: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.xl,
   },
   welcomeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    marginTop: spacing.sm,
   },
+
   welcomeText: {
     flex: 1,
   },
@@ -965,6 +975,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  leaderInfo: {
+    flex: 1,
+    justifyContent: 'center',
   },
   leaderboardItemCard: {
     flexDirection: 'row',

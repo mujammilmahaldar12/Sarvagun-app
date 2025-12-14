@@ -31,6 +31,7 @@ interface SelectProps {
   searchable?: boolean;
   multiple?: boolean;
   clearable?: boolean;
+  leadingIcon?: keyof typeof Ionicons.glyphMap;
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -45,6 +46,7 @@ export const Select: React.FC<SelectProps> = ({
   searchable = false,
   multiple = false,
   clearable = true,
+  leadingIcon,
 }) => {
   const { colors } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -62,7 +64,7 @@ export const Select: React.FC<SelectProps> = ({
   // Get display text
   const getDisplayText = (): string => {
     if (!value) return placeholder;
-    
+
     if (multiple && Array.isArray(value)) {
       if (value.length === 0) return placeholder;
       const labels = value
@@ -70,7 +72,7 @@ export const Select: React.FC<SelectProps> = ({
         .filter(Boolean);
       return labels.join(', ');
     }
-    
+
     const option = options.find((opt) => opt.value === value);
     return option?.label || placeholder;
   };
@@ -128,62 +130,85 @@ export const Select: React.FC<SelectProps> = ({
         </Text>
       )}
 
+
       {/* Select Button */}
-      <Pressable
-        onPress={() => !disabled && setIsOpen(true)}
-        disabled={disabled}
-        style={({ pressed }) => ({
+      <View
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
           backgroundColor: colors.surface,
           borderWidth: 1.5,
           borderColor: error ? colors.error : colors.border,
           borderRadius: borderRadius.md,
           paddingHorizontal: spacing[3],
           paddingVertical: spacing[3],
-          opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
-        })}
+          minHeight: 48,
+          opacity: disabled ? 0.5 : 1,
+        }}
       >
-        <Text
-          style={{
+        <Pressable
+          onPress={() => !disabled && setIsOpen(true)}
+          disabled={disabled}
+          style={({ pressed }) => ({
             flex: 1,
-            fontSize: typography.sizes.base,
-            color: value ? colors.text : colors.textSecondary,
-          }}
-          numberOfLines={1}
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            opacity: pressed ? 0.8 : 1,
+          })}
         >
-          {getDisplayText()}
-        </Text>
-        
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
-          {clearable && value && !disabled && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                handleClear();
-              }}
-            >
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-            </Pressable>
+          {leadingIcon && (
+            <Ionicons
+              name={leadingIcon}
+              size={18}
+              color={value ? colors.text : colors.textSecondary}
+              style={{ marginRight: spacing[2] }}
+            />
           )}
-          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-        </View>
-      </Pressable>
+          <Text
+            style={{
+              flex: 1,
+              fontSize: typography.sizes.base,
+              color: value ? colors.text : colors.textSecondary,
+              flexShrink: 1,
+              minWidth: 0,
+            }}
+            numberOfLines={1}
+          >
+            {getDisplayText()}
+          </Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginLeft: spacing[2] }}>
+            {clearable && value && !disabled && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleClear();
+                }}
+              >
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </Pressable>
+            )}
+            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+          </View>
+        </Pressable>
+      </View>
 
       {/* Error Message */}
-      {error && (
-        <Text
-          style={{
-            fontSize: typography.sizes.xs,
-            color: colors.error,
-            marginTop: spacing[1],
-            marginLeft: spacing[1],
-          }}
-        >
-          {error}
-        </Text>
-      )}
+      {
+        error && (
+          <Text
+            style={{
+              fontSize: typography.sizes.xs,
+              color: colors.error,
+              marginTop: spacing[1],
+              marginLeft: spacing[1],
+            }}
+          >
+            {error}
+          </Text>
+        )
+      }
 
       {/* Options Modal */}
       <Modal
@@ -272,7 +297,7 @@ export const Select: React.FC<SelectProps> = ({
           </Animated.View>
         </Animated.View>
       </Modal>
-    </View>
+    </View >
   );
 };
 
@@ -319,7 +344,7 @@ const SelectOption: React.FC<SelectOptionProps> = ({ option, isSelected, onPress
           >
             {option.label}
           </Text>
-          
+
           {isSelected && (
             <Ionicons
               name={multiple ? 'checkmark-circle' : 'checkmark'}

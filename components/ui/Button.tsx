@@ -20,6 +20,7 @@ interface ButtonProps extends Omit<TouchableOpacityProps, 'style'> {
   title: string;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
+  shape?: 'rectangle' | 'rounded' | 'pill';
   icon?: keyof typeof Ionicons.glyphMap;
   iconPosition?: 'left' | 'right';
   isLoading?: boolean;
@@ -32,6 +33,7 @@ export const Button: React.FC<ButtonProps> = ({
   title,
   variant = 'primary',
   size = 'md',
+  shape = 'rounded',
   icon,
   iconPosition = 'left',
   isLoading = false,
@@ -71,7 +73,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getVariantStyles = () => {
     const isDisabled = disabled || isLoading;
-    
+
     switch (variant) {
       case 'secondary':
         return {
@@ -146,7 +148,7 @@ export const Button: React.FC<ButtonProps> = ({
           paddingVertical: sizeStyles.paddingVertical,
           paddingHorizontal: sizeStyles.paddingHorizontal,
           backgroundColor: variantStyles.backgroundColor,
-          borderRadius: borderRadius.md,
+          borderRadius: shape === 'pill' ? borderRadius.full : (shape === 'rectangle' ? borderRadius.sm : borderRadius.md),
           borderWidth: variantStyles.borderWidth,
           borderColor: variantStyles.borderColor,
           opacity: disabled ? 0.6 : 1,

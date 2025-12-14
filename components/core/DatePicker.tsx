@@ -165,7 +165,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
         })}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], flex: 1, minWidth: 0 }}>
           <Ionicons
             name="calendar-outline"
             size={20}
@@ -175,7 +175,10 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
             style={{
               fontSize: typography.sizes.base,
               color: value ? colors.text : colors.textSecondary,
+              flex: 1,
+              flexShrink: 1,
             }}
+            numberOfLines={1}
           >
             {value ? formatDate(value) : placeholder}
           </Text>

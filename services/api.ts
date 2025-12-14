@@ -10,15 +10,15 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.121.1.176:8000/api';
+      return 'http://10.12.66.17:8000/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://10.121.1.176:8000/api';
+      return 'http://172.20.10.5:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';
     }
   }
-  
+
   // For production
   return 'https://api.manager.blingsquare.in/api';
 };
@@ -43,7 +43,7 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
+
       // Detailed logging for debugging
       console.log(`🔍 REQUEST DETAILS:`, {
         method: config.method?.toUpperCase(),
@@ -237,14 +237,14 @@ const apiWrapper = {
     } else {
       console.log(`📦 Request data:`, JSON.stringify(data, null, 2));
     }
-    
+
     // Set proper headers for FormData
     const config = data instanceof FormData ? {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     } : undefined;
-    
+
     const response = await api.post<T>(url, data, config);
     console.log(`✅ API POST Response for ${url}:`, {
       status: response.status,

@@ -4,7 +4,7 @@
  * Extracted from monolithic events/index.tsx
  */
 import React, { useMemo } from 'react';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,7 @@ interface LeadsListProps {
   searchQuery?: string;
   selectedStatus?: string;
   refreshing?: boolean;
+  onRefresh?: () => void;
   headerComponent?: React.ReactNode;
 }
 
@@ -42,6 +43,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
   searchQuery = '',
   selectedStatus = 'all',
   refreshing = false,
+  onRefresh,
   headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
@@ -267,27 +269,6 @@ const LeadsList: React.FC<LeadsListProps> = ({
     );
   }
 
-  // Empty state
-  if (processedLeads.length === 0 && !loading) {
-    const isFiltered = selectedStatus !== 'all' || searchQuery.trim() !== '';
-
-    return (
-      <View style={[styles.centered, { backgroundColor: theme.background }]}>
-        <EmptyState
-          icon="person-add-outline"
-          title={isFiltered ? 'No Leads Found' : 'No Leads Yet'}
-          description={
-            isFiltered
-              ? 'Try adjusting your filters to see more results'
-              : 'Add your first lead to get started'
-          }
-          actionTitle={canCreateLeads ? 'Add Lead' : undefined}
-          onActionPress={canCreateLeads ? () => router.push('/(modules)/events/add-lead' as any) : undefined}
-        />
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Leads Table */}
@@ -295,7 +276,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
         data={processedLeads}
         columns={columns}
         keyExtractor={(item) => `lead-${item.id}`}
-        loading={loading || refreshing}
+        loading={loading} // Only show table loading overlay if not refreshing
         emptyMessage="No leads found"
         searchable={true}
         searchPlaceholder="Search leads..."
@@ -303,6 +284,16 @@ const LeadsList: React.FC<LeadsListProps> = ({
         paginated={true}
         pageSize={20}
         ListHeaderComponent={headerComponent}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+            />
+          ) : undefined
+        }
       />
 
       {/* Add Lead FAB Button - positioned at bottom-left 30px from bottom, 20px from left */}
@@ -353,7 +344,6 @@ const styles = {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: designSystem.spacing[2],
-    flexWrap: 'wrap' as const,
     flexWrap: 'wrap' as const,
   },
 } as const;

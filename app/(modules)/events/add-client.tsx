@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native';
-import { Text } from 'react-native';
+import { View, ScrollView, Alert, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import AppButton from '@/components/ui/AppButton';
 import { useTheme } from '@/hooks/useTheme';
 import eventsService from '@/services/events.service';
 import type { ClientCategory, Organisation } from '@/types/events';
+import { Button, FormField, FormSection, Chip } from '@/components';
+import { designSystem } from '@/constants/designSystem';
+
+const { spacing, borderRadius, baseColors } = designSystem;
 
 export default function AddClientScreen() {
   const { theme } = useTheme();
@@ -25,8 +27,8 @@ export default function AddClientScreen() {
     phone: '',
     email: '',
     address: '',
-    categoryIds: [] as number[],  // Changed to array for multi-select
-    organisationIds: [] as number[],  // Changed to array for multi-select
+    categoryIds: [] as number[],
+    organisationIds: [] as number[],
   });
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export default function AddClientScreen() {
   };
 
   const updateField = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: isNaN(Number(value)) ? value : Number(value) });
+    setFormData({ ...formData, [field]: value });
   };
 
   const toggleCategory = (categoryId: number) => {
@@ -82,7 +84,6 @@ export default function AddClientScreen() {
     try {
       const newOrg = await eventsService.createOrganisation({ name: newOrgName.trim() });
       setOrganisations([...organisations, newOrg]);
-      // Auto-select the new organisation
       setFormData(prev => ({
         ...prev,
         organisationIds: [...prev.organisationIds, newOrg.id],
@@ -97,28 +98,12 @@ export default function AddClientScreen() {
 
   const handleSubmit = async () => {
     // Validation
-    if (!formData.name.trim()) {
-      Alert.alert('Error', 'Please enter client name');
-      return;
-    }
-    if (!formData.contactPerson.trim()) {
-      Alert.alert('Error', 'Please enter contact person name');
-      return;
-    }
-    if (!formData.phone.trim()) {
-      Alert.alert('Error', 'Please enter phone number');
-      return;
-    }
-    if (!formData.email.trim()) {
-      Alert.alert('Error', 'Please enter email address');
-      return;
-    }
-    if (formData.categoryIds.length === 0) {
-      Alert.alert('Error', 'Please select at least one client category');
-      return;
-    }
+    if (!formData.name.trim()) return Alert.alert('Error', 'Please enter client name');
+    if (!formData.contactPerson.trim()) return Alert.alert('Error', 'Please enter contact person name');
+    if (!formData.phone.trim()) return Alert.alert('Error', 'Please enter phone number');
+    if (!formData.email.trim()) return Alert.alert('Error', 'Please enter email address');
+    if (formData.categoryIds.length === 0) return Alert.alert('Error', 'Please select at least one client category');
 
-    // Check if B2B/B2G requires organisation
     if (requiresOrganisation() && formData.organisationIds.length === 0) {
       Alert.alert('Error', 'B2B/B2G clients require at least one organisation');
       return;
@@ -132,7 +117,7 @@ export default function AddClientScreen() {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         address: formData.address.trim() || undefined,
-        category_ids: formData.categoryIds,  // Send array
+        category_ids: formData.categoryIds,
         organisation_ids: formData.organisationIds.length > 0 ? formData.organisationIds : undefined,
       });
 
@@ -146,47 +131,6 @@ export default function AddClientScreen() {
     }
   };
 
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 4 : 1}
-        style={{
-          borderWidth: 1,
-          borderColor: theme.border,
-          borderRadius: 8,
-          padding: 12,
-          fontSize: 14,
-          color: theme.text,
-          backgroundColor: theme.surface,
-          textAlignVertical: multiline ? 'top' : 'center',
-          minHeight: multiline ? 100 : 44,
-        }}
-      />
-    </View>
-  );
-
-  const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.text, marginTop: 8 }}>
-      {title}
-    </Text>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
@@ -194,104 +138,45 @@ export default function AddClientScreen() {
         showBack
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
-        {/* Client Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Client Information" />
-          <FormInput
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.md }}>
+        <FormSection title="Client Information">
+          <FormField
             label="Client Name *"
             value={formData.name}
             onChangeText={(text: string) => updateField('name', text)}
             placeholder="Enter client/company name"
+            shape="pill"
           />
-          
-          {/* Client Categories - Multi-Select */}
-          <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-                Client Categories *
-              </Text>
-              {formData.categoryIds.length > 0 && (
-                <View style={{
-                  backgroundColor: theme.primary + '20',
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: 12,
-                }}>
-                  <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '600' }}>
-                    {formData.categoryIds.length} selected
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
-              Select one or more categories (B2B, B2C, B2G)
+
+          <View style={{ gap: spacing.sm }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+              Categories *
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {categories.map((category) => {
-                const isSelected = formData.categoryIds.includes(category.id);
-                return (
-                  <Pressable
-                    key={category.id}
-                    onPress={() => toggleCategory(category.id)}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 24,
-                      borderWidth: 2,
-                      borderColor: isSelected ? theme.primary : theme.border,
-                      backgroundColor: pressed
-                        ? theme.primary + '10'
-                        : isSelected
-                        ? theme.primary + '15'
-                        : theme.surface,
-                    })}
-                  >
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
-                    )}
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: isSelected ? theme.primary : theme.text,
-                        fontWeight: isSelected ? '600' : '500',
-                      }}
-                    >
-                      {category.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              {categories.map((category) => (
+                <Chip
+                  key={category.id}
+                  label={category.name}
+                  selected={formData.categoryIds.includes(category.id)}
+                  onPress={() => toggleCategory(category.id)}
+                />
+              ))}
             </View>
           </View>
 
-          {/* Organisations - Multi-Select (for B2B/B2G) */}
           {requiresOrganisation() && (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-                    Organisations *
-                  </Text>
-                  {formData.organisationIds.length > 0 && (
-                    <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                      {formData.organisationIds.length} organisation(s) selected
-                    </Text>
-                  )}
-                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+                  Organisations *
+                </Text>
                 <Pressable
                   onPress={() => setShowOrgInput(!showOrgInput)}
                   style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 4,
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    backgroundColor: pressed ? theme.primary + '10' : 'transparent',
-                    borderRadius: 16,
+                    gap: 4
                   })}
                 >
                   <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.primary} />
@@ -302,142 +187,93 @@ export default function AddClientScreen() {
               </View>
 
               {showOrgInput ? (
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                  <TextInput
-                    value={newOrgName}
-                    onChangeText={setNewOrgName}
-                    placeholder="Organisation name"
-                    placeholderTextColor={theme.textSecondary}
-                    style={{
-                      flex: 1,
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 14,
-                      color: theme.text,
-                      backgroundColor: theme.surface,
-                    }}
-                  />
+                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                  <View style={{ flex: 1 }}>
+                    <FormField
+                      value={newOrgName}
+                      onChangeText={setNewOrgName}
+                      placeholder="Organisation name"
+                      shape="pill"
+                      containerStyle={{ marginBottom: 0 }}
+                    />
+                  </View>
                   <Pressable
                     onPress={handleAddOrganisation}
                     style={({ pressed }) => ({
-                      backgroundColor: pressed ? theme.primary + 'dd' : theme.primary,
-                      paddingHorizontal: 20,
-                      borderRadius: 8,
+                      backgroundColor: pressed ? baseColors.purple[600] : baseColors.purple[500],
+                      height: 48,
+                      width: 48,
+                      borderRadius: borderRadius.full,
                       justifyContent: 'center',
                       alignItems: 'center',
                     })}
                   >
-                    <Ionicons name="checkmark" size={20} color="#fff" />
+                    <Ionicons name="checkmark" size={24} color="#fff" />
                   </Pressable>
                 </View>
-              ) : null}
-
-              <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
-                Select one or more organisations for B2B/B2G clients
-              </Text>
-
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {organisations.map((org) => {
-                  const isSelected = formData.organisationIds.includes(org.id);
-                  return (
-                    <Pressable
-                      key={org.id}
-                      onPress={() => toggleOrganisation(org.id)}
-                      style={({ pressed }) => ({
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        borderRadius: 24,
-                        borderWidth: 2,
-                        borderColor: isSelected ? theme.primary : theme.border,
-                        backgroundColor: pressed
-                          ? theme.primary + '10'
-                          : isSelected
-                          ? theme.primary + '15'
-                          : theme.surface,
-                      })}
-                    >
-                      {isSelected && (
-                        <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
-                      )}
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: isSelected ? theme.primary : theme.text,
-                          fontWeight: isSelected ? '600' : '500',
-                        }}
-                      >
-                        {org.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {organisations.length === 0 && !showOrgInput && (
-                <View style={{
-                  padding: 16,
-                  backgroundColor: theme.surface,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderStyle: 'dashed',
-                }}>
-                  <Text style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center' }}>
-                    No organisations available. Tap "Add New" to create one.
-                  </Text>
+              ) : (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                  {organisations.length > 0 ? (
+                    organisations.map((org) => (
+                      <Chip
+                        key={org.id}
+                        label={org.name}
+                        selected={formData.organisationIds.includes(org.id)}
+                        onPress={() => toggleOrganisation(org.id)}
+                      />
+                    ))
+                  ) : (
+                    <Text style={{ fontSize: 13, color: theme.textSecondary, fontStyle: 'italic' }}>
+                      No organisations found. Add one above.
+                    </Text>
+                  )}
                 </View>
               )}
             </View>
           )}
-        </View>
+        </FormSection>
 
-        {/* Contact Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Contact Information" />
-          <FormInput
+        <FormSection title="Contact Information">
+          <FormField
             label="Contact Person *"
             value={formData.contactPerson}
             onChangeText={(text: string) => updateField('contactPerson', text)}
             placeholder="Enter contact person name"
+            shape="pill"
           />
-          <FormInput
+          <FormField
             label="Phone *"
             value={formData.phone}
             onChangeText={(text: string) => updateField('phone', text)}
             placeholder="Enter phone number"
             keyboardType="phone-pad"
+            shape="pill"
           />
-          <FormInput
+          <FormField
             label="Email *"
             value={formData.email}
             onChangeText={(text: string) => updateField('email', text)}
             placeholder="Enter email address"
             keyboardType="email-address"
+            shape="pill"
           />
-          <FormInput
+          <FormField
             label="Address"
             value={formData.address}
             onChangeText={(text: string) => updateField('address', text)}
             placeholder="Enter address"
             multiline
           />
-        </View>
+        </FormSection>
 
-        {/* Submit Button */}
-        <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <AppButton
+        <View style={{ marginTop: spacing.sm, marginBottom: spacing.xl }}>
+          <Button
             title={loading ? 'Creating...' : 'Create Client'}
             onPress={handleSubmit}
             disabled={loading}
             loading={loading}
             fullWidth
-            size="lg"
-            leftIcon="person-add"
+            shape="pill"
           />
         </View>
       </ScrollView>

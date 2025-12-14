@@ -2,8 +2,8 @@ import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { getToken, storeToken, removeToken } from "../../utils/storage";
 
 // Base API URL - Using your local network IP
-const API_BASE_URL = __DEV__ 
-  ? "http://10.121.1.176:8000/api"  // Your PC's current local IP
+const API_BASE_URL = __DEV__
+  ? "http://10.12.66.17:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
@@ -105,7 +105,7 @@ export const apiClient = {
         resultsLength: (res.data as any)?.results?.length,
         directLength: Array.isArray(res.data) ? res.data.length : undefined,
       });
-      
+
       // Return full paginated response if it has pagination metadata
       if (res.data && typeof res.data === 'object' && 'results' in res.data) {
         console.log(`✅ Returning paginated response: ${(res.data as any).results.length} items, total: ${(res.data as any).count}`);

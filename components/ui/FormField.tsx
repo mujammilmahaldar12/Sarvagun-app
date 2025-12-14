@@ -28,6 +28,7 @@ interface FormFieldProps extends Omit<TextInputProps, 'style'> {
   helper?: string;
   isLoading?: boolean;
   variant?: 'default' | 'outlined' | 'filled';
+  shape?: 'rectangle' | 'rounded' | 'pill';
 }
 
 export const FormField: React.FC<FormFieldProps> = ({
@@ -42,33 +43,38 @@ export const FormField: React.FC<FormFieldProps> = ({
   helper,
   isLoading = false,
   variant = 'outlined',
+  shape = 'rounded',
   value,
   ...textInputProps
 }) => {
   const { theme } = useTheme();
 
   const getVariantStyles = () => {
+    let radius: number = borderRadius.md;
+    if (shape === 'pill') radius = borderRadius.full;
+    if (shape === 'rectangle') radius = borderRadius.sm;
+
     switch (variant) {
       case 'filled':
         return {
           backgroundColor: theme.surfaceElevated,
           borderWidth: 1,
           borderColor: error ? theme.error : theme.border,
-          borderRadius: borderRadius.md,
+          borderRadius: radius,
         };
       case 'outlined':
         return {
           backgroundColor: theme.surface,
           borderWidth: 1.5,
           borderColor: error ? theme.error : theme.border,
-          borderRadius: borderRadius.md,
+          borderRadius: radius,
         };
       default:
         return {
           backgroundColor: theme.surface,
           borderWidth: 1,
           borderColor: error ? theme.error : theme.border,
-          borderRadius: borderRadius.sm,
+          borderRadius: radius,
         };
     }
   };

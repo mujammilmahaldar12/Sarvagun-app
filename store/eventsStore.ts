@@ -902,7 +902,8 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       const search = filters.venues.search.toLowerCase();
       filtered = filtered.filter(venue =>
         venue.name.toLowerCase().includes(search) ||
-        venue.location.toLowerCase().includes(search)
+        venue.address.toLowerCase().includes(search) ||
+        venue.region.toLowerCase().includes(search)
       );
     }
 

@@ -30,6 +30,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useInternLeaderboard, useTeamLeaderboard, useLeadersLeaderboard, useIndividualInternRanking } from '@/hooks/useDashboardQueries';
 import { Avatar, AnimatedPressable, Skeleton, DatePicker } from '@/components';
+import { Select } from '@/components/core/Select';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 
@@ -38,58 +39,32 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 type FilterType = 'individual' | 'team' | 'leaders';
 type TimeRange = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
-// Filter Tab Component
-const FilterTab = ({ 
-  label, 
-  icon, 
-  isActive, 
-  onPress 
-}: { 
-  label: string; 
-  icon: keyof typeof Ionicons.glyphMap; 
-  isActive: boolean; 
-  onPress: () => void 
-}) => {
-  const { theme } = useTheme();
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[
-        styles.filterTab,
-        {
-          backgroundColor: isActive ? theme.primary : theme.surface,
-          borderColor: isActive ? theme.primary : theme.border,
-        },
-      ]}
-      activeOpacity={0.7}
-    >
-      <Ionicons 
-        name={icon} 
-        size={18} 
-        color={isActive ? '#FFFFFF' : theme.textSecondary} 
-      />
-      <Text 
-        style={[
-          styles.filterTabText,
-          { color: isActive ? '#FFFFFF' : theme.textSecondary },
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-};
+// Option type for Select
+const FILTER_OPTIONS = [
+  { label: 'Individual', value: 'individual' },
+  { label: 'Teams', value: 'team' },
+  { label: 'Leaders', value: 'leaders' },
+];
+
+const TIME_OPTIONS = [
+  { label: 'Today', value: 'daily' },
+  { label: 'This Week', value: 'weekly' },
+  { label: 'This Month', value: 'monthly' },
+  { label: 'This Year', value: 'yearly' },
+  { label: 'Custom', value: 'custom' },
+];
+
+// Filter Tab removed
 
 // Active Status Indicator
 const ActiveStatusBadge = ({ isActive, lastActivity }: { isActive: boolean; lastActivity?: string }) => {
   const { theme } = useTheme();
-  
+
   const getStatusColor = () => {
     if (isActive) return '#22C55E'; // Green
     return '#EF4444'; // Red
   };
-  
+
   return (
     <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
       <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
@@ -102,7 +77,7 @@ const ActiveStatusBadge = ({ isActive, lastActivity }: { isActive: boolean; last
 
 // Animated Podium Item Component for Top 3
 const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const router = useRouter();
   const scale = useSharedValue(0);
   const translateY = useSharedValue(100);
@@ -113,7 +88,7 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
       delay,
       withSpring(1, { damping: 12, stiffness: 100 })
     );
-    
+
     translateY.value = withDelay(
       delay,
       withSpring(0, { damping: 15, stiffness: 120 })
@@ -169,13 +144,16 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
       hapticType="light"
       springConfig="gentle"
     >
-      <View style={styles.podiumContentWrapper}>
+      <View style={[
+        styles.podiumContentWrapper,
+        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'transparent' }
+      ]}>
         {/* Rank Badge */}
         <View style={[styles.rankBadge, { backgroundColor: rankColor }]}>
-          <Ionicons 
-            name={getRankIcon()} 
-            size={rank === 1 ? 20 : 16} 
-            color="#FFFFFF" 
+          <Ionicons
+            name={getRankIcon()}
+            size={rank === 1 ? 20 : 16}
+            color="#FFFFFF"
           />
         </View>
 
@@ -196,12 +174,12 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
         <ActiveStatusBadge isActive={leader.is_active} lastActivity={leader.last_activity} />
 
         {/* Name */}
-        <Text 
+        <Text
           style={[
-            styles.podiumNameNew, 
+            styles.podiumNameNew,
             { color: theme.text },
             rank === 1 && styles.podiumNameFirst
-          ]} 
+          ]}
           numberOfLines={1}
         >
           {leader.name}
@@ -244,7 +222,13 @@ const AnimatedPodiumItem = ({ leader, rank, delay }: any) => {
       {/* Podium Base */}
       <LinearGradient
         colors={[rankColor + '40', rankColor + '20', rankColor + '10']}
-        style={[styles.podiumBase, { height: podiumHeight }]}
+        style={[
+          styles.podiumBase,
+          {
+            height: podiumHeight,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.05)'
+          }
+        ]}
       >
         <Text style={[styles.podiumRankText, { color: rankColor }]}>#{rank}</Text>
       </LinearGradient>
@@ -297,7 +281,7 @@ const InternRow = ({ leader, index }: { leader: any; index: number }) => {
             </Text>
             <ActiveStatusBadge isActive={leader.is_active} />
           </View>
-          
+
           {leader.team_name && (
             <View style={styles.teamIndicator}>
               <Ionicons name="people" size={12} color={theme.textSecondary} />
@@ -306,7 +290,7 @@ const InternRow = ({ leader, index }: { leader: any; index: number }) => {
               </Text>
             </View>
           )}
-          
+
           <View style={styles.taskStats}>
             <View style={styles.taskStatItem}>
               <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
@@ -383,7 +367,7 @@ const LeaderRow = ({ leader, index }: { leader: any; index: number }) => {
               <Text style={[styles.leaderBadgeText, { color: theme.primary }]}>Leader</Text>
             </View>
           </View>
-          
+
           {leader.team_name && (
             <View style={styles.teamIndicator}>
               <Ionicons name="people" size={12} color={theme.textSecondary} />
@@ -392,7 +376,7 @@ const LeaderRow = ({ leader, index }: { leader: any; index: number }) => {
               </Text>
             </View>
           )}
-          
+
           <View style={styles.taskStats}>
             <View style={styles.taskStatItem}>
               <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
@@ -516,26 +500,26 @@ export default function LeaderboardScreen() {
   const [endDate, setEndDate] = useState<Date | null>(null);
 
   // Fetch data based on filter and time range
-  const { 
-    data: internData = [], 
-    isLoading: internLoading, 
-    refetch: refetchInterns 
+  const {
+    data: internData = [],
+    isLoading: internLoading,
+    refetch: refetchInterns
   } = useInternLeaderboard(timeRange);
-  
-  const { 
-    data: teamData = [], 
-    isLoading: teamLoading, 
-    refetch: refetchTeams 
+
+  const {
+    data: teamData = [],
+    isLoading: teamLoading,
+    refetch: refetchTeams
   } = useTeamLeaderboard(timeRange);
-  
-  const { 
-    data: leadersData = [], 
-    isLoading: leadersLoading, 
-    refetch: refetchLeaders 
+
+  const {
+    data: leadersData = [],
+    isLoading: leadersLoading,
+    refetch: refetchLeaders
   } = useLeadersLeaderboard(timeRange);
-  
-  const { 
-    data: currentUserRank 
+
+  const {
+    data: currentUserRank
   } = useIndividualInternRanking(user?.id || 0, timeRange);
 
   const isLoading = filter === 'individual' ? internLoading : (filter === 'team' ? teamLoading : leadersLoading);
@@ -588,71 +572,41 @@ export default function LeaderboardScreen() {
           </View>
         </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
-          <FilterTab
-            label="Individual"
-            icon="person"
-            isActive={filter === 'individual'}
-            onPress={() => setFilter('individual')}
-          />
-          <FilterTab
-            label="Teams"
-            icon="people"
-            isActive={filter === 'team'}
-            onPress={() => setFilter('team')}
-          />
-          <FilterTab
-            label="Leaders"
-            icon="shield-checkmark"
-            isActive={filter === 'leaders'}
-            onPress={() => setFilter('leaders')}
-          />
-        </View>
-
-        {/* Time Range Filter */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.timeRangeContainer}
-        >
-          {[{ value: 'daily', label: 'Today', icon: 'today' }, 
-            { value: 'weekly', label: 'Week', icon: 'calendar' },
-            { value: 'monthly', label: 'Month', icon: 'calendar-outline' },
-            { value: 'yearly', label: 'Year', icon: 'calendar-sharp' },
-            { value: 'custom', label: 'Custom', icon: 'calendar-number' }].map((range) => (
-            <TouchableOpacity
-              key={range.value}
-              onPress={() => {
-                setTimeRange(range.value as TimeRange);
-                if (range.value === 'custom') {
+        {/* Filters Row */}
+        <View style={{
+          flexDirection: 'row',
+          gap: spacing.md,
+          paddingHorizontal: spacing.lg,
+          marginBottom: spacing.lg
+        }}>
+          <View style={{ flex: 1 }}>
+            <Select
+              options={FILTER_OPTIONS}
+              value={filter}
+              onChange={(value) => setFilter(value as FilterType | 'leaders')}
+              placeholder="Type"
+              searchable={false}
+              multiple={false}
+              leadingIcon="filter"
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Select
+              options={TIME_OPTIONS}
+              value={timeRange}
+              onChange={(value) => {
+                setTimeRange(value as TimeRange);
+                if (value === 'custom') {
                   setShowDatePicker(true);
                 }
               }}
-              style={[
-                styles.timeRangeTab,
-                {
-                  backgroundColor: timeRange === range.value ? theme.primary : 'transparent',
-                  borderColor: timeRange === range.value ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <Ionicons 
-                name={range.icon as any} 
-                size={16} 
-                color={timeRange === range.value ? '#FFFFFF' : theme.textSecondary} 
-              />
-              <Text
-                style={[
-                  styles.timeRangeText,
-                  { color: timeRange === range.value ? '#FFFFFF' : theme.textSecondary },
-                ]}
-              >
-                {range.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              placeholder="Time"
+              searchable={false}
+              multiple={false}
+              leadingIcon="calendar"
+            />
+          </View>
+        </View>
 
         {/* Custom Date Range Picker */}
         {showDatePicker && (
@@ -825,18 +779,18 @@ export default function LeaderboardScreen() {
           </View>
         ) : (data.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons 
-              name={filter === 'individual' ? 'school-outline' : (filter === 'team' ? 'people-outline' : 'shield-checkmark-outline')} 
-              size={64} 
-              color={theme.textSecondary} 
+            <Ionicons
+              name={filter === 'individual' ? 'school-outline' : (filter === 'team' ? 'people-outline' : 'shield-checkmark-outline')}
+              size={64}
+              color={theme.textSecondary}
             />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>
               {filter === 'individual' ? 'No Interns Yet' : (filter === 'team' ? 'No Teams Yet' : 'No Leaders Yet')}
             </Text>
             <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
-              {filter === 'individual' 
-                ? 'Intern rankings will appear here once tasks are assigned' 
-                : (filter === 'team' 
+              {filter === 'individual'
+                ? 'Intern rankings will appear here once tasks are assigned'
+                : (filter === 'team'
                   ? 'Team rankings will appear once teams have active interns'
                   : 'Leader rankings will appear once teams are created and led by leaders')}
             </Text>
@@ -850,7 +804,7 @@ export default function LeaderboardScreen() {
                 {topThree.length > 0 && (
                   <View style={styles.podiumSection}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Champions</Text>
-                    
+
                     <View style={styles.podiumStage}>
                       {/* 2nd Place - Left */}
                       {topThree[1] && (
@@ -920,7 +874,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  
+
   // Header
   header: {
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
@@ -943,7 +897,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     ...getTypographyStyle('sm', 'regular'),
   },
-  
+
   // Filter Tabs
   filterContainer: {
     flexDirection: 'row',
@@ -961,7 +915,7 @@ const styles = StyleSheet.create({
   filterTabText: {
     ...getTypographyStyle('sm', 'semibold'),
   },
-  
+
   // Time Range Tabs
   timeRangeContainer: {
     flexDirection: 'row',
@@ -987,7 +941,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   // Status Badge
   statusBadge: {
     flexDirection: 'row',
@@ -1005,16 +959,16 @@ const styles = StyleSheet.create({
   statusText: {
     ...getTypographyStyle('xs', 'semibold'),
   },
-  
+
   scrollContent: {
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
-  
+
   // Loading
   loadingContainer: {
     paddingHorizontal: spacing.base,
   },
-  
+
   // Empty State
   emptyState: {
     flex: 1,
@@ -1032,7 +986,7 @@ const styles = StyleSheet.create({
     ...getTypographyStyle('sm', 'regular'),
     textAlign: 'center',
   },
-  
+
   // Current User
   currentUserSection: {
     paddingHorizontal: spacing.base,
@@ -1084,7 +1038,7 @@ const styles = StyleSheet.create({
     width: 1,
     height: 16,
   },
-  
+
   // Podium Section
   podiumSection: {
     paddingVertical: spacing.lg,
@@ -1122,7 +1076,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
     marginTop: 35,
   },
-  
+
   // Podium Item
   podiumItemContainer: {
     width: '100%',
@@ -1231,13 +1185,13 @@ const styles = StyleSheet.create({
     ...getTypographyStyle('3xl', 'bold'),
     opacity: 0.25,
   },
-  
+
   // Rankings Section
   rankingsSection: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
   },
-  
+
   // Intern Row
   internRow: {
     flexDirection: 'row',
@@ -1304,13 +1258,13 @@ const styles = StyleSheet.create({
   scoreBadgeLabel: {
     ...getTypographyStyle('xs', 'semibold'),
   },
-  
+
   // Team List Section
   teamListSection: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
   },
-  
+
   // Team Card
   teamCard: {
     padding: spacing.lg,
@@ -1405,7 +1359,7 @@ const styles = StyleSheet.create({
   activeMembersText: {
     ...getTypographyStyle('sm', 'medium'),
   },
-  
+
   // Leader Badge
   leaderBadge: {
     flexDirection: 'row',

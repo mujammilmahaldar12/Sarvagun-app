@@ -11,12 +11,12 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import TabBar, { Tab } from '@/components/layout/TabBar';
-import { FAB, FilterBar } from '@/components';
+import { FilterBar } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useEventsStore } from '@/store/eventsStore';
 import { getTypographyStyle } from '@/utils/styleHelpers';
+import NotificationBell from '@/components/layout/NotificationBell';
 
 // Import modular components
 import EventsAnalytics from './components/EventsAnalytics';
@@ -26,6 +26,12 @@ import ClientsList from './components/ClientsList';
 import VenuesList from './components/VenuesList';
 
 type TabType = 'analytics' | 'leads' | 'events' | 'clients' | 'venues';
+
+interface Tab {
+  key: string;
+  label: string;
+  icon: string;
+}
 
 export default function EventManagementScreen() {
   const { theme } = useTheme();
@@ -39,6 +45,7 @@ export default function EventManagementScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<any>({});
   const [refreshing, setRefreshing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
 
   // Permission checks
@@ -91,8 +98,12 @@ export default function EventManagementScreen() {
   useFocusEffect(
     useCallback(() => {
       const now = Date.now();
-      // Only refresh if more than 30 seconds since last focus (avoid rapid re-fetches)
-      if (isAuthenticated && user && initialLoadDone && (now - lastFocusTime > 30000)) {
+      // Refresh frequently for leads to ensure new additions appear immediately
+      // 2 seconds for leads (so it practically always refreshes after adding a lead and coming back)
+      // 30 seconds for others to save bandwidth
+      const refreshInterval = activeTab === 'leads' ? 2000 : 30000;
+
+      if (isAuthenticated && user && initialLoadDone && (now - lastFocusTime > refreshInterval)) {
         console.log('🔄 Events: Screen focused, soft refresh...');
         setLastFocusTime(now);
         // Only fetch current tab data, not everything
@@ -231,34 +242,8 @@ export default function EventManagementScreen() {
     // Reset filters when changing tabs
     setSearchQuery('');
     setFilters({});
+    // Don't auto-show filters on tab change, keep it clean
   }, []);
-
-  // Get FAB configuration based on active tab
-  const getFABConfig = () => {
-    if (!canManage) return null;
-
-    const configs = {
-      leads: {
-        icon: 'add' as const,
-        onPress: () => router.push('/(modules)/events/add-lead'),
-        label: 'Add Lead',
-      },
-      events: null, // Events are created only by converting leads
-      clients: {
-        icon: 'people' as const,
-        onPress: () => router.push('/events/add-client'),
-        label: 'Add Client',
-      },
-      venues: {
-        icon: 'location' as const,
-        onPress: () => router.push('/events/add-venue'),
-        label: 'Add Venue',
-      },
-      analytics: null,
-    };
-
-    return configs[activeTab];
-  };
 
   // Tab configuration
   const tabs: Tab[] = [
@@ -276,8 +261,8 @@ export default function EventManagementScreen() {
         {
           key: 'status',
           label: 'Status',
-          icon: 'funnel',
-          type: 'select',
+          icon: 'funnel' as const,
+          type: 'select' as const,
           options: [
             { label: 'Pending', value: 'pending', color: '#f59e0b' },
             { label: 'Converted', value: 'converted', color: '#10b981' },
@@ -287,8 +272,8 @@ export default function EventManagementScreen() {
         {
           key: 'dateRange',
           label: 'Date Range',
-          icon: 'calendar-outline',
-          type: 'daterange',
+          icon: 'calendar-outline' as const,
+          type: 'daterange' as const,
         },
       ];
     } else if (activeTab === 'events') {
@@ -296,8 +281,8 @@ export default function EventManagementScreen() {
         {
           key: 'status',
           label: 'Status',
-          icon: 'funnel',
-          type: 'select',
+          icon: 'funnel' as const,
+          type: 'select' as const,
           options: [
             { label: 'Upcoming', value: 'upcoming', color: '#3b82f6' },
             { label: 'Ongoing', value: 'ongoing', color: '#10b981' },
@@ -308,8 +293,8 @@ export default function EventManagementScreen() {
         {
           key: 'dateRange',
           label: 'Date Range',
-          icon: 'calendar-outline',
-          type: 'daterange',
+          icon: 'calendar-outline' as const,
+          type: 'daterange' as const,
         },
       ];
     }
@@ -321,22 +306,47 @@ export default function EventManagementScreen() {
     const commonProps = {
       searchQuery,
       refreshing,
+      onRefresh,
     };
 
     const filterConfigs = getFilterConfigs();
 
     const headerComponent = (
       <View>
-        <TabBar
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          variant="pill"
-        />
+        <View style={[styles.tabsContainer, { borderBottomColor: theme.border }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.tabs}>
+              {tabs.map((tab) => (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => handleTabChange(tab.key || '')}
+                  style={[
+                    styles.tab,
+                    activeTab === tab.key && [styles.tabActive, { borderBottomColor: theme.primary }],
+                  ]}
+                >
+                  <Ionicons
+                    name={tab.icon as any}
+                    size={18}
+                    color={activeTab === tab.key ? theme.primary : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      { color: activeTab === tab.key ? theme.primary : theme.text },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
 
-        {filterConfigs.length > 0 && (
+        {showFilters && filterConfigs.length > 0 && (
           <FilterBar
-            configs={filterConfigs}
+            configs={filterConfigs as any}
             activeFilters={filters}
             onFiltersChange={setFilters}
           />
@@ -383,8 +393,6 @@ export default function EventManagementScreen() {
     }
   };
 
-  const fabConfig = getFABConfig();
-
   return (
     <Animated.View
       entering={FadeIn.duration(400)}
@@ -393,21 +401,36 @@ export default function EventManagementScreen() {
       {/* Header */}
       <ModuleHeader
         title="Event Management"
+        rightActions={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
+              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
+            </TouchableOpacity>
+            <NotificationBell size={22} color={theme.text} />
+            {['leads', 'clients', 'venues'].includes(activeTab) && (
+              <TouchableOpacity
+                onPress={() => {
+                  if (activeTab === 'leads') router.push('/(modules)/events/add-lead');
+                  if (activeTab === 'clients') router.push('/events/add-client');
+                  if (activeTab === 'venues') router.push('/events/add-venue');
+                }}
+                style={{
+                  padding: 4,
+                  backgroundColor: theme.primary + '15',
+                  borderRadius: 8,
+                }}
+              >
+                <Ionicons name="add" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        }
       />
 
       {/* Content */}
       <View style={styles.content}>
         {renderTabContent()}
       </View>
-
-      {/* Floating Action Button */}
-      {fabConfig && (
-        <FAB
-          icon={fabConfig.icon}
-          onPress={fabConfig.onPress}
-          position="bottom-left"
-        />
-      )}
     </Animated.View>
   );
 }
@@ -418,5 +441,28 @@ const styles = {
   },
   content: {
     flex: 1,
+  },
+  tabsContainer: {
+    borderBottomWidth: 1,
+  },
+  tabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 } as const;

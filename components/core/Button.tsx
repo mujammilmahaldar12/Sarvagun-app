@@ -77,12 +77,12 @@ const AnimatedIcon = Animated.createAnimatedComponent(Ionicons);
  * - rotate: 360° rotation on press
  * - spin: Continuous spin (for loading states)
  */
-export type IconAnimationType = 
-  | 'slide-right' 
-  | 'slide-left' 
-  | 'bounce' 
-  | 'pulse' 
-  | 'rotate' 
+export type IconAnimationType =
+  | 'slide-right'
+  | 'slide-left'
+  | 'bounce'
+  | 'pulse'
+  | 'rotate'
   | 'spin'
   | 'none';
 
@@ -92,45 +92,46 @@ export interface ButtonProps {
   leftIcon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   iconOnly?: boolean; // Hide title, show only icon (for icon buttons)
-  
+
   // Variants
   variant?: "primary" | "secondary" | "outline" | "ghost" | "danger" | "success" | "warning";
   size?: "sm" | "md" | "lg";
-  
+
   // States
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
-  
+  shape?: 'rectangle' | 'rounded' | 'pill';
+
   // Animation Config
   springConfig?: SpringConfigType;
   enableHaptic?: boolean;
   hapticType?: HapticFeedbackType;
   rippleEnabled?: boolean;
   animateOnMount?: boolean;
-  
+
   // Icon Animations (NEW! 🎬)
   iconAnimation?: IconAnimationType;
   iconAnimationDuration?: number; // Default: 200ms
-  
+
   // Callbacks
   onPress: () => void;
   onLongPress?: () => void;
-  
+
   // Accessibility
   accessibilityLabel?: string;
   accessibilityHint?: string;
   accessibilityRole?: "button" | "link";
   testID?: string;
-  
+
   // Styling
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
-  title, 
-  onPress, 
+export const Button: React.FC<ButtonProps> = ({
+  title,
+  onPress,
   variant = "primary",
   size = "md",
   disabled = false,
@@ -139,6 +140,7 @@ export const Button: React.FC<ButtonProps> = ({
   rightIcon,
   iconOnly = false,
   fullWidth = false,
+  shape = 'rounded',
   style,
   textStyle,
   springConfig = "gentle",
@@ -160,12 +162,12 @@ export const Button: React.FC<ButtonProps> = ({
   // Button animations
   const scale = useSharedValue(animateOnMount ? 0 : 1);
   const opacity = useSharedValue(animateOnMount ? 0 : 1);
-  
+
   // Icon animations
   const leftIconTranslateX = useSharedValue(0);
   const leftIconScale = useSharedValue(1);
   const leftIconRotate = useSharedValue(0);
-  
+
   const rightIconTranslateX = useSharedValue(0);
   const rightIconScale = useSharedValue(1);
   const rightIconRotate = useSharedValue(0);
@@ -239,7 +241,7 @@ export const Button: React.FC<ButtonProps> = ({
           );
         }
         break;
-      
+
       case 'slide-left':
         if (leftIcon) {
           leftIconTranslateX.value = withSequence(
@@ -248,7 +250,7 @@ export const Button: React.FC<ButtonProps> = ({
           );
         }
         break;
-      
+
       case 'bounce':
         if (leftIcon) {
           leftIconScale.value = withSequence(
@@ -263,7 +265,7 @@ export const Button: React.FC<ButtonProps> = ({
           );
         }
         break;
-      
+
       case 'rotate':
         if (leftIcon) {
           leftIconRotate.value = withSequence(
@@ -283,16 +285,16 @@ export const Button: React.FC<ButtonProps> = ({
 
   const handlePressIn = () => {
     if (isDisabled) return;
-    
+
     scale.value = withSpring(SCALE_VALUES.press, SPRING_CONFIGS[springConfig]);
     opacity.value = withSpring(OPACITY_VALUES.pressed, SPRING_CONFIGS[springConfig]);
-    
+
     runOnJS(triggerHapticFeedback)();
   };
 
   const handlePressOut = () => {
     if (isDisabled) return;
-    
+
     scale.value = withSpring(1, SPRING_CONFIGS[springConfig]);
     opacity.value = withSpring(1, SPRING_CONFIGS[springConfig]);
   };
@@ -314,7 +316,7 @@ export const Button: React.FC<ButtonProps> = ({
       alignItems: 'center',
       justifyContent: 'center',
       gap: iconOnly ? 0 : 8,
-      borderRadius: 16,
+      borderRadius: shape === 'pill' ? 9999 : (shape === 'rectangle' ? 8 : 16),
       ...getSizeStyle(),
     };
 
@@ -457,7 +459,7 @@ export const Button: React.FC<ButtonProps> = ({
         fontSize = 15;
         break;
     }
-    
+
     return {
       fontSize,
       fontWeight: '600',
@@ -506,18 +508,18 @@ export const Button: React.FC<ButtonProps> = ({
     return (
       <>
         {leftIcon && (
-          <AnimatedIcon 
-            name={leftIcon} 
-            size={getIconSize()} 
+          <AnimatedIcon
+            name={leftIcon}
+            size={getIconSize()}
             color={getTextColor()}
             style={leftIconAnimatedStyle}
           />
         )}
         {!iconOnly && <Text style={getTextStyle()}>{title}</Text>}
         {rightIcon && (
-          <AnimatedIcon 
-            name={rightIcon} 
-            size={getIconSize()} 
+          <AnimatedIcon
+            name={rightIcon}
+            size={getIconSize()}
             color={getTextColor()}
             style={rightIconAnimatedStyle}
           />
