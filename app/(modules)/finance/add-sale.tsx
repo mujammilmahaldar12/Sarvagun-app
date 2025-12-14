@@ -38,17 +38,17 @@ export default function AddSaleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const user = useAuthStore((state) => state.user);
-  
+
   const saleId = params.id ? Number(params.id) : null;
   const isEditMode = !!saleId;
 
   // Mutations
   const createSaleMutation = useCreateSale();
   const updateSaleMutation = useUpdateSale();
-  
+
   // Fetch existing sale if editing
   const { data: existingSale, isLoading: loadingSale } = useSale(saleId || 0);
-  
+
   // Fetch all events for selection
   const { data: eventsData, isLoading: loadingEvents } = useEvents();
 
@@ -68,20 +68,38 @@ export default function AddSaleScreen() {
   const [editingInstallment, setEditingInstallment] = useState<Partial<SalesPayment> | null>(null);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
 
+  // Prevent re-loading data after initial load (causes infinite loop with mutations)
+  const isInitialized = React.useRef(false);
+
   // Convert events to select options
   const eventOptions = useMemo(() => {
-    if (!eventsData?.results) return [];
-    return eventsData.results.map((event: any) => ({
+    const options = (eventsData?.results || []).map((event: any) => ({
       label: `${event.name}${event.client?.name ? ` - ${event.client.name}` : ''}`,
-      value: event.id,
+      value: String(event.id),
     }));
-  }, [eventsData]);
 
-  // Load existing sale data in edit mode
+    // If edit mode and existing event is not in the list, add it to options
+    if (isEditMode && existingSale?.event && typeof existingSale.event === 'object') {
+      const eventId = String((existingSale.event as any).id);
+      const exists = options.some((opt: any) => opt.value === eventId);
+      if (!exists) {
+        const evt = existingSale.event as any;
+        options.push({
+          label: `${evt.name}${evt.client?.name ? ` - ${evt.client.name}` : ''}`,
+          value: eventId
+        });
+      }
+    }
+    return options;
+  }, [eventsData, existingSale, isEditMode]);
+
+  // Load existing sale data in edit mode - ONLY ONCE
   useEffect(() => {
-    if (isEditMode && existingSale) {
+    if (isEditMode && existingSale && !isInitialized.current) {
+      isInitialized.current = true; // Mark as initialized to prevent re-loading
+
       const eventObj = typeof existingSale.event === 'object' ? existingSale.event : null;
-      
+
       setFormData({
         event: eventObj?.id ? String(eventObj.id) : existingSale.event ? String(existingSale.event) : '',
         amount: String(existingSale.amount || ''),
@@ -89,7 +107,7 @@ export default function AddSaleScreen() {
         date: existingSale.date || new Date().toISOString().split('T')[0],
         payment_status: existingSale.payment_status || 'not_yet',
       });
-      
+
       if (existingSale.payments && existingSale.payments.length > 0) {
         setInstallments(existingSale.payments.map(p => ({
           payment_amount: p.payment_amount,
@@ -102,7 +120,7 @@ export default function AddSaleScreen() {
   }, [isEditMode, existingSale]);
 
   const updateField = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   // Calculate net amount
@@ -122,9 +140,50 @@ export default function AddSaleScreen() {
     return Math.max(0, netAmount - totalReceived);
   }, [netAmount, totalReceived]);
 
+  // Auto-calculate payment status based on installments
+  useEffect(() => {
+    if (netAmount > 0) {
+      let newStatus: 'completed' | 'pending' | 'not_yet' = 'not_yet';
+      if (totalReceived >= netAmount) {
+        newStatus = 'completed';
+      } else if (totalReceived > 0) {
+        newStatus = 'pending';
+      }
+      setFormData(prev => {
+        if (prev.payment_status !== newStatus) {
+          return { ...prev, payment_status: newStatus };
+        }
+        return prev;
+      });
+    }
+  }, [totalReceived, netAmount]);
+
+  // Auto-calculate sale date from earliest installment date
+  useEffect(() => {
+    if (installments.length > 0) {
+      const validDates = installments
+        .filter(inst => inst.payment_date)
+        .map(inst => new Date(inst.payment_date!));
+
+      if (validDates.length > 0) {
+        const earliestDate = validDates.sort((a, b) => a.getTime() - b.getTime())[0];
+        const dateString = earliestDate.toISOString().split('T')[0];
+
+        setFormData(prev => {
+          if (prev.date !== dateString) {
+            return { ...prev, date: dateString };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [installments]);
+
   // Add or update installment
   const handleSaveInstallment = () => {
-    if (!editingInstallment?.payment_amount || Number(editingInstallment.payment_amount) <= 0) {
+    const paymentAmount = Number(editingInstallment?.payment_amount) || 0;
+
+    if (paymentAmount <= 0) {
       Alert.alert('Error', 'Please enter a valid payment amount');
       return;
     }
@@ -137,14 +196,19 @@ export default function AddSaleScreen() {
       return;
     }
 
+    const installmentToSave = {
+      ...editingInstallment,
+      payment_amount: paymentAmount,
+    };
+
     if (editingIndex >= 0) {
       // Update existing
       const updated = [...installments];
-      updated[editingIndex] = editingInstallment;
+      updated[editingIndex] = installmentToSave;
       setInstallments(updated);
     } else {
       // Add new
-      setInstallments([...installments, editingInstallment]);
+      setInstallments([...installments, installmentToSave]);
     }
 
     setEditingInstallment(null);
@@ -171,7 +235,7 @@ export default function AddSaleScreen() {
   // Open payment modal for new installment
   const handleAddInstallment = () => {
     setEditingInstallment({
-      payment_amount: 0,
+      payment_amount: undefined as any,
       payment_date: new Date().toISOString().split('T')[0],
       mode_of_payment: 'cash',
       notes: '',
@@ -298,7 +362,7 @@ export default function AddSaleScreen() {
         {/* Event Selection */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Event Details" />
-          
+
           <Select
             label="Event"
             placeholder="Select an event"
@@ -314,7 +378,7 @@ export default function AddSaleScreen() {
         {/* Financial Details */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Financial Details" />
-          
+
           <Input
             label="Amount"
             value={formData.amount}
@@ -369,47 +433,17 @@ export default function AddSaleScreen() {
             </View>
           </View>
 
-          <DatePicker
-            label="Sale Date"
-            value={formData.date ? new Date(formData.date) : new Date()}
-            onChange={(date) => updateField('date', date.toISOString().split('T')[0])}
-            mode="single"
+          <Select
+            label="Payment Status"
+            value={formData.payment_status}
+            onChange={(value) => updateField('payment_status', value)}
+            options={PAYMENT_STATUS_OPTIONS}
+            required
+            disabled
           />
-
-          <View style={{ gap: 8 }}>
-            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-              Payment Status <Text style={{ color: '#EF4444' }}>*</Text>
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {PAYMENT_STATUS_OPTIONS.map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() => updateField('payment_status', option.value)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: formData.payment_status === option.value ? theme.primary : theme.border,
-                    backgroundColor: pressed
-                      ? theme.primary + '10'
-                      : formData.payment_status === option.value
-                      ? theme.primary + '20'
-                      : theme.surface,
-                  })}
-                >
-                  <Text
-                    style={{
-                      ...getTypographyStyle('sm', formData.payment_status === option.value ? 'semibold' : 'regular'),
-                      color: formData.payment_status === option.value ? theme.primary : theme.text,
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: -8 }}>
+            * Auto-calculated based on payment installments
+          </Text>
         </View>
 
         {/* Payment Installments */}
@@ -419,10 +453,11 @@ export default function AddSaleScreen() {
           </View>
 
           <Button
-            title="Add Installment"
+            title="Add Payment Installment"
             onPress={handleAddInstallment}
-            variant="secondary"
+            variant="outline"
             leftIcon="add-circle-outline"
+            fullWidth
           />
 
           {installments.length > 0 && (
@@ -527,17 +562,27 @@ export default function AddSaleScreen() {
           >
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={{ gap: 16 }}>
-                <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
-                  {editingIndex >= 0 ? 'Edit' : 'Add'} Payment Installment
-                </Text>
+                {/* Modal Header with Handle */}
+                <View style={{ alignItems: 'center', marginBottom: 4 }}>
+                  <View style={{ width: 40, height: 4, backgroundColor: theme.border, borderRadius: 2 }} />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
+                    {editingIndex >= 0 ? 'Edit' : 'Add'} Payment Installment
+                  </Text>
+                  <Pressable onPress={() => setShowPaymentModal(false)} style={{ padding: 4 }}>
+                    <Ionicons name="close" size={24} color={theme.textSecondary} />
+                  </Pressable>
+                </View>
 
                 <Input
                   label="Payment Amount"
-                  value={String(editingInstallment?.payment_amount || '')}
-                  onChangeText={(text: string) => 
-                    setEditingInstallment({ ...editingInstallment, payment_amount: Number(text) || 0 })
-                  }
-                  placeholder="0"
+                  value={editingInstallment?.payment_amount ? String(editingInstallment.payment_amount) : ''}
+                  onChangeText={(text: string) => {
+                    const numValue = text ? Number(text.replace(/[^0-9.]/g, '')) : 0;
+                    setEditingInstallment({ ...editingInstallment, payment_amount: numValue || undefined as any });
+                  }}
+                  placeholder="Enter amount"
                   keyboardType="numeric"
                   leftIcon="cash-outline"
                   required
@@ -546,53 +591,23 @@ export default function AddSaleScreen() {
                 <DatePicker
                   label="Payment Date"
                   value={editingInstallment?.payment_date ? new Date(editingInstallment.payment_date) : new Date()}
-                  onChange={(date) => 
-                    setEditingInstallment({ ...editingInstallment, payment_date: date.toISOString().split('T')[0] })
+                  onChange={(date) =>
+                    date && setEditingInstallment({ ...editingInstallment, payment_date: date.toISOString().split('T')[0] })
                   }
-                  mode="single"
                 />
 
-                <View style={{ gap: 8 }}>
-                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                    Payment Mode <Text style={{ color: '#EF4444' }}>*</Text>
-                  </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {PAYMENT_MODE_OPTIONS.map((option) => (
-                      <Pressable
-                        key={option.value}
-                        onPress={() => 
-                          setEditingInstallment({ ...editingInstallment, mode_of_payment: option.value as any })
-                        }
-                        style={({ pressed }) => ({
-                          paddingHorizontal: 14,
-                          paddingVertical: 8,
-                          borderRadius: 8,
-                          borderWidth: 1,
-                          borderColor: editingInstallment?.mode_of_payment === option.value ? theme.primary : theme.border,
-                          backgroundColor: pressed
-                            ? theme.primary + '10'
-                            : editingInstallment?.mode_of_payment === option.value
-                            ? theme.primary + '20'
-                            : theme.background,
-                        })}
-                      >
-                        <Text
-                          style={{
-                            ...getTypographyStyle('sm', editingInstallment?.mode_of_payment === option.value ? 'semibold' : 'regular'),
-                            color: editingInstallment?.mode_of_payment === option.value ? theme.primary : theme.text,
-                          }}
-                        >
-                          {option.label}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
+                <Select
+                  label="Payment Mode"
+                  value={editingInstallment?.mode_of_payment || 'cash'}
+                  onChange={(value) => setEditingInstallment({ ...editingInstallment, mode_of_payment: value as any })}
+                  options={PAYMENT_MODE_OPTIONS}
+                  required
+                />
 
                 <Input
                   label="Notes (Optional)"
                   value={editingInstallment?.notes || ''}
-                  onChangeText={(text: string) => 
+                  onChangeText={(text: string) =>
                     setEditingInstallment({ ...editingInstallment, notes: text })
                   }
                   placeholder="Add notes about this payment"
@@ -600,7 +615,7 @@ export default function AddSaleScreen() {
                   leftIcon="document-text-outline"
                 />
 
-                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
                   <Button
                     title="Cancel"
                     onPress={() => {
@@ -608,12 +623,13 @@ export default function AddSaleScreen() {
                       setEditingInstallment(null);
                       setEditingIndex(-1);
                     }}
-                    variant="secondary"
+                    variant="outline"
                     style={{ flex: 1 }}
                   />
                   <Button
-                    title={editingIndex >= 0 ? 'Update' : 'Add'}
+                    title={editingIndex >= 0 ? 'Update' : 'Add Payment'}
                     onPress={handleSaveInstallment}
+                    leftIcon={editingIndex >= 0 ? 'checkmark' : 'add'}
                     style={{ flex: 1 }}
                   />
                 </View>

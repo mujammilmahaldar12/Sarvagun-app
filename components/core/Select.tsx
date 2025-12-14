@@ -6,7 +6,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet, FlatList } from 'react-native';
 import Animated, { FadeIn, SlideInDown, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeStore } from '@/store/themeStore';
+import { useTheme } from '@/hooks/useTheme';
 import { designSystem } from '@/constants/designSystem';
 import { Input } from './Input';
 import { Button } from './Button';
@@ -48,7 +48,7 @@ export const Select: React.FC<SelectProps> = ({
   clearable = true,
   leadingIcon,
 }) => {
-  const { colors } = useThemeStore();
+  const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -63,26 +63,27 @@ export const Select: React.FC<SelectProps> = ({
 
   // Get display text
   const getDisplayText = (): string => {
-    if (!value) return placeholder;
+    // Check for null/undefined/empty string, but allow 0
+    if (value === null || value === undefined || value === '') return placeholder;
 
     if (multiple && Array.isArray(value)) {
       if (value.length === 0) return placeholder;
       const labels = value
-        .map((v) => options.find((opt) => opt.value === v)?.label)
+        .map((v) => options.find((opt) => opt.value == v)?.label) // Loose equality
         .filter(Boolean);
       return labels.join(', ');
     }
 
-    const option = options.find((opt) => opt.value === value);
+    const option = options.find((opt) => opt.value == value); // Loose equality
     return option?.label || placeholder;
   };
 
   // Check if option is selected
   const isSelected = (optionValue: string | number): boolean => {
     if (multiple && Array.isArray(value)) {
-      return value.includes(optionValue);
+      return value.some(v => v == optionValue); // Loose equality
     }
-    return value === optionValue;
+    return value == optionValue; // Loose equality
   };
 
   // Handle option selection
@@ -121,24 +122,26 @@ export const Select: React.FC<SelectProps> = ({
           style={{
             fontSize: typography.sizes.sm,
             fontWeight: typography.weights.semibold,
-            color: colors.text,
+            color: theme.text || '#000000',
             marginBottom: spacing[1],
           }}
         >
           {label}
-          {required && <Text style={{ color: colors.error }}> *</Text>}
+          {required && <Text style={{ color: theme.error || '#EF4444' }}> *</Text>}
         </Text>
       )}
 
 
       {/* Select Button */}
-      <View
+      <Pressable
+        onPress={() => !disabled && setIsOpen(true)}
+        disabled={disabled}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface || '#FFFFFF',
           borderWidth: 1.5,
-          borderColor: error ? colors.error : colors.border,
+          borderColor: error ? (theme.error || '#EF4444') : (theme.border || '#E5E7EB'),
           borderRadius: borderRadius.md,
           paddingHorizontal: spacing[3],
           paddingVertical: spacing[3],
@@ -146,53 +149,49 @@ export const Select: React.FC<SelectProps> = ({
           opacity: disabled ? 0.5 : 1,
         }}
       >
-        <Pressable
-          onPress={() => !disabled && setIsOpen(true)}
-          disabled={disabled}
-          style={({ pressed }) => ({
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            opacity: pressed ? 0.8 : 1,
-          })}
-        >
-          {leadingIcon && (
-            <Ionicons
-              name={leadingIcon}
-              size={18}
-              color={value ? colors.text : colors.textSecondary}
-              style={{ marginRight: spacing[2] }}
-            />
-          )}
-          <Text
-            style={{
-              flex: 1,
-              fontSize: typography.sizes.base,
-              color: value ? colors.text : colors.textSecondary,
-              flexShrink: 1,
-              minWidth: 0,
-            }}
-            numberOfLines={1}
-          >
-            {getDisplayText()}
-          </Text>
+        {/* Leading Icon */}
+        {leadingIcon && (
+          <Ionicons
+            name={leadingIcon}
+            size={20}
+            color={theme.textSecondary || '#6B7280'}
+            style={{ marginRight: spacing[2] }}
+          />
+        )}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginLeft: spacing[2] }}>
-            {clearable && value && !disabled && (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleClear();
-                }}
-              >
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-              </Pressable>
-            )}
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-          </View>
-        </Pressable>
-      </View>
+        {/* Display Text - Takes remaining space */}
+        <Text
+          style={{
+            flex: 1,
+            fontSize: typography.sizes.base,
+            color: (value !== null && value !== undefined && value !== '')
+              ? '#111827'  // Dark text for selected value
+              : '#6B7280', // Gray for placeholder
+          }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {getDisplayText()}
+        </Text>
+
+        {/* Clear Button */}
+        {clearable && (value !== null && value !== undefined && value !== '') && !disabled && (
+          <Pressable
+            onPress={(e) => { e.stopPropagation(); handleClear(); }}
+            style={{ marginLeft: spacing[2] }}
+          >
+            <Ionicons name="close-circle" size={20} color={theme.textSecondary || '#6B7280'} />
+          </Pressable>
+        )}
+
+        {/* Chevron */}
+        <Ionicons
+          name="chevron-down"
+          size={20}
+          color={theme.textSecondary || '#6B7280'}
+          style={{ marginLeft: spacing[1] }}
+        />
+      </Pressable>
 
       {/* Error Message */}
       {
@@ -200,7 +199,7 @@ export const Select: React.FC<SelectProps> = ({
           <Text
             style={{
               fontSize: typography.sizes.xs,
-              color: colors.error,
+              color: theme.error || '#EF4444',
               marginTop: spacing[1],
               marginLeft: spacing[1],
             }}
@@ -222,7 +221,7 @@ export const Select: React.FC<SelectProps> = ({
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: colors.overlay,
+              backgroundColor: theme.overlay || 'rgba(0,0,0,0.5)',
               justifyContent: 'center',
               alignItems: 'center',
               padding: spacing[4],
@@ -234,7 +233,7 @@ export const Select: React.FC<SelectProps> = ({
           <Animated.View
             entering={SlideInDown.springify()}
             style={{
-              backgroundColor: colors.surface,
+              backgroundColor: theme.surface || '#FFFFFF',
               borderRadius: borderRadius.xl,
               padding: spacing[4],
               width: '100%',
@@ -267,7 +266,7 @@ export const Select: React.FC<SelectProps> = ({
               )}
               ListEmptyComponent={() => (
                 <View style={{ padding: spacing[4], alignItems: 'center' }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm }}>
+                  <Text style={{ color: theme.textSecondary || '#6B7280', fontSize: typography.sizes.sm }}>
                     No options found
                   </Text>
                 </View>
@@ -310,11 +309,11 @@ interface SelectOptionProps {
 }
 
 const SelectOption: React.FC<SelectOptionProps> = ({ option, isSelected, onPress, multiple }) => {
-  const { colors } = useThemeStore();
+  const { theme } = useTheme();
 
   const animatedStyle = useAnimatedStyle(() => ({
     backgroundColor: withTiming(
-      isSelected ? `${colors.primary}15` : 'transparent',
+      isSelected ? `${theme.primary || '#6D376D'}15` : 'transparent',
       { duration: 200 }
     ),
   }));
@@ -338,7 +337,7 @@ const SelectOption: React.FC<SelectOptionProps> = ({ option, isSelected, onPress
           <Text
             style={{
               fontSize: typography.sizes.base,
-              color: isSelected ? colors.primary : colors.text,
+              color: isSelected ? (theme.primary || '#6D376D') : (theme.text || '#000000'),
               fontWeight: isSelected ? typography.weights.semibold : typography.weights.regular,
             }}
           >
@@ -349,7 +348,7 @@ const SelectOption: React.FC<SelectOptionProps> = ({ option, isSelected, onPress
             <Ionicons
               name={multiple ? 'checkmark-circle' : 'checkmark'}
               size={20}
-              color={colors.primary}
+              color={theme.primary || '#6D376D'}
             />
           )}
         </Animated.View>

@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { Button, FormField } from '@/components';
-import { DatePicker, DateRangePicker, MultiDatePicker } from '@/components/core';
+import { DatePicker, DateRangePicker, MultiDatePicker, Select } from '@/components/core';
 import { useTheme } from '@/hooks/useTheme';
 import { spacing, typography, borderRadius, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
@@ -52,12 +52,6 @@ export default function ConvertLeadScreen() {
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
 
-  // Modal states
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showEventCategoryModal, setShowEventCategoryModal] = useState(false);
-  const [showOrganisationModal, setShowOrganisationModal] = useState(false);
-  const [showVenueModal, setShowVenueModal] = useState(false);
-  const [venueSearchQuery, setVenueSearchQuery] = useState('');
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
 
   const [formData, setFormData] = useState({
@@ -156,10 +150,7 @@ export default function ConvertLeadScreen() {
     return organisations.find(o => o.id === formData.organisationId);
   };
 
-  const filteredVenues = (venues || []).filter(venue =>
-    venue.name?.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
-    venue.address?.toLowerCase().includes(venueSearchQuery.toLowerCase())
-  );
+
 
   const handleEventDatesChange = (dates: Date[]) => {
     setEventDates(dates);
@@ -336,71 +327,7 @@ export default function ConvertLeadScreen() {
     }
   };
 
-  const DropdownField = ({
-    label,
-    value,
-    placeholder,
-    onPress,
-    required = false,
-    icon = "chevron-down-outline"
-  }: {
-    label: string;
-    value: string;
-    placeholder: string;
-    onPress: () => void;
-    required?: boolean;
-    icon?: string;
-  }) => (
-    <View style={{ marginBottom: spacing[4] }}>
-      <Text style={{
-        fontSize: typography.sizes.sm,
-        fontWeight: typography.weights.semibold,
-        color: theme.text,
-        marginBottom: spacing[1]
-      }}>
-        {label} {required && <Text style={{ color: theme.error }}>*</Text>}
-      </Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: theme.surface,
-          borderWidth: 1.5,
-          borderColor: value ? theme.primary : theme.border,
-          borderRadius: borderRadius.md,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          minHeight: 48,
-        }}
-      >
-        <Pressable
-          onPress={onPress}
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            numberOfLines={1}
-            style={{
-              flex: 1,
-              fontSize: 16,
-              color: value ? theme.text : theme.textSecondary,
-            }}
-          >
-            {value || placeholder}
-          </Text>
-          <Ionicons
-            name={icon as any}
-            size={20}
-            color={value ? theme.primary : theme.textSecondary}
-            style={{ marginLeft: 8 }}
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
+
 
   const SectionHeader = ({ title }: { title: string }) => (
     <Text style={{
@@ -414,121 +341,9 @@ export default function ConvertLeadScreen() {
     </Text>
   );
 
-  const ModalSelector = ({
-    visible,
-    title,
-    data,
-    onSelect,
-    onClose,
-    selectedId,
-    keyExtractor,
-    labelExtractor
-  }: {
-    visible: boolean;
-    title: string;
-    data: any[];
-    onSelect: (item: any) => void;
-    onClose: () => void;
-    selectedId?: number | string;
-    keyExtractor: (item: any) => string | number;
-    labelExtractor: (item: any) => string;
-  }) => (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
-        pointerEvents={visible ? 'auto' : 'none'}
-      >
-        <View
-          style={{
-            flex: 1,
-            marginTop: 100,
-            backgroundColor: theme.background,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
-        >
-          {/* Modal Header */}
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
-              {title}
-            </Text>
-            <Pressable onPress={onClose} android_disableSound={true} style={{ padding: 4 }}>
-              <Ionicons name="close" size={28} color={theme.text} />
-            </Pressable>
-          </View>
 
-          {/* Options List */}
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-            {data.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                <Text style={{ ...getTypographyStyle('base'), color: theme.textSecondary }}>
-                  No options available
-                </Text>
-              </View>
-            ) : (
-              <View style={{ gap: 8 }}>
-                {data.map((item) => {
-                  const key = keyExtractor(item);
-                  const isSelected = selectedId === key;
-                  return (
-                    <Pressable
-                      key={key}
-                      onPress={() => onSelect(item)}
-                      android_disableSound={true}
-                      style={({ pressed }) => ({
-                        padding: 12,
-                        borderRadius: 10,
-                        borderWidth: isSelected ? 2 : 1,
-                        borderColor: isSelected ? theme.primary : theme.border,
-                        backgroundColor: isSelected
-                          ? theme.primary + '10'
-                          : theme.surface,
-                        opacity: pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          ...getTypographyStyle('base', isSelected ? 'semibold' : 'regular'),
-                          color: isSelected ? theme.primary : theme.text,
-                        }}
-                      >
-                        {labelExtractor(item)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
 
-  // Debug: Log modal states to identify blocking issues
-  console.log('🔍 Modal States:', {
-    showCategoryModal,
-    showEventCategoryModal,
-    showOrganisationModal,
-    showVenueModal,
-    showSuccessAnimation,
-    loading
-  });
+
 
   if (loading || !lead) {
     return (
@@ -557,33 +372,7 @@ export default function ConvertLeadScreen() {
       <View style={{ flex: 1 }}>
         <ModuleHeader title="Convert Lead to Event" showBack onBack={safeGoBack} />
 
-        {/* VISUAL DEBUG BANNER - Shows state without console */}
-        <View style={{
-          backgroundColor: '#000000',
-          padding: 10,
-          borderBottomWidth: 2,
-          borderBottomColor: '#FFD700',
-        }}>
-          <Text style={{ color: '#00FF00', fontSize: 11, fontWeight: 'bold' }}>
-            🟢 SCREEN ACTIVE | Loading: {loading ? '🔴 TRUE' : '🟢 FALSE'} | Lead: {lead ? '✅ EXISTS' : '❌ NULL'}
-          </Text>
-          <Text style={{ color: '#FFFF00', fontSize: 10 }}>
-            Modals → Cat: {showCategoryModal ? '🔴' : '⚪'} EventCat: {showEventCategoryModal ? '🔴' : '⚪'} Org: {showOrganisationModal ? '🔴' : '⚪'} Venue: {showVenueModal ? '🔴' : '⚪'} Success: {showSuccessAnimation ? '🔴' : '⚪'}
-          </Text>
-          <Pressable
-            onPress={() => {
-              Alert.alert(
-                'Debug Info',
-                `Loading: ${loading}\nLead: ${lead ? 'EXISTS' : 'NULL'}\nLead ID: ${leadId}\nClient: ${lead?.client?.name || 'N/A'}\n\nModal States:\nCategory: ${showCategoryModal}\nEventCat: ${showEventCategoryModal}\nOrg: ${showOrganisationModal}\nVenue: ${showVenueModal}\nSuccess: ${showSuccessAnimation}`
-              );
-            }}
-            style={{ backgroundColor: '#FFD700', padding: 6, marginTop: 4, borderRadius: 4 }}
-          >
-            <Text style={{ color: '#000000', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>
-              📊 TAP FOR FULL DEBUG INFO
-            </Text>
-          </Pressable>
-        </View>
+
 
         <ScrollView
           style={{ flex: 1 }}
@@ -681,21 +470,23 @@ export default function ConvertLeadScreen() {
               </Text>
             </View>
 
-            <DropdownField
+            <Select
               label="Client Category (B2B/B2C/B2G)"
-              value={getSelectedCategory()?.name || ''}
+              value={formData.categoryId}
+              options={(categories || []).map(c => ({ label: c.name, value: c.id }))}
+              onChange={(val) => setFormData({ ...formData, categoryId: Number(val) })}
               placeholder="Select client category"
-              onPress={() => setShowCategoryModal(true)}
               required
             />
 
             {/* Organisation (conditional) */}
             {requiresOrganisation() && (
-              <DropdownField
+              <Select
                 label="Organisation"
-                value={getSelectedOrganisation()?.name || ''}
+                value={formData.organisationId}
+                options={(organisations || []).map(o => ({ label: o.name, value: o.id }))}
+                onChange={(val) => setFormData({ ...formData, organisationId: Number(val) })}
                 placeholder="Select organisation"
-                onPress={() => setShowOrganisationModal(true)}
                 required
               />
             )}
@@ -726,11 +517,12 @@ export default function ConvertLeadScreen() {
             />
 
             {/* Event Category Dropdown */}
-            <DropdownField
+            <Select
               label="Event Category (Wedding/Corporate/etc.)"
               value={formData.eventCategory}
+              options={eventCategoryOptions.map(c => ({ label: c, value: c }))}
+              onChange={(val) => setFormData({ ...formData, eventCategory: val as any })}
               placeholder="Select event category"
-              onPress={() => setShowEventCategoryModal(true)}
               required
             />
 
@@ -745,13 +537,19 @@ export default function ConvertLeadScreen() {
           </View>
 
           {/* Venue Selection */}
-          <DropdownField
+          <Select
             label="Venue"
-            value={selectedVenue?.name || ''}
+            value={selectedVenue?.id || formData.venueId || 0}
+            options={(venues || []).map(v => ({ label: v.name, value: v.id }))}
+            onChange={(val) => {
+              const venue = venues.find(v => v.id === val);
+              setSelectedVenue(venue || null);
+              setFormData({ ...formData, venueId: Number(val) });
+            }}
             placeholder="Select venue"
-            onPress={() => setShowVenueModal(true)}
             required
-            icon="location-outline"
+            searchable
+            leadingIcon="location-outline"
           />
 
           {/* Venue Info from Lead */}
@@ -805,122 +603,6 @@ export default function ConvertLeadScreen() {
           />
         </ScrollView>
 
-        {/* EMERGENCY MODAL CLOSER - If any modal is open */}
-        {(showCategoryModal || showEventCategoryModal || showOrganisationModal ||
-          showVenueModal || showSuccessAnimation) && (
-            <View style={{
-              position: 'absolute',
-              top: 60,
-              left: 0,
-              right: 0,
-              backgroundColor: '#FF0000',
-              padding: 16,
-              zIndex: 999999,
-              elevation: 999999,
-              borderBottomWidth: 4,
-              borderBottomColor: '#FFFFFF',
-            }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}>
-                ⚠️ MODAL IS OPEN - BLOCKING BUTTON ⚠️
-              </Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
-                {showCategoryModal && 'Category Modal is Open | '}
-                {showEventCategoryModal && 'Event Category Modal is Open | '}
-                {showOrganisationModal && 'Organisation Modal is Open | '}
-                {showVenueModal && 'Venue Modal is Open | '}
-                {showSuccessAnimation && 'Success Animation is Showing'}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  setShowCategoryModal(false);
-                  setShowEventCategoryModal(false);
-                  setShowOrganisationModal(false);
-                  setShowVenueModal(false);
-                  setShowSuccessAnimation(false);
-                  Alert.alert('✅ Modals Closed', 'All modals have been force-closed. Try the button now!');
-                }}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  padding: 12,
-                  marginTop: 12,
-                  borderRadius: 8,
-                  borderWidth: 2,
-                  borderColor: '#FF0000',
-                }}
-              >
-                <Text style={{ color: '#FF0000', fontSize: 14, fontWeight: 'bold', textAlign: 'center' }}>
-                  🚨 FORCE CLOSE ALL MODALS - TAP HERE
-                </Text>
-              </Pressable>
-            </View>
-          )}
-
-        {/* TEST BUTTON - Absolute positioned with max z-index */}
-        <View style={{
-          position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 110 : 90,
-          left: 16,
-          right: 16,
-          zIndex: 999999,
-          elevation: 999999,
-        }}>
-          <Pressable
-            onPress={() => {
-              const modalStates = `Cat: ${showCategoryModal} | EventCat: ${showEventCategoryModal} | Org: ${showOrganisationModal} | Venue: ${showVenueModal} | Success: ${showSuccessAnimation}`;
-              Alert.alert(
-                '🟢 TEST BUTTON WORKS!',
-                `This button has maximum z-index.\n\nIf you see this alert, touch events work!\n\nStates:\nLoading: ${loading}\nLead: ${lead ? 'EXISTS' : 'NULL'}\n\nModals:\n${modalStates}`,
-                [
-                  {
-                    text: 'Close All Modals',
-                    onPress: () => {
-                      setShowCategoryModal(false);
-                      setShowEventCategoryModal(false);
-                      setShowOrganisationModal(false);
-                      setShowVenueModal(false);
-                      setShowSuccessAnimation(false);
-                    }
-                  },
-                  {
-                    text: 'Try Convert Now',
-                    onPress: () => {
-                      Alert.alert('Converting...', 'Calling handleSubmit()');
-                      handleSubmit();
-                    }
-                  },
-                  { text: 'Cancel', style: 'cancel' }
-                ]
-              );
-            }}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? '#FF6600' : '#FF0000',
-              paddingVertical: 16,
-              paddingHorizontal: 20,
-              borderRadius: 12,
-              alignItems: 'center',
-              borderWidth: 4,
-              borderColor: '#FFFFFF',
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.8,
-              shadowRadius: 10,
-              elevation: 999,
-            })}
-          >
-            <Text style={{
-              color: '#FFFFFF',
-              fontSize: 18,
-              fontWeight: 'bold',
-              textAlign: 'center',
-            }}>
-              🧪 TEST BUTTON - TAP ME FIRST
-            </Text>
-            <Text style={{ color: '#FFFFFF', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-              If this works, the main button is blocked
-            </Text>
-          </Pressable>
-        </View>
-
         {/* Fixed Submit Button */}
         <View style={{
           padding: 16,
@@ -937,26 +619,7 @@ export default function ConvertLeadScreen() {
           position: 'relative',
         }}>
           <Pressable
-            onPress={() => {
-              try {
-                Alert.alert(
-                  '🔵 Main Button Clicked!',
-                  `Time: ${new Date().toLocaleTimeString()}\n\nLoading: ${loading}\nLead: ${lead?.client?.name || 'Unknown'}\n\nProceed with conversion?`,
-                  [
-                    {
-                      text: 'Yes, Convert',
-                      onPress: () => {
-                        Alert.alert('Processing...', 'Starting conversion');
-                        handleSubmit();
-                      }
-                    },
-                    { text: 'Cancel', style: 'cancel' }
-                  ]
-                );
-              } catch (error) {
-                Alert.alert('Error', `Button error: ${error}`);
-              }
-            }}
+            onPress={handleSubmit}
             disabled={loading}
             style={({ pressed }) => ({
               backgroundColor: pressed ? theme.primary + 'DD' : theme.primary,
@@ -973,8 +636,7 @@ export default function ConvertLeadScreen() {
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
-              elevation: 9999,
-              zIndex: 9999,
+              elevation: 5,
             })}
           >
             {loading ? (
@@ -995,65 +657,7 @@ export default function ConvertLeadScreen() {
           </Pressable>
         </View>
 
-        {/* Category Modal */}
-        <ModalSelector
-          visible={showCategoryModal}
-          title="Select Client Category"
-          data={categories}
-          onSelect={(category) => {
-            setFormData({ ...formData, categoryId: category.id, organisationId: 0 });
-            setShowCategoryModal(false);
-          }}
-          onClose={() => setShowCategoryModal(false)}
-          selectedId={formData.categoryId}
-          keyExtractor={(item) => item.id}
-          labelExtractor={(item) => `${item.name} (${item.code})`}
-        />
 
-        {/* Event Category Modal */}
-        <ModalSelector
-          visible={showEventCategoryModal}
-          title="Select Event Category"
-          data={eventCategoryOptions.map(cat => ({ value: cat, label: cat }))}
-          onSelect={(item) => {
-            setFormData({ ...formData, eventCategory: item.value });
-            setShowEventCategoryModal(false);
-          }}
-          onClose={() => setShowEventCategoryModal(false)}
-          selectedId={formData.eventCategory}
-          keyExtractor={(item) => item.value}
-          labelExtractor={(item) => item.label}
-        />
-
-        {/* Organisation Modal */}
-        <ModalSelector
-          visible={showOrganisationModal}
-          title="Select Organisation"
-          data={organisations}
-          onSelect={(org) => {
-            setFormData({ ...formData, organisationId: org.id });
-            setShowOrganisationModal(false);
-          }}
-          onClose={() => setShowOrganisationModal(false)}
-          selectedId={formData.organisationId}
-          keyExtractor={(item) => item.id}
-          labelExtractor={(item) => item.name}
-        />
-
-        {/* Venue Modal */}
-        <ModalSelector
-          visible={showVenueModal}
-          title="Select Venue"
-          data={filteredVenues}
-          onSelect={(venue) => {
-            setSelectedVenue(venue);
-            setShowVenueModal(false);
-          }}
-          onClose={() => setShowVenueModal(false)}
-          selectedId={selectedVenue?.id}
-          keyExtractor={(item) => item.id}
-          labelExtractor={(item) => item.name}
-        />
 
         {/* Success Animation Overlay */}
         {showSuccessAnimation && (

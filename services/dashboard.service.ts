@@ -47,10 +47,10 @@ class DashboardService {
   async getDashboardData(): Promise<DashboardData> {
     try {
       const response = await api.get<any>('/hr/auth/me/');
-      
+
       // API interceptor returns data directly, so response is the user data
       const userData = response || {};
-      
+
       return {
         user: {
           id: userData.id || 0,
@@ -171,12 +171,12 @@ class DashboardService {
         totalProjects: projects.length,
         projects: projects.slice(0, 2),
       });
-      
+
       // Filter for active projects (not completed or on hold)
-      const activeProjects = projects.filter((p: any) => 
+      const activeProjects = projects.filter((p: any) =>
         p.status !== 'Completed' && p.status !== 'On Hold'
       );
-      
+
       console.log('✅ Dashboard Service: Active projects count:', activeProjects.length);
       return activeProjects.length;
     } catch (error) {
@@ -189,17 +189,17 @@ class DashboardService {
    * Get leaderboard data from unified backend API (star-based ranking)
    */
   async getLeaderboard(
-    limit: number = 10, 
+    limit: number = 10,
     timeRange: 'thisWeek' | 'thisMonth' | 'thisQuarter' | 'lastSixMonths' | 'thisYear' = 'thisMonth',
     filter: 'individual' | 'team' | 'leaders' = 'individual'
   ): Promise<any[]> {
     try {
       console.log(`🏆 Fetching ${filter} leaderboard for ${timeRange}...`);
-      
+
       const response = await api.get('/project_management/leaderboard/', {
         params: { filter, time_range: timeRange, limit }
       });
-      
+
       const data = response?.results || response || [];
       console.log('✅ Leaderboard fetched:', data.length, 'entries');
       return data;
@@ -220,18 +220,18 @@ class DashboardService {
       const response = await api.get<RecentActivity[]>('/dashboard/activities/recent/', {
         params: { limit }
       });
-      
+
       if (response && Array.isArray(response)) {
         console.log('✅ Activities from dedicated API:', response.length);
         return response;
       }
-      
+
       // If response has data property
       if ((response as any)?.data && Array.isArray((response as any).data)) {
         console.log('✅ Activities from dedicated API:', (response as any).data.length);
         return (response as any).data;
       }
-      
+
       // If endpoint doesn't exist, fall back to old aggregation method
       return await this.getRecentActivitiesRealtime(limit);
     } catch (error: any) {
@@ -252,13 +252,13 @@ class DashboardService {
     try {
       console.log('📡 Fetching real-time activities (aggregation method)...');
       const activities: RecentActivity[] = [];
-      
+
       // Fetch recent leave requests
       try {
         const leavesResponse = await api.get<any[]>('/hr/leaves/');
-        let leaves = Array.isArray(leavesResponse) ? leavesResponse : 
-                    (leavesResponse as any)?.data ? (leavesResponse as any).data : [];
-        
+        let leaves = Array.isArray(leavesResponse) ? leavesResponse :
+          (leavesResponse as any)?.data ? (leavesResponse as any).data : [];
+
         leaves.slice(0, 3).forEach((leave: any) => {
           // Ensure timestamp is ISO format or valid date string
           const timestamp = leave.created_at || leave.from_date || new Date().toISOString();
@@ -274,13 +274,13 @@ class DashboardService {
       } catch (e) {
         console.log('No leaves data');
       }
-      
+
       // Fetch recent project updates
       try {
         const projectsResponse = await api.get<any[]>('/project_management/projects/my_projects/');
-        let projects = Array.isArray(projectsResponse) ? projectsResponse : 
-                      (projectsResponse as any)?.data ? (projectsResponse as any).data : [];
-        
+        let projects = Array.isArray(projectsResponse) ? projectsResponse :
+          (projectsResponse as any)?.data ? (projectsResponse as any).data : [];
+
         projects.slice(0, 3).forEach((project: any) => {
           const timestamp = project.updated_at || project.created_at || new Date().toISOString();
           activities.push({
@@ -295,13 +295,13 @@ class DashboardService {
       } catch (e) {
         console.log('No projects data');
       }
-      
+
       // Fetch recent events
       try {
         const eventsResponse = await api.get<any[]>('/events/events/');
-        let events = Array.isArray(eventsResponse) ? eventsResponse : 
-                    (eventsResponse as any)?.data ? (eventsResponse as any).data : [];
-        
+        let events = Array.isArray(eventsResponse) ? eventsResponse :
+          (eventsResponse as any)?.data ? (eventsResponse as any).data : [];
+
         events.slice(0, 2).forEach((event: any) => {
           const timestamp = event.created_at || event.date || new Date().toISOString();
           activities.push({
@@ -316,12 +316,12 @@ class DashboardService {
       } catch (e) {
         console.log('No events data');
       }
-      
+
       // Sort by timestamp and limit
       const sortedActivities = activities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, limit);
-      
+
       console.log('✅ Real-time activities:', sortedActivities.length);
       return sortedActivities;
     } catch (error) {
@@ -345,22 +345,22 @@ class DashboardService {
   async getInternLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any[]> {
     try {
       console.log('🏆 Fetching intern leaderboard...');
-      
+
       const timeRangeMap: Record<string, string> = {
         'daily': 'thisWeek',
         'weekly': 'thisWeek',
         'monthly': 'thisMonth',
         'yearly': 'thisYear'
       };
-      
+
       const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
-      
-      const params: any = { 
-        filter: 'individual', 
+
+      const params: any = {
+        filter: 'individual',
         time_range: backendTimeRange,
-        limit: 1000 
+        limit: 1000
       };
-      
+
       const response = await api.get<any>('/project_management/leaderboard/', { params });
       const data = response?.results || (Array.isArray(response) ? response : []);
       console.log('✅ Intern leaderboard fetched:', data.length, 'interns');
@@ -378,22 +378,22 @@ class DashboardService {
   async getTeamLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any[]> {
     try {
       console.log('🏆 Fetching team leaderboard...');
-      
+
       const timeRangeMap: Record<string, string> = {
         'daily': 'thisWeek',
         'weekly': 'thisWeek',
         'monthly': 'thisMonth',
         'yearly': 'thisYear'
       };
-      
+
       const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
-      
-      const params: any = { 
-        filter: 'team', 
+
+      const params: any = {
+        filter: 'team',
         time_range: backendTimeRange,
-        limit: 1000 
+        limit: 1000
       };
-      
+
       const response = await api.get<any>('/project_management/leaderboard/', { params });
       const data = response?.results || (Array.isArray(response) ? response : []);
       console.log('✅ Team leaderboard fetched:', data.length, 'teams');
@@ -411,22 +411,22 @@ class DashboardService {
   async getLeadersLeaderboard(timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any[]> {
     try {
       console.log('👑 Fetching leaders leaderboard...');
-      
+
       const timeRangeMap: Record<string, string> = {
         'daily': 'thisWeek',
         'weekly': 'thisWeek',
         'monthly': 'thisMonth',
         'yearly': 'thisYear'
       };
-      
+
       const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
-      
-      const params: any = { 
-        filter: 'leaders', 
+
+      const params: any = {
+        filter: 'leaders',
         time_range: backendTimeRange,
-        limit: 1000 
+        limit: 1000
       };
-      
+
       const response = await api.get<any>('/project_management/leaderboard/', { params });
       const data = response?.results || (Array.isArray(response) ? response : []);
       console.log('✅ Leaders leaderboard fetched:', data.length, 'leaders');
@@ -444,20 +444,20 @@ class DashboardService {
   async getIndividualInternRanking(userId: number, timeRange?: 'daily' | 'weekly' | 'monthly' | 'yearly'): Promise<any | null> {
     try {
       console.log('🏆 Fetching my rank...');
-      
+
       const timeRangeMap: Record<string, string> = {
         'daily': 'thisWeek',
         'weekly': 'thisWeek',
         'monthly': 'thisMonth',
         'yearly': 'thisYear'
       };
-      
+
       const backendTimeRange = timeRange ? timeRangeMap[timeRange] : 'thisMonth';
-      
+
       const params: any = {
         time_range: backendTimeRange
       };
-      
+
       const response = await api.get<any>('/project_management/leaderboard/my-rank/', { params });
       console.log('✅ My rank fetched:', response);
       return response;

@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 110 : 130,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 90 : 110,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
   section: {
@@ -773,8 +773,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   kpiCardHorizontal: {
-    width: SCREEN_WIDTH * 0.70,
-    height: 165,
+    width: SCREEN_WIDTH * 0.75,
+    height: 160,
   },
   modulesGrid: {
     flexDirection: 'row',

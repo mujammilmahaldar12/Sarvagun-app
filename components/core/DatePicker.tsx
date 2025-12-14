@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeStore } from '@/store/themeStore';
+import { useTheme } from '@/hooks/useTheme';
 import { designSystem } from '@/constants/designSystem';
 import { Calendar } from './Calendar';
 import { Button } from './Button';
@@ -41,7 +41,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
   format = 'long',
   inline = false,
 }) => {
-  const { colors } = useThemeStore();
+  const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(value || null);
 
@@ -93,19 +93,19 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
             style={{
               fontSize: typography.sizes.sm,
               fontWeight: typography.weights.semibold,
-              color: colors.text,
+              color: theme.text || '#000000',
               marginBottom: spacing[2],
             }}
           >
             {label}
-            {required && <Text style={{ color: colors.error }}> *</Text>}
+            {required && <Text style={{ color: theme.error || '#EF4444' }}> *</Text>}
           </Text>
         )}
         <View style={{
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface || '#FFFFFF',
           borderRadius: borderRadius.lg,
           borderWidth: 1,
-          borderColor: colors.border,
+          borderColor: theme.border || '#E5E7EB',
           overflow: 'hidden',
         }}>
           <Calendar
@@ -119,7 +119,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           <Text
             style={{
               fontSize: typography.sizes.xs,
-              color: colors.error,
+              color: theme.error || '#EF4444',
               marginTop: spacing[1],
               marginLeft: spacing[1],
             }}
@@ -139,12 +139,12 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           style={{
             fontSize: typography.sizes.sm,
             fontWeight: typography.weights.semibold,
-            color: colors.text,
+            color: theme.text || '#000000',
             marginBottom: spacing[1],
           }}
         >
           {label}
-          {required && <Text style={{ color: colors.error }}> *</Text>}
+          {required && <Text style={{ color: theme.error || '#EF4444' }}> *</Text>}
         </Text>
       )}
 
@@ -152,38 +152,47 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
       <Pressable
         onPress={() => !disabled && setIsOpen(true)}
         disabled={disabled}
-        style={({ pressed }) => ({
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface || '#FFFFFF',
           borderWidth: 1.5,
-          borderColor: error ? colors.error : colors.border,
+          borderColor: error ? (theme.error || '#EF4444') : (theme.border || '#E5E7EB'),
           borderRadius: borderRadius.md,
           paddingHorizontal: spacing[3],
           paddingVertical: spacing[3],
-          opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
-        })}
+          minHeight: 48,
+          opacity: disabled ? 0.5 : 1,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], flex: 1, minWidth: 0 }}>
-          <Ionicons
-            name="calendar-outline"
-            size={20}
-            color={error ? colors.error : colors.textSecondary}
-          />
-          <Text
-            style={{
-              fontSize: typography.sizes.base,
-              color: value ? colors.text : colors.textSecondary,
-              flex: 1,
-              flexShrink: 1,
-            }}
-            numberOfLines={1}
-          >
-            {value ? formatDate(value) : placeholder}
-          </Text>
-        </View>
-        <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+        {/* Calendar Icon */}
+        <Ionicons
+          name="calendar-outline"
+          size={20}
+          color={error ? (theme.error || '#EF4444') : (theme.textSecondary || '#6B7280')}
+          style={{ marginRight: spacing[2] }}
+        />
+
+        {/* Display Text - Takes remaining space */}
+        <Text
+          style={{
+            flex: 1,
+            fontSize: typography.sizes.base,
+            color: value ? '#111827' : '#6B7280',
+          }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {value ? formatDate(value) : placeholder}
+        </Text>
+
+        {/* Chevron */}
+        <Ionicons
+          name="chevron-down"
+          size={20}
+          color={theme.textSecondary || '#6B7280'}
+          style={{ marginLeft: spacing[1] }}
+        />
       </Pressable>
 
       {/* Error Message */}
@@ -191,7 +200,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
         <Text
           style={{
             fontSize: typography.sizes.xs,
-            color: colors.error,
+            color: theme.error || '#EF4444',
             marginTop: spacing[1],
             marginLeft: spacing[1],
           }}
@@ -212,7 +221,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: colors.overlay,
+              backgroundColor: theme.overlay || 'rgba(0,0,0,0.5)',
               justifyContent: 'center',
               alignItems: 'center',
               padding: spacing[4],
@@ -224,7 +233,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           <Animated.View
             entering={SlideInDown.springify()}
             style={{
-              backgroundColor: colors.surface,
+              backgroundColor: theme.surface || '#FFFFFF',
               borderRadius: borderRadius.xl,
               padding: spacing[4],
               width: '100%',

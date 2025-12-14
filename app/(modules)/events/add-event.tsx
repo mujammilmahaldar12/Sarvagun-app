@@ -32,9 +32,10 @@ export default function AddEventScreen() {
 
   const [loading, setLoading] = useState(false);
   const [fetchingLead, setFetchingLead] = useState(false);
-  const [leadData, setLeadData] = useState<any>(null); // Store full lead data
+  const [leadData, setLeadData] = useState<any>(null);
+  const [venues, setVenues] = useState<any[]>([]);
   const [isEditingClient, setIsEditingClient] = useState(false);
-  const [isEditingVenue, setIsEditingVenue] = useState(false);
+  const [isCreatingNewVenue, setIsCreatingNewVenue] = useState(false);
 
   const [formData, setFormData] = useState({
     clientName: '',
@@ -44,16 +45,22 @@ export default function AddEventScreen() {
     startDate: null as Date | null,
     endDate: null as Date | null,
     selectedDates: [] as Date[],
+    venueId: 0,
     venue: '',
     venueAddress: '',
     company: 'bling square events',
-    category: 'corporate events', // Default
+    category: 'corporate events',
   });
 
   const COMPANIES = ['bling square events', 'redmagic events'];
   const EVENT_CATEGORIES = ['corporate events', 'social events', 'weddings', 'religious events', 'sports', 'other'];
 
   const [documents, setDocuments] = useState<any[]>([]);
+
+  // Fetch venues on mount
+  useEffect(() => {
+    fetchVenues();
+  }, []);
 
   // Fetch lead details if fromLead is present
   useEffect(() => {
@@ -62,24 +69,42 @@ export default function AddEventScreen() {
     }
   }, [fromLead]);
 
+  const fetchVenues = async () => {
+    try {
+      const venuesData = await eventsService.getVenues();
+      setVenues(venuesData || []);
+    } catch (error) {
+      console.error('Error fetching venues:', error);
+    }
+  };
+
   const fetchLeadDetails = async (leadId: number) => {
     setFetchingLead(true);
     try {
       const lead = await eventsService.getLead(leadId);
       setLeadData(lead);
       const leadAny = lead as any;
+      const eventData = lead.event && typeof lead.event === 'object' ? lead.event as any : null;
 
-      // Pre-fill form data
+      // Pre-fill form data from lead - INCLUDING event type from add-lead form
       setFormData(prev => ({
         ...prev,
         clientName: lead.client?.name || '',
         clientEmail: lead.client?.email || '',
         clientPhone: lead.client?.number || '',
-        eventType: lead.event && typeof lead.event === 'object' ? (lead.event as any).type_of_event : (leadAny.type_of_event || ''),
-        startDate: leadAny.start_date ? new Date(leadAny.start_date) : null,
-        endDate: leadAny.end_date ? new Date(leadAny.end_date) : null,
-        venue: leadAny.venue?.name || '',
-        venueAddress: leadAny.venue?.address || '',
+        // Pre-fill event type from lead's event object
+        eventType: eventData?.type_of_event || leadAny.type_of_event || '',
+        // Pre-fill dates from lead
+        startDate: eventData?.start_date ? new Date(eventData.start_date) :
+          (leadAny.start_date ? new Date(leadAny.start_date) : null),
+        endDate: eventData?.end_date ? new Date(eventData.end_date) :
+          (leadAny.end_date ? new Date(leadAny.end_date) : null),
+        // Pre-fill venue if exists
+        venueId: eventData?.venue?.id || 0,
+        venue: eventData?.venue?.name || '',
+        venueAddress: eventData?.venue?.address || '',
+        // Pre-fill company from lead
+        company: eventData?.company || leadAny.company || 'bling square events',
       }));
     } catch (error) {
       console.error('Error fetching lead:', error);
@@ -138,9 +163,9 @@ export default function AddEventScreen() {
           end_date: (formData.endDate || formData.startDate!).toISOString().split('T')[0],
           type_of_event: formData.eventType,
           category: formData.category,
-          event_dates: [{ date: formData.startDate!.toISOString().split('T')[0] }],
-          // Add active days if available, otherwise it defaults to 1 or calculated by backend
-          ...(formData.activeDays ? { active_days: parseInt(formData.activeDays) } : {}),
+          event_dates: formData.selectedDates.length > 0
+            ? formData.selectedDates.map(d => ({ date: d.toISOString().split('T')[0] }))
+            : [{ date: formData.startDate!.toISOString().split('T')[0] }],
         });
 
         Alert.alert('Success', 'Lead converted to event successfully', [
@@ -194,7 +219,7 @@ export default function AddEventScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ModuleHeader
@@ -275,145 +300,233 @@ export default function AddEventScreen() {
           </View>
         </View>
 
-        {/* Venue Info Card (Editable) */}
+        {/* Venue Selection Section */}
         <View style={clientCardStyles.card}>
           <View style={clientCardStyles.header}>
             <Ionicons name="location" size={20} color={theme.primary} />
             <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text, flex: 1 }]}>
-              Venue Information
+              Venue
             </Text>
-            <Pressable onPress={() => setIsEditingVenue(!isEditingVenue)}>
-              <Ionicons
-                name={isEditingVenue ? "checkmark-circle" : "create-outline"}
-                size={24}
-                color={isEditingVenue ? theme.success : theme.primary}
-              />
+          </View>
+
+          {/* Toggle: Select Existing vs Create New */}
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Pressable
+              onPress={() => setIsCreatingNewVenue(false)}
+              style={{
+                flex: 1,
+                paddingVertical: spacing.sm,
+                borderRadius: borderRadius.md,
+                backgroundColor: !isCreatingNewVenue ? theme.primary + '20' : theme.surface,
+                borderWidth: 1,
+                borderColor: !isCreatingNewVenue ? theme.primary : theme.border,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={[getTypographyStyle('sm', 'semibold'), { color: !isCreatingNewVenue ? theme.primary : theme.text }]}>
+                Select Existing
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setIsCreatingNewVenue(true)}
+              style={{
+                flex: 1,
+                paddingVertical: spacing.sm,
+                borderRadius: borderRadius.md,
+                backgroundColor: isCreatingNewVenue ? theme.primary + '20' : theme.surface,
+                borderWidth: 1,
+                borderColor: isCreatingNewVenue ? theme.primary : theme.border,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={[getTypographyStyle('sm', 'semibold'), { color: isCreatingNewVenue ? theme.primary : theme.text }]}>
+                Create New
+              </Text>
             </Pressable>
           </View>
-          <View style={{ gap: spacing.sm }}>
-            {isEditingVenue ? (
-              <>
-                <FormField
-                  label="Venue Name *"
-                  value={formData.venue}
-                  onChangeText={(text: string) => updateField('venue', text)}
-                  placeholder="Enter venue name"
-                  shape="pill"
-                />
-                <FormField
-                  label="Address"
-                  value={formData.venueAddress}
-                  onChangeText={(text: string) => updateField('venueAddress', text)}
-                  placeholder="Enter venue address"
-                  multiline
-                />
-              </>
-            ) : (
-              <>
-                <View style={clientCardStyles.row}>
-                  <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary, width: 80 }]}>Name</Text>
-                  <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, flex: 1 }]}>
-                    {formData.venue || 'Not set'}
-                  </Text>
-                </View>
-                <View style={clientCardStyles.row}>
-                  <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary, width: 80 }]}>Address</Text>
-                  <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.text, flex: 1 }]}>
-                    {formData.venueAddress || 'Not set'}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
 
-        <FormSection title="Event Information">
-          {/* Company Selection */}
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, marginBottom: spacing.sm }]}>
-              Company *
-            </Text>
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              {COMPANIES.map((company) => (
-                <Chip
-                  key={company}
-                  label={company === 'bling square events' ? 'Bling Square' : 'RedMagic'}
-                  selected={formData.company === company}
-                  onPress={() => updateField('company', company)}
-                  variant={formData.company === company ? 'primary' : 'outline'}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Event Category */}
-          <Select
-            label="Event Category *"
-            value={formData.category}
-            placeholder="Select Category"
-            options={EVENT_CATEGORIES.map(cat => ({
-              label: cat.charAt(0).toUpperCase() + cat.slice(1),
-              value: cat
-            }))}
-            onChange={(val) => updateField('category', val as string)}
-          />
-
-          <FormField
-            label="Event Type *"
-            value={formData.eventType}
-            onChangeText={(text: string) => updateField('eventType', text)}
-            placeholder="Enter event type (e.g., Conference, Workshop)"
-            shape="pill"
-          />
-        </FormSection>
-
-        <FormSection title="Event Schedule">
-          <View style={styles.rowFields}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <DatePicker
-                label="Start Date *"
-                value={formData.startDate}
-                onChange={(date) => {
-                  setFormData(prev => {
-                    let newEndDate = prev.endDate;
-                    if (date && prev.endDate && date > prev.endDate) {
-                      newEndDate = date;
-                    }
-                    return { ...prev, startDate: date, endDate: newEndDate };
-                  });
-                }}
-                placeholder="Select date"
+          {isCreatingNewVenue ? (
+            // Create New Venue Form
+            <View style={{ gap: spacing.sm }}>
+              <FormField
+                label="Venue Name *"
+                value={formData.venue}
+                onChangeText={(text: string) => setFormData(prev => ({ ...prev, venue: text, venueId: 0 }))}
+                placeholder="Enter venue name"
+              />
+              <FormField
+                label="Address"
+                value={formData.venueAddress}
+                onChangeText={(text: string) => setFormData(prev => ({ ...prev, venueAddress: text }))}
+                placeholder="Enter venue address"
+                multiline
               />
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <DatePicker
-                label="End Date"
-                value={formData.endDate}
-                onChange={(date) => {
-                  if (date && formData.startDate && date < formData.startDate) {
-                    Alert.alert("Invalid Date", "End date cannot be before start date");
-                    return;
-                  }
-                  setFormData(prev => ({ ...prev, endDate: date }));
-                }}
-                placeholder="Select date"
-                minDate={formData.startDate || undefined}
-              />
-            </View>
-          </View>
-
-          {/* Multi-Date Picker for Active Days - Only show when dates are selected */}
-          {formData.startDate && formData.endDate && (
-            <MultiDatePicker
-              label="Active Days *"
-              selectedDates={formData.selectedDates}
-              onChange={(dates) => setFormData(prev => ({ ...prev, selectedDates: dates }))}
-              placeholder="Tap to select event dates"
-              minDate={formData.startDate || undefined}
-              maxDate={formData.endDate || undefined}
+          ) : (
+            // Select Existing Venue Dropdown
+            <Select
+              label="Select Venue *"
+              value={formData.venueId}
+              options={venues.map(v => ({ label: v.name, value: v.id }))}
+              onChange={(val) => {
+                const venue = venues.find(v => v.id === val);
+                setFormData(prev => ({
+                  ...prev,
+                  venueId: Number(val),
+                  venue: venue?.name || '',
+                  venueAddress: venue?.address || '',
+                }));
+              }}
+              placeholder="Select a venue"
+              searchable
+              leadingIcon="location-outline"
             />
           )}
-        </FormSection>
+
+          {/* Show selected venue details */}
+          {formData.venueId > 0 && !isCreatingNewVenue && (
+            <View style={{ marginTop: spacing.sm, padding: spacing.sm, backgroundColor: theme.background, borderRadius: borderRadius.md }}>
+              <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
+                {formData.venue}
+              </Text>
+              {formData.venueAddress && (
+                <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary }]}>
+                  {formData.venueAddress}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Event Information - Read-only when from lead */}
+        {fromLead && leadData ? (
+          // Show read-only event details from lead
+          <View style={clientCardStyles.card}>
+            <View style={clientCardStyles.header}>
+              <Ionicons name="calendar" size={20} color={theme.primary} />
+              <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text, flex: 1 }]}>
+                Event Details (From Lead)
+              </Text>
+            </View>
+            <View style={{ gap: spacing.sm }}>
+              <View style={clientCardStyles.row}>
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary, width: 100 }]}>Company</Text>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, flex: 1 }]}>
+                  {formData.company === 'redmagic events' ? 'RedMagic Events' : 'Bling Square Events'}
+                </Text>
+              </View>
+              <View style={clientCardStyles.row}>
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary, width: 100 }]}>Event Type</Text>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, flex: 1 }]}>
+                  {formData.eventType || 'Not specified'}
+                </Text>
+              </View>
+              <View style={clientCardStyles.row}>
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary, width: 100 }]}>Start Date</Text>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, flex: 1 }]}>
+                  {formData.startDate ? formData.startDate.toLocaleDateString('en-IN') : 'Not set'}
+                </Text>
+              </View>
+              <View style={clientCardStyles.row}>
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary, width: 100 }]}>End Date</Text>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, flex: 1 }]}>
+                  {formData.endDate ? formData.endDate.toLocaleDateString('en-IN') : 'Not set'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          // Show editable form for standalone event creation
+          <>
+            <FormSection title="Event Information">
+              {/* Company Selection */}
+              <View style={{ marginBottom: spacing.md }}>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, marginBottom: spacing.sm }]}>
+                  Company *
+                </Text>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  {COMPANIES.map((company) => (
+                    <Chip
+                      key={company}
+                      label={company === 'bling square events' ? 'Bling Square' : 'RedMagic'}
+                      selected={formData.company === company}
+                      onPress={() => updateField('company', company)}
+                      variant={formData.company === company ? 'filled' : 'outlined'}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              {/* Event Category */}
+              <Select
+                label="Event Category *"
+                value={formData.category}
+                placeholder="Select Category"
+                options={EVENT_CATEGORIES.map(cat => ({
+                  label: cat.charAt(0).toUpperCase() + cat.slice(1),
+                  value: cat
+                }))}
+                onChange={(val) => updateField('category', val as string)}
+              />
+
+              <FormField
+                label="Event Type *"
+                value={formData.eventType}
+                onChangeText={(text: string) => updateField('eventType', text)}
+                placeholder="Enter event type (e.g., Conference, Workshop)"
+                shape="pill"
+              />
+            </FormSection>
+
+            <FormSection title="Event Schedule">
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePicker
+                    label="Start Date *"
+                    value={formData.startDate}
+                    onChange={(date) => {
+                      setFormData(prev => {
+                        let newEndDate = prev.endDate;
+                        if (date && prev.endDate && date > prev.endDate) {
+                          newEndDate = date;
+                        }
+                        return { ...prev, startDate: date, endDate: newEndDate };
+                      });
+                    }}
+                    placeholder="Select date"
+                  />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePicker
+                    label="End Date"
+                    value={formData.endDate}
+                    onChange={(date) => {
+                      if (date && formData.startDate && date < formData.startDate) {
+                        Alert.alert("Invalid Date", "End date cannot be before start date");
+                        return;
+                      }
+                      setFormData(prev => ({ ...prev, endDate: date }));
+                    }}
+                    placeholder="Select date"
+                    minDate={formData.startDate || undefined}
+                  />
+                </View>
+              </View>
+
+              {/* Multi-Date Picker for Active Days - Only show when dates are selected */}
+              {formData.startDate && formData.endDate && (
+                <MultiDatePicker
+                  label="Active Days *"
+                  selectedDates={formData.selectedDates}
+                  onChange={(dates) => setFormData(prev => ({ ...prev, selectedDates: dates }))}
+                  placeholder="Tap to select event dates"
+                  minDate={formData.startDate || undefined}
+                  maxDate={formData.endDate || undefined}
+                />
+              )}
+            </FormSection>
+          </>
+        )}
 
         <View style={styles.submitContainer}>
           <Button
@@ -446,6 +559,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     gap: spacing.md,
+    paddingBottom: 150, // Extra padding to prevent keyboard from hiding last input
   },
   rowFields: {
     flexDirection: 'row',

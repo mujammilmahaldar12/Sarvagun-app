@@ -4,7 +4,8 @@ import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { ModuleHeader, Button, FormField, FormSection, Chip } from '@/components';
+import { ModuleHeader, Button, FormField, FormSection } from '@/components';
+import { DatePicker, MultiDatePicker, Select, Input } from '@/components/core';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { spacing, borderRadius, baseColors } from '@/constants/designSystem';
@@ -31,23 +32,28 @@ export default function AddLeadScreen() {
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [venues, setVenues] = useState<any[]>([]);
 
   // Modal states
   const [showClientModal, setShowClientModal] = useState(false);
-  const [showVenueModal, setShowVenueModal] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
-  const [venueSearchQuery, setVenueSearchQuery] = useState('');
   const [showOrgInput, setShowOrgInput] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
 
+
   // Form mode: 'select' or 'create'
-  const [clientMode, setClientMode] = useState<'select' | 'create'>('select');
-  const [venueMode, setVenueMode] = useState<'select' | 'create'>('select');
+  const [clientMode, setClientMode] = useState<'select' | 'create'>('create');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [selectedVenue, setSelectedVenue] = useState<any>(null);
 
   const [formData, setFormData] = useState({
+    // Event Details
+    company: 'redmagic events', // Default
+    startDate: null as Date | null,
+    endDate: null as Date | null,
+    eventType: '',
+
+    // Active Day Selection
+    // stored separately in activeDates state
+
     // For existing client
     clientId: 0,
     // For new client
@@ -58,19 +64,14 @@ export default function AddLeadScreen() {
     address: '',
     categoryId: 0,
     organisationId: 0,
-    // For existing venue
-    venueId: 0,
-    // For new venue
-    venueName: '',
-    venueAddress: '',
-    venueCapacity: '',
-    venueType: 'home',
-    venueRegion: 'india',
+
     // Lead details
     source: 'online',
     referral: '',
     message: '',
   });
+
+  const [activeDates, setActiveDates] = useState<Date[]>([]);
 
   useEffect(() => {
     fetchReferenceData();
@@ -78,26 +79,40 @@ export default function AddLeadScreen() {
 
   const fetchReferenceData = async () => {
     try {
-      const [categoriesData, orgsData, clientsData, venuesData] = await Promise.all([
+      const [categoriesData, orgsData, clientsData] = await Promise.all([
         eventsService.getClientCategories(),
         eventsService.getOrganisations(),
         eventsService.getClients(),
-        eventsService.getVenues(),
       ]);
       setCategories(categoriesData);
       setOrganisations(orgsData);
       setClients(clientsData);
-      setVenues(venuesData);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to load reference data');
     }
   };
 
   // Check if selected category requires organisation (B2B/B2G)
-  const requiresOrganisation = () => {
-    if (!formData.categoryId) return false;
-    const selectedCategory = categories.find(c => c.id === formData.categoryId);
-    return selectedCategory?.requires_organisation || false;
+  // B2C = no organisation required, B2B and B2G = organisation required
+  const requiresOrganisation = (): boolean => {
+    if (!formData.categoryId || formData.categoryId === 0) return false;
+
+    // Find the selected category using loose equality for type safety
+    const selectedCategory = categories.find(c => c.id == formData.categoryId);
+    if (!selectedCategory) return false;
+
+    // Primary check: Use category code (most reliable)
+    // B2B and B2G require organisation, B2C does not
+    const code = selectedCategory.code?.toLowerCase();
+    if (code === 'b2b' || code === 'b2g') {
+      return true;
+    }
+    if (code === 'b2c') {
+      return false;
+    }
+
+    // Fallback: Use requires_organisation field from backend
+    return selectedCategory.requires_organisation === true;
   };
 
   // Filtered clients based on search
@@ -107,36 +122,17 @@ export default function AddLeadScreen() {
     client.number?.includes(clientSearchQuery)
   );
 
-  // Filtered venues based on search
-  const filteredVenues = venues.filter(venue =>
-    venue.name.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
-    venue.address?.toLowerCase().includes(venueSearchQuery.toLowerCase()) ||
-    venue.region?.toLowerCase().includes(venueSearchQuery.toLowerCase())
-  );
-
-  const updateField = (field: string, value: string) => {
+  const updateField = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleAddOrganisation = async () => {
-    if (!newOrgName.trim()) {
-      Alert.alert('Error', 'Please enter organisation name');
+  const handleSubmit = async () => {
+    // Validate Event Details
+    if (!formData.company) {
+      Alert.alert('Error', 'Please select Event Of (Company)');
       return;
     }
 
-    try {
-      const newOrg = await eventsService.createOrganisation({ name: newOrgName.trim() });
-      setOrganisations([...organisations, newOrg]);
-      setFormData({ ...formData, organisationId: newOrg.id });
-      setNewOrgName('');
-      setShowOrgInput(false);
-      Alert.alert('Success', 'Organisation added successfully');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add organisation');
-    }
-  };
-
-  const handleSubmit = async () => {
     // Validate Client
     if (clientMode === 'select') {
       if (!formData.clientId || formData.clientId === 0) {
@@ -146,7 +142,7 @@ export default function AddLeadScreen() {
     } else {
       // Creating new client - validate all fields
       if (!formData.companyName.trim()) {
-        Alert.alert('Error', 'Please enter company name');
+        Alert.alert('Error', 'Please enter client name');
         return;
       }
       if (!formData.phone.trim()) {
@@ -170,19 +166,6 @@ export default function AddLeadScreen() {
       }
     }
 
-    // Validate Venue (REQUIRED)
-    if (venueMode === 'select') {
-      if (!formData.venueId || formData.venueId === 0) {
-        Alert.alert('Error', 'Please select a venue');
-        return;
-      }
-    } else {
-      if (!formData.venueName.trim()) {
-        Alert.alert('Error', 'Please enter venue name');
-        return;
-      }
-    }
-
     // Validate Lead Details
     if (!formData.message.trim()) {
       Alert.alert('Error', 'Please enter a message or notes about this lead');
@@ -192,6 +175,13 @@ export default function AddLeadScreen() {
     setLoading(true);
     try {
       const leadData: any = {
+        company: formData.company,
+        type_of_event: formData.eventType,
+        start_date: formData.startDate ? formData.startDate.toISOString().split('T')[0] : null,
+        end_date: formData.endDate ? formData.endDate.toISOString().split('T')[0] : null,
+        // Entry date is implied as today/creation date usually, but could be passed if API supports it.
+        // For now, ignoring entryDate in payload unless backend expects it manually.
+        event_dates: activeDates.map(d => ({ date: d.toISOString().split('T')[0] })),
         source: formData.source,
         message: formData.message.trim(),
       };
@@ -216,19 +206,6 @@ export default function AddLeadScreen() {
         if (formData.organisationId) {
           leadData.client.organisation = [formData.organisationId];
         }
-      }
-
-      // Venue Data
-      if (venueMode === 'select') {
-        leadData.venue = formData.venueId;
-      } else {
-        leadData.venue = {
-          name: formData.venueName.trim(),
-          address: formData.venueAddress.trim() || '',
-          capacity: parseInt(formData.venueCapacity) || 100,
-          type_of_venue: formData.venueType,
-          region: formData.venueRegion,
-        };
       }
 
       console.log('📤 Sending lead data:', JSON.stringify(leadData, null, 2));
@@ -281,35 +258,6 @@ export default function AddLeadScreen() {
             <View style={styles.modeContainer}>
               <Pressable
                 onPress={() => {
-                  setClientMode('select');
-                  setFormData({ ...formData, clientId: 0, companyName: '', contactPerson: '', phone: '', email: '', address: '', categoryId: 0, organisationId: 0 });
-                }}
-                style={[
-                  styles.modeButton,
-                  {
-                    borderColor: clientMode === 'select' ? theme.primary : theme.border,
-                    backgroundColor: clientMode === 'select' ? `${theme.primary}15` : theme.surface,
-                  },
-                  clientMode === 'select' && styles.modeButtonActive,
-                ]}
-              >
-                <Ionicons
-                  name="search-outline"
-                  size={22}
-                  color={clientMode === 'select' ? theme.primary : theme.textSecondary}
-                />
-                <Text
-                  style={[
-                    getTypographyStyle('base', 'bold'),
-                    { color: clientMode === 'select' ? theme.primary : theme.text }
-                  ]}
-                >
-                  Select Existing
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
                   setClientMode('create');
                   setFormData({ ...formData, clientId: 0 });
                   setSelectedClient(null);
@@ -335,6 +283,35 @@ export default function AddLeadScreen() {
                   ]}
                 >
                   Create New
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  setClientMode('select');
+                  setFormData({ ...formData, clientId: 0, companyName: '', contactPerson: '', phone: '', email: '', address: '', categoryId: 0, organisationId: 0 });
+                }}
+                style={[
+                  styles.modeButton,
+                  {
+                    borderColor: clientMode === 'select' ? theme.primary : theme.border,
+                    backgroundColor: clientMode === 'select' ? `${theme.primary}15` : theme.surface,
+                  },
+                  clientMode === 'select' && styles.modeButtonActive,
+                ]}
+              >
+                <Ionicons
+                  name="search-outline"
+                  size={22}
+                  color={clientMode === 'select' ? theme.primary : theme.textSecondary}
+                />
+                <Text
+                  style={[
+                    getTypographyStyle('base', 'bold'),
+                    { color: clientMode === 'select' ? theme.primary : theme.text }
+                  ]}
+                >
+                  Select Existing
                 </Text>
               </Pressable>
             </View>
@@ -383,354 +360,163 @@ export default function AddLeadScreen() {
           {/* Create New Client */}
           {clientMode === 'create' && (
             <FormSection title="Client Information">
-              <FormField
-                label="Company Name *"
+              <Input
+                label="Client Name"
                 value={formData.companyName}
                 onChangeText={(text: string) => updateField('companyName', text)}
-                placeholder="Enter company name"
+                placeholder="Enter client name"
+                required
+                leftIcon="person-outline"
               />
 
-              {/* Client Category */}
-              <View style={{ gap: spacing.sm }}>
-                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
-                  Client Category *
-                </Text>
-                <View style={styles.chipContainer}>
-                  {categories.map((category) => (
-                    <Chip
-                      key={category.id}
-                      label={category.name}
-                      selected={formData.categoryId === category.id}
-                      onPress={() => setFormData({ ...formData, categoryId: category.id, organisationId: 0 })}
-                    />
-                  ))}
-                </View>
-              </View>
+              <Select
+                label="Client Category"
+                value={formData.categoryId}
+                onChange={(val) => updateField('categoryId', val)}
+                options={categories.map(c => ({ label: c.name, value: c.id }))}
+                placeholder="Select category"
+                required
+              />
 
-              {/* Organisation (for B2B/B2G only) - Conditional */}
+              {/* Organisation Selection (Conditional - only for B2B/B2G) */}
               {requiresOrganisation() && (
-                <View style={{ gap: spacing.sm }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
-                      Organisation *
-                    </Text>
-                    <Pressable
-                      onPress={() => setShowOrgInput(!showOrgInput)}
-                      style={({ pressed }) => ({
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                        padding: spacing.sm,
-                        opacity: pressed ? 0.7 : 1,
-                      })}
-                    >
-                      <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={baseColors.purple[500]} />
-                      <Text style={[getTypographyStyle('xs', 'semibold'), { color: baseColors.purple[500] }]}>
-                        {showOrgInput ? 'Cancel' : 'Add New'}
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  {showOrgInput ? (
-                    <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-                      <View style={{ flex: 1 }}>
-                        <FormField
-                          value={newOrgName}
-                          onChangeText={setNewOrgName}
-                          placeholder="Organisation name"
-                          shape="pill"
-                          containerStyle={{ marginBottom: 0 }}
-                        />
-                      </View>
-                      <Pressable
-                        onPress={handleAddOrganisation}
-                        style={({ pressed }) => ({
-                          backgroundColor: pressed ? baseColors.purple[600] : baseColors.purple[500],
-                          paddingHorizontal: spacing.base,
-                          borderRadius: borderRadius.full,
-                          justifyContent: 'center',
-                          height: 48,
-                        })}
-                      >
-                        <Text style={[getTypographyStyle('base', 'semibold'), { color: baseColors.neutral[50] }]}>Add</Text>
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <View style={styles.chipContainer}>
-                      {organisations.map((org) => (
-                        <Chip
-                          key={org.id}
-                          label={org.name}
-                          selected={formData.organisationId === org.id}
-                          onPress={() => setFormData({ ...formData, organisationId: org.id })}
-                        />
-                      ))}
-                    </View>
-                  )}
-                </View>
+                <Select
+                  label="Organisation"
+                  value={formData.organisationId}
+                  onChange={(val) => updateField('organisationId', val)}
+                  options={organisations.map(o => ({ label: o.name, value: o.id }))}
+                  placeholder="Select organisation"
+                  required
+                />
               )}
 
-            </FormSection>
-          )}
-
-          {/* Contact Information */}
-          {clientMode === 'create' && (
-            <FormSection title="Contact Information">
-              <FormField
-                label="Phone *"
+              <Input
+                label="Phone Number"
                 value={formData.phone}
                 onChangeText={(text: string) => updateField('phone', text)}
                 placeholder="Enter phone number"
                 keyboardType="phone-pad"
-                shape="pill"
+                required
+                leftIcon="call-outline"
               />
-              <FormField
-                label="Email *"
+
+              <Input
+                label="Email"
                 value={formData.email}
                 onChangeText={(text: string) => updateField('email', text)}
                 placeholder="Enter email address"
                 keyboardType="email-address"
-                shape="pill"
+                required
+                leftIcon="mail-outline"
+                autoCapitalize="none"
+              />
+
+              <Input
+                label="Address"
+                value={formData.address}
+                onChangeText={(text: string) => updateField('address', text)}
+                placeholder="Enter address"
+                multiline
+                leftIcon="location-outline"
               />
             </FormSection>
           )}
 
-          {/* Venue Selection */}
-          <FormSection title="Venue Information">
-            <View style={styles.modeContainer}>
-              <Pressable
-                onPress={() => {
-                  setVenueMode('select');
-                  setFormData({ ...formData, venueId: 0, venueName: '', venueAddress: '', venueCapacity: '', venueType: 'home' });
-                }}
-                style={[
-                  styles.modeButton,
-                  {
-                    borderColor: venueMode === 'select' ? theme.primary : theme.border,
-                    backgroundColor: venueMode === 'select' ? `${theme.primary}15` : theme.surface,
-                  },
-                  venueMode === 'select' && styles.modeButtonActive,
-                ]}
-              >
-                <Ionicons
-                  name="location-outline"
-                  size={22}
-                  color={venueMode === 'select' ? theme.primary : theme.textSecondary}
-                />
-                <Text
-                  style={[
-                    getTypographyStyle('base', 'bold'),
-                    { color: venueMode === 'select' ? theme.primary : theme.text }
-                  ]}
-                >
-                  Select Existing
-                </Text>
-              </Pressable>
 
-              <Pressable
-                onPress={() => {
-                  setVenueMode('create');
-                  setFormData({ ...formData, venueId: 0 });
-                  setSelectedVenue(null);
-                }}
-                style={[
-                  styles.modeButton,
-                  {
-                    borderColor: venueMode === 'create' ? theme.primary : theme.border,
-                    backgroundColor: venueMode === 'create' ? `${theme.primary}15` : theme.surface,
-                  },
-                  venueMode === 'create' && styles.modeButtonActive,
-                ]}
-              >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={22}
-                  color={venueMode === 'create' ? theme.primary : theme.textSecondary}
+          {/* Event Information */}
+          <FormSection title="Event Information">
+            <Select
+              label="Event Of (Company) *"
+              value={formData.company}
+              onChange={(val) => updateField('company', val)}
+              options={[
+                { value: 'redmagic events', label: 'RedMagic Events' },
+                { value: 'bling square events', label: 'Bling Square Events' },
+              ]}
+              required
+            />
+
+            <Input
+              label="Type of Event"
+              value={formData.eventType}
+              onChangeText={(text: string) => updateField('eventType', text)}
+              placeholder="e.g., Birthday, Anniversary"
+              leftIcon="gift-outline"
+            />
+
+
+
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <DatePicker
+                  label="Start Date"
+                  value={formData.startDate}
+                  onChange={(date) => updateField('startDate', date)}
+                  placeholder="Select start date"
+                  format="short"
                 />
-                <Text
-                  style={[
-                    getTypographyStyle('base', 'bold'),
-                    { color: venueMode === 'create' ? theme.primary : theme.text }
-                  ]}
-                >
-                  Create New
-                </Text>
-              </Pressable>
+              </View>
+              <View style={{ flex: 1 }}>
+                <DatePicker
+                  label="End Date"
+                  value={formData.endDate}
+                  onChange={(date) => updateField('endDate', date)}
+                  placeholder="Select end date"
+                  format="short"
+                  minDate={formData.startDate || undefined}
+                />
+              </View>
             </View>
 
-            {/* Select Existing Venue */}
-            {venueMode === 'select' && (
-              <View style={{ gap: 12 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
-                  Search & Select Venue *
-                </Text>
-                <Pressable
-                  onPress={() => setShowVenueModal(true)}
-                  style={{
-                    borderWidth: 1.5,
-                    borderColor: selectedVenue ? theme.primary : theme.border,
-                    borderRadius: borderRadius.full,
-                    padding: 14,
-                    backgroundColor: theme.surface,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    {selectedVenue ? (
-                      <>
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }} numberOfLines={1}>
-                          {selectedVenue.name}
-                        </Text>
-                        <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
-                          {selectedVenue.address} • Capacity: {selectedVenue.capacity}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-                        Tap to search and select a venue
-                      </Text>
-                    )}
-                  </View>
-                  <Ionicons name="search" size={20} color={theme.primary} style={{ marginLeft: 8, flexShrink: 0 }} />
-                </Pressable>
-              </View>
-            )}
-
-            {/* Create New Venue */}
-            {venueMode === 'create' && (
-              <>
-                <FormField
-                  label="Venue Name *"
-                  value={formData.venueName}
-                  onChangeText={(text: string) => updateField('venueName', text)}
-                  placeholder="Enter venue name"
-                  shape="pill"
-                />
-                <FormField
-                  label="Address"
-                  value={formData.venueAddress}
-                  onChangeText={(text: string) => updateField('venueAddress', text)}
-                  placeholder="Enter venue address"
-                  multiline
-                />
-                <FormField
-                  label="Capacity"
-                  value={formData.venueCapacity}
-                  onChangeText={(text: string) => updateField('venueCapacity', text)}
-                  placeholder="Enter venue capacity"
-                  keyboardType="numeric"
-                  shape="pill"
-                />
-                <View style={{ gap: spacing.sm }}>
-                  <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
-                    Venue Type
-                  </Text>
-                  <View style={styles.chipContainer}>
-                    {[
-                      { value: 'home', label: 'Home' },
-                      { value: 'ground', label: 'Ground' },
-                      { value: 'hall', label: 'Hall' },
-                    ].map((type) => (
-                      <Chip
-                        key={type.value}
-                        label={type.label}
-                        selected={formData.venueType === type.value}
-                        onPress={() => setFormData({ ...formData, venueType: type.value })}
-                      />
-                    ))}
-                  </View>
-                </View>
-              </>
+            {formData.startDate && formData.endDate && (
+              <MultiDatePicker
+                label="Event Active Days"
+                selectedDates={activeDates}
+                onChange={setActiveDates}
+                placeholder="Select active days"
+                minDate={formData.startDate || undefined}
+                maxDate={formData.endDate || undefined}
+              />
             )}
           </FormSection>
 
           {/* Lead Details */}
           <FormSection title="Lead Details">
-            {/* Source Selection */}
-            <View style={{ gap: spacing.sm }}>
-              <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
-                Lead Source *
-              </Text>
-              <View style={styles.modeContainer}>
-                <Pressable
-                  onPress={() => updateField('source', 'online')}
-                  style={[
-                    styles.modeButton,
-                    {
-                      borderColor: formData.source === 'online' ? theme.primary : theme.border,
-                      backgroundColor: formData.source === 'online' ? `${theme.primary}15` : theme.surface,
-                    },
-                    formData.source === 'online' && styles.modeButtonActive,
-                  ]}
-                >
-                  <Ionicons
-                    name="globe-outline"
-                    size={22}
-                    color={formData.source === 'online' ? theme.primary : theme.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      getTypographyStyle('base', 'bold'),
-                      { color: formData.source === 'online' ? theme.primary : theme.text }
-                    ]}
-                  >
-                    Online
-                  </Text>
-                </Pressable>
+            <Select
+              label="Source"
+              value={formData.source}
+              onChange={(val) => updateField('source', val)}
+              options={[
+                { value: 'online', label: 'Online' },
+                { value: 'offline', label: 'Offline' },
+              ]}
+              required
+            />
 
-                <Pressable
-                  onPress={() => updateField('source', 'offline')}
-                  style={[
-                    styles.modeButton,
-                    {
-                      borderColor: formData.source === 'offline' ? theme.primary : theme.border,
-                      backgroundColor: formData.source === 'offline' ? `${theme.primary}15` : theme.surface,
-                    },
-                    formData.source === 'offline' && styles.modeButtonActive,
-                  ]}
-                >
-                  <Ionicons
-                    name="storefront-outline"
-                    size={22}
-                    color={formData.source === 'offline' ? theme.primary : theme.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      getTypographyStyle('base', 'bold'),
-                      { color: formData.source === 'offline' ? theme.primary : theme.text }
-                    ]}
-                  >
-                    Offline
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            <FormField
-              label="Referral Source (Optional)"
+            <Input
+              label="Referral (Optional)"
               value={formData.referral}
               onChangeText={(text: string) => updateField('referral', text)}
-              placeholder="e.g., John Smith, Google Ads, Instagram"
-              shape="pill"
+              placeholder="e.g., Friend, Social Media"
+              leftIcon="share-social-outline"
             />
 
-            <FormField
-              label="Message / Notes (Optional)"
+            <Input
+              label="Message / Notes"
               value={formData.message}
               onChangeText={(text: string) => updateField('message', text)}
-              placeholder="Add any additional notes or message about this lead"
+              placeholder="Enter requirements or notes..."
               multiline
+              required
+              leftIcon="chatbox-outline"
             />
 
-            {/* Info Note */}
             <View style={styles.infoNote}>
               <Ionicons name="information-circle" size={20} color={baseColors.purple[500]} />
               <View style={{ flex: 1 }}>
                 <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.text, lineHeight: 18 }]}>
                   <Text style={[getTypographyStyle('sm', 'bold')]}>Note: </Text>
-                  Event details (venue, dates, vendors) will be added when converting this lead to an event.
+                  Event details (venue, vendors, etc.) will be finalized when converting this lead to an event.
                 </Text>
               </View>
             </View>
@@ -871,9 +657,9 @@ export default function AddLeadScreen() {
                           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
                             {client.email || 'No email'} • {client.number || 'No phone'}
                           </Text>
-                          {client.category && client.category.length > 0 && (
+                          {client.client_category && client.client_category.length > 0 && (
                             <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                              {client.category.map((cat) => (
+                              {client.client_category.map((cat) => (
                                 <View
                                   key={cat.id}
                                   style={{
@@ -902,155 +688,9 @@ export default function AddLeadScreen() {
           </View>
         </Modal>
 
-        {/* Venue Selection Modal */}
-        <Modal
-          visible={showVenueModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowVenueModal(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: baseColors.neutral[900] + '80', justifyContent: 'flex-end' }}>
-            <View style={{
-              backgroundColor: theme.background,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              maxHeight: '80%',
-              paddingTop: 20,
-            }}>
-              {/* Modal Header */}
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingHorizontal: 20,
-                paddingBottom: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.border,
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
-                  Select Venue
-                </Text>
-                <Pressable onPress={() => setShowVenueModal(false)}>
-                  <Ionicons name="close" size={24} color={theme.text} />
-                </Pressable>
-              </View>
 
-              {/* Search Box */}
-              <View style={{ padding: 16 }}>
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: theme.surface,
-                  borderRadius: 12,
-                  borderWidth: 1.5,
-                  borderColor: theme.border,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  gap: 8,
-                }}>
-                  <Ionicons name="search" size={20} color={theme.textSecondary} />
-                  <TextInput
-                    value={venueSearchQuery}
-                    onChangeText={setVenueSearchQuery}
-                    placeholder="Search by name, address, or region"
-                    placeholderTextColor={theme.textSecondary}
-                    style={{
-                      flex: 1,
-                      fontSize: 15,
-                      color: theme.text,
-                    }}
-                  />
-                  {venueSearchQuery.length > 0 && (
-                    <Pressable onPress={() => setVenueSearchQuery('')}>
-                      <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
-                    </Pressable>
-                  )}
-                </View>
-              </View>
-
-              {/* Venues List */}
-              <ScrollView style={{ paddingHorizontal: 16 }}>
-                {filteredVenues.length === 0 ? (
-                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Ionicons name="location-outline" size={48} color={theme.textSecondary} />
-                    <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 12 }}>
-                      {venueSearchQuery ? 'No venues found' : 'No venues available'}
-                    </Text>
-                  </View>
-                ) : (
-                  filteredVenues.map((venue) => (
-                    <Pressable
-                      key={venue.id}
-                      onPress={() => {
-                        setSelectedVenue(venue);
-                        setFormData({ ...formData, venueId: venue.id });
-                        setShowVenueModal(false);
-                        setVenueSearchQuery('');
-                      }}
-                      style={({ pressed }) => ({
-                        backgroundColor: pressed ? theme.primary + '10' : theme.surface,
-                        padding: 16,
-                        borderRadius: 12,
-                        marginBottom: 12,
-                        borderWidth: 1,
-                        borderColor: theme.border,
-                      })}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <View style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 20,
-                          backgroundColor: theme.primary + '20',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                          <Ionicons name="location" size={20} color={theme.primary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>
-                            {venue.name}
-                          </Text>
-                          <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
-                            {venue.address || 'No address'} • Capacity: {venue.capacity}
-                          </Text>
-                          <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                            <View style={{
-                              paddingHorizontal: 8,
-                              paddingVertical: 2,
-                              borderRadius: 8,
-                              backgroundColor: theme.primary + '15',
-                            }}>
-                              <Text style={{ fontSize: 11, color: theme.primary, fontWeight: '600' }}>
-                                {venue.type_of_venue || 'home'}
-                              </Text>
-                            </View>
-                            {venue.region && (
-                              <View style={{
-                                paddingHorizontal: 8,
-                                paddingVertical: 2,
-                                borderRadius: 8,
-                                backgroundColor: theme.primary + '15',
-                              }}>
-                                <Text style={{ fontSize: 11, color: theme.primary, fontWeight: '600' }}>
-                                  {venue.region}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-                      </View>
-                    </Pressable>
-                  ))
-                )}
-                <View style={{ height: 20 }} />
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingView >
   );
 }
 

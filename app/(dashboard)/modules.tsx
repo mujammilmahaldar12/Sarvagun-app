@@ -10,6 +10,7 @@ import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/desi
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2;
 
 interface Module {
   id: string;
@@ -80,7 +81,7 @@ const MODULES: Module[] = [
   },
   {
     id: 'whatsnew',
-    name: 'What\'s New',
+    name: "What's New",
     description: 'Latest updates & announcements',
     icon: 'newspaper',
     route: '/(modules)/whatsnew',
@@ -100,7 +101,7 @@ export default function ModulesScreen() {
 
   const filteredModules = MODULES.filter((module) => {
     const matchesSearch = module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         module.description.toLowerCase().includes(searchQuery.toLowerCase());
+      module.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
@@ -113,13 +114,13 @@ export default function ModulesScreen() {
       />
 
       {/* Minimal Header with Inline Search */}
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.duration(600).springify()}
         style={[styles.header, { backgroundColor: theme.surface }]}
       >
         <View style={styles.headerContent}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Modules</Text>
-          
+
           <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
             <Ionicons name="search" size={20} color={theme.textSecondary} />
             <TextInput
@@ -144,39 +145,73 @@ export default function ModulesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Modules Grid - 2 Column Layout */}
+        {/* Modules Grid - Quick Actions Style */}
         <View style={styles.modulesSection}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+            {filteredModules.length} {filteredModules.length === 1 ? 'MODULE' : 'MODULES'} AVAILABLE
+          </Text>
+
           <View style={styles.modulesGrid}>
             {filteredModules.map((module, index) => (
-              <Animated.View 
+              <Animated.View
                 key={module.id}
                 entering={FadeInUp.delay(100 + index * 50).duration(500).springify()}
-                style={styles.moduleCardWrapper}
               >
                 <AnimatedPressable
                   onPress={() => router.push(module.route as any)}
-                  hapticType="light"
-                  springConfig="snappy"
+                  hapticType="medium"
+                  springConfig="gentle"
+                  animateOnMount={true}
+                  delay={index * 50}
+                  style={[
+                    styles.moduleCard,
+                    getCardStyle(theme.surface, 'md', 'xl'),
+                    { width: CARD_WIDTH },
+                  ]}
                 >
-                  <View style={[styles.moduleCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }]}>
-                    <View>
-                      <View style={[styles.iconContainer, { backgroundColor: `${module.color}15` }]}>
-                        <Ionicons name={module.icon} size={28} color={module.color} />
-                      </View>
-                      <Text style={[styles.moduleName, { color: theme.text }]} numberOfLines={1}>
-                        {module.name}
-                      </Text>
-                      <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-                        {module.description}
+                  {/* Gradient Background */}
+                  <View style={styles.cardGradient}>
+                    <LinearGradient
+                      colors={[`${module.color}08`, `${module.color}00`]}
+                      style={styles.gradientOverlay}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    />
+                  </View>
+
+                  {/* Icon Container */}
+                  <View style={[styles.iconContainer, { backgroundColor: `${module.color}15` }]}>
+                    <Ionicons name={module.icon} size={iconSizes.xl + 6} color={module.color} />
+                  </View>
+
+                  {/* Module Details */}
+                  <View style={styles.moduleDetails}>
+                    <Text style={[styles.moduleName, { color: theme.text }]} numberOfLines={2}>
+                      {module.name}
+                    </Text>
+                    <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
+                      {module.description}
+                    </Text>
+                  </View>
+
+                  {/* Category/Badge Tag */}
+                  {module.badge ? (
+                    <View style={[styles.categoryTag, { backgroundColor: `${module.color}20` }]}>
+                      <Text style={[styles.categoryTagText, { color: module.color }]}>
+                        {module.badge}
                       </Text>
                     </View>
-                    {module.badge && (
-                      <View style={[styles.moduleBadge, { backgroundColor: `${module.color}20` }]}>
-                        <Text style={[styles.badgeText, { color: module.color }]}>
-                          {module.badge}
-                        </Text>
-                      </View>
-                    )}
+                  ) : (
+                    <View style={[styles.categoryTag, { backgroundColor: theme.background }]}>
+                      <Text style={[styles.categoryTagText, { color: theme.textSecondary }]}>
+                        {module.category}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Arrow Icon */}
+                  <View style={styles.arrowIcon}>
+                    <Ionicons name="arrow-forward" size={iconSizes.sm} color={module.color} />
                   </View>
                 </AnimatedPressable>
               </Animated.View>
@@ -246,19 +281,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
-  categoryContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.xs,
-  },
-  categoryChip: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    marginRight: spacing.xs,
-  },
-  categoryText: {
-    ...getTypographyStyle('sm', 'semibold'),
+  sectionTitle: {
+    ...getTypographyStyle('xs', 'bold'),
+    letterSpacing: 0.5,
+    marginBottom: spacing.base,
   },
   modulesSection: {
     paddingHorizontal: spacing.lg,
@@ -269,22 +295,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.md,
   },
-  moduleCardWrapper: {
-    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2,
-  },
   moduleCard: {
-    aspectRatio: 1,
+    minHeight: 180,
     padding: spacing.lg,
-    borderRadius: borderRadius.xl,
-    justifyContent: 'space-between',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  gradientOverlay: {
+    flex: 1,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 72,
     borderRadius: borderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  moduleDetails: {
+    flex: 1,
   },
   moduleName: {
     ...getTypographyStyle('base', 'bold'),
@@ -292,21 +328,23 @@ const styles = StyleSheet.create({
   },
   moduleDescription: {
     ...getTypographyStyle('xs', 'regular'),
-    lineHeight: 15,
-    minHeight: 30,
-    maxHeight: 30,
-    flexShrink: 1,
+    lineHeight: 18,
   },
-  moduleBadge: {
-    alignSelf: 'flex-start',
+  categoryTag: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
-    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
   },
-  badgeText: {
-    ...getTypographyStyle('2xs', 'bold'),
-    fontSize: 10,
+  categoryTagText: {
+    ...getTypographyStyle('xs', 'medium'),
+  },
+  arrowIcon: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    right: spacing.lg,
   },
   emptyState: {
     alignItems: 'center',

@@ -68,12 +68,12 @@ class SearchService {
   async globalSearch(query: string, filters?: SearchFilters): Promise<GlobalSearchResults> {
     try {
       console.log('🔍 Performing global search:', query);
-      
+
       const params: any = {
         q: query,
         limit: filters?.limit || 20,
       };
-      
+
       if (filters?.category && filters.category !== 'all') {
         params.category = filters.category;
       }
@@ -81,7 +81,7 @@ class SearchService {
       // Try dedicated global search endpoint first
       try {
         const response = await api.get<GlobalSearchResults>('/search/global/', { params });
-        
+
         if (response) {
           // Handle different response formats
           if ((response as any).data) {
@@ -119,7 +119,7 @@ class SearchService {
    */
   private async fallbackSearch(query: string, filters?: SearchFilters): Promise<GlobalSearchResults> {
     console.log('📡 Using fallback search across categories');
-    
+
     const results: GlobalSearchResults = {
       people: [],
       projects: [],
@@ -137,9 +137,9 @@ class SearchService {
         const peopleResponse = await api.get<any[]>('/hr/users/', {
           params: { search: query, limit: Math.ceil(limit / 4) }
         });
-        const people = Array.isArray(peopleResponse) ? peopleResponse : 
-                      (peopleResponse as any)?.data || [];
-        
+        const people = Array.isArray(peopleResponse) ? peopleResponse :
+          (peopleResponse as any)?.data || [];
+
         results.people = people.map((p: any) => ({
           id: p.id || p.user_id,
           name: p.full_name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
@@ -160,9 +160,9 @@ class SearchService {
         const projectsResponse = await api.get<any[]>('/project_management/projects/', {
           params: { search: query, limit: Math.ceil(limit / 4) }
         });
-        const projects = Array.isArray(projectsResponse) ? projectsResponse : 
-                        (projectsResponse as any)?.data || [];
-        
+        const projects = Array.isArray(projectsResponse) ? projectsResponse :
+          (projectsResponse as any)?.data || [];
+
         results.projects = projects.map((p: any) => ({
           id: p.id,
           name: p.name || p.title,
@@ -184,9 +184,9 @@ class SearchService {
         const tasksResponse = await api.get<any[]>('/project_management/tasks/', {
           params: { search: query, limit: Math.ceil(limit / 4) }
         });
-        const tasks = Array.isArray(tasksResponse) ? tasksResponse : 
-                     (tasksResponse as any)?.data || [];
-        
+        const tasks = Array.isArray(tasksResponse) ? tasksResponse :
+          (tasksResponse as any)?.data || [];
+
         results.tasks = tasks.map((t: any) => ({
           id: t.id,
           title: t.title || t.name,
@@ -203,10 +203,10 @@ class SearchService {
     }
 
     // Calculate total count
-    results.total_count = 
-      results.people.length + 
-      results.projects.length + 
-      results.tasks.length + 
+    results.total_count =
+      results.people.length +
+      results.projects.length +
+      results.tasks.length +
       results.documents.length;
 
     console.log('✅ Fallback search results:', results.total_count);

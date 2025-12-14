@@ -1,196 +1,182 @@
-import React, { useMemo } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Table, type TableColumn } from '@/components';
+import React, { useMemo, useState } from 'react';
+import { View, Text, RefreshControl, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Table, Badge, FAB, LoadingState } from '@/components';
+import ActionButton from '@/components/ui/ActionButton';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { LoadingState } from '@/components/ui/LoadingState';
-import { useVendors, useDeleteVendor } from '@/hooks/useFinanceQueries';
 import { useTheme } from '@/hooks/useTheme';
-import { useAuthStore } from '@/store/authStore';
-import { VendorRowData } from '@/types/finance';
+import { useVendors } from '@/hooks/useFinanceQueries';
 import { designSystem } from '@/constants/designSystem';
-import { getTypographyStyle } from '@/utils/styleHelpers';
+import type { Vendor } from '@/types/finance';
 
 interface VendorsListProps {
   searchQuery?: string;
+  selectedCategory?: string;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  headerComponent?: React.ReactNode;
 }
 
-export default function VendorsList({ searchQuery = '' }: VendorsListProps) {
+const VendorsList: React.FC<VendorsListProps> = ({
+  searchQuery = '',
+  selectedCategory,
+  refreshing = false,
+  onRefresh,
+  headerComponent,
+}) => {
   const { theme } = useTheme();
-  const { user } = useAuthStore();
-  const canManage = user?.category === 'hr' || user?.category === 'admin';
-  const canEdit = canManage;
-  const canDelete = canManage;
+  const router = useRouter();
 
-  const { data: vendors = [], isLoading, error } = useVendors();
-  const deleteVendor = useDeleteVendor();
+  // Fetch vendors using the hook
+  const {
+    data: vendorsData,
+    isLoading,
+    error,
+    refetch,
+  } = useVendors({
+    search: searchQuery || undefined,
+    category: selectedCategory || undefined,
+  });
 
+  // Extract vendors array from paginated response
+  const vendors = useMemo(() => {
+    if (!vendorsData) return [];
+    // Handle both array and paginated response
+    if (Array.isArray(vendorsData)) return vendorsData;
+    if ((vendorsData as any)?.results) return (vendorsData as any).results;
+    return [];
+  }, [vendorsData]);
+
+  // Filter client-side if needed (though API supports it)
   const processedVendors = useMemo(() => {
+    if (!Array.isArray(vendors)) return [];
+
+    // Additional filtering if API doesn't handle everything perfectly
     let filtered = [...vendors];
 
-    // Apply search filter - match backend field names
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (vendor) =>
-          vendor.name?.toLowerCase().includes(query) ||
-          vendor.contact_number?.toLowerCase().includes(query) ||
-          vendor.email?.toLowerCase().includes(query)
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(v =>
+        v.name?.toLowerCase().includes(lowerQuery) ||
+        v.organization_name?.toLowerCase().includes(lowerQuery)
       );
     }
 
-    // Transform to row data - map vendor fields to match backend schema
-    return filtered.map((vendor): VendorRowData => ({
-      id: vendor.id || 0,
-      name: vendor.name || '-',
-      organization_name: vendor.organization_name || '-',
-      category: vendor.category || '-',
-      contact_number: vendor.contact_number || '-',
-      email: vendor.email || '-',
-    }));
-  }, [vendors, searchQuery]);
+    if (selectedCategory && selectedCategory !== 'all') {
+      filtered = filtered.filter(v => v.category === selectedCategory);
+    }
 
-  const handleDelete = (id: number) => {
-    Alert.alert(
-      'Delete Vendor',
-      'Are you sure you want to delete this vendor? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteVendor.mutateAsync(id);
-              Alert.alert('Success', 'Vendor deleted successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete vendor');
-            }
-          },
-        },
-      ]
-    );
+    return filtered;
+  }, [vendors, searchQuery, selectedCategory]);
+
+  const handleEditVendor = (id: number) => {
+    router.push(`/(modules)/finance/add-vendor?id=${id}` as any);
   };
 
-  const columns: TableColumn<VendorRowData>[] = [
+  const handleDeleteVendor = async (id: number) => {
+    // Implement delete logic with confirmation if needed
+    // or just navigate to details
+  };
+
+  const columns = [
     {
       key: 'name',
       title: 'Vendor Name',
-      width: 180,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }} numberOfLines={1}>
-          {row.name}
-        </Text>
-      ),
-    },
-    {
-      key: 'organization_name',
-      title: 'Organization',
       width: 150,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }} numberOfLines={1}>
-          {row.organization_name}
-        </Text>
-      ),
-    },
-    {
-      key: 'contact_number',
-      title: 'Contact Number',
-      width: 130,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-          {row.contact_number}
-        </Text>
-      ),
-    },
-    {
-      key: 'email',
-      title: 'Email',
-      width: 180,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }} numberOfLines={1}>
-          {row.email}
-        </Text>
+      sortable: true,
+      render: (value: string, row: Vendor) => (
+        <View>
+          <Text style={{ fontSize: designSystem.typography.sizes.sm, fontWeight: '600', color: theme.text }}>
+            {row.name}
+          </Text>
+          <Text style={{ fontSize: designSystem.typography.sizes.xs, color: theme.textSecondary }}>
+            {row.organization_name}
+          </Text>
+        </View>
       ),
     },
     {
       key: 'category',
       title: 'Category',
-      width: 150,
-      render: (row) => (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-          {row.category}
+      width: 120,
+      sortable: true,
+      render: (value: string) => (
+        <Badge
+          label={value}
+          size="sm"
+        />
+      ),
+    },
+    {
+      key: 'contact_number',
+      title: 'Contact',
+      width: 120,
+      render: (value: string) => (
+        <Text style={{ fontSize: designSystem.typography.sizes.sm, color: theme.textSecondary }}>
+          {value || 'N/A'}
         </Text>
       ),
     },
-  ];
-
-  // Add actions column if user has permission
-  if (canManage || canEdit || canDelete) {
-    columns.push({
+    {
       key: 'actions',
       title: 'Actions',
-      width: 100,
-      align: 'center',
-      render: (row) => (
-        <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
-          {(canManage || canEdit) && (
-            <Pressable
-              onPress={() => router.push(`/(modules)/finance/add-vendor?id=${row.id}`)}
-              style={{ padding: 4 }}
-            >
-              <Ionicons name="create-outline" size={20} color={theme.primary} />
-            </Pressable>
-          )}
-          {(canManage || canDelete) && (
-            <Pressable
-              onPress={() => handleDelete(row.id)}
-              style={{ padding: 4 }}
-            >
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            </Pressable>
-          )}
+      width: 80,
+      render: (_: any, row: Vendor) => (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <ActionButton
+            icon="create-outline"
+            title="Edit"
+            onPress={() => handleEditVendor(row.id)}
+            variant="secondary"
+            size="small"
+          />
         </View>
-      ),
-    });
-  }
+      )
+    }
+  ];
 
-  if (isLoading) {
-    return <LoadingState type="card" items={5} />;
+  if (isLoading && !refreshing && !vendors.length) {
+    return <LoadingState message="Loading vendors..." variant="skeleton" skeletonCount={5} />;
   }
 
   if (error) {
     return (
-      <EmptyState
-        icon="alert-circle-outline"
-        title="Error Loading Vendors"
-        description="Failed to load vendors. Please try again."
-      />
-    );
-  }
-
-  if (processedVendors.length === 0) {
-    return (
-      <EmptyState
-        icon="people-outline"
-        title="No Vendors Found"
-        description={
-          searchQuery
-            ? 'No vendors match your search criteria. Try adjusting filters.'
-            : 'Start by adding your first vendor.'
-        }
-      />
+      <View style={{ flex: 1, padding: 20, justifyContent: 'center', alignItems: 'center' }}>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Error Loading Vendors"
+          description={(error as any)?.message || "Failed to load vendors"}
+          actionTitle="Retry"
+          onActionPress={() => refetch()}
+        />
+      </View>
     );
   }
 
   return (
-    <Table
-      data={processedVendors}
-      columns={columns}
-      keyExtractor={(row) => row.id.toString()}
-      onRowPress={(row) => router.push(`/(modules)/finance/vendor-detail?id=${row.id}`)}
-      emptyMessage="No vendors to display"
-    />
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <Table
+        data={processedVendors}
+        columns={columns}
+        keyExtractor={(item) => item.id.toString()}
+        emptyMessage="No vendors found"
+        searchable={false} // Search is handled by parent/header
+        ListHeaderComponent={headerComponent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || isLoading}
+            onRefresh={() => {
+              onRefresh?.();
+              refetch();
+            }}
+            colors={[theme.primary]}
+          />
+        }
+      />
+
+
+    </View>
   );
-}
+};
+
+export default VendorsList;
