@@ -8,41 +8,51 @@ export type LeaveType = 'Annual Leave' | 'Sick Leave' | 'Casual Leave' | 'Study 
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type ShiftType = 'full_shift' | 'first_half' | 'second_half';
 
+export interface Team {
+  id: number;
+  name: string;
+  description: string;
+  group: number;
+  leader?: number;
+  members: number[];
+  created_at?: string;
+}
+
 export interface LeaveBalance {
   id: number;
   employee: number;
   employee_name?: string;
   employee_email?: string;
   year: number;
-  
+
   // Leave type balances
   annual_leave_total: number;
   annual_leave_used: number;
   annual_leave_planned: number; // Approved future leaves
-  
+
   sick_leave_total: number;
   sick_leave_used: number;
   sick_leave_planned: number;
-  
+
   casual_leave_total: number;
   casual_leave_used: number;
   casual_leave_planned: number;
-  
+
   study_leave_total: number;
   study_leave_used: number;
   study_leave_planned: number;
-  
+
   optional_leave_total: number;
   optional_leave_used: number;
   optional_leave_planned: number;
-  
+
   // Computed fields
   annual_leave_available?: number;
   sick_leave_available?: number;
   casual_leave_available?: number;
   study_leave_available?: number;
   optional_leave_available?: number;
-  
+
   updated_at?: string;
 }
 
@@ -54,35 +64,36 @@ export interface LeaveRequest {
   employee_designation?: string;
   employee_department?: string;
   employee_photo?: string;
-  
+
   leave_type: LeaveType;
   from_date: string; // ISO date string
   to_date: string; // ISO date string
   shift_type: ShiftType;
   shift_time?: string; // e.g., "09:00 AM - 06:00 PM"
   total_days: number; // Calculated working days
+  dates?: string[]; // Array of specific dates
   reason: string;
-  
+
   status: LeaveStatus;
   applied_date: string;
-  
+
   // Approval workflow
   approved_by?: number;
   approved_by_name?: string;
   approved_date?: string;
   rejection_reason?: string;
-  
+
   // Balance tracking
   balance_before?: number;
   balance_after?: number;
-  
+
   // Documents
   documents?: LeaveDocument[];
-  
+
   // Hierarchy
   reports_to?: number; // Team lead/Manager ID
   reports_to_name?: string;
-  
+
   created_at?: string;
   updated_at?: string;
 }
@@ -103,6 +114,7 @@ export interface CreateLeaveRequest {
   shift_type: ShiftType;
   reason: string;
   documents?: File[] | any[]; // File objects or URIs
+  specific_dates?: string[]; // Array of ISO date strings for non-contiguous leaves
 }
 
 export interface UpdateLeaveRequest {
@@ -112,6 +124,7 @@ export interface UpdateLeaveRequest {
   shift_type?: ShiftType;
   reason?: string;
   status?: LeaveStatus;
+  specific_dates?: string[]; // Array of ISO date strings
 }
 
 export interface LeaveApprovalRequest {
@@ -140,7 +153,7 @@ export interface LeaveStatistics {
   employees_on_leave_today: number;
   employees_on_leave_this_week: number;
   upcoming_leaves: number;
-  
+
   // By type
   annual_leaves: number;
   sick_leaves: number;
@@ -156,6 +169,16 @@ export interface Holiday {
   description?: string;
   is_optional: boolean;
   created_at?: string;
+}
+
+export interface CalendarLeave {
+  id: number;
+  user_name: string;
+  user_id: number;
+  leave_type: string;
+  status: LeaveStatus;
+  dates: string[];
+  is_mine: boolean;
 }
 
 export interface TeamMemberLeave {
@@ -182,30 +205,30 @@ export interface Employee {
   email: string;
   phone?: string;
   photo?: string;
-  
+
   // Professional details
   designation: string;
   department: string;
   category: 'hr' | 'admin' | 'manager' | 'employee' | 'intern';
-  
+
   // Hierarchy
   reports_to?: number; // Manager/Team lead ID
   reports_to_name?: string;
   team_id?: number;
   team_name?: string;
-  
+
   // Employment details
   date_of_joining: string;
   employment_type?: 'full_time' | 'part_time' | 'contract' | 'intern';
   status: 'active' | 'inactive' | 'on_leave';
-  
+
   // Shift details
   shift_start_time?: string;
   shift_end_time?: string;
-  
+
   // Leave balance
   leave_balance?: LeaveBalance;
-  
+
   created_at?: string;
   updated_at?: string;
 }
@@ -242,19 +265,32 @@ export interface ReimbursementStatusRecord {
   reimbursement_request: number;
   status: ReimbursementStatus;
   updated_by: number;
+  updated_by_name?: string;
   updated_at: string;
   reason?: string;
 }
 
+
+export interface Expense {
+  id: number;
+  particulars: string;
+  amount: number;
+  details: string;
+  payment_status: string; // 'paid' | 'not_paid' | 'partial_paid'
+  mode_of_payment: string;
+  payment_made_by: string;
+  photo?: string; // URL
+  bill_evidence: 'yes' | 'no';
+  created_at: string;
+  updated_at: string;
+  date?: string;
+  expense_date?: string;
+  photos?: any[]; // ExpensePhoto[]
+}
+
 export interface Reimbursement {
   id: number;
-  expense: number;
-  expense_details?: {
-    id: number;
-    particulars: string;
-    amount: number;
-    details: string;
-  };
+  expense: Expense; // Backend now returns full object
   reimbursement_amount: number;
   details: string;
   supporting_documents?: string;
@@ -262,7 +298,7 @@ export interface Reimbursement {
   requested_by_name?: string;
   requested_by_email?: string;
   requested_by_photo?: string;
-  submitted_at: string;
+  submitted_at: string; // Used instead of created_at
   bill_evidence: 'yes' | 'no';
   photos?: ReimbursementPhoto[];
   latest_status?: ReimbursementStatusRecord;
@@ -299,6 +335,6 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
-export interface LeaveResponse extends PaginatedResponse<LeaveRequest> {}
-export interface EmployeeResponse extends PaginatedResponse<Employee> {}
-export interface HolidayResponse extends PaginatedResponse<Holiday> {}
+export interface LeaveResponse extends PaginatedResponse<LeaveRequest> { }
+export interface EmployeeResponse extends PaginatedResponse<Employee> { }
+export interface HolidayResponse extends PaginatedResponse<Holiday> { }

@@ -1,31 +1,28 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  Pressable,
-  StyleSheet,
-  Platform,
-  StatusBar,
-} from 'react-native';
+/**
+ * Leave Management Screen
+ * Redesigned following approved implementation plan
+ * Matches Events module pattern exactly
+ */
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StyleSheet, BackHandler } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/hooks/useTheme';
-import { useMyLeaves, useLeaveBalance, useLeaveStatistics } from '@/hooks/useHRQueries';
-import { LeaveBalanceCard } from '@/components/hr';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import { EmptyState, Skeleton } from '@/components';
-import { spacing, borderRadius, shadows, getStatusColor, getOpacityColor, iconSizes } from '@/constants/designSystem';
-import { getTypographyStyle } from '@/utils/styleHelpers';
-import { format, formatDistanceToNow } from 'date-fns';
-import type { LeaveRequest } from '@/types/hr';
+import { FilterBar, EmptyState, Badge } from '@/components';
+import { CompactLeaveBalance } from '@/components/hr';
+import { useTheme } from '@/hooks/useTheme';
+import { useMyLeaves, useLeaveBalance, useLeaveStatistics, useTeamLeaves } from '@/hooks/useHRQueries';
+import { useAuthStore } from '@/store/authStore';
+import NotificationBell from '@/components/layout/NotificationBell';
+import { format } from 'date-fns';
+import { getStatusColor, getOpacityColor } from '@/constants/designSystem';
+import type { LeaveRequest, TeamMemberLeave } from '@/types/hr';
 
-type FilterType = 'all' | 'pending' | 'approved' | 'rejected';
+type TabType = 'dashboard' | 'myleaves' | 'team' | 'calendar';
 
-const LEAVE_TYPE_ICONS = {
+const LEAVE_TYPE_ICONS: Record<string, string> = {
   'Annual Leave': 'sunny-outline',
   'Sick Leave': 'medical-outline',
   'Casual Leave': 'cafe-outline',
@@ -34,397 +31,364 @@ const LEAVE_TYPE_ICONS = {
 };
 
 export default function LeaveManagementScreen() {
-  const router = useRouter();
   const { theme, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [filter, setFilter] = useState<FilterType>('all');
+  const router = useRouter();
+  const navigation = useNavigation();
+  const { user } = useAuthStore();
+
+  // UI State
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [filters, setFilters] = useState<any>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Permission checks - using category as per Events module
+  // Check for various role strings: hr, admin, manager, team_lead
+  const userCategory = (user?.category || '').toLowerCase();
+  const canApprove = ['hr', 'admin', 'manager', 'team_lead', 'team lead', 'management'].includes(userCategory);
 
   // API Hooks
-  const { data: leavesData, isLoading: leavesLoading, refetch } = useMyLeaves();
-  const { data: balance, isLoading: balanceLoading } = useLeaveBalance();
-  const { data: stats } = useLeaveStatistics();
+  const { data: leavesData, isLoading: leavesLoading, refetch: refetchLeaves } = useMyLeaves();
+  const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useLeaveBalance();
+  const { data: stats, refetch: refetchStats } = useLeaveStatistics();
+  const { data: teamLeavesData, isLoading: teamLeavesLoading, refetch: refetchTeamLeaves } = useTeamLeaves();
 
-  // Mock data for demo until backend endpoints are ready
-  const leaves = leavesData?.results || [];
-  const [refreshing, setRefreshing] = useState(false);
-  const [isAtTop, setIsAtTop] = useState(true);
+  // Safely handle paginated vs array response
+  const leaves = (leavesData as any)?.results || (Array.isArray(leavesData) ? leavesData : []) || [];
+  const teamLeaves = (teamLeavesData as any)?.results || (Array.isArray(teamLeavesData) ? teamLeavesData : []) || [];
 
-  const onRefresh = async () => {
+  // Handle back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          router.back();
+          return true;
+        }
+        return false;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router, navigation])
+  );
+
+  // Refresh handler
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        refetchLeaves(),
+        refetchBalance(),
+        refetchStats(),
+        canApprove && refetchTeamLeaves(),
+      ]);
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [canApprove, refetchLeaves, refetchBalance, refetchStats, refetchTeamLeaves]);
+
+  // Tab configuration
+  const tabs = [
+    { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline' },
+    { key: 'myleaves', label: 'My Leaves', icon: 'document-text-outline' },
+    ...(canApprove ? [{ key: 'team', label: 'Team', icon: 'people-outline' }] : []),
+    { key: 'calendar', label: 'Calendar', icon: 'calendar-outline' },
+  ];
+
+  // Handle tab change - stays inline, no navigation
+  const handleTabChange = useCallback((key: string) => {
+    setActiveTab(key as TabType);
+    setFilters({});
+    setShowFilters(false);
+  }, []);
+
+  // Filter configs
+  const getFilterConfigs = () => {
+    if (activeTab === 'myleaves' || activeTab === 'team') {
+      return [
+        {
+          key: 'status',
+          label: 'Status',
+          icon: 'funnel' as const,
+          type: 'select' as const,
+          options: [
+            { label: 'Pending', value: 'pending', color: '#f59e0b' },
+            { label: 'Approved', value: 'approved', color: '#10b981' },
+            { label: 'Rejected', value: 'rejected', color: '#ef4444' },
+          ],
+        },
+      ];
+    }
+    return [];
   };
 
   // Filter leaves
-  const filteredLeaves = leaves.filter(leave => {
-    if (filter === 'all') return true;
-    return leave.status === filter;
-  });
+  const getFilteredLeaves = (leaveList: any[]) => {
+    let filtered = [...leaveList];
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(l => l.status === filters.status);
+    }
+    return filtered;
+  };
 
-  // Calculate stats
+  const filteredLeaves = getFilteredLeaves(leaves);
+  const filteredTeamLeaves = getFilteredLeaves(teamLeaves);
+
+  // Stats
   const totalRequests = leaves.length;
-  const pendingCount = leaves.filter(l => l.status === 'pending').length;
-  const approvedCount = leaves.filter(l => l.status === 'approved').length;
-  const rejectedCount = leaves.filter(l => l.status === 'rejected').length;
+  const pendingCount = leaves.filter((l: any) => l.status === 'pending').length;
+  const approvedCount = leaves.filter((l: any) => l.status === 'approved').length;
+  const rejectedCount = leaves.filter((l: any) => l.status === 'rejected').length;
 
-  const renderQuickActions = () => (
-    <View style={{ marginBottom: spacing.xl }}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg - spacing.sm }}
-      >
-        <Pressable
-          onPress={() => router.push('/(modules)/leave/apply')}
-          accessibilityLabel="Apply Leave"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            {
-              minWidth: '23%',
-              width: 80,
-              backgroundColor: theme.primary,
-              borderRadius: borderRadius.md,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.sm,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.85 : 1,
-              transform: [{ scale: pressed ? 0.93 : 1 }],
-              ...shadows.md,
-            }
-          ]}
-        >
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: getOpacityColor('#FFFFFF', 0.25), alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs }}>
-            <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-          </View>
-          <Text style={[getTypographyStyle('xs', 'bold'), { color: '#FFFFFF', textAlign: 'center' }]}>Apply</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/(modules)/leave/calendar')}
-          accessibilityLabel="View Calendar"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            {
-              minWidth: '23%',
-              width: 80,
-              backgroundColor: theme.surface,
-              borderRadius: borderRadius.md,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.sm,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1.5,
-              borderColor: theme.info,
-              opacity: pressed ? 0.85 : 1,
-              transform: [{ scale: pressed ? 0.93 : 1 }],
-              ...shadows.sm,
-            }
-          ]}
-        >
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: getOpacityColor(theme.info, 0.12), alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs }}>
-            <Ionicons name="calendar" size={20} color={theme.info} />
-          </View>
-          <Text style={[getTypographyStyle('xs', 'bold'), { color: theme.text, textAlign: 'center' }]}>Calendar</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/(modules)/leave/history')}
-          accessibilityLabel="View History"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            {
-              minWidth: '23%',
-              width: 80,
-              backgroundColor: theme.surface,
-              borderRadius: borderRadius.md,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.sm,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1.5,
-              borderColor: '#A855F7',
-              opacity: pressed ? 0.85 : 1,
-              transform: [{ scale: pressed ? 0.93 : 1 }],
-              ...shadows.sm,
-            }
-          ]}
-        >
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: getOpacityColor('#A855F7', 0.12), alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs }}>
-            <Ionicons name="time" size={20} color="#A855F7" />
-          </View>
-          <Text style={[getTypographyStyle('xs', 'bold'), { color: theme.text, textAlign: 'center' }]}>History</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/(modules)/leave/balance')}
-          accessibilityLabel="View Balance"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            {
-              minWidth: '23%',
-              width: 80,
-              backgroundColor: theme.surface,
-              borderRadius: borderRadius.md,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.sm,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1.5,
-              borderColor: theme.warning,
-              opacity: pressed ? 0.85 : 1,
-              transform: [{ scale: pressed ? 0.93 : 1 }],
-              ...shadows.sm,
-            }
-          ]}
-        >
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: getOpacityColor(theme.warning, 0.12), alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs }}>
-            <Ionicons name="wallet" size={20} color={theme.warning} />
-          </View>
-          <Text style={[getTypographyStyle('xs', 'bold'), { color: theme.text, textAlign: 'center' }]}>Balance</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
-  );
-
-  const renderStatsCards = () => (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
-      {[
-        { key: 'all', count: totalRequests, label: 'Total Requests', icon: 'calendar', color: theme.primary },
-        { key: 'pending', count: pendingCount, label: 'Pending', icon: 'time', color: theme.warning },
-        { key: 'approved', count: approvedCount, label: 'Approved', icon: 'checkmark-circle', color: theme.success },
-        { key: 'rejected', count: rejectedCount, label: 'Rejected', icon: 'close-circle', color: theme.error },
-      ].map(stat => {
-        const isActive = filter === stat.key;
-        const statusColor = getStatusColor(stat.key, isDark);
-        
-        return (
-          <Pressable
-            key={stat.key}
-            onPress={() => setFilter(stat.key as FilterType)}
-            accessibilityLabel={`${stat.label} - ${stat.count} requests`}
-            accessibilityRole="button"
-            style={[
-              { flex: 1, minWidth: '48%' },
-              {
-                backgroundColor: isActive ? stat.color : theme.surface,
-                borderRadius: borderRadius.lg,
-                padding: spacing.md,
-                borderWidth: 1,
-                borderColor: isActive ? stat.color : theme.border,
-                ...shadows.sm,
-              }
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 60 }}>
-              <View style={{ width: 50, height: 50, borderRadius: borderRadius.md, backgroundColor: isActive ? getOpacityColor('#FFFFFF', 0.2) : getOpacityColor(stat.color, 0.2), alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={stat.icon as any} size={24} color={isActive ? '#FFFFFF' : stat.color} />
-              </View>
-              <View style={{ flex: 1, justifyContent: 'center' }}>
-                <Text style={[getTypographyStyle('2xl', 'bold'), { color: isActive ? '#FFFFFF' : stat.color }]}>{stat.count}</Text>
-                <Text style={[getTypographyStyle('xs', 'semibold'), { color: isActive ? 'rgba(255,255,255,0.85)' : theme.textSecondary, marginTop: spacing.xs }]}>{stat.label}</Text>
-              </View>
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-
+  // Render compact leave card (single row)
   const renderLeaveCard = (leave: LeaveRequest) => {
     const statusColorObj = getStatusColor(leave.status, isDark);
     const leaveIcon = LEAVE_TYPE_ICONS[leave.leave_type] || 'calendar-outline';
 
+    // Safe date formatting
+    const fromDate = leave.from_date ? format(new Date(leave.from_date), 'MMM dd') : '';
+    const toDate = leave.to_date ? format(new Date(leave.to_date), 'MMM dd') : '';
+
     return (
-      <Pressable
+      <TouchableOpacity
         key={leave.id}
         onPress={() => router.push(`/(modules)/leave/${leave.id}` as any)}
-        accessibilityLabel={`${leave.leave_type} - ${leave.status}`}
-        accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.leaveCard,
-          {
-            backgroundColor: theme.surface,
-            borderColor: theme.border,
-            borderWidth: 1,
-            opacity: pressed ? 0.8 : 1,
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-            ...shadows.sm,
-          }
-        ]}
+        activeOpacity={0.7}
+        style={[styles.leaveCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
       >
-        {/* Header */}
-        <View style={styles.leaveCardHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing.md }}>
-            <View style={[styles.leaveTypeIconContainer, { backgroundColor: getOpacityColor(statusColorObj.bg, 0.4), borderWidth: 2, borderColor: statusColorObj.border }]}>
-              <Ionicons name={leaveIcon as any} size={iconSizes.sm} color={statusColorObj.icon} accessibilityLabel={leave.leave_type} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.leaveType, { color: theme.text }]}>
-                {leave.leave_type}
-              </Text>
-              <Text style={[styles.leaveShiftType, { color: theme.textSecondary }]}>
-                {leave.shift_type === 'full_shift' ? 'Full Day' : 
-                 leave.shift_type === 'first_half' ? 'First Half' : 'Second Half'}
-              </Text>
-            </View>
+        <View style={styles.cardRow}>
+          {/* Icon */}
+          <View style={[styles.iconContainer, { backgroundColor: getOpacityColor(statusColorObj.bg, 0.2) }]}>
+            <Ionicons name={leaveIcon as any} size={18} color={statusColorObj.icon} />
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getOpacityColor(statusColorObj.bg, 0.5), borderWidth: 1.5, borderColor: statusColorObj.border }]}>
-            <Text style={[styles.statusText, { color: statusColorObj.text, fontWeight: '700' }]}>
-              {leave.status.charAt(0).toUpperCase() + leave.status.slice(1)}
-            </Text>
-          </View>
-        </View>
 
-        {/* Dates */}
-        <View style={styles.leaveDatesContainer}>
-          <View style={styles.dateItem}>
-            <Ionicons name="calendar" size={iconSizes.xs} color={theme.primary} />
-            <Text style={[styles.dateText, { color: theme.text }]}>
-              {format(new Date(leave.from_date), 'MMM dd, yyyy')}
+          {/* Type + Dates */}
+          <View style={styles.cardContent}>
+            <Text style={[styles.leaveType, { color: theme.text }]}>{leave.leave_type}</Text>
+            <Text style={[styles.dateRange, { color: theme.textSecondary }]}>
+              {fromDate}{toDate ? ` - ${toDate}` : ''}
             </Text>
           </View>
-          <Ionicons name="arrow-forward" size={iconSizes.xs} color={theme.textSecondary} />
-          <View style={styles.dateItem}>
-            <Ionicons name="calendar" size={iconSizes.xs} color={theme.primary} />
-            <Text style={[styles.dateText, { color: theme.text }]}>
-              {format(new Date(leave.to_date), 'MMM dd, yyyy')}
-            </Text>
-          </View>
-        </View>
 
-        {/* Reason */}
-        {leave.reason && (
-          <View style={styles.reasonContainer}>
-            <Ionicons name="document-text-outline" size={iconSizes.xs} color={theme.textSecondary} />
-            <Text style={[styles.reasonText, { color: theme.textSecondary }]} numberOfLines={2}>
-              {leave.reason}
-            </Text>
-          </View>
-        )}
-
-        {/* Footer */}
-        <View style={styles.leaveCardFooter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="time-outline" size={iconSizes.xs} color={theme.textSecondary} />
-            <Text style={[styles.timeAgo, { color: theme.textSecondary }]}>
-              {formatDistanceToNow(new Date(leave.created_at), { addSuffix: true })}
-            </Text>
-          </View>
-          {leave.approved_by && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              <Ionicons name="person-circle-outline" size={iconSizes.xs} color={theme.textSecondary} />
-              <Text style={[styles.approver, { color: theme.textSecondary }]}>
-                {leave.approved_by_name}
-              </Text>
-            </View>
-          )}
+          {/* Status Badge */}
+          <Badge label={leave.status} status={leave.status as any} size="sm" />
         </View>
-      </Pressable>
+      </TouchableOpacity>
     );
   };
 
-  if (leavesLoading) {
+  // Render team leave card
+  const renderTeamLeaveCard = (leave: TeamMemberLeave, index: number) => {
+    const statusColorObj = getStatusColor(leave.status, isDark);
+    const leaveIcon = LEAVE_TYPE_ICONS[leave.leave_type] || 'calendar-outline';
+
+    const fromDate = leave.from_date ? format(new Date(leave.from_date), 'MMM dd') : '';
+    const toDate = leave.to_date ? format(new Date(leave.to_date), 'MMM dd') : '';
+
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <ModuleHeader title="Leave Management" />
-        <ScrollView contentContainerStyle={styles.content}>
-          <Skeleton height={120} style={{ marginBottom: 16 }} />
-          <View style={styles.statsGrid}>
-            {[1, 2, 3, 4].map(i => (
-              <Skeleton key={i} height={100} style={{ borderRadius: 12 }} />
-            ))}
+      <TouchableOpacity
+        key={`team-${index}`}
+        activeOpacity={0.7}
+        style={[styles.leaveCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      >
+        <View style={styles.cardRow}>
+          <View style={[styles.iconContainer, { backgroundColor: getOpacityColor(statusColorObj.bg, 0.2) }]}>
+            <Ionicons name={leaveIcon as any} size={18} color={statusColorObj.icon} />
           </View>
-          <Skeleton height={200} style={{ marginTop: 16 }} />
-        </ScrollView>
-      </View>
+          <View style={styles.cardContent}>
+            <Text style={[styles.employeeName, { color: theme.primary }]}>{leave.employee_name}</Text>
+            <Text style={[styles.leaveType, { color: theme.text }]}>{leave.leave_type}</Text>
+            <Text style={[styles.dateRange, { color: theme.textSecondary }]}>
+              {fromDate}{toDate ? ` - ${toDate}` : ''}
+            </Text>
+          </View>
+          <Badge label={leave.status} status={leave.status as any} size="sm" />
+        </View>
+      </TouchableOpacity>
     );
-  }
+  };
+
+  // Render Dashboard Tab
+  const renderDashboard = () => (
+    <View style={styles.tabContent}>
+      {/* Compact Leave Balance */}
+      <View style={styles.balanceSection}>
+        <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 8 }]}>Your Leave Balance</Text>
+        <CompactLeaveBalance onViewAll={() => router.push('/(modules)/leave/balance' as any)} />
+      </View>
+
+      {/* Stats Grid - 4 cards */}
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Request Statistics</Text>
+      <View style={styles.statsGrid}>
+        {[
+          { label: 'Total', count: totalRequests, color: theme.primary, icon: 'document-text' },
+          { label: 'Pending', count: pendingCount, color: '#f59e0b', icon: 'time' },
+          { label: 'Approved', count: approvedCount, color: '#10b981', icon: 'checkmark-circle' },
+          { label: 'Rejected', count: rejectedCount, color: '#ef4444', icon: 'close-circle' },
+        ].map((stat) => (
+          <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Ionicons name={stat.icon as any} size={22} color={stat.color} />
+            <Text style={[styles.statCount, { color: theme.text }]}>{stat.count}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Recent Requests */}
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Requests</Text>
+
+      {leaves.length === 0 ? (
+        <EmptyState icon="calendar-outline" title="No Leave Requests" subtitle="Apply for leave to get started" />
+      ) : (
+        <View style={styles.cardList}>
+          {leaves.slice(0, 5).map(renderLeaveCard)}
+        </View>
+      )}
+    </View>
+  );
+
+  // Render My Leaves Tab
+  const renderMyLeaves = () => (
+    <View style={styles.tabContent}>
+      {filteredLeaves.length === 0 ? (
+        <EmptyState icon="calendar-outline" title="No Leaves Found" subtitle="No leave requests match your filter" />
+      ) : (
+        <View style={styles.cardList}>
+          {filteredLeaves.map(renderLeaveCard)}
+        </View>
+      )}
+    </View>
+  );
+
+  // Render Team Leaves Tab
+  const renderTeamLeaves = () => (
+    <View style={styles.tabContent}>
+      {filteredTeamLeaves.length === 0 ? (
+        <EmptyState icon="people-outline" title="No Team Leaves" subtitle="No pending leave requests from team" />
+      ) : (
+        <View style={styles.cardList}>
+          {filteredTeamLeaves.map(renderTeamLeaveCard)}
+        </View>
+      )}
+    </View>
+  );
+
+  // Render Calendar Tab (inline placeholder)
+  const renderCalendar = () => (
+    <View style={styles.calendarPlaceholder}>
+      <Ionicons name="calendar" size={64} color={theme.textTertiary} />
+      <Text style={[styles.calendarTitle, { color: theme.text }]}>Calendar View</Text>
+      <Text style={[styles.calendarSubtitle, { color: theme.textSecondary }]}>
+        View your leave schedule in calendar format
+      </Text>
+    </View>
+  );
+
+  // Get active tab content
+  const getTabContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return renderDashboard();
+      case 'myleaves': return renderMyLeaves();
+      case 'team': return renderTeamLeaves();
+      case 'calendar': return renderCalendar();
+      default: return null;
+    }
+  };
+
+  const filterConfigs = getFilterConfigs();
 
   return (
-    <Animated.View 
+    <Animated.View
       entering={FadeIn.duration(400)}
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <ModuleHeader title="Leave Management" />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: Math.max(20, insets.bottom + 16) }]}
-        onScroll={(event) => {
-          const offsetY = event.nativeEvent.contentOffset.y;
-          setIsAtTop(offsetY <= 0);
-        }}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
-            colors={[theme.primary]}
-            enabled={isAtTop}
-            progressViewOffset={0}
-          />
-        }
-      >
-        {/* Leave Balance Card */}
-        {!balanceLoading && balance && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <LeaveBalanceCard />
+      {/* Header - NO insets.top here, ModuleHeader handles it */}
+      <ModuleHeader
+        title="Leave Management"
+        rightActions={
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
+              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
+            </TouchableOpacity>
+            <NotificationBell size={22} color={theme.text} />
+            {/* Approvals Button for Admin/HR */}
+            {canApprove && (
+              <TouchableOpacity
+                onPress={() => router.push('/(modules)/leave/approve')}
+                style={[styles.approvalButton, { backgroundColor: getOpacityColor(theme.primary, 0.15) }]}
+              >
+                <Ionicons name="checkmark-done-circle" size={18} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+            {/* Apply Leave Button with Text */}
+            <TouchableOpacity
+              onPress={() => router.push('/(modules)/leave/apply')}
+              style={[styles.applyButton, { backgroundColor: theme.primary }]}
+            >
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <Text style={styles.applyButtonText}>Apply</Text>
+            </TouchableOpacity>
           </View>
+        }
+      />
+
+      {/* Content */}
+      <View style={styles.content}>
+        {/* Tabs - inside content area */}
+        <View style={[styles.tabsContainer, { borderBottomColor: theme.border }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.tabs}>
+              {tabs.map((tab) => (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => handleTabChange(tab.key)}
+                  style={[
+                    styles.tab,
+                    activeTab === tab.key && [styles.tabActive, { borderBottomColor: theme.primary }],
+                  ]}
+                >
+                  <Ionicons
+                    name={tab.icon as any}
+                    size={18}
+                    color={activeTab === tab.key ? theme.primary : theme.textSecondary}
+                  />
+                  <Text style={[
+                    styles.tabText,
+                    { color: activeTab === tab.key ? theme.primary : theme.text }
+                  ]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Filters */}
+        {showFilters && filterConfigs.length > 0 && (
+          <FilterBar
+            configs={filterConfigs as any}
+            activeFilters={filters}
+            onFiltersChange={setFilters}
+          />
         )}
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
-          {renderQuickActions()}
-        </View>
-
-        {/* Statistics */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Leave Requests</Text>
-          {renderStatsCards()}
-        </View>
-
-        {/* Recent Leaves */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              {filter === 'all' ? 'Recent Requests' : 
-               `${filter.charAt(0).toUpperCase() + filter.slice(1)} Requests`}
-            </Text>
-            {filteredLeaves.length > 0 && (
-              <Pressable onPress={() => setFilter('all')}>
-                <Text style={{ fontSize: 14, color: theme.primary, fontWeight: '600' }}>
-                  View All
-                </Text>
-              </Pressable>
-            )}
-          </View>
-
-          {filteredLeaves.length === 0 ? (
-            <EmptyState
-              icon="calendar-outline"
-              title="No Leaves Found"
-              message={
-                filter === 'all' 
-                  ? "You haven't applied for any leave yet. Click 'Apply Leave' to get started."
-                  : `No ${filter} leave requests found.`
-              }
-              actionText="Apply Leave"
-              onAction={() => router.push('/(modules)/leave/apply')}
+        {/* Scrollable Content */}
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.primary]}
             />
-          ) : (
-            <View style={{ gap: 12 }}>
-              {filteredLeaves.slice(0, 5).map(renderLeaveCard)}
-            </View>
-          )}
-        </View>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          }
+          contentContainerStyle={styles.scrollContent}
+        >
+          {getTabContent()}
+        </ScrollView>
+      </View>
     </Animated.View>
   );
 }
@@ -434,167 +398,144 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
+    flex: 1,
   },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionHeader: {
+  headerActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    ...getTypographyStyle('lg', 'bold'),
-    marginBottom: spacing.md,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
-  quickActionCard: {
-    flex: 1,
-    minWidth: '47%',
-    padding: 18,
-    borderRadius: 14,
+  applyButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    elevation: 4,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
-  quickActionIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  applyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabsContainer: {
+    borderBottomWidth: 1,
+  },
+  tabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+  },
+  tab: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  quickActionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
+  tabActive: {
+    borderBottomWidth: 2,
   },
-  quickActionSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 4,
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  tabContent: {
+    padding: 16,
+  },
+  balanceSection: {
+    marginBottom: 20,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
+    marginBottom: 24,
   },
   statCard: {
-    flex: 1,
-    minWidth: '22%',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    ...getTypographyStyle('xl', 'bold'),
-  },
-  statLabel: {
-    ...getTypographyStyle('xs', 'medium'),
-  },
-  leaveCard: {
+    width: '48%',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    alignItems: 'center',
   },
-  leaveCardHeader: {
+  statCount: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  cardList: {
+    gap: 8,
+  },
+  leaveCard: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
-  leaveTypeIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leaveType: {
-    ...getTypographyStyle('base', 'bold'),
-  },
-  leaveShiftType: {
-    ...getTypographyStyle('xs', 'regular'),
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    ...getTypographyStyle('xs', 'bold'),
-  },
-  leaveDatesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-  },
-  dateItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dateText: {
-    ...getTypographyStyle('sm', 'semibold'),
-  },
-  reasonContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  reasonText: {
-    ...getTypographyStyle('sm', 'regular'),
+  cardContent: {
     flex: 1,
   },
-  leaveCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  employeeName: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  leaveType: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  dateRange: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  calendarPlaceholder: {
+    flex: 1,
+    padding: 32,
     alignItems: 'center',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    justifyContent: 'center',
+    minHeight: 300,
   },
-  timeAgo: {
-    ...getTypographyStyle('xs', 'regular'),
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
   },
-  approver: {
-    ...getTypographyStyle('xs', 'regular'),
+  calendarSubtitle: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
+  approvalButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
 });

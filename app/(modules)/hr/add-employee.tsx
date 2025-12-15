@@ -3,6 +3,7 @@ import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingVi
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import hrService from '@/services/hr.service';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import AppButton from '@/components/ui/AppButton';
 
@@ -16,14 +17,12 @@ export default function AddEmployeeScreen() {
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     phone: '',
     designation: '',
     department: '',
-    employeeId: '',
-    joinDate: '',
-    salary: '',
+    joinDate: new Date().toISOString().split('T')[0],
     address: '',
-    emergencyContact: '',
   });
 
   const updateField = (field: string, value: string) => {
@@ -32,35 +31,47 @@ export default function AddEmployeeScreen() {
 
   const handleSubmit = async () => {
     // Basic validation
-    if (!formData.firstName || !formData.email || !formData.designation) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+    if (!formData.firstName || !formData.email || !formData.designation || !formData.password) {
+      Alert.alert('Validation Error', 'Please fill in all required fields (Name, Email, Password, Designation)');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with real API call
-      // await api.post('/hr/employees/create-complete/', {
-      //   user_data: formData,
-      //   notify_admin: true
-      // });
+      // Prepare payload for backend
+      const payload: any = {
+        username: formData.email, // Use email as username
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        designation: formData.designation,
+        department: formData.department,
+        mobileno: formData.phone,
+        address: formData.address,
+        joiningdate: formData.joinDate,
+        category: 'employee', // Default to employee
+      };
 
-      console.log('Creating employee:', formData);
-      
-      // Simulate API call
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert('Success', 'Employee added successfully', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]);
-      }, 1000);
-    } catch (error) {
+      console.log('Creating employee with payload:', payload);
+
+      await hrService.createEmployee(payload);
+
       setLoading(false);
-      Alert.alert('Error', 'Failed to add employee');
-      console.error('Error:', error);
+      Alert.alert('Success', 'Employee added successfully', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error: any) {
+      setLoading(false);
+      console.error('Error adding employee:', error);
+      const errorMessage = error.response?.data ?
+        (typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : error.response.data)
+        : 'Failed to add employee. Please check details and try again.';
+
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -79,7 +90,7 @@ export default function AddEmployeeScreen() {
         >
           {/* Personal Information */}
           <SectionHeader title="Personal Information" theme={theme} />
-          
+
           <FormInput
             label="First Name *"
             value={formData.firstName}
@@ -107,6 +118,15 @@ export default function AddEmployeeScreen() {
           />
 
           <FormInput
+            label="Password *"
+            value={formData.password}
+            onChangeText={(text) => updateField('password', text)}
+            placeholder="Set initial password"
+            theme={theme}
+          // secureTextEntry // TODO: Add prop to FormInput if supported, or just text for admin
+          />
+
+          <FormInput
             label="Phone"
             value={formData.phone}
             onChangeText={(text) => updateField('phone', text)}
@@ -125,25 +145,8 @@ export default function AddEmployeeScreen() {
             theme={theme}
           />
 
-          <FormInput
-            label="Emergency Contact"
-            value={formData.emergencyContact}
-            onChangeText={(text) => updateField('emergencyContact', text)}
-            placeholder="+91 9876543210"
-            keyboardType="phone-pad"
-            theme={theme}
-          />
-
           {/* Employment Details */}
           <SectionHeader title="Employment Details" theme={theme} />
-
-          <FormInput
-            label="Employee ID"
-            value={formData.employeeId}
-            onChangeText={(text) => updateField('employeeId', text)}
-            placeholder="EMP001"
-            theme={theme}
-          />
 
           <FormInput
             label="Designation *"
@@ -169,14 +172,7 @@ export default function AddEmployeeScreen() {
             theme={theme}
           />
 
-          <FormInput
-            label="Salary"
-            value={formData.salary}
-            onChangeText={(text) => updateField('salary', text)}
-            placeholder="₹ 850000"
-            keyboardType="numeric"
-            theme={theme}
-          />
+
 
           {/* Submit Button */}
           <View style={{ marginTop: 24, marginBottom: 32 }}>

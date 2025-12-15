@@ -16,6 +16,7 @@ import type {
   Employee,
   EmployeeFilters,
   Holiday,
+  CalendarLeave,
 } from '../types/hr';
 
 // ============================================================================
@@ -24,38 +25,42 @@ import type {
 
 export const hrQueryKeys = {
   all: ['hr'] as const,
-  
+
   // Leaves
   leaves: () => [...hrQueryKeys.all, 'leaves'] as const,
   leavesList: (filters?: LeaveFilters) => [...hrQueryKeys.leaves(), 'list', filters] as const,
   leave: (id: number) => [...hrQueryKeys.leaves(), 'detail', id] as const,
   myLeaves: (filters?: LeaveFilters) => [...hrQueryKeys.leaves(), 'my', filters] as const,
   upcomingLeaves: () => [...hrQueryKeys.leaves(), 'upcoming'] as const,
-  teamLeaves: (fromDate?: string, toDate?: string) => 
+  pendingLeaves: () => [...hrQueryKeys.leaves(), 'pending'] as const,
+  calendarLeaves: (year: number, month: number) =>
+    [...hrQueryKeys.leaves(), 'calendar', { year, month }] as const,
+  teamLeaves: (fromDate?: string, toDate?: string) =>
     [...hrQueryKeys.leaves(), 'team', { fromDate, toDate }] as const,
-  
+
   // Leave Balance
-  leaveBalance: (employeeId?: number) => 
+  leaveBalance: (employeeId?: number) =>
     [...hrQueryKeys.all, 'balance', employeeId || 'me'] as const,
-  
+
   // Statistics
   leaveStatistics: () => [...hrQueryKeys.all, 'statistics'] as const,
-  
+
   // Employees
   employees: () => [...hrQueryKeys.all, 'employees'] as const,
-  employeesList: (filters?: EmployeeFilters) => 
+  employeesList: (filters?: EmployeeFilters) =>
     [...hrQueryKeys.employees(), 'list', filters] as const,
   employee: (id: number) => [...hrQueryKeys.employees(), 'detail', id] as const,
   myProfile: () => [...hrQueryKeys.employees(), 'me'] as const,
   teamMembers: () => [...hrQueryKeys.employees(), 'team'] as const,
-  
+  teams: () => [...hrQueryKeys.all, 'teams'] as const,
+
   // Holidays
   holidays: (year?: number) => [...hrQueryKeys.all, 'holidays', year] as const,
-  
+
   // Attendance
   attendance: () => [...hrQueryKeys.all, 'attendance'] as const,
   attendancePercentage: () => [...hrQueryKeys.attendance(), 'percentage'] as const,
-  attendanceRecords: (fromDate?: string, toDate?: string) => 
+  attendanceRecords: (fromDate?: string, toDate?: string) =>
     [...hrQueryKeys.attendance(), 'records', { fromDate, toDate }] as const,
 };
 
@@ -68,7 +73,7 @@ export const hrCacheUtils = {
     const queryClient = useQueryClient();
     queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaves() });
   },
-  
+
   invalidateLeaveBalance: (employeeId?: number) => {
     const queryClient = useQueryClient();
     if (employeeId) {
@@ -77,12 +82,12 @@ export const hrCacheUtils = {
       queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveBalance() });
     }
   },
-  
+
   invalidateStatistics: () => {
     const queryClient = useQueryClient();
     queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveStatistics() });
   },
-  
+
   invalidateEmployees: () => {
     const queryClient = useQueryClient();
     queryClient.invalidateQueries({ queryKey: hrQueryKeys.employees() });
@@ -107,11 +112,11 @@ export const useLeaves = (filters?: LeaveFilters) => {
 /**
  * Get a single leave request
  */
-export const useLeave = (id: number) => {
+export const useLeave = (id: number, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: hrQueryKeys.leave(id),
     queryFn: () => hrService.getLeave(id),
-    enabled: !!id,
+    enabled: options?.enabled !== undefined ? options.enabled && !!id : !!id,
     staleTime: 2 * 60 * 1000,
   });
 };
@@ -124,6 +129,28 @@ export const useMyLeaves = (filters?: LeaveFilters) => {
     queryKey: hrQueryKeys.myLeaves(filters),
     queryFn: () => hrService.getMyLeaves(filters),
     staleTime: 1 * 60 * 1000, // 1 minute
+  });
+};
+
+/**
+ * Get leaves for calendar view
+ */
+export const useCalendarLeaves = (year: number, month: number) => {
+  return useQuery({
+    queryKey: hrQueryKeys.calendarLeaves(year, month),
+    queryFn: () => hrService.getCalendarLeaves(year, month),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+/**
+ * Get leave types
+ */
+export const useLeaveTypes = () => {
+  return useQuery({
+    queryKey: ['leave_types'],
+    queryFn: () => hrService.getLeaveTypes(),
+    staleTime: Infinity, // Leave types rarely change
   });
 };
 
@@ -181,7 +208,7 @@ export const useLeaveStatistics = () => {
  */
 export const useCreateLeave = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: CreateLeaveRequest) => hrService.createLeave(data),
     onSuccess: () => {
@@ -199,14 +226,15 @@ export const useCreateLeave = () => {
  */
 export const useUpdateLeave = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateLeaveRequest }) =>
       hrService.updateLeave(id, data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaves() });
-      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leave(data.id) });
-      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveBalance() });
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries(hrQueryKeys.leavesList() as any);
+      queryClient.invalidateQueries(hrQueryKeys.leave(id) as any);
+      queryClient.invalidateQueries(hrQueryKeys.calendarLeaves(new Date().getFullYear(), new Date().getMonth()) as any);
+      queryClient.invalidateQueries(['leave_balance'] as any);
     },
   });
 };
@@ -216,7 +244,7 @@ export const useUpdateLeave = () => {
  */
 export const useDeleteLeave = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => hrService.deleteLeave(id),
     onSuccess: () => {
@@ -232,7 +260,7 @@ export const useDeleteLeave = () => {
  */
 export const useUpdateLeaveStatus = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: LeaveApprovalRequest }) =>
       hrService.updateLeaveStatus(id, data),
@@ -242,6 +270,56 @@ export const useUpdateLeaveStatus = () => {
       queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveBalance(data.employee) });
       queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveStatistics() });
       queryClient.invalidateQueries({ queryKey: hrQueryKeys.upcomingLeaves() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.teamLeaves() });
+    },
+  });
+};
+
+/**
+ * Get pending leave requests for approval (HR/Admin/Team Lead)
+ */
+export const usePendingLeaves = () => {
+  return useQuery({
+    queryKey: hrQueryKeys.pendingLeaves(),
+    queryFn: () => hrService.getPendingLeaves(),
+    staleTime: 30 * 1000, // 30 seconds - check often for new requests
+  });
+};
+
+/**
+ * Approve a leave request
+ */
+export const useApproveLeave = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => hrService.approveLeave(id),
+    onSuccess: () => {
+      // Invalidate all leave-related queries
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaves() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveBalance() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveStatistics() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.upcomingLeaves() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.pendingLeaves() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.teamLeaves() });
+    },
+  });
+};
+
+/**
+ * Reject a leave request with optional reason
+ */
+export const useRejectLeave = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      hrService.rejectLeave(id, reason),
+    onSuccess: () => {
+      // Invalidate all leave-related queries
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaves() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.leaveStatistics() });
+      queryClient.invalidateQueries({ queryKey: hrQueryKeys.pendingLeaves() });
       queryClient.invalidateQueries({ queryKey: hrQueryKeys.teamLeaves() });
     },
   });
@@ -266,7 +344,7 @@ export const useEmployees = (filters?: EmployeeFilters) => {
  * Search employees by query string
  */
 export const useSearchEmployees = (
-  query: string, 
+  query: string,
   filters?: { category?: string; department?: string },
   enabled: boolean = true
 ) => {
@@ -324,11 +402,22 @@ export const useTeamMembers = () => {
 };
 
 /**
+ * Get all teams
+ */
+export const useTeams = () => {
+  return useQuery({
+    queryKey: hrQueryKeys.teams(),
+    queryFn: () => hrService.getTeams(),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+/**
  * Update employee profile
  */
 export const useUpdateEmployee = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Employee> }) =>
       hrService.updateEmployee(id, data),
@@ -376,7 +465,7 @@ export const useIsHoliday = (date: string) => {
  */
 export const usePrefetchLeave = () => {
   const queryClient = useQueryClient();
-  
+
   return (id: number) => {
     queryClient.prefetchQuery({
       queryKey: hrQueryKeys.leave(id),
@@ -394,11 +483,11 @@ export const useLeaveTypeBalance = (
   employeeId?: number
 ) => {
   const { data: balance, ...rest } = useLeaveBalance(employeeId);
-  
+
   if (!balance) return { ...rest, available: 0, total: 0, used: 0 };
-  
+
   const typeKey = `${leaveType}_leave` as const;
-  
+
   return {
     ...rest,
     available: balance[`${typeKey}_total`] - balance[`${typeKey}_used`] - (balance[`${typeKey}_planned`] || 0),
@@ -433,11 +522,11 @@ export const useReimbursements = (filters?: any) => {
 /**
  * Get a single reimbursement
  */
-export const useReimbursement = (id: number) => {
+export const useReimbursement = (id: number, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: reimbursementQueryKeys.detail(id),
     queryFn: () => hrService.getReimbursement(id),
-    enabled: !!id,
+    enabled: options?.enabled !== undefined ? options.enabled && !!id : !!id,
     staleTime: 2 * 60 * 1000,
   });
 };
@@ -458,7 +547,7 @@ export const useReimbursementStatistics = () => {
  */
 export const useCreateReimbursement = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => hrService.createReimbursement(data),
     onSuccess: () => {
@@ -472,10 +561,24 @@ export const useCreateReimbursement = () => {
  */
 export const useUpdateReimbursementStatus = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, status, reason }: { id: number; status: string; reason?: string }) =>
       hrService.updateReimbursementStatus(id, status, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
+    },
+  });
+};
+
+/**
+ * Delete a reimbursement request
+ */
+export const useDeleteReimbursement = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => hrService.deleteReimbursement(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
     },
@@ -487,7 +590,7 @@ export const useUpdateReimbursementStatus = () => {
  */
 export const useUploadReimbursementPhoto = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ reimbursementId, photo }: { reimbursementId: number; photo: any }) =>
       hrService.uploadReimbursementPhoto(reimbursementId, photo),
@@ -623,7 +726,7 @@ export const useUserActivities = (userId: string | number, limit: number = 20) =
  */
 export const useCreateGoal = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (goalData: {
       title: string;
@@ -644,7 +747,7 @@ export const useCreateGoal = () => {
  */
 export const useUpdateGoal = (goalId: string | number) => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (goalData: {
       title?: string;
@@ -664,7 +767,7 @@ export const useUpdateGoal = (goalId: string | number) => {
  */
 export const useDeleteGoal = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (goalId: string | number) => hrService.deleteGoal(goalId),
     onSuccess: () => {
@@ -678,9 +781,9 @@ export const useDeleteGoal = () => {
  */
 export const useToggleMilestone = (goalId: string | number) => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ milestoneId, completed }: { milestoneId: string; completed: boolean }) => 
+    mutationFn: ({ milestoneId, completed }: { milestoneId: string; completed: boolean }) =>
       hrService.toggleMilestone(goalId, milestoneId, completed),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile', 'goals'] });
@@ -698,7 +801,7 @@ export const useToggleMilestone = (goalId: string | number) => {
 export const useUserEducation = (userId?: number) => {
   return useQuery({
     queryKey: ['hr', 'user-profile', 'education', userId || 'me'],
-    queryFn: () => userId ? hrService.getUserEducation(userId) : hrService.getUserEducation(),
+    queryFn: () => hrService.getUserEducation(userId || 'me'),
   });
 };
 
@@ -708,7 +811,7 @@ export const useUserEducation = (userId?: number) => {
 export const useUserExperience = (userId?: number) => {
   return useQuery({
     queryKey: ['hr', 'user-profile', 'experience', userId || 'me'],
-    queryFn: () => userId ? hrService.getUserExperience(userId) : hrService.getUserExperience(),
+    queryFn: () => hrService.getUserExperience(userId || 'me'),
   });
 };
 
@@ -718,7 +821,7 @@ export const useUserExperience = (userId?: number) => {
 export const useUserSocialLinks = (userId?: number) => {
   return useQuery({
     queryKey: ['hr', 'user-profile', 'social-links', userId || 'me'],
-    queryFn: () => userId ? hrService.getUserSocialLinks(userId) : hrService.getUserSocialLinks(),
+    queryFn: () => hrService.getUserSocialLinks(userId || 'me'),
   });
 };
 
@@ -727,7 +830,7 @@ export const useUserSocialLinks = (userId?: number) => {
  */
 export const useCreateEducation = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => hrService.createEducation(data),
     onSuccess: () => {
@@ -741,7 +844,7 @@ export const useCreateEducation = () => {
  */
 export const useUpdateEducation = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateEducation(id, data),
     onSuccess: () => {
@@ -755,7 +858,7 @@ export const useUpdateEducation = () => {
  */
 export const useDeleteEducation = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => hrService.deleteEducation(id),
     onSuccess: () => {
@@ -769,7 +872,7 @@ export const useDeleteEducation = () => {
  */
 export const useCreateExperience = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => hrService.createExperience(data),
     onSuccess: () => {
@@ -783,7 +886,7 @@ export const useCreateExperience = () => {
  */
 export const useUpdateExperience = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateExperience(id, data),
     onSuccess: () => {
@@ -797,7 +900,7 @@ export const useUpdateExperience = () => {
  */
 export const useDeleteExperience = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => hrService.deleteExperience(id),
     onSuccess: () => {
@@ -811,7 +914,7 @@ export const useDeleteExperience = () => {
  */
 export const useUpdateSocialLinks = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => hrService.updateSocialLinks(data),
     onSuccess: () => {
@@ -825,7 +928,7 @@ export const useUpdateSocialLinks = () => {
  */
 export const useCreateSkill = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => hrService.createSkill(data),
     onSuccess: () => {
@@ -839,7 +942,7 @@ export const useCreateSkill = () => {
  */
 export const useUpdateSkill = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateSkill(id, data),
     onSuccess: () => {
@@ -853,7 +956,7 @@ export const useUpdateSkill = () => {
  */
 export const useDeleteSkill = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => hrService.deleteSkill(id),
     onSuccess: () => {
@@ -867,7 +970,7 @@ export const useDeleteSkill = () => {
  */
 export const useCreateCertification = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => hrService.createCertification(data),
     onSuccess: () => {
@@ -881,7 +984,7 @@ export const useCreateCertification = () => {
  */
 export const useUpdateCertification = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => hrService.updateCertification(id, data),
     onSuccess: () => {
@@ -895,7 +998,7 @@ export const useUpdateCertification = () => {
  */
 export const useDeleteCertification = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (id: number) => hrService.deleteCertification(id),
     onSuccess: () => {
@@ -909,9 +1012,9 @@ export const useDeleteCertification = () => {
  */
 export const useUploadResume = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (formData: FormData) => hrService.uploadResume(formData),
+    mutationFn: (data: any) => hrService.uploadResume(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr', 'resume'] });
     },
@@ -923,10 +1026,15 @@ export const useUploadResume = () => {
  */
 export const useApplyResumeData = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: { resume_id: number; apply_skills?: boolean; apply_education?: boolean; apply_experience?: boolean; apply_certifications?: boolean }) => 
-      hrService.applyResumeData(data),
+    mutationFn: ({ resume_id, apply_skills, apply_education, apply_experience, apply_certifications }: { resume_id: number; apply_skills?: boolean; apply_education?: boolean; apply_experience?: boolean; apply_certifications?: boolean }) =>
+      hrService.applyResumeData(resume_id, {
+        skills: apply_skills,
+        education: apply_education,
+        experience: apply_experience,
+        certifications: apply_certifications,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr', 'user-profile'] });
     },

@@ -6,3 +6,5 @@
 export { LeaveBalanceCard } from './LeaveBalanceCard';
 export { LeaveList } from './LeaveList';
 export { HolidayCalendar } from './HolidayCalendar';
+export { CompactLeaveBalance } from './CompactLeaveBalance';
+

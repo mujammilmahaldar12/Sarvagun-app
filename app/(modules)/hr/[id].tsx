@@ -1,25 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, ScrollView, Text, Pressable, ActivityIndicator, Alert, TextInput, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { useLeave, useUpdateLeaveStatus, useDeleteLeave } from '@/hooks/useHRQueries';
+import {
+  useLeave, useUpdateLeaveStatus, useDeleteLeave,
+  useReimbursement, useUpdateReimbursementStatus, useDeleteReimbursement
+} from '@/hooks/useHRQueries';
 import { usePermissions } from '@/store/permissionStore';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
 import { Badge } from '@/components';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import { designSystem } from '@/constants/designSystem';
 import hrService from '@/services/hr.service';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { LeaveRequest, Reimbursement } from '@/types/hr';
 
 type DetailTab = 'info' | 'documents' | 'history';
 type ItemType = 'staff' | 'leave' | 'reimbursement';
 
 export default function HRDetailScreen() {
   const router = useRouter();
-  const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
-  const { theme, isDark } = useTheme();
+  const params = useLocalSearchParams();
+  const { id, type } = params as { id: string; type?: string };
+  const { theme } = useTheme();
   const { user } = useAuthStore();
   const permissions = usePermissions();
   const [activeTab, setActiveTab] = useState<DetailTab>('info');
@@ -27,17 +32,29 @@ export default function HRDetailScreen() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // API hooks for leave management
-  const { data: leaveData, isLoading: leaveLoading, refetch } = useLeave(
+  // API hooks
+  const { data: leaveData, isLoading: leaveLoading } = useLeave(
     parseInt(id as string),
     { enabled: type === 'leave' }
   );
-  const { mutate: updateStatus, isPending: isUpdating } = useUpdateLeaveStatus();
-  const { mutate: deleteLeave, isPending: isDeleting } = useDeleteLeave();
+
+  const { data: reimbursementData, isLoading: reimbursementLoading } = useReimbursement(
+    parseInt(id as string)
+  ); // We can always fetch if ID present, or conditionally. enabled option is missing in useReimbursement def but useQuery handles it if id is falsy usually. Actually checking hook def: enabled: !!id. So it fetches.
+
+  // Mutations
+  const { mutate: updateLeaveStatus, isPending: isUpdatingLeave } = useUpdateLeaveStatus();
+  const { mutate: deleteLeave, isPending: isDeletingLeave } = useDeleteLeave();
+
+  const { mutate: updateReimbursementStatus, isPending: isUpdatingReimbursement } = useUpdateReimbursementStatus();
+  const { mutate: deleteReimbursement, isPending: isDeletingReimbursement } = useDeleteReimbursement();
+
+  // Derived state
+  const isUpdating = isUpdatingLeave || isUpdatingReimbursement;
 
   // Check user role for permissions
   const canManage = permissions.hasPermission('hr:manage');
-  const canApprove = permissions.hasPermission('leave:approve');
+  const canApprove = permissions.hasPermission('leave:approve'); // Assuming similar permission for reimbursement or just 'hr:manage'
 
   // Tabs for detail view
   const detailTabs: Tab[] = [
@@ -51,40 +68,59 @@ export default function HRDetailScreen() {
     setItemType(itemTypeFromParam);
   }, [id, type]);
 
-  const itemData = type === 'leave' ? leaveData : null;
-  const loading = type === 'leave' ? leaveLoading : false;
+  const itemData = type === 'leave' ? leaveData
+    : type === 'reimbursement' ? reimbursementData
+      : null;
+
+  const loading = type === 'leave' ? leaveLoading
+    : type === 'reimbursement' ? reimbursementLoading
+      : false;
 
   const handleEdit = () => {
-    // Navigate to edit screen
     router.push(`/(modules)/hr/edit/${id}` as any);
   };
 
   const handleApprove = () => {
-    Alert.alert(
-      'Approve Leave',
-      `Are you sure you want to approve this leave request for ${itemData?.employee_name || 'this employee'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: () => {
-            updateStatus(
+    const title = type === 'leave' ? 'Approve Leave' : 'Approve Reimbursement';
+
+    let employeeName = 'this employee';
+    if (type === 'leave' && itemData) {
+      employeeName = (itemData as LeaveRequest).employee_name || 'this employee';
+    } else if (type === 'reimbursement' && itemData) {
+      employeeName = (itemData as Reimbursement).requested_by_name || 'this employee';
+    }
+
+    const message = `Are you sure you want to approve this request for ${employeeName}?`;
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Approve',
+        onPress: () => {
+          if (type === 'leave') {
+            updateLeaveStatus(
               { id: parseInt(id as string), data: { status: 'approved' } },
               {
                 onSuccess: () => {
-                  Alert.alert('Success', 'Leave approved successfully', [
-                    { text: 'OK', onPress: () => router.back() }
-                  ]);
+                  Alert.alert('Success', 'Leave approved', [{ text: 'OK', onPress: () => router.back() }]);
                 },
-                onError: (error: any) => {
-                  Alert.alert('Error', error.message || 'Failed to approve leave');
-                },
+                onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
               }
             );
-          },
+          } else if (type === 'reimbursement') {
+            updateReimbursementStatus(
+              { id: parseInt(id as string), status: 'approved' },
+              {
+                onSuccess: () => {
+                  Alert.alert('Success', 'Reimbursement approved', [{ text: 'OK', onPress: () => router.back() }]);
+                },
+                onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
+              }
+            );
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleReject = () => {
@@ -93,458 +129,363 @@ export default function HRDetailScreen() {
 
   const confirmReject = () => {
     if (!rejectionReason.trim()) {
-      Alert.alert('Required', 'Please provide a reason for rejection');
+      Alert.alert('Required', 'Please provide a reason');
       return;
     }
 
-    updateStatus(
+    const payload = { id: parseInt(id as string), status: 'rejected', reason: rejectionReason.trim(), rejection_reason: rejectionReason.trim() }; // handles both apis roughly
+
+    if (type === 'leave') {
+      updateLeaveStatus(
+        { id: payload.id, data: { status: 'rejected', rejection_reason: payload.reason } },
+        {
+          onSuccess: () => {
+            setShowRejectModal(false);
+            Alert.alert('Success', 'Rejected successfully', [{ text: 'OK', onPress: () => router.back() }]);
+          },
+          onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
+        }
+      );
+    } else if (type === 'reimbursement') {
+      updateReimbursementStatus(
+        { id: payload.id, status: 'rejected', reason: payload.reason },
+        {
+          onSuccess: () => {
+            setShowRejectModal(false);
+            Alert.alert('Success', 'Rejected successfully', [{ text: 'OK', onPress: () => router.back() }]);
+          },
+          onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
+        }
+      );
+    }
+  };
+
+  const handleDelete = () => {
+    const title = type === 'leave' ? 'Cancel Leave' : 'Delete Request';
+    const msg = 'Are you sure you want to delete this request?';
+
+    Alert.alert(title, msg, [
+      { text: 'No', style: 'cancel' },
       {
-        id: parseInt(id as string),
-        data: { status: 'rejected', rejection_reason: rejectionReason.trim() },
+        text: 'Yes, Delete',
+        style: 'destructive',
+        onPress: () => {
+          if (type === 'leave') {
+            deleteLeave(parseInt(id as string), {
+              onSuccess: () => Alert.alert('Success', 'Deleted', [{ text: 'OK', onPress: () => router.back() }])
+            });
+          } else if (type === 'reimbursement') {
+            deleteReimbursement(parseInt(id as string), {
+              onSuccess: () => Alert.alert('Success', 'Deleted', [{ text: 'OK', onPress: () => router.back() }])
+            });
+          }
+        },
       },
-      {
-        onSuccess: () => {
-          setShowRejectModal(false);
-          setRejectionReason('');
-          Alert.alert('Success', 'Leave rejected successfully', [
-            { text: 'OK', onPress: () => router.back() }
-          ]);
-        },
-        onError: (error: any) => {
-          Alert.alert('Error', error.message || 'Failed to reject leave');
-        },
-      }
-    );
+    ]);
   };
 
   const renderInfoTab = () => {
     if (!itemData) return null;
 
-    if (itemType === 'staff') {
-      return (
-        <View style={{ padding: 16 }}>
-          <InfoRow label="Employee ID" value={itemData.employeeId} theme={theme} />
-          <InfoRow label="Name" value={itemData.name} theme={theme} />
-          <InfoRow label="Email" value={itemData.email} theme={theme} />
-          <InfoRow label="Phone" value={itemData.phone} theme={theme} />
-          <InfoRow label="Designation" value={itemData.designation} theme={theme} />
-          <InfoRow label="Department" value={itemData.department} theme={theme} />
-          <InfoRow label="Join Date" value={itemData.joinDate} theme={theme} />
-          <InfoRow label="Salary" value={itemData.salary} theme={theme} />
-          <InfoRow label="Address" value={itemData.address} theme={theme} />
-          <InfoRow label="Emergency Contact" value={itemData.emergencyContact} theme={theme} />
-          <View style={{ marginTop: 16 }}>
-            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>
-              Status
-            </Text>
-            <StatusBadge status={itemData.status} type={itemData.status === 'Active' ? 'active' : 'inactive'} />
-          </View>
-        </View>
-      );
-    }
-
     if (itemType === 'leave') {
+      const leaveRequest = itemData as unknown as LeaveRequest;
+
       const formatDate = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
       };
 
-      const shiftTime = hrService.formatShiftTime(itemData.shift_type || 'full_shift');
-
       return (
         <ScrollView style={{ padding: 16 }}>
           {/* Summary Header */}
-          <View style={{
-            backgroundColor: theme.surface,
-            padding: 20,
-            borderRadius: 12,
-            marginBottom: 20,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}>
-            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 16 }}>
-              Summary
-            </Text>
-            
-            <SummaryRow label="Type" value={itemData.leave_type} theme={theme} />
-            <SummaryRow 
-              label="Balance before leave applied" 
-              value={`${itemData.balance_before || 0} Days`} 
-              theme={theme} 
-            />
-            <SummaryRow 
-              label="Balance after leave applied" 
-              value={`${itemData.balance_after || 0} Days`} 
-              theme={theme} 
-            />
-            <SummaryRow label="Request Duration" value={`${itemData.total_days} Day(s)`} theme={theme} />
-            <SummaryRow 
-              label="Request Date" 
-              value={`${formatDate(itemData.from_date)}, ${formatDate(itemData.to_date)}, ${formatDate(itemData.applied_date || itemData.from_date)}`}
-              theme={theme} 
-            />
-            <SummaryRow label="Request Time" value={itemData.shift_type?.replace('_', ' ').toUpperCase() || 'FULL SHIFT'} theme={theme} />
-            <SummaryRow label="Shift" value={shiftTime} theme={theme} />
-            <SummaryRow label="Total Time Requested" value={`${itemData.total_days} Day(s)`} theme={theme} isLast />
+          <View style={{ backgroundColor: theme.surface, padding: 20, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: theme.border }}>
+            <SummaryRow label="Type" value={leaveRequest.leave_type} theme={theme} />
+            <SummaryRow label="Total Days" value={`${leaveRequest.total_days} Day(s)`} theme={theme} />
+            <SummaryRow label="From" value={formatDate(leaveRequest.from_date)} theme={theme} />
+            <SummaryRow label="To" value={formatDate(leaveRequest.to_date)} theme={theme} isLast />
           </View>
 
-          {/* Employee Info */}
           <View style={{ marginBottom: 20 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>
-              Employee Details
-            </Text>
-            <InfoRow label="Name" value={itemData.employee_name} theme={theme} />
-            <InfoRow label="Email" value={itemData.employee_email} theme={theme} />
-            <InfoRow label="Designation" value={itemData.employee_designation} theme={theme} />
-            <InfoRow label="Department" value={itemData.employee_department} theme={theme} />
-          </View>
-
-          {/* Leave Details */}
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>
-              Leave Details
-            </Text>
-            <InfoRow label="Reason" value={itemData.reason} theme={theme} />
-            <InfoRow label="Applied Date" value={formatDate(itemData.applied_date)} theme={theme} />
-            
-            {itemData.approved_by_name && (
-              <InfoRow label="Reviewed By" value={itemData.approved_by_name} theme={theme} />
-            )}
-            {itemData.approved_date && (
-              <InfoRow label="Reviewed On" value={formatDate(itemData.approved_date)} theme={theme} />
-            )}
-            {itemData.rejection_reason && (
-              <InfoRow label="Rejection Reason" value={itemData.rejection_reason} theme={theme} />
-            )}
-            
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>Details</Text>
+            <InfoRow label="Reason" value={leaveRequest.reason} theme={theme} />
+            <InfoRow label="Employee" value={leaveRequest.employee_name} theme={theme} />
+            <InfoRow label="Applied On" value={formatDate(leaveRequest.applied_date)} theme={theme} />
             <View style={{ marginTop: 16 }}>
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>
-                Status
-              </Text>
-              <StatusBadge status={itemData.status} />
+              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>Status</Text>
+              <StatusBadge status={leaveRequest.status} />
             </View>
           </View>
-
-          {/* Note for Casual/Other leave */}
-          {itemData.leave_type?.includes('Casual') && (
-            <View style={{
-              backgroundColor: `${theme.primary}10`,
-              padding: 16,
-              borderRadius: 8,
-              borderLeftWidth: 4,
-              borderLeftColor: theme.primary,
-            }}>
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-                ℹ️ Casual Other Planned requests need manager approval. Visit the Time History page to track updates.
-              </Text>
-            </View>
-          )}
         </ScrollView>
       );
     }
 
     if (itemType === 'reimbursement') {
+      // Cast to Reimbursement to silence TS errors and enable safe access
+      const reimbursement = itemData as unknown as Reimbursement;
+
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      };
+
+      // Use the full expense object from backend
+      const expenseObj = reimbursement.expense || {};
+
+      // Handle bill evidence: check expense photo first (upload goes there)
+      const billPhoto = expenseObj.photo || (reimbursement as any).bill_photo || expenseObj.photos?.[0]?.photo;
+      const hasBill = reimbursement.bill_evidence === 'yes' || expenseObj.bill_evidence === 'yes';
+
       return (
-        <View style={{ padding: 16 }}>
-          <InfoRow label="Employee" value={itemData.employee} theme={theme} />
-          <InfoRow label="Type" value={itemData.reimbursementType} theme={theme} />
-          <InfoRow label="Amount" value={`₹${itemData.amount?.toLocaleString()}`} theme={theme} />
-          <InfoRow label="Expense Date" value={itemData.date} theme={theme} />
-          <InfoRow label="Applied On" value={itemData.appliedDate} theme={theme} />
-          <InfoRow label="Description" value={itemData.description} theme={theme} />
-          <View style={{ marginTop: 16 }}>
-            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 8 }}>
-              Status
-            </Text>
-            <StatusBadge status={itemData.status} />
+        <ScrollView style={{ padding: 16 }}>
+          {/* Amount Header */}
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 4 }}>Reimbursement Amount</Text>
+            <Text style={{ color: theme.primary, fontSize: 32, fontWeight: '700' }}>₹{Number(reimbursement.reimbursement_amount || 0).toLocaleString()}</Text>
+            <View style={{ marginTop: 8 }}>
+              <StatusBadge status={reimbursement.status || 'pending'} />
+            </View>
           </View>
-        </View>
+
+          <View style={{ backgroundColor: theme.surface, padding: 20, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: theme.border }}>
+            <SummaryRow label="Type" value={expenseObj.particulars || 'N/A'} theme={theme} />
+            <SummaryRow label="Expense Date" value={formatDate(expenseObj.expense_date || expenseObj.date || '')} theme={theme} />
+            <SummaryRow label="Applied On" value={formatDate(reimbursement.submitted_at)} theme={theme} isLast />
+          </View>
+
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>Details</Text>
+            <InfoRow label="Request ID" value={`#${reimbursement.id}`} theme={theme} />
+            <InfoRow label="Employee" value={reimbursement.requested_by_name || (reimbursement as any).employee_name} theme={theme} />
+            <InfoRow label="Description" value={reimbursement.details} theme={theme} />
+
+            <InfoRow label="Payment Mode" value={expenseObj.mode_of_payment} theme={theme} />
+            <InfoRow label="Payment Status" value={expenseObj.payment_status} theme={theme} />
+            <InfoRow label="Original Expense" value={`₹${Number(expenseObj.amount || 0).toLocaleString()}`} theme={theme} />
+          </View>
+        </ScrollView>
       );
     }
-
     return null;
   };
 
   const renderDocumentsTab = () => {
+    if (!itemData) return null;
+
+    if (itemType === 'reimbursement') {
+      const reimbursement = itemData as unknown as Reimbursement;
+      const expenseObj = reimbursement.expense || {};
+      const billPhoto = expenseObj.photo || (reimbursement as any).bill_photo || expenseObj.photos?.[0]?.photo;
+      const hasBill = reimbursement.bill_evidence === 'yes' || expenseObj.bill_evidence === 'yes';
+
+      return (
+        <ScrollView style={{ padding: 16 }}>
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>Bill Evidence</Text>
+            {billPhoto ? (
+              <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+                <Image source={{ uri: billPhoto }} style={{ width: '100%', height: 400, resizeMode: 'contain', backgroundColor: '#f0f0f0' }} />
+              </View>
+            ) : (
+              <Text style={{ color: theme.textSecondary }}>No image attached{hasBill ? ' (Evidence marked as YES)' : ''}.</Text>
+            )}
+          </View>
+        </ScrollView>
+      );
+    }
+
+    // Fallback for other types
     return (
-      <View style={{ padding: 16 }}>
-        <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, textAlign: 'center', marginTop: 32 }}>
-          Documents section will be implemented with file uploads
-        </Text>
-        {/* TODO: Add document upload/view functionality */}
-      </View>
+      <View style={{ padding: 20, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No documents available.</Text></View>
     );
   };
 
   const renderHistoryTab = () => {
+    if (!itemData) return null;
+
+    // Safety cast
+    const reimbursement = itemType === 'reimbursement' ? (itemData as unknown as Reimbursement) : null;
+    const leave = itemType === 'leave' ? (itemData as unknown as LeaveRequest) : null;
+
+    const steps = [];
+
+    if (itemType === 'reimbursement' && reimbursement) {
+      // Step 1: Submitted
+      steps.push({
+        title: 'Request Submitted',
+        date: reimbursement.submitted_at,
+        description: `Request created by ${reimbursement.requested_by_name || 'User'}`,
+        completed: true,
+        icon: 'checkmark-circle'
+      });
+
+      // Step 2: Sent to HR/Admin (Auto-success for now as backend notifies immediately)
+      steps.push({
+        title: 'Sent to HR/Admin',
+        date: reimbursement.submitted_at, // Same time effectively
+        description: 'Notification sent to HR team',
+        completed: true,
+        icon: 'mail'
+      });
+
+      // Step 3: Current Status
+      const status = reimbursement.status?.toLowerCase() || 'pending';
+      const isPending = status === 'pending';
+      const isApproved = status === 'approved';
+      const isRejected = status === 'rejected';
+
+      steps.push({
+        title: isPending ? 'Pending Review' : isApproved ? 'Approved' : 'Rejected',
+        date: reimbursement.latest_status?.updated_at || null,
+        description: isPending ? 'Awaiting action from HR/Admin' :
+          `${isApproved ? 'Approved' : 'Rejected'} by ${reimbursement.latest_status?.updated_by_name || 'Admin'}`,
+        completed: !isPending,
+        isCurrent: isPending,
+        icon: isPending ? 'time' : isApproved ? 'checkmark-done-circle' : 'close-circle',
+        color: isPending ? theme.primary : isApproved ? '#10b981' : '#ef4444'
+      });
+    } else if (itemType === 'leave' && leave) {
+      // Similar logic for leave if needed, or placeholder
+      steps.push({
+        title: 'Leave Applied',
+        date: leave.applied_date,
+        description: `Applied for ${leave.total_days} days`,
+        completed: true,
+        icon: 'checkmark-circle'
+      });
+
+      const status = leave.status?.toLowerCase() || 'pending';
+      steps.push({
+        title: status === 'pending' ? 'Pending Approval' : status.charAt(0).toUpperCase() + status.slice(1),
+        date: leave.updated_at || leave.applied_date, // Fallback
+        description: status === 'pending' ? 'Waiting for Team Lead/HR' : `Status updated to ${status}`,
+        completed: status !== 'pending',
+        isCurrent: status === 'pending',
+        icon: status === 'pending' ? 'time' : status === 'approved' ? 'checkmark-done-circle' : 'close-circle',
+        color: status === 'pending' ? theme.primary : status === 'approved' ? '#10b981' : '#ef4444'
+      });
+    }
+
     return (
-      <View style={{ padding: 16 }}>
-        <Text style={{ ...getTypographyStyle('base', 'regular'), color: theme.textSecondary, textAlign: 'center', marginTop: 32 }}>
-          Activity history will be displayed here
-        </Text>
-        {/* TODO: Add activity timeline */}
-      </View>
+      <ScrollView style={{ padding: 20 }}>
+        {steps.map((step, index) => {
+          const isLast = index === steps.length - 1;
+          return (
+            <View key={index} style={{ flexDirection: 'row', minHeight: 80 }}>
+              {/* Timeline Column */}
+              <View style={{ alignItems: 'center', marginRight: 16, width: 30 }}>
+                {/* Line */}
+                {!isLast && (
+                  <View style={{
+                    position: 'absolute', top: 30, bottom: -10, width: 2,
+                    backgroundColor: step.completed ? theme.primary : theme.border
+                  }} />
+                )}
+                {/* Icon/Circle */}
+                <View style={{
+                  width: 32, height: 32, borderRadius: 16,
+                  backgroundColor: step.completed || step.isCurrent ? (step.color || theme.primary) : theme.surface,
+                  borderWidth: 2, borderColor: step.completed || step.isCurrent ? (step.color || theme.primary) : theme.border,
+                  justifyContent: 'center', alignItems: 'center',
+                  zIndex: 1
+                }}>
+                  <Ionicons name={step.icon as any} size={18} color={step.completed || step.isCurrent ? '#fff' : theme.textSecondary} />
+                </View>
+              </View>
+
+              {/* Content Column */}
+              <View style={{ flex: 1, paddingBottom: 30 }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 4 }}>{step.title}</Text>
+                {step.date && (
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
+                    {new Date(step.date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </Text>
+                )}
+                <Text style={{ fontSize: 13, color: theme.textSecondary }}>{step.description}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
     );
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'info':
-        return renderInfoTab();
-      case 'documents':
-        return renderDocumentsTab();
-      case 'history':
-        return renderHistoryTab();
-      default:
-        return null;
-    }
-  };
+  // Logic to show/hide action buttons
+  const isPending = itemData?.status?.toLowerCase() === 'pending';
+  // Allow delete if it's my own request and pending
+  const canDelete = isPending && (
+    (type === 'leave' && (itemData as any).employee === user?.id) ||
+    (type === 'reimbursement' && ((itemData as any).requested_by === user?.id || (itemData as any).employee === user?.id))
+  );
+
+  // Allow approve/reject if have permission and it's pending (and not my own ideally, but for demo OK)
+  const canAction = isPending && (canManage || canApprove);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <ModuleHeader title="Loading..." />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
-  if (!itemData && type === 'leave') {
+  if (!itemData && !loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <ModuleHeader title="Not Found" />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Ionicons name="document-outline" size={64} color={theme.textSecondary} />
-          <Text style={{ ...getTypographyStyle('lg', 'regular'), color: theme.textSecondary, marginTop: 16, textAlign: 'center' }}>
-            Leave request not found
-          </Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: theme.textSecondary }}>Item not found</Text>
         </View>
       </View>
     );
   }
-
-  const showApprovalButtons = itemData && 
-    itemData.status?.toLowerCase() === 'pending' && 
-    itemType === 'leave' && 
-    canApprove;
-
-  // Check if current user can delete (own pending item)
-  const canDelete = itemData &&
-    itemData.status?.toLowerCase() === 'pending' &&
-    itemType === 'leave' &&
-    itemData.employee === user?.id;
-
-  const handleDelete = () => {
-    Alert.alert(
-      'Cancel Leave',
-      'Are you sure you want to cancel this leave request?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: () => {
-            deleteLeave(parseInt(id as string), {
-              onSuccess: () => {
-                Alert.alert('Success', 'Leave cancelled successfully', [
-                  { text: 'OK', onPress: () => router.back() }
-                ]);
-              },
-              onError: (error: any) => {
-                Alert.alert('Error', error.message || 'Failed to cancel leave');
-              },
-            });
-          },
-        },
-      ]
-    );
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader
-        title={itemType === 'staff' ? itemData?.name : `${itemType} Details`}
+        title={itemType === 'staff' ? (itemData as any)?.name || 'Staff Details' : `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} Details`}
       />
 
-      {/* Tabs */}
-      <TabBar
-        tabs={detailTabs}
-        activeTab={activeTab}
-        onTabChange={(key) => setActiveTab(key as DetailTab)}
-      />
+      <TabBar tabs={detailTabs} activeTab={activeTab} onTabChange={(k) => setActiveTab(k as DetailTab)} />
 
-      {/* Content */}
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {renderContent()}
-      </ScrollView>
-
-      {/* Action Buttons */}
-      <View style={{ 
-        padding: 16, 
-        backgroundColor: theme.surface,
-        borderTopWidth: 1,
-        borderTopColor: theme.border,
-        gap: 12
-      }}>
-        {showApprovalButtons ? (
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Pressable
-              style={{
-                flex: 1,
-                backgroundColor: '#EF4444',
-                padding: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-              }}
-              onPress={handleReject}
-            >
-              <Ionicons name="close-circle" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
-              <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
-                Reject
-              </Text>
-            </Pressable>
-            <Pressable
-              style={{
-                flex: 1,
-                backgroundColor: '#10B981',
-                padding: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-              }}
-              onPress={handleApprove}
-            >
-              <Ionicons name="checkmark-circle" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
-              <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
-                Approve
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {canManage && itemType === 'staff' && (
-          <Pressable
-            style={{
-              backgroundColor: theme.primary,
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-            }}
-            onPress={handleEdit}
-          >
-            <Ionicons name="create" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
-            <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
-              Edit Details
-            </Text>
-          </Pressable>
-        )}
-
-        {canDelete && (
-          <Pressable
-            style={{
-              backgroundColor: '#EF4444',
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-            }}
-            onPress={handleDelete}
-          >
-            <Ionicons name="trash" size={20} color={theme.textInverse} style={{ marginRight: 8 }} />
-            <Text style={{ color: theme.textInverse, ...getTypographyStyle('base', 'semibold') }}>
-              Delete
-            </Text>
-          </Pressable>
-        )}
+      <View style={{ flex: 1 }}>
+        {activeTab === 'info' ? renderInfoTab() :
+          activeTab === 'documents' ? renderDocumentsTab() :
+            activeTab === 'history' ? renderHistoryTab() : null}
       </View>
 
-      {/* Rejection Reason Modal */}
+      {/* Action Bar */}
+      {/* Action Bar */}
+      {(canAction || canDelete) && (
+        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: theme.surface, gap: 12 }}>
+          {canAction && (activeTab === 'info') && (
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Button label="Reject" variant="danger" onPress={handleReject} style={{ flex: 1 }} />
+              <Button label="Approve" variant="success" onPress={handleApprove} style={{ flex: 1 }} />
+            </View>
+          )}
+          {canDelete && (
+            <Button label="Delete Request" variant="outline-danger" onPress={handleDelete} icon="trash" />
+          )}
+        </View>
+      )}
+
+      {/* Rejection Modal */}
       {showRejectModal && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: 20,
-        }}>
-          <View style={{
-            backgroundColor: theme.surface,
-            borderRadius: 16,
-            padding: 24,
-            width: '100%',
-            maxWidth: 400,
-          }}>
-            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 16 }}>
-              Rejection Reason
-            </Text>
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: '#00000080', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: theme.surface, padding: 20, borderRadius: 12 }}>
+            <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Reject Reason</Text>
             <TextInput
-              style={{
-                backgroundColor: theme.background,
-                borderWidth: 1,
-                borderColor: theme.border,
-                borderRadius: 8,
-                padding: 12,
-                minHeight: 100,
-                textAlignVertical: 'top',
-                color: theme.text,
-                marginBottom: 16,
-              }}
-              placeholder="Enter reason for rejection..."
+              style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 8, padding: 12, minHeight: 100, color: theme.text, marginBottom: 16 }}
+              placeholder="Enter reason..."
               placeholderTextColor={theme.textSecondary}
               multiline
               value={rejectionReason}
               onChangeText={setRejectionReason}
             />
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Pressable
-                style={{
-                  flex: 1,
-                  backgroundColor: theme.background,
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                }}
-                onPress={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason('');
-                }}
-                disabled={isUpdating}
-              >
-                <Text style={{ color: theme.text, ...getTypographyStyle('base', 'semibold') }}>
-                  Cancel
-                </Text>
-              </Pressable>
-              <Pressable
-                style={{
-                  flex: 1,
-                  backgroundColor: '#EF4444',
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                }}
-                onPress={confirmReject}
-                disabled={isUpdating}
-              >
-                {isUpdating ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={{ color: '#FFFFFF', ...getTypographyStyle('base', 'semibold') }}>
-                    Reject
-                  </Text>
-                )}
-              </Pressable>
+              <Button label="Cancel" variant="outline" onPress={() => setShowRejectModal(false)} style={{ flex: 1 }} />
+              <Button label="Confirm Reject" variant="danger" onPress={confirmReject} style={{ flex: 1 }} />
             </View>
           </View>
         </View>
@@ -553,36 +494,56 @@ export default function HRDetailScreen() {
   );
 }
 
-// Helper component for info rows
-function InfoRow({ label, value, theme }: { label: string; value?: string; theme: any }) {
+// Helpers
+function StatusBadge({ status }: { status: string }) {
+  // Map status to color
+  let type = 'default';
+  const s = status?.toLowerCase() || 'pending';
+  if (s === 'approved') type = 'success';
+  if (s === 'rejected') type = 'error';
+  if (s === 'pending') type = 'warning';
+
+  return <Badge label={status || 'Unknown'} status={type as any} />;
+}
+
+function SummaryRow({ label, value, theme, isLast }: any) {
   return (
-    <View style={{ marginBottom: 20 }}>
-      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 4 }}>
-        {label}
-      </Text>
-      <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
-        {value || 'N/A'}
-      </Text>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: isLast ? 0 : 1, borderBottomColor: theme.border }}>
+      <Text style={{ color: theme.textSecondary }}>{label}</Text>
+      <Text style={{ color: theme.text, fontWeight: '600' }}>{value}</Text>
     </View>
   );
 }
 
-// Helper component for summary rows
-function SummaryRow({ label, value, theme, isLast = false }: { label: string; value?: string; theme: any; isLast?: boolean }) {
+function InfoRow({ label, value, theme }: any) {
   return (
-    <View style={{ 
-      flexDirection: 'row', 
-      justifyContent: 'space-between', 
-      paddingVertical: 12,
-      borderBottomWidth: isLast ? 0 : 1,
-      borderBottomColor: theme.border,
-    }}>
-      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, flex: 1 }}>
-        {label}
-      </Text>
-      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, flex: 1, textAlign: 'right' }}>
-        {value || 'N/A'}
-      </Text>
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{ color: theme.textSecondary, fontSize: 13, marginBottom: 4 }}>{label}</Text>
+      <Text style={{ color: theme.text, fontSize: 16 }}>{value || 'N/A'}</Text>
     </View>
+  );
+}
+
+// Simple internal Button component for this screen to avoid layout shifts or complex import
+// Reuse core Button if possible, but for simplicity here inline style is used or import
+// Actually better to use core Button if available.
+import { Button as CoreButton } from '@/components/core/Button';
+
+// Wrapper to adapt props
+function Button({ label, variant = 'primary', style, onPress, icon }: any) {
+  // map variant to CoreButton props
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[{
+        padding: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
+        backgroundColor: variant === 'danger' ? '#ef4444' : variant === 'success' ? '#10b981' : variant === 'outline-danger' ? 'transparent' : '#3b82f6',
+        borderWidth: variant === 'outline-danger' ? 1 : 0,
+        borderColor: variant === 'outline-danger' ? '#ef4444' : undefined
+      }, style]}
+    >
+      {icon && <Ionicons name={icon} size={18} color={variant === 'outline-danger' ? '#ef4444' : '#fff'} />}
+      <Text style={{ color: variant === 'outline-danger' ? '#ef4444' : '#fff', fontWeight: '600' }}>{label}</Text>
+    </Pressable>
   );
 }

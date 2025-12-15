@@ -42,7 +42,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   header: {
     marginBottom: spacing.sm,

@@ -52,7 +52,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   const Container = onPress ? Pressable : View;
 
   const getTrendColor = () => {
-    if (!trend) return colors.text.secondary;
+    if (!trend) return colors.textSecondary;
     return trend.direction === 'up' ? '#10b981' : '#ef4444';
   };
 
@@ -82,7 +82,7 @@ export const KPICard: React.FC<KPICardProps> = ({
 
         {/* Content */}
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.text.secondary }]}>
+          <Text style={[styles.title, { color: colors.textSecondary }]}>
             {title}
           </Text>
 
@@ -90,7 +90,7 @@ export const KPICard: React.FC<KPICardProps> = ({
             <ActivityIndicator size="small" color={color} style={styles.loader} />
           ) : (
             <>
-              <Text style={[styles.value, { color: colors.text.primary }]}>
+              <Text style={[styles.value, { color: colors.text }]}>
                 {typeof value === 'number' ? value.toLocaleString() : value}
               </Text>
 
@@ -106,7 +106,7 @@ export const KPICard: React.FC<KPICardProps> = ({
                     {trend.value}%
                   </Text>
                   {trend.label && (
-                    <Text style={[styles.trendLabel, { color: colors.text.secondary }]}>
+                    <Text style={[styles.trendLabel, { color: colors.textSecondary }]}>
                       {trend.label}
                     </Text>
                   )}
@@ -114,7 +114,7 @@ export const KPICard: React.FC<KPICardProps> = ({
               )}
 
               {subtitle && (
-                <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   {subtitle}
                 </Text>
               )}
@@ -124,7 +124,7 @@ export const KPICard: React.FC<KPICardProps> = ({
 
         {/* Arrow indicator for pressable cards */}
         {onPress && !loading && (
-          <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         )}
       </Container>
     </Animated.View>

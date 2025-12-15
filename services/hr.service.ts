@@ -22,6 +22,7 @@ import type {
   ReimbursementFilters,
   CreateReimbursementRequest,
   TeamMemberLeave,
+  CalendarLeave,
 } from '../types/hr';
 
 class HRService {
@@ -38,15 +39,41 @@ class HRService {
    */
   async getLeaves(params?: LeaveFilters): Promise<LeaveResponse> {
     const response = await api.get<LeaveResponse>('/hr/leaves/', { params });
-    return response.data;
+    return response;
   }
 
   /**
    * Get a single leave request by ID
    */
   async getLeave(id: number): Promise<LeaveRequest> {
-    const response = await api.get<LeaveRequest>(`/hr/leaves/${id}/`);
-    return response.data;
+    console.log(`🔍 Fetching leave details for ID: ${id}`);
+    const response: any = await api.get<any>(`/leave_management/enhanced-leaves/${id}/`);
+    console.log(`✅ Leave details received for ID: ${id}`, response);
+
+    // Sort dates to ensure from/to are correct
+    const dates = response.leave_dates?.sort((a: any, b: any) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    ) || [];
+
+    // Transform to LeaveRequest interface
+    return {
+      id: response.id,
+      employee: response.user,
+      employee_name: response.user_name,
+      leave_type: response.leave_type_name || 'Leave', // Use name, fallback to generic
+      from_date: dates[0]?.date || response.created_at,
+      to_date: dates[dates.length - 1]?.date || response.created_at,
+      total_days: response.num_days || dates.length,
+      dates: dates.map((d: any) => d.date), // Map to array of strings
+      status: response.status,
+      reason: response.reason,
+      shift_type: response.shift_type || 'full_shift', // Backend might not have this on root? Check serializer
+      applied_date: response.created_at,
+      created_at: response.created_at,
+      updated_at: response.updated_at,
+      approved_by: response.approved_by,
+      // reports_to_name: response.reports_to_name, // If backend provides it
+    } as LeaveRequest;
   }
 
   /**
@@ -55,9 +82,9 @@ class HRService {
   async getLeaveTypes(): Promise<any[]> {
     try {
       const response = await api.get('/leave_management/leave-types/');
-      const data: any = response.data;
+      const data: any = response;
       console.log('📋 Leave types raw response:', data);
-      
+
       // Handle different response formats
       // 1. If it's already an array (no pagination)
       if (Array.isArray(data)) {
@@ -85,17 +112,17 @@ class HRService {
     try {
       const leaveTypes = await this.getLeaveTypes();
       console.log('📋 Available leave types:', leaveTypes);
-      
+
       // Try to find exact match
-      const leaveType = leaveTypes.find((lt: any) => 
+      const leaveType = leaveTypes.find((lt: any) =>
         lt.name === leaveTypeName || lt.leave_type === leaveTypeName
       );
-      
+
       if (leaveType) {
         console.log(`✅ Found leave type ID for "${leaveTypeName}": ${leaveType.id}`);
         return leaveType.id;
       }
-      
+
       console.warn(`⚠️ Leave type "${leaveTypeName}" not found in backend`);
       return null;
     } catch (error) {
@@ -110,13 +137,13 @@ class HRService {
    */
   async createLeave(data: CreateLeaveRequest): Promise<LeaveRequest> {
     console.log('📤 Creating leave request:', data);
-    
+
     // First, get the leave type ID
     const leaveTypeId = await this.getLeaveTypeId(data.leave_type);
     if (!leaveTypeId) {
       throw new Error(`Leave type "${data.leave_type}" not found. Please contact administrator.`);
     }
-    
+
     // Get the user's leave balance to get the balance ID
     let leaveBalanceId: number | undefined;
     try {
@@ -126,21 +153,38 @@ class HRService {
     } catch (error) {
       console.warn('⚠️ Could not fetch leave balance, continuing without it');
     }
-    
+
     // Generate leave_dates array from date range
+    // Generate leave_dates array
     const leaveDates = [];
-    const startDate = new Date(data.from_date);
-    const endDate = new Date(data.to_date);
-    
-    // Create date entries for each day in the range
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      leaveDates.push({
-        date: date.toISOString().split('T')[0], // YYYY-MM-DD format
-        starttime: data.shift_type === 'second_half' ? '14:00:00' : '09:00:00',
-        endtime: data.shift_type === 'first_half' ? '13:00:00' : '18:00:00',
-        is_holiday: false,
-        leave_comment: data.reason
+
+    if (data.specific_dates && data.specific_dates.length > 0) {
+      // Use specific dates provided by frontend (for non-contiguous selections)
+      console.log('📅 Using specific dates for leave request:', data.specific_dates);
+      data.specific_dates.forEach(dateStr => {
+        leaveDates.push({
+          date: dateStr,
+          starttime: data.shift_type === 'second_half' ? '14:00:00' : '09:00:00',
+          endtime: data.shift_type === 'first_half' ? '13:00:00' : '18:00:00',
+          is_holiday: false, // Backend will recalculate logic if needed, or we trust frontend
+          leave_comment: data.reason
+        });
       });
+    } else {
+      // Fallback to range generation (legacy behavior)
+      const startDate = new Date(data.from_date);
+      const endDate = new Date(data.to_date);
+
+      // Create date entries for each day in the range
+      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        leaveDates.push({
+          date: date.toISOString().split('T')[0], // YYYY-MM-DD format
+          starttime: data.shift_type === 'second_half' ? '14:00:00' : '09:00:00',
+          endtime: data.shift_type === 'first_half' ? '13:00:00' : '18:00:00',
+          is_holiday: false,
+          leave_comment: data.reason
+        });
+      }
     }
 
     // Prepare payload matching backend serializer - use numeric leave_type ID
@@ -149,7 +193,7 @@ class HRService {
       leave_dates: leaveDates,
       reason: data.reason,
     };
-    
+
     // Add leave_balances if we have it
     if (leaveBalanceId) {
       payload.leave_balances = leaveBalanceId;
@@ -160,8 +204,8 @@ class HRService {
     // Try the enhanced-leaves endpoint (correct endpoint from backend URLs)
     try {
       const response = await api.post<LeaveRequest>('/leave_management/enhanced-leaves/', payload);
-      console.log('✅ Leave created successfully:', response.data);
-      return response.data;
+      console.log('✅ Leave created successfully:', response);
+      return response;
     } catch (error: any) {
       console.error('❌ Leave creation failed:', error);
       console.error('Error details:', {
@@ -177,19 +221,37 @@ class HRService {
    * Update an existing leave request (before approval)
    */
   async updateLeave(id: number, data: UpdateLeaveRequest): Promise<LeaveRequest> {
-    const response = await api.patch<LeaveRequest>(`/leave_management/leaves/${id}/`, data);
-    return response.data;
+    const payload: any = { ...data };
+
+    if (data.specific_dates && data.specific_dates.length > 0) {
+      const leaveDates: any[] = [];
+      data.specific_dates.forEach(dateStr => {
+        leaveDates.push({
+          date: dateStr,
+          // Use data.shift_type or default if not present (assuming update payload has it or merging)
+          // Ideally fetch existing to merge, but simpler: use params if provided
+          starttime: (data.shift_type === 'second_half') ? '14:00:00' : '09:00:00',
+          endtime: (data.shift_type === 'first_half') ? '13:00:00' : '18:00:00',
+          is_holiday: false,
+          leave_comment: data.reason
+        });
+      });
+      payload.leave_dates = leaveDates;
+    }
+
+    const response = await api.patch<LeaveRequest>(`/leave_management/enhanced-leaves/${id}/`, payload);
+    return response;
   }
 
   /**
    * Delete/Cancel a leave request
    */
   async deleteLeave(id: number): Promise<void> {
-    await api.delete(`/leave_management/leaves/${id}/`);
+    await api.post(`/leave_management/enhanced-leaves/${id}/cancel/`);
   }
 
   /**
-   * Approve or reject a leave request
+   * Approve or reject a leave request (legacy method)
    * Only for managers/HR with approve permission
    */
   async updateLeaveStatus(
@@ -200,8 +262,73 @@ class HRService {
       `/leave_management/leaves/${id}/update-status/`,
       data
     );
-    return response.data;
+    return response;
   }
+
+  /**
+   * Get all pending leave requests for approval (HR/Admin/Team Lead)
+   */
+  async getPendingLeaves(): Promise<LeaveRequest[]> {
+    try {
+      const response = await api.get<any[]>('/leave_management/enhanced-leaves/pending/');
+      const leaves = response || [];
+
+      // Transform to LeaveRequest format
+      return leaves.map((leave: any) => ({
+        id: leave.id,
+        employee: leave.user,
+        employee_name: leave.user_name,
+        leave_type: leave.leave_type_name || leave.leave_type,
+        from_date: leave.leave_dates?.[0]?.date,
+        to_date: leave.leave_dates?.[leave.leave_dates?.length - 1]?.date,
+        total_days: leave.num_days,
+        status: leave.status,
+        reason: leave.reason,
+        shift_type: leave.shift_type || 'full_shift',
+        applied_date: leave.created_at,
+        created_at: leave.created_at,
+        updated_at: leave.updated_at,
+        approved_by: leave.approved_by,
+        leave_dates: leave.leave_dates,
+      }));
+    } catch (error) {
+      console.error('Error fetching pending leaves:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get leaves for calendar view
+   */
+  async getCalendarLeaves(year: number, month: number): Promise<CalendarLeave[]> {
+    try {
+      const response = await api.get<CalendarLeave[]>('/leave_management/enhanced-leaves/calendar/', {
+        params: { year, month }
+      });
+      console.log(`📅 Calendar leaves for ${year}-${month}:`, response ? response.length : 0);
+      return response || [];
+    } catch (error) {
+      console.error('Error fetching calendar leaves:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Approve a leave request
+   */
+  async approveLeave(id: number): Promise<{ status: string; remaining_leaves?: number; leave_days_deducted?: number }> {
+    const response = await api.post(`/leave_management/enhanced-leaves/${id}/approve/`);
+    return response as any;
+  }
+
+  /**
+   * Reject a leave request with optional reason
+   */
+  async rejectLeave(id: number, reason?: string): Promise<{ status: string }> {
+    const response = await api.post(`/leave_management/enhanced-leaves/${id}/reject/`, { reason });
+    return response as any;
+  }
+
 
   /**
    * Get leave balance for current user or specific employee
@@ -211,10 +338,10 @@ class HRService {
     try {
       // Try the new my_balance endpoint first
       const response = await api.get<any[]>('/leave_management/leave-balances/my_balance/');
-      const balances: any = response.data;
-      
+      const balances: any = response;
+
       console.log('📊 Leave balances response:', balances);
-      
+
       // Convert array of balances to summary format
       if (Array.isArray(balances) && balances.length > 0) {
         const summary: LeaveBalance = {
@@ -243,7 +370,7 @@ class HRService {
         for (const balance of balances) {
           const typeName = balance.leave_type_name || balance.leave_type?.name || '';
           const typeKey = typeName.toLowerCase().replace(/\s+/g, '_');
-          
+
           if (typeKey.includes('annual')) {
             summary.annual_leave_total = balance.total_allocated || 0;
             summary.annual_leave_used = balance.leave_takes || 0;
@@ -298,7 +425,7 @@ class HRService {
    */
   async getLeaveStatistics(): Promise<LeaveStatistics> {
     const response = await api.get<LeaveStatistics>('/leave_management/statistics/');
-    return response.data;
+    return response;
   }
 
   /**
@@ -308,9 +435,9 @@ class HRService {
     const params: any = {};
     if (fromDate) params.from_date = fromDate;
     if (toDate) params.to_date = toDate;
-    
+
     const response = await api.get<TeamMemberLeave[]>('/leave_management/leaves/team/', { params });
-    return response.data;
+    return response;
   }
 
   /**
@@ -325,7 +452,7 @@ class HRService {
         ordering: 'from_date',
       },
     });
-    return response.data.results;
+    return response.results;
   }
 
   /**
@@ -335,14 +462,16 @@ class HRService {
     try {
       // Use the enhanced-leaves/my_leaves endpoint
       const response = await api.get<any[]>('/leave_management/enhanced-leaves/my_leaves/', { params });
-      const leaves: any = response.data;
-      
+      const leaves: any = response;
+
       console.log('📋 My leaves response:', leaves);
-      
+
       // Transform to LeaveResponse format
       if (Array.isArray(leaves)) {
         return {
           count: leaves.length,
+          next: null,
+          previous: null,
           results: leaves.map((leave: any) => ({
             id: leave.id,
             employee: leave.user,
@@ -353,6 +482,8 @@ class HRService {
             total_days: leave.num_days,
             status: leave.status,
             reason: leave.reason,
+            shift_type: leave.shift_type || 'full_shift',
+            applied_date: leave.created_at,
             created_at: leave.created_at,
             updated_at: leave.updated_at,
             approved_by: leave.approved_by,
@@ -360,12 +491,12 @@ class HRService {
           })),
         };
       }
-      
-      return { count: 0, results: [] };
+
+      return { count: 0, next: null, previous: null, results: [] };
     } catch (error: any) {
       console.warn('Could not fetch my leaves:', error);
       // Return empty response
-      return { count: 0, results: [] };
+      return { count: 0, next: null, previous: null, results: [] };
     }
   }
 
@@ -378,7 +509,7 @@ class HRService {
    */
   async getEmployees(params?: EmployeeFilters): Promise<EmployeeResponse> {
     const response = await api.get<EmployeeResponse>('/hr/users/employees/', { params });
-    return response.data;
+    return response;
   }
 
   /**
@@ -393,7 +524,7 @@ class HRService {
     const params: any = { q: query };
     if (filters?.category) params.category = filters.category;
     if (filters?.department) params.department = filters.department;
-    
+
     const response = await api.get<{ count: number; results: Employee[] }>('/hr/users/search/', { params });
     return response as any;
   }
@@ -415,7 +546,7 @@ class HRService {
    */
   async getEmployee(id: number): Promise<Employee> {
     const response = await api.get<Employee>(`/hr/users/${id}/`);
-    return response.data;
+    return response;
   }
 
   /**
@@ -432,7 +563,7 @@ class HRService {
    */
   async getTeamMembers(): Promise<Employee[]> {
     const response = await api.get<EmployeeResponse>('/hr/users/employees/');
-    return response.data.results;
+    return response.results;
   }
 
   /**
@@ -440,7 +571,7 @@ class HRService {
    */
   async updateEmployee(id: number, data: Partial<Employee>): Promise<Employee> {
     const response = await api.patch<Employee>(`/hr/users/${id}/`, data);
-    return response.data;
+    return response;
   }
 
   // ============================================================================
@@ -455,7 +586,7 @@ class HRService {
     const response = await api.get<HolidayResponse>('/hr/holidays/', {
       params: { year: currentYear },
     });
-    return response.data.results;
+    return response.results;
   }
 
   /**
@@ -466,15 +597,31 @@ class HRService {
       const response = await api.get<{ is_holiday: boolean }>('/hr/holidays/check/', {
         params: { date },
       });
-      return response.data.is_holiday;
+      return response.is_holiday;
     } catch (error) {
       return false;
     }
   }
 
+  /**
+   * Get all teams
+   */
+  async getTeams(): Promise<Team[]> {
+    const response = await api.get<Team[]>('/hr/teams/');
+    return response as any;
+  }
+
   // ============================================================================
   // REIMBURSEMENT MANAGEMENT
   // ============================================================================
+
+  /**
+   * Create a new employee
+   */
+  async createEmployee(data: Partial<Employee>): Promise<Employee> {
+    const response = await api.post<Employee>('/hr/users/', data);
+    return response;
+  }
 
   /**
    * Get all reimbursement requests
@@ -487,7 +634,7 @@ class HRService {
       const response = await api.get<{ results: Reimbursement[] }>('/finance_management/reimbursements/', {
         params,
       });
-      const data: any = response.data;
+      const data: any = response;
       const results = data?.results || data || [];
       return {
         count: results.length,
@@ -508,7 +655,7 @@ class HRService {
    */
   async getReimbursement(id: number): Promise<Reimbursement> {
     const response = await api.get<Reimbursement>(`/finance_management/reimbursements/${id}/`);
-    const data: any = response.data;
+    const data: any = response;
     return {
       ...data,
       status: data.latest_status?.status || 'pending',
@@ -520,7 +667,7 @@ class HRService {
    */
   async createReimbursement(data: any): Promise<Reimbursement> {
     const response = await api.post<Reimbursement>('/finance_management/reimbursements/', data);
-    return response.data as any;
+    return response as any;
   }
 
   /**
@@ -540,18 +687,21 @@ class HRService {
   }
 
   /**
+   * Delete a reimbursement request
+   */
+  async deleteReimbursement(id: number): Promise<void> {
+    await api.delete(`/finance_management/reimbursements/${id}/`);
+  }
+
+  /**
    * Upload reimbursement photo/document
    */
   async uploadReimbursementPhoto(reimbursementId: number, photo: any): Promise<any> {
     const formData = new FormData();
     formData.append('reimbursement_request', reimbursementId.toString());
     formData.append('photo', photo);
-    
-    const response = await api.post('/finance_management/reimbursement-photos/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+
+    const response = await api.post('/finance_management/reimbursement-photos/', formData);
     return response;
   }
 
@@ -569,7 +719,7 @@ class HRService {
   }> {
     try {
       const { results } = await this.getReimbursements();
-      
+
       const stats = {
         total: results.length,
         pending: results.filter(r => r.status === 'pending').length,
@@ -580,7 +730,7 @@ class HRService {
         pending_amount: results.filter(r => r.status === 'pending')
           .reduce((sum, r) => sum + Number(r.reimbursement_amount || 0), 0),
       };
-      
+
       return stats;
     } catch (error) {
       console.error('Error getting reimbursement statistics:', error);
@@ -651,8 +801,8 @@ class HRService {
     early_departures: number;
   }> {
     try {
-      const response = await api.get('/hr/attendance/my-percentage/');
-      return response.data;
+      const response = await api.get<any>('/hr/attendance/my-percentage/');
+      return response;
     } catch (error) {
       console.log('⚠️ Attendance API not available, using fallback');
       // Fallback for development
@@ -675,8 +825,8 @@ class HRService {
       const params: any = {};
       if (fromDate) params.from_date = fromDate;
       if (toDate) params.to_date = toDate;
-      const response = await api.get('/hr/attendance/my-attendance/', { params });
-      return response.data;
+      const response = await api.get<any>('/hr/attendance/my-attendance/', { params });
+      return response;
     } catch (error) {
       console.log('⚠️ Attendance records API not available');
       return [];
@@ -694,8 +844,8 @@ class HRService {
     try {
       console.log('📊 Fetching projects for user:', userId);
       const response = await api.get(`/hr/users/${userId}/projects/`);
-      const data = Array.isArray(response) ? response : 
-                   (response as any)?.data || [];
+      const data = Array.isArray(response) ? response :
+        (response as any)?.data || [];
       console.log('✅ User projects:', data.length);
       return data;
     } catch (error: any) {
@@ -716,8 +866,8 @@ class HRService {
     try {
       console.log('🎯 Fetching skills for user:', userId);
       const response = await api.get(`/hr/users/${userId}/skills/`);
-      const data = Array.isArray(response) ? response : 
-                   (response as any)?.data || [];
+      const data = Array.isArray(response) ? response :
+        (response as any)?.data || [];
       console.log('✅ User skills:', data.length);
       return data;
     } catch (error: any) {
@@ -737,8 +887,8 @@ class HRService {
     try {
       console.log('🏆 Fetching certifications for user:', userId);
       const response = await api.get(`/hr/users/${userId}/certifications/`);
-      const data = Array.isArray(response) ? response : 
-                   (response as any)?.data || [];
+      const data = Array.isArray(response) ? response :
+        (response as any)?.data || [];
       console.log('✅ User certifications:', data.length);
       return data;
     } catch (error: any) {
@@ -778,8 +928,8 @@ class HRService {
     try {
       console.log('🎯 Fetching goals for user:', userId);
       const response = await api.get(`/hr/users/${userId}/goals/`);
-      const data = Array.isArray(response) ? response : 
-                   (response as any)?.data || [];
+      const data = Array.isArray(response) ? response :
+        (response as any)?.data || [];
       console.log('✅ User goals:', data.length);
       return data;
     } catch (error: any) {
@@ -872,8 +1022,8 @@ class HRService {
       const response = await api.get(`/dashboard/activities/user/${userId}/`, {
         params: { limit }
       });
-      const data = Array.isArray(response) ? response : 
-                   (response as any)?.data || [];
+      const data = Array.isArray(response) ? response :
+        (response as any)?.data || [];
       console.log('✅ User activities:', data.length);
       return data;
     } catch (error: any) {
@@ -1178,7 +1328,7 @@ class HRService {
       console.log('📤 Uploading resume');
       const formData = new FormData();
       formData.append('resume_file', file);
-      
+
       const response = await api.post('/hr/resume/upload/', formData);
       console.log('✅ Resume uploaded');
       return response;

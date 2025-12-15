@@ -60,19 +60,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           <Ionicons
             name={icon}
             size={64}
-            color={iconColor || colors.text.tertiary}
+            color={iconColor || colors.textTertiary}
           />
         </View>
       )}
 
       {/* Title */}
-      <Text style={[styles.title, { color: colors.text.primary }]}>
+      <Text style={[styles.title, { color: colors.text }]}>
         {title}
       </Text>
 
       {/* Subtitle */}
       {subtitle && (
-        <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           {subtitle}
         </Text>
       )}
