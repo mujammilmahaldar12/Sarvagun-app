@@ -18,6 +18,7 @@ import { useCreateSale, useUpdateSale, useSale } from '@/hooks/useFinanceQueries
 import { useEvents } from '@/hooks/useEventsQueries';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { designSystem } from '@/constants/designSystem';
+import financeService from '@/services/finance.service';
 import type { SalesPayment } from '@/types/finance';
 
 const PAYMENT_STATUS_OPTIONS = [
@@ -67,6 +68,7 @@ export default function AddSaleScreen() {
   const [installments, setInstallments] = useState<Array<Partial<SalesPayment>>>([]);
   const [editingInstallment, setEditingInstallment] = useState<Partial<SalesPayment> | null>(null);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Prevent re-loading data after initial load (causes infinite loop with mutations)
   const isInitialized = React.useRef(false);
@@ -110,6 +112,7 @@ export default function AddSaleScreen() {
 
       if (existingSale.payments && existingSale.payments.length > 0) {
         setInstallments(existingSale.payments.map(p => ({
+          id: p.id,
           payment_amount: p.payment_amount,
           payment_date: p.payment_date,
           mode_of_payment: p.mode_of_payment,
@@ -196,6 +199,21 @@ export default function AddSaleScreen() {
       return;
     }
 
+    // Calculate total if this installment is added/updated
+    let currentTotal = 0;
+    if (editingIndex >= 0) {
+      // Exclude the installment being edited from current total
+      currentTotal = installments.reduce((sum, inst, idx) =>
+        idx === editingIndex ? sum : sum + (Number(inst.payment_amount) || 0), 0);
+    } else {
+      currentTotal = installments.reduce((sum, inst) => sum + (Number(inst.payment_amount) || 0), 0);
+    }
+
+    if (currentTotal + paymentAmount > netAmount) {
+      setErrorMessage(`Payment amount exceeds balance due. Max: ₹${(netAmount - currentTotal).toLocaleString('en-IN')}`);
+      return;
+    }
+
     const installmentToSave = {
       ...editingInstallment,
       payment_amount: paymentAmount,
@@ -241,6 +259,7 @@ export default function AddSaleScreen() {
       notes: '',
     });
     setEditingIndex(-1);
+    setErrorMessage(null);
     setShowPaymentModal(true);
   };
 
@@ -248,6 +267,7 @@ export default function AddSaleScreen() {
   const handleEditInstallment = (index: number) => {
     setEditingInstallment({ ...installments[index] });
     setEditingIndex(index);
+    setErrorMessage(null);
     setShowPaymentModal(true);
   };
 
@@ -293,27 +313,66 @@ export default function AddSaleScreen() {
         payment_status: formData.payment_status,
       };
 
-      // Add payments if any
-      if (installments.length > 0) {
-        saleData.payments = installments.map(inst => ({
-          payment_amount: Number(inst.payment_amount),
-          payment_date: inst.payment_date,
-          mode_of_payment: inst.mode_of_payment,
-          notes: inst.notes || '',
-        }));
-      }
+      let savedSaleId: number;
 
       if (isEditMode && saleId) {
+        // Update the sale
         await updateSaleMutation.mutateAsync({ id: saleId, data: saleData });
-        Alert.alert('Success', 'Sale updated successfully', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        savedSaleId = saleId;
+        console.log('✅ Sale updated:', savedSaleId);
       } else {
-        await createSaleMutation.mutateAsync(saleData);
-        Alert.alert('Success', 'Sale created successfully', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        // Create new sale
+        const createdSale = await createSaleMutation.mutateAsync(saleData);
+        savedSaleId = createdSale.id;
+        console.log('✅ Sale created:', savedSaleId);
       }
+
+      // Now create payments separately via the sales-payments endpoint
+      if (installments.length > 0) {
+        console.log('📤 Creating', installments.length, 'payments for sale', savedSaleId);
+
+        for (const inst of installments) {
+          // If payment already has an ID, it's an existing payment - skip creating it
+          if (inst.id) {
+            console.log('⏭️ Skipping existing payment:', inst.id);
+            continue;
+          }
+
+          try {
+            const paymentData = {
+              sale: savedSaleId,
+              payment_amount: Number(inst.payment_amount),
+              payment_date: inst.payment_date,
+              mode_of_payment: inst.mode_of_payment,
+              notes: inst.notes || '',
+            };
+            console.log('📤 Creating payment:', paymentData);
+            await financeService.addSalePayment(paymentData as any);
+            console.log('✅ Payment created successfully');
+          } catch (paymentError: any) {
+            console.error('❌ Error creating payment:', paymentError);
+            // Continue with other payments even if one fails
+          }
+        }
+      }
+
+      // Show success message
+      Alert.alert(
+        'Success',
+        isEditMode ? 'Sale updated successfully' : 'Sale created successfully'
+      );
+
+      // Navigate immediately after showing alert
+      if (isEditMode) {
+        // For edit mode, go back to previous screen (Sales Details)
+        router.back();
+      } else if (savedSaleId) {
+        // For create mode, navigate to the new sale's details
+        router.push(`/(modules)/finance/sales/${savedSaleId}` as any);
+      } else {
+        router.back();
+      }
+
     } catch (error: any) {
       console.error('Error saving sale:', error);
       Alert.alert('Error', error.message || 'Failed to save sale');
@@ -358,7 +417,7 @@ export default function AddSaleScreen() {
         showBack
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
         {/* Event Selection */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Event Details" />
@@ -387,6 +446,12 @@ export default function AddSaleScreen() {
             keyboardType="numeric"
             leftIcon="cash-outline"
             required
+            onFocus={() => {
+              if (Number(formData.amount) === 0) updateField('amount', '');
+            }}
+            onBlur={() => {
+              if (formData.amount === '') updateField('amount', '0');
+            }}
           />
 
           <Input
@@ -396,6 +461,12 @@ export default function AddSaleScreen() {
             placeholder="0"
             keyboardType="numeric"
             leftIcon="pricetag-outline"
+            onFocus={() => {
+              if (Number(formData.discount) === 0) updateField('discount', '');
+            }}
+            onBlur={() => {
+              if (formData.discount === '') updateField('discount', '0');
+            }}
           />
 
           {/* Summary Card */}
@@ -575,12 +646,22 @@ export default function AddSaleScreen() {
                   </Pressable>
                 </View>
 
+                {errorMessage && (
+                  <View style={{ backgroundColor: theme.error + '20', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="alert-circle" size={20} color={theme.error} />
+                    <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.error, flex: 1 }}>
+                      {errorMessage}
+                    </Text>
+                  </View>
+                )}
+
                 <Input
                   label="Payment Amount"
-                  value={editingInstallment?.payment_amount ? String(editingInstallment.payment_amount) : ''}
-                  onChangeText={(text: string) => {
-                    const numValue = text ? Number(text.replace(/[^0-9.]/g, '')) : 0;
-                    setEditingInstallment({ ...editingInstallment, payment_amount: numValue || undefined as any });
+                  value={editingInstallment?.payment_amount !== undefined ? String(editingInstallment.payment_amount) : ''}
+                  onChangeText={(text) => {
+                    const value = text === '' ? undefined : Number(text);
+                    setEditingInstallment({ ...editingInstallment, payment_amount: value as any });
+                    if (errorMessage) setErrorMessage(null);
                   }}
                   placeholder="Enter amount"
                   keyboardType="numeric"

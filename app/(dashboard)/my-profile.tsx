@@ -8,29 +8,31 @@ import {
   Platform,
   StatusBar,
   RefreshControl,
+  Pressable, // Added Pressable
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { moduleColors, getAlphaColor } from '@/constants/designSystem';
 import { useAuthStore } from '@/store/authStore';
-import { 
-  useMyProfile, 
-  useTeamMembers, 
-  useUserProjects, 
-  useUserSkills, 
-  useUserCertifications, 
-  useUserPerformance, 
-  useUserGoals, 
+import {
+  useMyProfile,
+  useTeamMembers,
+  useUserProjects,
+  useUserSkills,
+  useUserCertifications,
+  useUserPerformance,
+  useUserGoals,
   useUserActivities,
   useUserEducation,
   useUserExperience,
-  useUserSocialLinks 
+  useUserSocialLinks,
+  useAttendancePercentage
 } from '@/hooks/useHRQueries';
-import { 
-  Avatar, 
-  AnimatedPressable, 
-  LoadingState, 
+import {
+  Avatar,
+  AnimatedPressable,
+  LoadingState,
   ErrorBoundary,
   Skeleton,
   PerformanceChart,
@@ -74,14 +76,14 @@ export default function MyProfileScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  
+
   const [activeTab, setActiveTab] = useState('overview');
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch real data
   const { data: profileData, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile();
   const { data: teamMembers, isLoading: teamLoading } = useTeamMembers();
-  
+
   // Fetch user profile data (use current user ID)
   const userId = profileData?.id || user?.id;
   const { data: userProjects = [], isLoading: projectsLoading } = useUserProjects(userId!);
@@ -101,10 +103,10 @@ export default function MyProfileScreen() {
     if (!currentUser) return null;
 
     // Type guard for date field
-    const joinDate = 'date_joined' in currentUser ? currentUser.date_joined : 
-                     ('date_of_joining' in currentUser ? currentUser.date_of_joining : undefined);
+    const joinDate = 'date_joined' in currentUser ? currentUser.date_joined :
+      ('date_of_joining' in currentUser ? currentUser.date_of_joining : undefined);
     const tenureMonths = calculateTenureMonths(joinDate);
-    
+
     // Use real API data only
     const skills = userSkills;
     const certifications = userCertifications;
@@ -132,17 +134,17 @@ export default function MyProfileScreen() {
 
   // Calculate real project stats from API data
   const projectStats = useMemo(() => {
-    const completedProjects = userProjects.filter((p: any) => 
+    const completedProjects = userProjects.filter((p: any) =>
       p.status === 'completed' || p.status === 'Completed'
     ).length;
-    
-    const totalTasks = userProjects.reduce((sum: number, p: any) => 
+
+    const totalTasks = userProjects.reduce((sum: number, p: any) =>
       sum + (p.completed_tasks || 0), 0
     );
-    
-    const avgRating = userPerformance?.average_rating || 
-                     userPerformance?.rating || 4.6;
-    
+
+    const avgRating = userPerformance?.average_rating ||
+      userPerformance?.rating || 4.6;
+
     return {
       projectsCompleted: completedProjects || userProjects.length || 8,
       tasksCompleted: totalTasks || 34,
@@ -186,7 +188,7 @@ export default function MyProfileScreen() {
       member.id !== enhancedProfile.id &&
       member.reports_to !== enhancedProfile.id
   ) || [];
-  
+
   // Check if we have any team data to display
   const hasTeamData = !!manager || directReports.length > 0 || peers.length > 0;
 
@@ -208,16 +210,16 @@ export default function MyProfileScreen() {
 
       {/* Minimal Glass Header */}
       <View style={[styles.header, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)', borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-        <AnimatedPressable 
-          onPress={() => router.back()} 
+        <AnimatedPressable
+          onPress={() => router.back()}
           hapticType="light"
           style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
         >
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </AnimatedPressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
-        <AnimatedPressable 
-          onPress={() => router.push('/(settings)/account')} 
+        <AnimatedPressable
+          onPress={() => router.push('/(settings)/account')}
           hapticType="light"
           style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
         >
@@ -229,8 +231,8 @@ export default function MyProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.primary}
             colors={[theme.primary]}
@@ -245,15 +247,15 @@ export default function MyProfileScreen() {
               size={90}
               source={enhancedProfile.photo ? { uri: enhancedProfile.photo } : undefined}
               name={enhancedProfile.full_name}
-              onlineStatus={'is_active' in enhancedProfile ? enhancedProfile.is_active : 
-                          ('status' in enhancedProfile && enhancedProfile.status === 'active')}
+              onlineStatus={'is_active' in enhancedProfile ? enhancedProfile.is_active :
+                ('status' in enhancedProfile && enhancedProfile.status === 'active')}
             />
           </View>
-          
+
           <Text style={[styles.profileName, { color: theme.text }]}>
             {enhancedProfile.full_name || 'User Name'}
           </Text>
-          
+
           {'headline' in enhancedProfile && enhancedProfile.headline ? (
             <Text style={[styles.profileHeadline, { color: theme.primary }]}>
               {enhancedProfile.headline}
@@ -263,7 +265,7 @@ export default function MyProfileScreen() {
               {enhancedProfile.designation || 'Team Member'}
             </Text>
           )}
-          
+
           <View style={styles.badgeRow}>
             {enhancedProfile.department && (
               <View style={[styles.infoBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
@@ -293,7 +295,7 @@ export default function MyProfileScreen() {
               </Text>
               <Text style={[styles.statText, { color: theme.textSecondary }]}>Tenure</Text>
             </View>
-            
+
             <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)' }]}>
               <Ionicons name="briefcase-outline" size={18} color={moduleColors.finance.main} />
               <Text style={[styles.statNumber, { color: theme.text }]}>
@@ -301,7 +303,7 @@ export default function MyProfileScreen() {
               </Text>
               <Text style={[styles.statText, { color: theme.textSecondary }]}>Projects</Text>
             </View>
-            
+
             <View style={[styles.statBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)' }]}>
               <Ionicons name="checkmark-circle-outline" size={18} color={moduleColors.projects.main} />
               <Text style={[styles.statNumber, { color: theme.text }]}>
@@ -397,13 +399,13 @@ export default function MyProfileScreen() {
                         progress={goal.progress || 0}
                         current={goal.current_value?.toString() || '0'}
                         target={goal.target_value?.toString() || '100'}
-                        color={goal.category === 'personal' ? moduleColors.projects.main : 
-                               goal.category === 'quarterly' ? moduleColors.finance.main : 
-                               goal.category === 'team' ? moduleColors.events.main : 
-                               moduleColors.hr.main}
-                        icon={goal.category === 'personal' ? 'person' : 
-                              goal.category === 'quarterly' ? 'calendar' : 
-                              goal.category === 'team' ? 'people' : 'briefcase'}
+                        color={goal.category === 'personal' ? moduleColors.projects.main :
+                          goal.category === 'quarterly' ? moduleColors.finance.main :
+                            goal.category === 'team' ? moduleColors.events.main :
+                              moduleColors.hr.main}
+                        icon={goal.category === 'personal' ? 'person' :
+                          goal.category === 'quarterly' ? 'calendar' :
+                            goal.category === 'team' ? 'people' : 'briefcase'}
                         dueDate={goal.target_date ? new Date(goal.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined}
                       />
                     ))}
@@ -430,16 +432,16 @@ export default function MyProfileScreen() {
                       title: activity.title || activity.action || 'Activity',
                       description: activity.description || activity.message || '',
                       timestamp: activity.timestamp || activity.created_at || new Date(),
-                      icon: activity.icon || (activity.type === 'task' ? 'checkmark-circle' : 
-                                             activity.type === 'project' ? 'briefcase' : 
-                                             activity.type === 'leave' ? 'calendar-outline' : 
-                                             activity.type === 'event' ? 'calendar' : 
-                                             activity.type === 'achievement' ? 'star' : 'flash'),
-                      color: activity.color || (activity.type === 'task' ? moduleColors.finance.main : 
-                                               activity.type === 'project' ? moduleColors.projects.main : 
-                                               activity.type === 'leave' ? moduleColors.leave.main : 
-                                               activity.type === 'event' ? moduleColors.events.main : 
-                                               moduleColors.hr.main),
+                      icon: activity.icon || (activity.type === 'task' ? 'checkmark-circle' :
+                        activity.type === 'project' ? 'briefcase' :
+                          activity.type === 'leave' ? 'calendar-outline' :
+                            activity.type === 'event' ? 'calendar' :
+                              activity.type === 'achievement' ? 'star' : 'flash'),
+                      color: activity.color || (activity.type === 'task' ? moduleColors.finance.main :
+                        activity.type === 'project' ? moduleColors.projects.main :
+                          activity.type === 'leave' ? moduleColors.leave.main :
+                            activity.type === 'event' ? moduleColors.events.main :
+                              moduleColors.hr.main),
                     }))}
                     maxItems={10}
                   />
@@ -507,10 +509,10 @@ export default function MyProfileScreen() {
                       <Text style={[styles.infoValue, { color: theme.text }]}>
                         {enhancedProfile.date_joined
                           ? new Date(enhancedProfile.date_joined).toLocaleDateString('en-US', {
-                              month: 'long',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
                           : 'N/A'}
                       </Text>
                     </View>
@@ -612,77 +614,77 @@ export default function MyProfileScreen() {
               </View>
 
               {/* Social Links Section */}
-              {userSocialLinks && Object.keys(userSocialLinks).some(key => 
+              {userSocialLinks && Object.keys(userSocialLinks).some(key =>
                 key !== 'id' && key !== 'user' && userSocialLinks[key as keyof typeof userSocialLinks]
               ) && (
-                <View style={styles.contentSection}>
-                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                    Professional Links
-                  </Text>
-                  <Card style={styles.socialLinksCard}>
-                    {userSocialLinks.linkedin && (
-                      <Pressable 
-                        style={styles.socialLinkRow}
-                        onPress={() => console.log('Open LinkedIn:', userSocialLinks.linkedin)}
-                      >
-                        <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
-                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
-                          LinkedIn
-                        </Text>
-                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
-                      </Pressable>
-                    )}
-                    {userSocialLinks.github && (
-                      <Pressable 
-                        style={styles.socialLinkRow}
-                        onPress={() => console.log('Open GitHub:', userSocialLinks.github)}
-                      >
-                        <Ionicons name="logo-github" size={24} color={isDark ? '#FFF' : '#000'} />
-                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
-                          GitHub
-                        </Text>
-                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
-                      </Pressable>
-                    )}
-                    {userSocialLinks.portfolio && (
-                      <Pressable 
-                        style={styles.socialLinkRow}
-                        onPress={() => console.log('Open Portfolio:', userSocialLinks.portfolio)}
-                      >
-                        <Ionicons name="briefcase-outline" size={24} color={theme.primary} />
-                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
-                          Portfolio
-                        </Text>
-                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
-                      </Pressable>
-                    )}
-                    {userSocialLinks.twitter && (
-                      <Pressable 
-                        style={styles.socialLinkRow}
-                        onPress={() => console.log('Open Twitter:', userSocialLinks.twitter)}
-                      >
-                        <Ionicons name="logo-twitter" size={24} color="#1DA1F2" />
-                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
-                          Twitter
-                        </Text>
-                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
-                      </Pressable>
-                    )}
-                    {userSocialLinks.website && (
-                      <Pressable 
-                        style={styles.socialLinkRow}
-                        onPress={() => console.log('Open Website:', userSocialLinks.website)}
-                      >
-                        <Ionicons name="globe-outline" size={24} color={theme.primary} />
-                        <Text style={[styles.socialLinkText, { color: theme.text }]}>
-                          Website
-                        </Text>
-                        <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
-                      </Pressable>
-                    )}
-                  </Card>
-                </View>
-              )}
+                  <View style={styles.contentSection}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                      Professional Links
+                    </Text>
+                    <Card style={styles.socialLinksCard}>
+                      {userSocialLinks.linkedin && (
+                        <Pressable
+                          style={styles.socialLinkRow}
+                          onPress={() => console.log('Open LinkedIn:', userSocialLinks.linkedin)}
+                        >
+                          <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
+                          <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                            LinkedIn
+                          </Text>
+                          <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                        </Pressable>
+                      )}
+                      {userSocialLinks.github && (
+                        <Pressable
+                          style={styles.socialLinkRow}
+                          onPress={() => console.log('Open GitHub:', userSocialLinks.github)}
+                        >
+                          <Ionicons name="logo-github" size={24} color={isDark ? '#FFF' : '#000'} />
+                          <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                            GitHub
+                          </Text>
+                          <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                        </Pressable>
+                      )}
+                      {userSocialLinks.portfolio && (
+                        <Pressable
+                          style={styles.socialLinkRow}
+                          onPress={() => console.log('Open Portfolio:', userSocialLinks.portfolio)}
+                        >
+                          <Ionicons name="briefcase-outline" size={24} color={theme.primary} />
+                          <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                            Portfolio
+                          </Text>
+                          <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                        </Pressable>
+                      )}
+                      {userSocialLinks.twitter && (
+                        <Pressable
+                          style={styles.socialLinkRow}
+                          onPress={() => console.log('Open Twitter:', userSocialLinks.twitter)}
+                        >
+                          <Ionicons name="logo-twitter" size={24} color="#1DA1F2" />
+                          <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                            Twitter
+                          </Text>
+                          <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                        </Pressable>
+                      )}
+                      {userSocialLinks.website && (
+                        <Pressable
+                          style={styles.socialLinkRow}
+                          onPress={() => console.log('Open Website:', userSocialLinks.website)}
+                        >
+                          <Ionicons name="globe-outline" size={24} color={theme.primary} />
+                          <Text style={[styles.socialLinkText, { color: theme.text }]}>
+                            Website
+                          </Text>
+                          <Ionicons name="open-outline" size={18} color={theme.textSecondary} />
+                        </Pressable>
+                      )}
+                    </Card>
+                  </View>
+                )}
             </View>
           )}
 
@@ -749,6 +751,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...getTypographyStyle('xl', 'bold'),
   },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollContent: {
     paddingTop: spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 100 : 80,
@@ -805,7 +814,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   badgeLabel: {
-    ...getTypographyStyle('2xs', 'medium'),
+    ...getTypographyStyle('xs', 'medium'),
     textTransform: 'capitalize',
   },
   bio: {
@@ -833,7 +842,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statText: {
-    ...getTypographyStyle('2xs', 'medium'),
+    ...getTypographyStyle('xs', 'medium'),
   },
   tabsContainer: {
     paddingHorizontal: spacing.lg,

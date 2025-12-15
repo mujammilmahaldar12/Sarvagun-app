@@ -188,6 +188,17 @@ export const useLeaveBalance = (employeeId?: number) => {
 };
 
 /**
+ * Get leave balances as array (for dedicated balance page)
+ */
+export const useLeaveBalancesList = () => {
+  return useQuery({
+    queryKey: [...hrQueryKeys.all, 'balance-list'] as const,
+    queryFn: () => hrService.getLeaveBalancesList(),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+/**
  * Get leave statistics
  */
 export const useLeaveStatistics = () => {

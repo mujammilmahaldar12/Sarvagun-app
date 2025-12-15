@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   },
   kpiCardHorizontal: {
     width: SCREEN_WIDTH * 0.75,
-    height: 160,
+    height: 180,
   },
   modulesGrid: {
     flexDirection: 'row',

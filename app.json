@@ -4,7 +4,7 @@
     "slug": "Sarvagun",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/sarvagun_logo.jpg",
     "scheme": "sarvagun",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -12,7 +12,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -39,19 +41,16 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/icon.png",
+          "image": "./assets/images/sarvagun_logo.jpg",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#ffffff"
         }
       ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/sarvagun_logo.jpg",
           "color": "#6D376D",
           "defaultChannel": "sarvagun-notifications",
           "sounds": []

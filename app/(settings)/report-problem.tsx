@@ -158,7 +158,7 @@ export default function ReportProblemScreen() {
       if (screenshot) {
         const uriParts = screenshot.uri.split('.');
         const fileType = uriParts[uriParts.length - 1];
-        
+
         formData.append('errorpage', {
           uri: screenshot.uri,
           name: `problem_screenshot_${Date.now()}.${fileType}`,
@@ -171,11 +171,17 @@ export default function ReportProblemScreen() {
 
       Alert.alert(
         'Success',
-        'Your problem report has been submitted successfully. Our team will review it shortly.',
+        'Your problem report has been submitted successfully.',
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(dashboard)/profile');
+              }
+            },
           },
         ]
       );

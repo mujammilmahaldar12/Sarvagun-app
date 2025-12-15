@@ -1,18 +1,19 @@
-﻿import { useState, useRef, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
+﻿import { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
   Keyboard,
+  Image,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
-import LottieView from "lottie-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
@@ -23,15 +24,14 @@ import Animated, {
   withSequence,
   withRepeat,
   Easing,
-  interpolate,
   interpolateColor,
 } from 'react-native-reanimated';
 import { useAuthStore } from "@/store/authStore";
-import { designSystem } from "@/constants/designSystem";
 import { useFirstTimeUser } from "@/hooks/useFirstTimeUser";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
-import { ParticleSystem } from '@/components/ui/ParticleSystem';
-import { GRADIENT_PRESETS } from '@/utils/gradientAnimations';
+import { BlurView } from 'expo-blur';
+
+const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -46,401 +46,388 @@ export default function LoginScreen() {
   const { isFirstTime } = useFirstTimeUser();
   const { triggerHaptic } = useHapticFeedback();
 
-  // Clean, professional animations
+  // Animations
   const fadeAnim = useSharedValue(0);
-  const slideUp = useSharedValue(20);
-  const logoScale = useSharedValue(0.96);
+  const slideUp = useSharedValue(50);
   const buttonScale = useSharedValue(1);
-  
-  // Subtle input focus animations
-  const usernameGlow = useSharedValue(0);
-  const passwordGlow = useSharedValue(0);
+  const usernameBorder = useSharedValue(0);
+  const passwordBorder = useSharedValue(0);
 
   useEffect(() => {
-    // Smooth entrance
-    fadeAnim.value = withTiming(1, { 
-      duration: 600, 
-      easing: Easing.out(Easing.cubic) 
-    });
-    
-    slideUp.value = withTiming(0, { 
-      duration: 600, 
-      easing: Easing.out(Easing.cubic) 
-    });
-    
-    logoScale.value = withTiming(1, { 
-      duration: 600, 
-      easing: Easing.out(Easing.cubic) 
-    });
+    // Entrance Animation
+    fadeAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
+    slideUp.value = withSpring(0, { damping: 15 });
   }, []);
-  
-  // Minimal input focus
+
+  // Focus Animations
   useEffect(() => {
-    usernameGlow.value = withTiming(usernameFocused ? 1 : 0, { duration: 200 });
+    usernameBorder.value = withTiming(usernameFocused ? 1 : 0, { duration: 250 });
   }, [usernameFocused]);
-  
+
   useEffect(() => {
-    passwordGlow.value = withTiming(passwordFocused ? 1 : 0, { duration: 200 });
+    passwordBorder.value = withTiming(passwordFocused ? 1 : 0, { duration: 250 });
   }, [passwordFocused]);
 
   const handleLogin = async () => {
     if (!username || !password) {
       triggerHaptic('error');
-      Alert.alert("Error", "Please enter username and password");
+      // Shake effect on button
+      buttonScale.value = withSequence(
+        withTiming(1.05, { duration: 50 }),
+        withTiming(0.95, { duration: 50 }),
+        withTiming(1, { duration: 50 })
+      );
+      Alert.alert("Required", "Please enter both username and password");
       return;
     }
 
-    // Subtle button press
-    buttonScale.value = withSequence(
-      withTiming(0.98, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
-
+    buttonScale.value = withSequence(withTiming(0.95, { duration: 100 }), withTiming(1, { duration: 100 }));
     setIsLoading(true);
     Keyboard.dismiss();
-    
+
     try {
       const success = await login(username, password);
       if (success) {
-        // Clean exit
-        fadeAnim.value = withTiming(0, { duration: 300 });
-        
-        setTimeout(() => {
-          if (isFirstTime) {
-            router.replace("/welcome-celebration");
-          } else {
-            router.replace("/(dashboard)/home");
-          }
-        }, 300);
+        if (isFirstTime) {
+          router.replace("/welcome-celebration");
+        } else {
+          router.replace("/(dashboard)/home");
+        }
       } else {
-        // Minimal shake
-        buttonScale.value = withSequence(
-          withTiming(1.02, { duration: 80 }),
-          withTiming(0.98, { duration: 80 }),
-          withTiming(1, { duration: 80 })
-        );
-        Alert.alert(
-          "Login Failed", 
-          "Invalid username or password. Please check your credentials and try again."
-        );
+        triggerHaptic('error');
+        Alert.alert("Login Failed", "Invalid credentials. Please try again.");
       }
     } catch (error) {
       console.error("Login error:", error);
-      Alert.alert(
-        "Connection Error", 
-        "Unable to connect to the server. Please check your internet connection and try again."
-      );
+      Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Clean animated styles
   const containerStyle = useAnimatedStyle(() => ({
     opacity: fadeAnim.value,
     transform: [{ translateY: slideUp.value }],
   }));
-  
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: fadeAnim.value,
-    transform: [{ scale: logoScale.value }],
+
+  const usernameStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(usernameBorder.value, [0, 1], ['#E5E7EB', '#8B5CF6']),
+    borderWidth: interpolateColor(usernameBorder.value, [0, 1], [1, 1.5]),
+    backgroundColor: interpolateColor(usernameBorder.value, [0, 1], ['#F9FAFB', '#FFFFFF']),
   }));
-  
-  const usernameInputStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      usernameGlow.value,
-      [0, 1],
-      ['rgba(139, 92, 246, 0.2)', 'rgba(109, 55, 109, 0.6)']
-    ),
+
+  const passwordStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(passwordBorder.value, [0, 1], ['#E5E7EB', '#8B5CF6']),
+    borderWidth: interpolateColor(passwordBorder.value, [0, 1], [1, 1.5]),
+    backgroundColor: interpolateColor(passwordBorder.value, [0, 1], ['#F9FAFB', '#FFFFFF']),
   }));
-  
-  const passwordInputStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      passwordGlow.value,
-      [0, 1],
-      ['rgba(139, 92, 246, 0.2)', 'rgba(109, 55, 109, 0.6)']
-    ),
-  }));
-  
-  const buttonStyle = useAnimatedStyle(() => ({
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
   }));
 
   return (
-    <>
-      <StatusBar barStyle="light-content" backgroundColor="#1A0B2E" />
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Background Decors */}
+      <View style={styles.backgroundContainer}>
+        <View style={styles.purpleBlob} />
+        <View style={styles.pinkBlob} />
+        <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="light" />
+      </View>
+
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.container}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
       >
-        <LinearGradient
-          colors={["#1A0B2E", "#2D1545", "#3E1F5C"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.gradient}
-        >
-          {/* Subtle purple background blur circles */}
-          <Animated.View style={[styles.bgBlur, styles.bgBlur1, containerStyle]} />
-          <Animated.View style={[styles.bgBlur, styles.bgBlur2, containerStyle]} />
-          
-          <Animated.View style={[styles.content, containerStyle]}>
-            {/* Logo with rotation animation */}
-            <Animated.View style={[styles.logoContainer, logoStyle]}>
-              <LottieView
-                source={require("@/assets/animations/sarvagun.json")}
-                autoPlay
-                loop
-                style={styles.lottieAnimation}
+        <Animated.View style={[styles.contentContainer, containerStyle]}>
+          {/* Header Section */}
+          <View style={styles.header}>
+            <View style={styles.logoWrapper}>
+              <Image
+                source={require("@/assets/images/sarvagun_logo.jpg")}
+                style={styles.logo}
+                resizeMode="contain"
               />
-            </Animated.View>
-
-            {/* Clean welcome message */}
-            <View style={styles.welcomeContainer}>
-              <Text style={styles.title}>Welcome</Text>
-              <Text style={styles.subtitle}>Sign in to your account</Text>
             </View>
+            <Text style={styles.welcomeText}>Welcome Back</Text>
+            <Text style={styles.subtitleText}>Sign in to continue to Sarvagun ERP</Text>
+          </View>
 
-            {/* Enhanced form with animations */}
-            <View style={styles.formContainer}>
-              {/* Clean username input */}
-              <Animated.View style={[styles.inputWrapper, usernameInputStyle]}>
-                <Ionicons 
-                  name="person-outline" 
-                  size={20} 
-                  color={usernameFocused ? "#8B5CF6" : "#9CA3AF"}
-                  style={styles.inputIcon}
-                />
+          {/* Form Section */}
+          <View style={styles.form}>
+            {/* Username Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Username</Text>
+              <Animated.View style={[styles.inputContainer, usernameStyle]}>
+                <Ionicons name="person-outline" size={20} color={usernameFocused ? "#8B5CF6" : "#9CA3AF"} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Username"
-                  placeholderTextColor="#6B7280"
+                  placeholder="Enter your username"
+                  placeholderTextColor="#9CA3AF"
                   value={username}
                   onChangeText={setUsername}
                   onFocus={() => setUsernameFocused(true)}
                   onBlur={() => setUsernameFocused(false)}
                   autoCapitalize="none"
-                  autoComplete="username"
-                  textContentType="username"
-                  editable={!isLoading}
                 />
               </Animated.View>
+            </View>
 
-              {/* Clean password input */}
-              <Animated.View style={[styles.inputWrapper, passwordInputStyle]}>
-                <Ionicons 
-                  name="lock-closed-outline" 
-                  size={20} 
-                  color={passwordFocused ? "#8B5CF6" : "#9CA3AF"}
-                  style={styles.inputIcon}
-                />
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <Animated.View style={[styles.inputContainer, passwordStyle]}>
+                <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? "#8B5CF6" : "#9CA3AF"} />
                 <TextInput
-                  style={[styles.input, styles.passwordInput]}
-                  placeholder="Password"
-                  placeholderTextColor="#6B7280"
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#9CA3AF"
                   value={password}
                   onChangeText={setPassword}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
                   secureTextEntry={!showPassword}
-                  autoComplete="password"
-                  textContentType="password"
-                  editable={!isLoading}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  disabled={isLoading}
-                >
-                  <Ionicons 
-                    name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                    size={20} 
-                    color="#6B7280"
-                  />
-                </TouchableOpacity>
-              </Animated.View>
-
-              {/* Clean login button */}
-              <Animated.View style={buttonStyle}>
-                <TouchableOpacity
-                  style={[
-                    styles.button, 
-                    (isLoading || !username || !password) && styles.buttonDisabled
-                  ]}
-                  onPress={handleLogin}
-                  disabled={isLoading || !username || !password}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={["#6D376D", "#8B5CF6"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.buttonGradient}
-                  >
-                    {isLoading ? (
-                      <View style={styles.buttonContent}>
-                        <LoadingSpinner />
-                        <Text style={styles.buttonText}>Signing in...</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.buttonText}>Sign In</Text>
-                    )}
-                  </LinearGradient>
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#9CA3AF" />
                 </TouchableOpacity>
               </Animated.View>
             </View>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Sarvagun ERP • Powered by BlingSquare</Text>
+            {/* Forgot Password Link */}
+            <TouchableOpacity style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            {/* Login Button */}
+            <Animated.View style={buttonAnimatedStyle}>
+              <TouchableOpacity
+                onPress={handleLogin}
+                disabled={isLoading}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={['#7E22CE', '#A855F7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.button}
+                >
+                  {isLoading ? (
+                    <LoadingSpinner />
+                  ) : (
+                    <Text style={styles.buttonText}>Sign In</Text>
+                  )}
+                  {!isLoading && <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />}
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Biometric Placeholder (Visual Only) */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
             </View>
-          </Animated.View>
-        </LinearGradient>
+
+            <View style={styles.socialRow}>
+              <TouchableOpacity style={styles.socialButton}>
+                <Ionicons name="finger-print-outline" size={24} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton}>
+                <Ionicons name="scan-outline" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Powered by BlingSquare © 2025</Text>
+          </View>
+        </Animated.View>
       </KeyboardAvoidingView>
-    </>
+    </View>
   );
 }
 
-// Loading Spinner Component
-const LoadingSpinner: React.FC = () => {
-  const rotation = useSharedValue(0);
-  
+// Simple Loading Spinner
+const LoadingSpinner = () => {
+  const spinValue = useSharedValue(0);
+
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 1000, easing: Easing.linear }),
-      -1,
-      false
-    );
+    spinValue.value = withRepeat(withTiming(360, { duration: 1000, easing: Easing.linear }), -1);
   }, []);
-  
-  const spinnerStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${spinValue.value}deg` }],
   }));
-  
+
   return (
-    <Animated.View style={spinnerStyle}>
-      <Ionicons name="sync" size={18} color="#FFFFFF" />
+    <Animated.View style={animatedStyle}>
+      <Ionicons name="sync" size={20} color="white" />
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  gradient: {
-    flex: 1,
-    position: 'relative',
+  backgroundContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
-  bgBlur: {
+  purpleBlob: {
     position: 'absolute',
-    borderRadius: 9999,
-    opacity: 0.06,
-    backgroundColor: '#6D376D',
-  },
-  bgBlur1: {
-    width: 300,
-    height: 300,
     top: -100,
     right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(126, 34, 206, 0.1)', // Purple
   },
-  bgBlur2: {
+  pinkBlob: {
+    position: 'absolute',
+    top: 100,
+    left: -100,
     width: 250,
     height: 250,
-    bottom: -50,
-    left: -80,
+    borderRadius: 125,
+    backgroundColor: 'rgba(236, 72, 153, 0.1)', // Pink
   },
-  content: {
+  keyboardView: {
     flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    paddingTop: 20,
-    paddingBottom: 40,
+    justifyContent: 'center',
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 32,
+  contentContainer: {
+    paddingHorizontal: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
-  lottieAnimation: {
-    width: 100,
-    height: 100,
-  },
-  welcomeContainer: {
-    alignItems: "center",
+  header: {
+    alignItems: 'center',
     marginBottom: 40,
   },
-  title: {
+  logoWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 25,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+    marginBottom: 24,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+  },
+  welcomeText: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginBottom: 6,
-    letterSpacing: -0.3,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
-  subtitle: {
+  subtitleText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  form: {
+    gap: 20,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  label: {
     fontSize: 14,
-    color: "#9CA3AF",
-    fontWeight: "400",
+    fontWeight: '600',
+    color: '#374151',
+    marginLeft: 4,
   },
-  formContainer: {
-    gap: 16,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(109, 55, 109, 0.15)",
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.2)",
-  },
-  inputIcon: {
-    marginRight: 12,
+    height: 52,
+    gap: 12,
   },
   input: {
     flex: 1,
-    paddingVertical: 15,
     fontSize: 16,
-    color: "#FFFFFF",
-    fontWeight: "500",
+    color: '#1F2937',
   },
-  passwordInput: {
-    paddingRight: 40,
+  forgotPassword: {
+    alignSelf: 'flex-end',
   },
-  eyeIcon: {
-    padding: 8,
+  forgotPasswordText: {
+    color: '#7E22CE',
+    fontSize: 14,
+    fontWeight: '600',
   },
   button: {
-    marginTop: 24,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonGradient: {
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#7E22CE",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
-    letterSpacing: 0.2,
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  socialButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   footer: {
-    alignItems: "center",
-    marginTop: 50,
+    marginTop: 40,
+    alignItems: 'center',
   },
   footerText: {
     fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "400",
+    color: '#9CA3AF',
   },
 });

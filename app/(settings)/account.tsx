@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
+import { useQueryClient } from '@tanstack/react-query';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { designSystem } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
@@ -44,6 +45,8 @@ export default function AccountScreen() {
     address: user?.address || '',
   });
 
+  const queryClient = useQueryClient();
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -57,17 +60,21 @@ export default function AccountScreen() {
       };
 
       const response = await authService.updateProfile(profileData);
-      
+
       // Update user in auth store
       if (response.user) {
         setUser(response.user);
       }
 
+      // Invalidate queries to refresh profile data
+      queryClient.invalidateQueries({ queryKey: ['hr', 'employees', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['hr', 'userProfile'] });
+
       Alert.alert('Success', response.message || 'Profile updated successfully');
       setIsEditing(false);
     } catch (error: any) {
       console.error('Profile update error:', error);
-      
+
       let errorMessage = 'Failed to update profile';
       if (error.response?.data?.mobileno) {
         errorMessage = error.response.data.mobileno[0];
@@ -76,7 +83,7 @@ export default function AccountScreen() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setIsSaving(false);
@@ -102,20 +109,20 @@ export default function AccountScreen() {
 
       if (!result.canceled && result.assets[0]) {
         setIsUploadingPhoto(true);
-        
+
         const response = await authService.uploadProfilePhoto(result.assets[0].uri);
-        
+
         // Update user in auth store
         if (user && response.photo_url) {
           const updatedUser: typeof user = { ...user, photo: response.photo_url };
           setUser(updatedUser);
         }
-        
+
         Alert.alert('Success', 'Profile photo updated successfully');
       }
     } catch (error: any) {
       console.error('Photo upload error:', error);
-      
+
       let errorMessage = 'Failed to upload photo';
       if (error.response?.data?.photo) {
         errorMessage = error.response.data.photo[0];
@@ -124,7 +131,7 @@ export default function AccountScreen() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setIsUploadingPhoto(false);
@@ -154,7 +161,7 @@ export default function AccountScreen() {
 
     try {
       setIsChangingPassword(true);
-      
+
       await authService.changePassword({
         old_password: passwordForm.oldPassword,
         new_password: passwordForm.newPassword,
@@ -166,15 +173,15 @@ export default function AccountScreen() {
       setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
       console.error('Change password error:', error);
-      
+
       let errorMessage = 'Failed to change password';
       if (error.response?.data?.old_password) {
-        errorMessage = Array.isArray(error.response.data.old_password) 
-          ? error.response.data.old_password[0] 
+        errorMessage = Array.isArray(error.response.data.old_password)
+          ? error.response.data.old_password[0]
           : error.response.data.old_password;
       } else if (error.response?.data?.new_password) {
-        errorMessage = Array.isArray(error.response.data.new_password) 
-          ? error.response.data.new_password[0] 
+        errorMessage = Array.isArray(error.response.data.new_password)
+          ? error.response.data.new_password[0]
           : error.response.data.new_password;
       } else if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
@@ -183,7 +190,7 @@ export default function AccountScreen() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setIsChangingPassword(false);
@@ -212,15 +219,15 @@ export default function AccountScreen() {
     </View>
   );
 
-  const EditField = ({ 
-    label, 
-    value, 
+  const EditField = ({
+    label,
+    value,
     onChangeText,
     icon,
     keyboardType = 'default'
-  }: { 
-    label: string; 
-    value: string; 
+  }: {
+    label: string;
+    value: string;
     onChangeText: (text: string) => void;
     icon: keyof typeof Ionicons.glyphMap;
     keyboardType?: 'default' | 'email-address' | 'phone-pad';
@@ -259,8 +266,8 @@ export default function AccountScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader 
-        title="Your account" 
+      <ModuleHeader
+        title="Your account"
         showBack
         onBack={handleBack}
         rightActions={
@@ -494,7 +501,7 @@ export default function AccountScreen() {
             <Text style={{ ...getTypographyStyle('lg', 'semibold'), color: theme.text }}>
               Change Password
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handlePasswordSubmit}
               disabled={isChangingPassword}
             >
@@ -539,10 +546,10 @@ export default function AccountScreen() {
                     secureTextEntry={!showOldPassword}
                   />
                   <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)}>
-                    <Ionicons 
-                      name={showOldPassword ? 'eye-off-outline' : 'eye-outline'} 
-                      size={20} 
-                      color={theme.textSecondary} 
+                    <Ionicons
+                      name={showOldPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={theme.textSecondary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -579,10 +586,10 @@ export default function AccountScreen() {
                     secureTextEntry={!showNewPassword}
                   />
                   <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-                    <Ionicons 
-                      name={showNewPassword ? 'eye-off-outline' : 'eye-outline'} 
-                      size={20} 
-                      color={theme.textSecondary} 
+                    <Ionicons
+                      name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={theme.textSecondary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -622,10 +629,10 @@ export default function AccountScreen() {
                     secureTextEntry={!showConfirmPassword}
                   />
                   <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    <Ionicons 
-                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} 
-                      size={20} 
-                      color={theme.textSecondary} 
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={theme.textSecondary}
                     />
                   </TouchableOpacity>
                 </View>

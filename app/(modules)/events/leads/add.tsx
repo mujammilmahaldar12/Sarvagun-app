@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
@@ -15,6 +15,14 @@ export default function AddLeadScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { showToast } = useToast();
+    const params = useLocalSearchParams<{ leadId?: string }>();
+
+    // Extract leadId for edit mode
+    const leadId = params.leadId ? (Array.isArray(params.leadId) ? params.leadId[0] : params.leadId) : undefined;
+    const isEditMode = !!leadId;
+
+    console.log('📝 AddLeadScreen (leads/add.tsx) mounted. leadId:', leadId, '| isEditMode:', isEditMode);
+
     const [loading, setLoading] = useState(false);
 
     // Reference Data
@@ -74,6 +82,9 @@ export default function AddLeadScreen() {
     };
 
     const handleSubmit = async () => {
+        console.log('🔵 handleSubmit called in leads/add.tsx');
+        console.log('📋 Form data:', JSON.stringify(formData, null, 2));
+
         if (!formData.clientName || !formData.clientEmail || !formData.clientNumber) {
             Alert.alert('Error', 'Please fill in all client details');
             return;
@@ -87,6 +98,7 @@ export default function AddLeadScreen() {
             return;
         }
 
+        console.log('✅ Validation passed, calling API...');
         setLoading(true);
         try {
             // Construct payload
@@ -152,7 +164,7 @@ export default function AddLeadScreen() {
 
     return (
         <View style={styles.container}>
-            <Stack.Screen options={{ title: 'Add New Lead' }} />
+            <Stack.Screen options={{ title: isEditMode ? 'Edit Lead' : 'Add New Lead' }} />
 
             <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
@@ -327,13 +339,12 @@ export default function AddLeadScreen() {
                 </Card>
 
                 <Button
+                    title={isEditMode ? "Update Lead" : "Create Lead"}
                     onPress={handleSubmit}
                     loading={loading}
                     size="lg"
-                    style={styles.submitBtn}
-                >
-                    Create Lead
-                </Button>
+                    fullWidth
+                />
 
             </ScrollView>
         </View>

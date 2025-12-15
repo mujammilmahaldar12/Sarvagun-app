@@ -3,13 +3,13 @@ import { getToken, storeToken, removeToken } from "../../utils/storage";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__
-  ? "http://10.12.66.125:8000/api"  // Your PC's current local IP
+  ? "http://10.12.66.205:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // Increased timeout for slow connections
   headers: {
     "Content-Type": "application/json",
   },
@@ -116,7 +116,13 @@ export const apiClient = {
     }),
 
   post: <T>(url: string, data?: any, config?: AxiosRequestConfig) =>
-    api.post<T>(url, data, config).then((res) => res.data),
+    api.post<T>(url, data, config).then((res) => {
+      console.log(`✅ apiClient.post SUCCESS for ${url}:`, { status: res.status, data: res.data });
+      return res.data;
+    }).catch((error) => {
+      console.error(`❌ apiClient.post FAILED for ${url}:`, error.message, error.response?.data);
+      throw error;
+    }),
 
   put: <T>(url: string, data?: any, config?: AxiosRequestConfig) =>
     api.put<T>(url, data, config).then((res) => res.data),

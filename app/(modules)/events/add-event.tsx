@@ -34,6 +34,7 @@ export default function AddEventScreen() {
   const [fetchingLead, setFetchingLead] = useState(false);
   const [leadData, setLeadData] = useState<any>(null);
   const [venues, setVenues] = useState<any[]>([]);
+  const [organisations, setOrganisations] = useState<any[]>([]);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isCreatingNewVenue, setIsCreatingNewVenue] = useState(false);
 
@@ -50,6 +51,8 @@ export default function AddEventScreen() {
     venueAddress: '',
     company: 'bling square events',
     category: 'corporate events',
+    organisationId: 0,  // Added for B2B/B2G requirement
+    clientCategory: '',  // To track the category code (b2b/b2c/b2g)
   });
 
   const COMPANIES = ['bling square events', 'redmagic events'];
@@ -57,9 +60,10 @@ export default function AddEventScreen() {
 
   const [documents, setDocuments] = useState<any[]>([]);
 
-  // Fetch venues on mount
+  // Fetch venues and organisations on mount
   useEffect(() => {
     fetchVenues();
+    fetchOrganisations();
   }, []);
 
   // Fetch lead details if fromLead is present
@@ -78,6 +82,15 @@ export default function AddEventScreen() {
     }
   };
 
+  const fetchOrganisations = async () => {
+    try {
+      const orgsData = await eventsService.getOrganisations();
+      setOrganisations(orgsData || []);
+    } catch (error) {
+      console.error('Error fetching organisations:', error);
+    }
+  };
+
   const fetchLeadDetails = async (leadId: number) => {
     setFetchingLead(true);
     try {
@@ -85,6 +98,9 @@ export default function AddEventScreen() {
       setLeadData(lead);
       const leadAny = lead as any;
       const eventData = lead.event && typeof lead.event === 'object' ? lead.event as any : null;
+
+      // Get client category code from lead
+      const categoryCode = lead.client?.client_category?.[0]?.code || 'b2b';
 
       // Pre-fill form data from lead - INCLUDING event type from add-lead form
       setFormData(prev => ({
@@ -105,6 +121,10 @@ export default function AddEventScreen() {
         venueAddress: eventData?.venue?.address || '',
         // Pre-fill company from lead
         company: eventData?.company || leadAny.company || 'bling square events',
+        // Store client category for organisation requirement check
+        clientCategory: categoryCode,
+        // Pre-fill organisation if exists
+        organisationId: lead.client?.organisation?.[0]?.id || 0,
       }));
     } catch (error) {
       console.error('Error fetching lead:', error);
@@ -129,56 +149,97 @@ export default function AddEventScreen() {
   };
 
   const handleSubmit = async () => {
-    // Validation
-    if (!formData.eventType.trim()) {
-      Alert.alert('Error', 'Please enter event type');
-      return;
-    }
-    if (!formData.startDate) {
-      Alert.alert('Error', 'Please select start date');
-      return;
-    }
-    if (formData.selectedDates.length === 0) {
-      Alert.alert('Error', 'Please select at least one active day');
-      return;
-    }
-    if (!formData.venue.trim()) {
-      Alert.alert('Error', 'Please enter venue');
-      return;
+    console.log('🔵 handleSubmit called');
+    console.log('📋 Form data:', JSON.stringify(formData, null, 2));
+    console.log('📋 fromLead:', fromLead, 'leadData:', !!leadData);
+
+    // Different validation for lead conversion vs standalone event
+    if (fromLead && leadData) {
+      // For lead conversion - only need venue
+      if (!formData.venueId && !formData.venue.trim()) {
+        Alert.alert('Error', 'Please select or create a venue');
+        return;
+      }
+    } else {
+      // For standalone event creation - full validation
+      if (!formData.eventType.trim()) {
+        Alert.alert('Error', 'Please enter event type');
+        return;
+      }
+      if (!formData.startDate) {
+        Alert.alert('Error', 'Please select start date');
+        return;
+      }
+      if (formData.selectedDates.length === 0) {
+        Alert.alert('Error', 'Please select at least one active day');
+        return;
+      }
+      if (!formData.venueId && !formData.venue.trim()) {
+        Alert.alert('Error', 'Please select or create a venue');
+        return;
+      }
+      // Check for organisation requirement (B2B and B2G require organisation)
+      const categoryCode = formData.clientCategory || leadData?.client?.client_category?.[0]?.code;
+      if ((categoryCode === 'b2b' || categoryCode === 'b2g') && !formData.organisationId) {
+        Alert.alert('Error', 'Please select an organisation for B2B/B2G clients');
+        return;
+      }
     }
 
     setLoading(true);
     try {
       if (fromLead && leadData) {
-        const clientCategoryCode = leadData.client?.client_category?.[0]?.code || 'b2b';
+        console.log('🚀 Converting lead to event...');
+        const clientCategoryCode = formData.clientCategory || leadData.client?.client_category?.[0]?.code || 'b2b';
 
-        await eventsService.convertLead(Number(fromLead), {
+        // Prepare venue data - either existing venue ID (number) or new venue object
+        const venueData = formData.venueId > 0
+          ? formData.venueId  // Just the ID number for existing venue
+          : { name: formData.venue, address: formData.venueAddress };  // Object for new venue
+
+        // Get dates from formData (already pre-filled from lead)
+        const startDate = formData.startDate ? formData.startDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        const endDate = formData.endDate ? formData.endDate.toISOString().split('T')[0] : startDate;
+
+        const convertPayload: any = {
           company: formData.company as any,
           client_category: clientCategoryCode,
-          venue: {
-            name: formData.venue,
-            address: formData.venueAddress,
-          },
-          start_date: formData.startDate!.toISOString().split('T')[0],
-          end_date: (formData.endDate || formData.startDate!).toISOString().split('T')[0],
-          type_of_event: formData.eventType,
+          venue: venueData,
+          start_date: startDate,
+          end_date: endDate,
+          type_of_event: formData.eventType || 'Event',
           category: formData.category,
-          event_dates: formData.selectedDates.length > 0
-            ? formData.selectedDates.map(d => ({ date: d.toISOString().split('T')[0] }))
-            : [{ date: formData.startDate!.toISOString().split('T')[0] }],
-        });
+          event_dates: [{ date: startDate }],
+        };
 
-        Alert.alert('Success', 'Lead converted to event successfully', [
-          { text: 'OK', onPress: () => router.push('/(modules)/events') },
-        ]);
+        // Add organisation for B2B/B2G
+        if ((clientCategoryCode === 'b2b' || clientCategoryCode === 'b2g') && formData.organisationId > 0) {
+          convertPayload.organisation = formData.organisationId;
+        }
+
+        console.log('📤 Convert payload:', JSON.stringify(convertPayload, null, 2));
+
+        const response = await eventsService.convertLead(Number(fromLead), convertPayload);
+        console.log('✅ Lead conversion response received:', response);
+
+        // Navigate immediately - don't wait for alert
+        console.log('🔀 Navigating to events list...');
+        router.replace('/(modules)/events');
+
+        // Show success message after a short delay (toast-style)
+        setTimeout(() => {
+          Alert.alert('Success', 'Lead converted to event successfully!');
+        }, 300);
       } else {
         // Create new standalone event
         Alert.alert('Notice', 'Direct event creation is currently restricted. Please start from a Lead.');
       }
     } catch (error: any) {
-      console.error('Error submitting event:', error);
-      Alert.alert('Error', error.response?.data?.detail || error.message || 'Failed to submit event');
+      console.error('❌ Error converting lead:', error);
+      console.error('Error response:', error.response?.data);
+      Alert.alert('Error', error.response?.data?.detail || error.response?.data?.error || error.message || 'Failed to convert lead');
     } finally {
+      console.log('🏁 handleSubmit finished, setting loading to false');
       setLoading(false);
     }
   };
@@ -397,6 +458,37 @@ export default function AddEventScreen() {
             </View>
           )}
         </View>
+
+        {/* Organisation Selection (for B2B/B2G clients) */}
+        {(formData.clientCategory === 'b2b' || formData.clientCategory === 'b2g' ||
+          leadData?.client?.client_category?.[0]?.code === 'b2b' ||
+          leadData?.client?.client_category?.[0]?.code === 'b2g') && (
+            <View style={clientCardStyles.card}>
+              <View style={clientCardStyles.header}>
+                <Ionicons name="business" size={20} color={theme.primary} />
+                <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text, flex: 1 }]}>
+                  Organisation *
+                </Text>
+              </View>
+              <Select
+                label="Select Organisation"
+                value={formData.organisationId}
+                options={organisations.map(o => ({ label: o.name, value: o.id }))}
+                onChange={(val) => setFormData(prev => ({ ...prev, organisationId: Number(val) }))}
+                placeholder="Select an organisation"
+                searchable
+                leadingIcon="business-outline"
+                required
+              />
+              {formData.organisationId > 0 && (
+                <View style={{ marginTop: spacing.sm, padding: spacing.sm, backgroundColor: theme.background, borderRadius: borderRadius.md }}>
+                  <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
+                    {organisations.find(o => o.id === formData.organisationId)?.name || ''}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
         {/* Event Information - Read-only when from lead */}
         {fromLead && leadData ? (

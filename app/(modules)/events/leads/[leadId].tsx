@@ -46,18 +46,18 @@ export default function LeadDetailScreen() {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
       await queryClient.cancelQueries({ queryKey: ['leads'] });
-      
+
       // Snapshot previous values
       const previousLead = queryClient.getQueryData(['lead', leadId]);
       const previousLeads = queryClient.getQueryData(['leads']);
-      
+
       // Optimistically update lead status
       queryClient.setQueryData(['lead', leadId], (old: any) => ({
         ...old,
         status: 'rejected',
         reject: true,
       }));
-      
+
       // Return context for rollback
       return { previousLead, previousLeads };
     },
@@ -91,11 +91,11 @@ export default function LeadDetailScreen() {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
       await queryClient.cancelQueries({ queryKey: ['leads'] });
-      
+
       // Snapshot previous values
       const previousLead = queryClient.getQueryData(['lead', leadId]);
       const previousLeads = queryClient.getQueryData(['leads']);
-      
+
       // Optimistically remove from list
       queryClient.setQueryData(['leads'], (old: any) => {
         if (Array.isArray(old)) {
@@ -103,7 +103,7 @@ export default function LeadDetailScreen() {
         }
         return old;
       });
-      
+
       // Return context for rollback
       return { previousLead, previousLeads };
     },
@@ -135,7 +135,10 @@ export default function LeadDetailScreen() {
   };
 
   const handleEdit = () => {
-    router.push(`/(modules)/events/add-lead?leadId=${leadId}` as any);
+    router.push({
+      pathname: '/(modules)/events/leads/add',
+      params: { leadId: leadId }
+    } as any);
   };
 
   const handleReject = () => {
@@ -213,19 +216,19 @@ export default function LeadDetailScreen() {
   const actionSheetActions = [
     ...(lead.status === 'pending'
       ? [
-          {
-            label: 'Convert to Event',
-            icon: 'checkmark-circle' as const,
-            onPress: handleConvert,
-            destructive: false,
-          },
-          {
-            label: 'Reject Lead',
-            icon: 'close-circle' as const,
-            onPress: handleReject,
-            destructive: true,
-          },
-        ]
+        {
+          label: 'Convert to Event',
+          icon: 'checkmark-circle' as const,
+          onPress: handleConvert,
+          destructive: false,
+        },
+        {
+          label: 'Reject Lead',
+          icon: 'close-circle' as const,
+          onPress: handleReject,
+          destructive: true,
+        },
+      ]
       : []),
     {
       label: 'Edit Lead',

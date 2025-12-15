@@ -128,9 +128,17 @@ class EventsService {
    */
   async convertLeadToEvent(leadId: number, data: ConvertLeadRequest) {
     try {
-      return await apiClient.post<Event>(`/events/leads/${leadId}/convert-to-event/`, data);
+      console.log('🔄 convertLeadToEvent called');
+      console.log('📍 Lead ID:', leadId);
+      console.log('📦 Request data:', JSON.stringify(data, null, 2));
+      console.log('🌐 Calling API: POST /events/leads/' + leadId + '/convert-to-event/');
+
+      const response = await apiClient.post<Event>(`/events/leads/${leadId}/convert-to-event/`, data);
+
+      console.log('✅ Convert API success:', response);
+      return response;
     } catch (error) {
-      console.error('Error converting lead to event:', error);
+      console.error('❌ Error converting lead to event:', error);
       throw error;
     }
   }

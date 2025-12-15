@@ -53,7 +53,7 @@ function ErrorFallback({ error }: { error: any }) {
     textSecondary: '#666666',
     text: '#999999'
   };
-  
+
   return (
     <View style={[styles.errorContainer, { backgroundColor: fallbackTheme.background }]}>
       <Text style={[styles.errorTitle, { color: fallbackTheme.primary }]}>Sarvagun</Text>
@@ -69,230 +69,229 @@ function ErrorFallback({ error }: { error: any }) {
   );
 }
 
-// Animated Splash Component - Ultra Smooth Buttery Animation
+// Animated Splash Component - Modern Professional Design
 function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
-  const { theme, isDark } = useTheme();
   const logoAnim = useRef(new Animated.Value(0)).current;
-  const textAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [animationError, setAnimationError] = useState(false);
+  const contentAnim = useRef(new Animated.Value(0)).current;
+  const dot1Anim = useRef(new Animated.Value(0.3)).current;
+  const dot2Anim = useRef(new Animated.Value(0.3)).current;
+  const dot3Anim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    // Ultra smooth sequence
-    Animated.sequence([
-      // Logo breathes in smoothly
+    // Logo entrance - smooth scale and fade
+    Animated.timing(logoAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+
+    // Content fade in with delay
+    Animated.timing(contentAnim, {
+      toValue: 1,
+      duration: 500,
+      delay: 300,
+      useNativeDriver: true,
+    }).start();
+
+    // Pulsing dots animation
+    const animateDot = (dotAnim: Animated.Value, delay: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dotAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dotAnim, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+
+    animateDot(dot1Anim, 0);
+    animateDot(dot2Anim, 150);
+    animateDot(dot3Anim, 300);
+
+    // Navigate after splash
+    const timer = setTimeout(() => {
       Animated.parallel([
         Animated.timing(logoAnim, {
-          toValue: 1,
-          duration: 1000,
+          toValue: 0,
+          duration: 300,
           useNativeDriver: true,
         }),
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.05,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
-      ]),
-      
-      // Brief pause
-      Animated.delay(200),
-      
-      // Text fades in ultra smoothly
-      Animated.timing(textAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
+        Animated.timing(contentAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => onFinish());
+    }, 2500);
 
-    // Shimmer effect continuously
-    Animated.loop(
-      Animated.timing(shimmerAnim, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    const timer = setTimeout(onFinish, 3000);
     return () => clearTimeout(timer);
   }, []);
 
-  const shimmerTranslate = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-300, 300],
-  });
-
   return (
-    <LinearGradient
-      colors={['#0A0A0A', '#1A1A2E', '#16213E']}
-      style={StyleSheet.absoluteFill}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-    >
-      <View style={styles.splashContainer}>
-        {/* Floating Logo with Gentle Pulse */}
-        <Animated.View
-          style={{
-            opacity: logoAnim,
-            transform: [
-              { 
-                scale: logoAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                })
-              },
-              { scale: pulseAnim },
-            ],
-            marginBottom: spacing['2xl'],
-          }}
-        >
-          <View style={{
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            borderRadius: 100,
-            padding: spacing.lg,
-            borderWidth: 2,
-            borderColor: 'rgba(139, 92, 246, 0.3)',
-          }}>
-            {!animationError ? (
-              <LottieView
-                autoPlay
-                loop
-                speed={1}
-                style={styles.lottieAnimation}
-                source={require("../assets/animations/sarvagun.json")}
-                onAnimationFailure={() => setAnimationError(true)}
-              />
-            ) : (
-              <View style={[styles.lottieAnimation, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ fontSize: 80, color: '#8B5CF6', fontWeight: '900' }}>S</Text>
-              </View>
-            )}
-          </View>
-        </Animated.View>
+    <View style={splashStyles.container}>
+      {/* Subtle gradient circles */}
+      <View style={splashStyles.gradientCircle1} />
+      <View style={splashStyles.gradientCircle2} />
 
-        {/* App Name with Shimmer Effect */}
+      {/* Main Content */}
+      <View style={splashStyles.content}>
+        {/* Logo */}
         <Animated.View
-          style={{
-            opacity: textAnim,
-            transform: [
-              {
-                translateY: textAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [30, 0],
-                }),
-              },
-            ],
-            alignItems: 'center',
-          }}
-        >
-          {/* Text with Shimmer Container */}
-          <View style={{ 
-            position: 'relative', 
-            overflow: 'hidden',
-            paddingHorizontal: 20,
-            height: 70,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            {/* Main Text */}
-            <Text
-              style={[
-                styles.mainText,
-                { 
-                  color: '#FFFFFF',
-                  textAlign: 'center',
+          style={[
+            splashStyles.logoWrapper,
+            {
+              opacity: logoAnim,
+              transform: [
+                {
+                  scale: logoAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.9, 1],
+                  }),
                 },
-              ]}
-            >
-              SARVAGUN
-            </Text>
-            
-            {/* Shimmer Overlay */}
-            <Animated.View
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: -150,
-                width: 400,
-                justifyContent: 'center',
-                transform: [{ translateX: shimmerTranslate }],
-              }}
-            >
-              <LinearGradient
-                colors={['transparent', 'rgba(139, 92, 246, 0.6)', 'transparent']}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={{ 
-                  height: 70,
-                  width: '100%',
-                }}
-              />
-            </Animated.View>
-          </View>
-
-          {/* Subtitle */}
-          <View style={{ marginTop: spacing.sm }}>
-            <Text style={[styles.subtitle, { color: '#9CA3AF' }]}>
-              Enterprise Resource Planning
-            </Text>
+              ],
+            },
+          ]}
+        >
+          <View style={splashStyles.logoContainer}>
+            <Animated.Image
+              source={require("../assets/images/sarvagun_logo.jpg")}
+              style={splashStyles.logo}
+              resizeMode="contain"
+            />
           </View>
         </Animated.View>
 
-        {/* Elegant Loading Indicator */}
+        {/* Brand Text */}
         <Animated.View
-          style={{
-            position: 'absolute',
-            bottom: 80,
-            opacity: textAnim,
-          }}
+          style={[
+            splashStyles.textContainer,
+            { opacity: contentAnim },
+          ]}
         >
-          <View style={styles.loadingBar}>
-            <Animated.View
-              style={{
-                width: '35%',
-                height: '100%',
-                borderRadius: 10,
-                transform: [
-                  {
-                    translateX: shimmerTranslate.interpolate({
-                      inputRange: [-300, 300],
-                      outputRange: [-80, 220],
-                    }),
-                  },
-                ],
-              }}
-            >
-              <LinearGradient
-                colors={['#6366F1', '#8B5CF6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  flex: 1,
-                  borderRadius: 10,
-                }}
-              />
-            </Animated.View>
-          </View>
-          <Text style={[styles.tagline, { color: '#6B7280', marginTop: spacing.lg }]}>
-            Powered by BlingSquare
-          </Text>
+          <Text style={splashStyles.brandName}>Sarvagun</Text>
+          <Text style={splashStyles.taglineText}>Work smarter, not harder</Text>
+        </Animated.View>
+
+        {/* Loading Dots */}
+        <Animated.View
+          style={[
+            splashStyles.dotsContainer,
+            { opacity: contentAnim },
+          ]}
+        >
+          <Animated.View style={[splashStyles.dot, { opacity: dot1Anim }]} />
+          <Animated.View style={[splashStyles.dot, { opacity: dot2Anim }]} />
+          <Animated.View style={[splashStyles.dot, { opacity: dot3Anim }]} />
         </Animated.View>
       </View>
-    </LinearGradient>
+
+      {/* Footer */}
+      <Animated.View style={[splashStyles.footer, { opacity: contentAnim }]}>
+        <Text style={splashStyles.footerText}>by Blingsquare</Text>
+      </Animated.View>
+    </View>
   );
 }
+
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  gradientCircle1: {
+    position: 'absolute',
+    top: -150,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(99, 102, 241, 0.06)',
+  },
+  gradientCircle2: {
+    position: 'absolute',
+    bottom: -100,
+    left: -80,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(236, 72, 153, 0.04)',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 60,
+  },
+  logoWrapper: {
+    marginBottom: 32,
+  },
+  logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  brandName: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#18181B',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  taglineText: {
+    fontSize: 15,
+    color: '#71717A',
+    fontWeight: '400',
+    letterSpacing: 0.2,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#6366F1',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 48,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#A1A1AA',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+});
 
 // Component to initialize push notifications
 function PushNotificationInitializer() {

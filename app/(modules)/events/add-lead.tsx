@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal, StyleSheet, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ModuleHeader, Button, FormField, FormSection } from '@/components';
@@ -17,7 +17,15 @@ export default function AddLeadScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const navigation = useNavigation();
+  const params = useLocalSearchParams<{ leadId?: string }>();
   const user = useAuthStore((state) => state.user);
+
+  // Extract leadId - handle both string and array cases
+  const leadId = params.leadId ? (Array.isArray(params.leadId) ? params.leadId[0] : params.leadId) : undefined;
+  const isEditMode = !!leadId;
+
+  console.log('📝 AddLeadScreen mounted. Params:', JSON.stringify(params));
+  console.log('🆔 leadId:', leadId, '| isEditMode:', isEditMode);
 
   // Safe back navigation helper
   const safeGoBack = useCallback(() => {
@@ -92,6 +100,77 @@ export default function AddLeadScreen() {
     }
   };
 
+  // Fetch lead details for editing
+  useEffect(() => {
+    if (leadId) {
+      fetchLeadDetails(Number(leadId));
+    }
+  }, [leadId]);
+
+  const fetchLeadDetails = async (id: number) => {
+    setLoading(true);
+    try {
+      const lead = await eventsService.getLeadById(id);
+
+      const leadAny = lead as any;
+      const eventData = lead.event && typeof lead.event === 'object' ? lead.event as any : null;
+
+      // Parse dates
+      const startDate = eventData?.start_date ? new Date(eventData.start_date) :
+        (leadAny.start_date ? new Date(leadAny.start_date) : null);
+      const endDate = eventData?.end_date ? new Date(eventData.end_date) :
+        (leadAny.end_date ? new Date(leadAny.end_date) : null);
+
+      // Handle event_dates
+      const eventDates = eventData?.event_dates?.map((d: any) => new Date(d.date)) || [];
+
+      setActiveDates(eventDates);
+
+      // Set client mode to 'select' since we have an existing client
+      setClientMode('select');
+
+      // Find client in the clients list if possible, or use the one from lead
+      if (lead.client) {
+        setSelectedClient(lead.client as any);
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        // Event Info
+        company: eventData?.company || leadAny.company || 'redmagic events',
+        startDate: startDate,
+        endDate: endDate,
+        eventType: eventData?.type_of_event || leadAny.type_of_event || '',
+
+        // Client Info - Link existing client
+        clientId: lead.client?.id || 0,
+
+        // Populate new client fields for reference
+        companyName: lead.client?.name || '',
+        contactPerson: lead.client?.name || '',
+        email: lead.client?.email || '',
+        phone: lead.client?.number || '',
+
+        // Link Category
+        categoryId: lead.client?.client_category?.[0]?.id || 0,
+
+        // Link Organisation if exists
+        organisationId: lead.client?.organisation?.[0]?.id || 0,
+
+        // Reference Info
+        source: lead.source?.toLowerCase() || 'online',
+        referral: lead.referral || '',
+        message: lead.message || '',
+      }));
+
+    } catch (error: any) {
+      console.error('Error fetching lead:', error);
+      Alert.alert('Error', 'Failed to fetch lead details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Check if selected category requires organisation (B2B/B2G)
   // B2C = no organisation required, B2B and B2G = organisation required
   const requiresOrganisation = (): boolean => {
@@ -149,8 +228,10 @@ export default function AddLeadScreen() {
         Alert.alert('Error', 'Please enter phone number');
         return;
       }
+      // Only require email if not editing (optional update for existing leads?)
+      // Keeping required for new clients
       if (!formData.email.trim()) {
-        Alert.alert('Error', 'Please enter email address');
+        Alert.alert('Error', 'Please enter email');
         return;
       }
       if (!formData.categoryId || formData.categoryId === 0) {
@@ -158,10 +239,9 @@ export default function AddLeadScreen() {
         return;
       }
 
-      // Check if B2B/B2G requires organisation
-      if (requiresOrganisation() && !formData.organisationId) {
-        const selectedCategory = categories.find(c => c.id === formData.categoryId);
-        Alert.alert('Error', `${selectedCategory?.name} clients require an organisation`);
+      // Validate organisation if required
+      if (requiresOrganisation() && (!formData.organisationId || formData.organisationId === 0)) {
+        Alert.alert('Error', 'Please select an organisation for B2B/B2G clients');
         return;
       }
     }
@@ -174,58 +254,78 @@ export default function AddLeadScreen() {
 
     setLoading(true);
     try {
-      const leadData: any = {
+      const payload: any = {
         company: formData.company,
         type_of_event: formData.eventType,
         start_date: formData.startDate ? formData.startDate.toISOString().split('T')[0] : null,
         end_date: formData.endDate ? formData.endDate.toISOString().split('T')[0] : null,
-        // Entry date is implied as today/creation date usually, but could be passed if API supports it.
-        // For now, ignoring entryDate in payload unless backend expects it manually.
-        event_dates: activeDates.map(d => ({ date: d.toISOString().split('T')[0] })),
+        // Only include event_dates if we have active dates selected (optional in form)
+        event_dates: activeDates.length > 0
+          ? activeDates.map(d => ({ date: d.toISOString().split('T')[0], is_active: true }))
+          : [],
         source: formData.source,
-        message: formData.message.trim(),
+        referral: formData.referral,
+        message: formData.message,
       };
 
-      // Add referral only if it has a value
-      if (formData.referral.trim()) {
-        leadData.referral = formData.referral.trim();
-      }
-
-      // Client Data
       if (clientMode === 'select') {
-        leadData.client = formData.clientId;
+        payload.client_id = formData.clientId;
       } else {
-        leadData.client = {
-          name: formData.companyName.trim(),
-          email: formData.email.trim(),
-          number: formData.phone.trim(),
-          client_category: [formData.categoryId],
+        // Prepare client data for creation
+        payload.client = {
+          name: formData.companyName,
+          number: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          client_category: formData.categoryId ? [formData.categoryId] : [],
+          organisation: formData.organisationId > 0 ? [formData.organisationId] : [],
         };
-
-        // Add organisation only if selected
-        if (formData.organisationId) {
-          leadData.client.organisation = [formData.organisationId];
-        }
       }
 
-      console.log('📤 Sending lead data:', JSON.stringify(leadData, null, 2));
+      console.log('Submit payload:', JSON.stringify(payload, null, 2));
 
-      // Use create-complete endpoint
-      const result = await eventsService.createLeadComplete(leadData);
-      console.log('✅ Lead created successfully:', result);
+      if (leadId) {
+        // UPDATE EXISTING LEAD
+        console.log('🔄 Updating lead:', leadId);
+        const result = await eventsService.updateLead(Number(leadId), payload);
+        console.log('✅ Lead updated successfully:', result);
+        Alert.alert('Success', 'Lead updated successfully', [
+          { text: 'OK', onPress: safeGoBack }
+        ]);
+      } else {
+        // CREATE NEW LEAD
+        if (clientMode === 'select') {
+          // Create lead for existing client
+          console.log('🆕 Creating lead for existing client...');
+          const result = await eventsService.createLead({
+            client_id: formData.clientId,
+            source: formData.source,
+            referral: formData.referral,
+            notes: formData.message, // Map message to notes
+          });
+          console.log('✅ Lead created (existing client):', result);
+        } else {
+          // Create lead with new client (atomic transaction)
+          console.log('🆕 Creating lead with new client (atomic)...');
+          const result = await eventsService.createLeadComplete(payload);
+          console.log('✅ Lead created (with new client):', result);
+        }
 
-      // Navigate back immediately (no alert needed)
-      safeGoBack();
-
-      // Show toast-style success message after navigation
-      setTimeout(() => {
-        Alert.alert('Success', 'Lead created successfully! 🎉', [{ text: 'OK' }]);
-      }, 500);
-
+        Alert.alert('Success', 'Lead added successfully', [
+          { text: 'OK', onPress: safeGoBack }
+        ]);
+      }
     } catch (error: any) {
       console.error('❌ Error creating lead:', error);
-      Alert.alert('Error', error.message || 'Failed to create lead');
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message || 'Failed to create lead';
+      Alert.alert('Error', typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
     } finally {
+      console.log('🏁 handleSubmit complete, loading set to false');
       setLoading(false);
     }
   };
@@ -243,7 +343,7 @@ export default function AddLeadScreen() {
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <ModuleHeader
-          title="Add Lead"
+          title={isEditMode ? "Edit Lead" : "Add Lead"}
           showBack
           onBack={safeGoBack}
         />

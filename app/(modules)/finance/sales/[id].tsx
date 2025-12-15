@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import TabBar, { Tab } from '@/components/layout/TabBar';
-import { StatusBadge, InfoRow, KPICard, LoadingState } from '@/components';
+import { StatusBadge, InfoRow, KPICard, LoadingState, Table } from '@/components';
 import { DetailSection, DetailRow } from '@/components/ui/DetailViews';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
@@ -121,9 +121,9 @@ export default function SalesDetailScreen() {
   }
 
   const event = typeof sale.event === 'object' ? sale.event : null;
-  const netAmount = sale.amount - (sale.discount || 0);
-  const totalReceived = sale.total_received || sale.payments?.reduce((sum, p) => sum + p.payment_amount, 0) || 0;
-  const balanceDue = netAmount - totalReceived;
+  const netAmount = Number(sale.amount) - (Number(sale.discount) || 0);
+  const totalReceived = Number(sale.total_received) || (sale.payments?.reduce((sum, p) => sum + (Number(p.payment_amount) || 0), 0) || 0);
+  const balanceDue = Number(netAmount) - Number(totalReceived);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -203,46 +203,63 @@ export default function SalesDetailScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: spacing.md }}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: spacing.sm }}
+          style={{ marginTop: spacing.sm, marginBottom: spacing.md }}
+          contentContainerStyle={{ paddingLeft: 16, paddingRight: 32, gap: 12 }}
         >
-          <KPICard
-            title="Total Amount"
-            value={formatCurrency(sale.amount)}
-            icon="cash"
-            color={theme.primary}
-          />
-          <KPICard
-            title="Discount"
-            value={formatCurrency(sale.discount || 0)}
-            icon="pricetag"
-            color={theme.warning}
-          />
-          <KPICard
-            title="Net Amount"
-            value={formatCurrency(netAmount)}
-            icon="calculator"
-            color={theme.info}
-          />
-          <KPICard
-            title="Received"
-            value={formatCurrency(totalReceived)}
-            icon="checkmark-circle"
-            color={theme.success}
-          />
-          <KPICard
-            title="Balance Due"
-            value={formatCurrency(balanceDue)}
-            icon="alert-circle"
-            color={balanceDue > 0 ? theme.error : theme.success}
-          />
+          <View style={{ minWidth: 140 }}>
+            <KPICard
+              title="Total Amount"
+              value={formatCurrency(sale.amount)}
+              icon="cash"
+              color={theme.primary}
+            />
+          </View>
+          <View style={{ minWidth: 140 }}>
+            <KPICard
+              title="Discount"
+              value={formatCurrency(sale.discount || 0)}
+              icon="pricetag"
+              color={theme.warning}
+            />
+          </View>
+          <View style={{ minWidth: 140 }}>
+            <KPICard
+              title="Net Amount"
+              value={formatCurrency(netAmount)}
+              icon="calculator"
+              color={theme.info}
+            />
+          </View>
+          <View style={{ minWidth: 140 }}>
+            <KPICard
+              title="Received"
+              value={formatCurrency(totalReceived)}
+              icon="checkmark-circle"
+              color={theme.success}
+            />
+          </View>
+          <View style={{ minWidth: 140 }}>
+            <KPICard
+              title="Balance Due"
+              value={formatCurrency(balanceDue)}
+              icon="alert-circle"
+              color={balanceDue > 0 ? theme.error : theme.success}
+            />
+          </View>
         </ScrollView>
 
-
         {/* Tabs */}
-        <TabBar tabs={tabs} activeTab={activeTab} onTabChange={(key) => setActiveTab(key as TabType)} />
+        <View style={{
+          paddingHorizontal: 16,
+          marginBottom: spacing.md,
+          paddingTop: spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: theme.border + '50'
+        }}>
+          <TabBar tabs={tabs} activeTab={activeTab} onTabChange={(key) => setActiveTab(key as TabType)} />
+        </View>
 
-        <View style={{ paddingHorizontal: 16, paddingBottom: 24, paddingTop: 16, gap: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 12, gap: 16 }}>
           {activeTab === 'details' && <DetailsTab sale={sale} event={event} theme={theme} />}
           {activeTab === 'payments' && <PaymentsTab payments={sale.payments || []} theme={theme} />}
           {activeTab === 'expenses' && <ExpensesTab eventId={event?.id} saleAmount={netAmount} theme={theme} />}
@@ -277,7 +294,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ sale, event, theme }) => {
   };
 
   return (
-    <Animated.View entering={FadeIn} style={{ gap: 4 }}>
+    <Animated.View entering={FadeIn} style={{ gap: 12 }}>
       {/* Event Info Card */}
       {event && (
         <DetailSection title="Event Details" icon="calendar" delay={0}>
@@ -367,91 +384,86 @@ interface PaymentsTabProps {
 }
 
 const PaymentsTab: React.FC<PaymentsTabProps> = ({ payments, theme }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const getPaymentModeIcon = (mode: string): any => {
-    const icons: Record<string, string> = {
-      cash: 'cash-outline',
-      cheque: 'document-text-outline',
-      upi: 'phone-portrait-outline',
-      bank_transfer: 'business-outline',
-    };
-    return icons[mode] || 'card-outline';
-  };
-
-  const getPaymentModeLabel = (mode: string) => {
-    const labels: Record<string, string> = {
-      cash: 'Cash',
-      cheque: 'Cheque',
-      upi: 'UPI',
-      bank_transfer: 'Bank Transfer',
-    };
-    return labels[mode] || mode;
-  };
-
   if (!payments || payments.length === 0) {
     return (
       <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
         <Ionicons name="card-outline" size={64} color={theme.textSecondary} opacity={0.3} />
-        <Text style={[getTypographyStyle('xl', theme), { marginTop: spacing.md, color: theme.textSecondary }]}>
+        <Text style={[getTypographyStyle('xl', 'medium'), { marginTop: spacing.md, color: theme.textSecondary }]}>
           No Payments Yet
         </Text>
-        <Text style={[getTypographyStyle('base', theme), { marginTop: spacing.xs, color: theme.textSecondary }]}>
+        <Text style={[getTypographyStyle('base', 'regular'), { marginTop: spacing.xs, color: theme.textSecondary }]}>
           Payment installments will appear here
         </Text>
       </View>
     );
   }
 
+  const columns = [
+    {
+      key: 'payment_amount',
+      title: 'Amount',
+      width: 100,
+      render: (value: number) => (
+        <Text style={[getTypographyStyle('sm', 'bold'), { color: theme.primary }]}>
+          {new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0,
+          }).format(value)}
+        </Text>
+      ),
+    },
+    {
+      key: 'payment_date',
+      title: 'Date',
+      width: 100,
+      render: (value: string) => (
+        <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.text }]}>
+          {new Date(value).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })}
+        </Text>
+      ),
+    },
+    {
+      key: 'mode_of_payment',
+      title: 'Mode',
+      width: 100,
+      render: (value: string) => {
+        const labels: Record<string, string> = {
+          cash: 'Cash',
+          cheque: 'Cheque',
+          upi: 'UPI',
+          bank_transfer: 'Bank Transfer',
+        };
+        return (
+          <Text style={[getTypographyStyle('sm', 'medium'), { color: theme.text }]}>
+            {labels[value] || value}
+          </Text>
+        );
+      },
+    },
+    {
+      key: 'notes',
+      title: 'Notes',
+      width: 150,
+      render: (value: string) => (
+        <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary }]} numberOfLines={1}>
+          {value || '-'}
+        </Text>
+      ),
+    },
+  ];
+
   return (
-    <Animated.View entering={FadeIn} style={{ gap: 4 }}>
-      {payments.map((payment, index) => (
-        <DetailSection
-          key={payment.id || index}
-          title={`Payment #${index + 1}`}
-          icon="wallet-outline"
-          delay={index * 100}
-        >
-          <DetailRow
-            label="Amount"
-            value={formatCurrency(payment.payment_amount)}
-            icon="cash-outline"
-            valueStyle={{ color: theme.primary, fontWeight: '700', fontSize: 16 }}
-          />
-          <DetailRow
-            label="Date"
-            value={formatDate(payment.payment_date)}
-            icon="calendar-outline"
-          />
-          <DetailRow
-            label="Mode"
-            value={getPaymentModeLabel(payment.mode_of_payment)}
-            icon={getPaymentModeIcon(payment.mode_of_payment)}
-          />
-          {payment.notes && (
-            <DetailRow
-              label="Notes"
-              value={payment.notes}
-              icon="document-text-outline"
-              isLast
-            />
-          )}
-        </DetailSection>
-      ))}
+    <Animated.View entering={FadeIn} style={{ flex: 1 }}>
+      <Table
+        data={payments}
+        columns={columns}
+        keyExtractor={(item, index) => String(item.id || index)}
+      />
     </Animated.View>
   );
 };
@@ -517,7 +529,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ eventId, saleAmount, theme })
   }
 
   return (
-    <Animated.View entering={FadeIn} style={{ gap: 4 }}>
+    <Animated.View entering={FadeIn} style={{ gap: 12 }}>
       {/* Profit/Loss Summary */}
       <DetailSection title="Profit/Loss Summary" icon="analytics" delay={0}>
         <DetailRow

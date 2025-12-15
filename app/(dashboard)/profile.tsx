@@ -65,7 +65,7 @@ export default function ProfileScreen() {
     try {
       // Perform logout
       await useAuthStore.getState().logout();
-      
+
       // Navigate to login after a brief delay
       setTimeout(() => {
         router.replace('/(auth)/login');
@@ -208,6 +208,55 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Professional Profile */}
+        <View style={{ padding: spacing.lg, paddingTop: 0 }}>
+          <Text
+            style={{
+              ...getTypographyStyle('lg', 'semibold'),
+              color: theme.text,
+              marginBottom: 16,
+            }}
+          >
+            Professional Profile
+          </Text>
+
+          <View
+            style={{
+              backgroundColor: theme.surface,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.border,
+              overflow: 'hidden',
+            }}
+          >
+            <ListItem
+              title="Education"
+              leftIcon="school-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => router.push('/(settings)/edit-education')}
+            />
+            <ListItem
+              title="Work Experience"
+              leftIcon="briefcase-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => router.push('/(settings)/edit-experience')}
+            />
+            <ListItem
+              title="Skills"
+              leftIcon="ribbon-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => router.push('/(settings)/edit-skills')}
+            />
+            <ListItem
+              title="Certifications"
+              leftIcon="medal-outline"
+              rightIcon="chevron-forward-outline"
+              onPress={() => router.push('/(settings)/edit-certifications')}
+              showDivider={false}
+            />
+          </View>
+        </View>
+
         {/* Settings */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SETTINGS</Text>
@@ -262,7 +311,7 @@ export default function ProfileScreen() {
             onPress={handleLogout}
             style={({ pressed }) => [
               styles.tapLogoutButton,
-              { 
+              {
                 borderColor: theme.border,
                 opacity: pressed ? 0.7 : 1,
               },

@@ -3,7 +3,7 @@
  * Redesigned following approved implementation plan
  * Matches Events module pattern exactly
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StyleSheet, BackHandler } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -13,12 +13,12 @@ import ModuleHeader from '@/components/layout/ModuleHeader';
 import { FilterBar, EmptyState, Badge } from '@/components';
 import { CompactLeaveBalance } from '@/components/hr';
 import { useTheme } from '@/hooks/useTheme';
-import { useMyLeaves, useLeaveBalance, useLeaveStatistics, useTeamLeaves } from '@/hooks/useHRQueries';
+import { useMyLeaves, useLeaveBalance, useLeaveStatistics, useTeamLeaves, useCalendarLeaves } from '@/hooks/useHRQueries';
 import { useAuthStore } from '@/store/authStore';
 import NotificationBell from '@/components/layout/NotificationBell';
-import { format } from 'date-fns';
-import { getStatusColor, getOpacityColor } from '@/constants/designSystem';
-import type { LeaveRequest, TeamMemberLeave } from '@/types/hr';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameDay, getMonth, getYear, parseISO, isValid } from 'date-fns';
+import { getStatusColor, getOpacityColor, borderRadius, spacing, shadows } from '@/constants/designSystem';
+import type { LeaveRequest, TeamMemberLeave, CalendarLeave } from '@/types/hr';
 
 type TabType = 'dashboard' | 'myleaves' | 'team' | 'calendar';
 
@@ -42,6 +42,10 @@ export default function LeaveManagementScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Calendar state
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
   // Permission checks - using category as per Events module
   // Check for various role strings: hr, admin, manager, team_lead
   const userCategory = (user?.category || '').toLowerCase();
@@ -52,10 +56,29 @@ export default function LeaveManagementScreen() {
   const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useLeaveBalance();
   const { data: stats, refetch: refetchStats } = useLeaveStatistics();
   const { data: teamLeavesData, isLoading: teamLeavesLoading, refetch: refetchTeamLeaves } = useTeamLeaves();
+  const { data: calendarData, isLoading: calendarLoading, refetch: refetchCalendar } = useCalendarLeaves(
+    getYear(calendarDate),
+    getMonth(calendarDate) + 1
+  );
 
   // Safely handle paginated vs array response
   const leaves = (leavesData as any)?.results || (Array.isArray(leavesData) ? leavesData : []) || [];
   const teamLeaves = (teamLeavesData as any)?.results || (Array.isArray(teamLeavesData) ? teamLeavesData : []) || [];
+  const calendarLeaves: CalendarLeave[] = Array.isArray(calendarData) ? calendarData : [];
+
+  // Process calendar leaves into date lookup
+  const leaveDates = useMemo(() => {
+    return calendarLeaves.flatMap((leave: CalendarLeave) => {
+      return (leave.dates || []).map(dateStr => {
+        const date = parseISO(dateStr);
+        return isValid(date) ? { date, leave } : null;
+      }).filter(Boolean) as { date: Date; leave: CalendarLeave }[];
+    });
+  }, [calendarLeaves]);
+
+  const getLeavesForDate = useCallback((date: Date) => {
+    return leaveDates.filter(ld => isSameDay(ld.date, date));
+  }, [leaveDates]);
 
   // Handle back button
   useFocusEffect(
@@ -81,13 +104,14 @@ export default function LeaveManagementScreen() {
         refetchBalance(),
         refetchStats(),
         canApprove && refetchTeamLeaves(),
+        activeTab === 'calendar' && refetchCalendar(),
       ]);
     } catch (error) {
       console.error('Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [canApprove, refetchLeaves, refetchBalance, refetchStats, refetchTeamLeaves]);
+  }, [canApprove, activeTab, refetchLeaves, refetchBalance, refetchStats, refetchTeamLeaves, refetchCalendar]);
 
   // Tab configuration
   const tabs = [
@@ -275,14 +299,168 @@ export default function LeaveManagementScreen() {
     </View>
   );
 
-  // Render Calendar Tab (inline placeholder)
+  // Calendar navigation
+  const goToPreviousMonth = () => {
+    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1));
+    setSelectedDate(null);
+  };
+
+  const goToNextMonth = () => {
+    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1));
+    setSelectedDate(null);
+  };
+
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthStart = startOfMonth(calendarDate);
+  const monthEnd = endOfMonth(calendarDate);
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  // Render Calendar Tab
   const renderCalendar = () => (
-    <View style={styles.calendarPlaceholder}>
-      <Ionicons name="calendar" size={64} color={theme.textTertiary} />
-      <Text style={[styles.calendarTitle, { color: theme.text }]}>Calendar View</Text>
-      <Text style={[styles.calendarSubtitle, { color: theme.textSecondary }]}>
-        View your leave schedule in calendar format
-      </Text>
+    <View style={styles.tabContent}>
+      {/* Calendar Grid */}
+      <View style={[styles.calendarCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {/* Month Navigation */}
+        <View style={styles.calendarHeader}>
+          <TouchableOpacity onPress={goToPreviousMonth} style={styles.calendarNavBtn}>
+            <Ionicons name="chevron-back" size={22} color={theme.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.calendarMonthTitle, { color: theme.text }]}>
+            {format(calendarDate, 'MMMM yyyy')}
+          </Text>
+          <TouchableOpacity onPress={goToNextMonth} style={styles.calendarNavBtn}>
+            <Ionicons name="chevron-forward" size={22} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Day Labels */}
+        <View style={styles.calendarDayLabels}>
+          {DAYS.map(day => (
+            <View key={day} style={styles.calendarDayLabel}>
+              <Text style={[styles.calendarDayLabelText, { color: theme.textSecondary }]}>{day}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Calendar Days */}
+        <View style={styles.calendarGrid}>
+          {/* Empty cells for offset */}
+          {Array(monthStart.getDay()).fill(null).map((_, i) => (
+            <View key={`empty-${i}`} style={styles.calendarDayCell} />
+          ))}
+          {/* Day cells */}
+          {daysInMonth.map((date, idx) => {
+            const dayLeaves = getLeavesForDate(date);
+            const hasLeave = dayLeaves.length > 0;
+            const isSelected = selectedDate && isSameDay(date, selectedDate);
+            const isCurrentDay = isToday(date);
+            const hasMyLeave = dayLeaves.some(dl => dl.leave.is_mine);
+            const hasTeamLeave = dayLeaves.some(dl => !dl.leave.is_mine);
+
+            return (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => setSelectedDate(date)}
+                style={styles.calendarDayCell}
+              >
+                <View
+                  style={[
+                    styles.calendarDayInner,
+                    {
+                      backgroundColor: isSelected ? getOpacityColor(theme.primary, 0.15) : 'transparent',
+                      borderColor: isSelected ? theme.primary : isCurrentDay ? theme.primary : theme.border,
+                      borderWidth: isSelected || isCurrentDay ? 2 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.calendarDayText, { color: theme.text, fontWeight: isCurrentDay ? '700' : '600' }]}>
+                    {format(date, 'd')}
+                  </Text>
+                  {/* Leave indicators */}
+                  {hasLeave && (
+                    <View style={styles.leaveIndicators}>
+                      {hasMyLeave && (
+                        <View style={[styles.leaveIndicator, { backgroundColor: theme.primary }]} />
+                      )}
+                      {hasTeamLeave && (
+                        <View style={[styles.leaveIndicator, { backgroundColor: '#F59E0B', opacity: 0.7 }]} />
+                      )}
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Selected Date Details */}
+      {selectedDate && (
+        <View style={styles.selectedDateSection}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Leaves on {format(selectedDate, 'MMM dd, yyyy')}
+          </Text>
+          {getLeavesForDate(selectedDate).length === 0 ? (
+            <View style={[styles.noLeavesCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Ionicons name="checkmark-circle" size={32} color={theme.success || '#10B981'} />
+              <Text style={[styles.noLeavesText, { color: theme.textSecondary }]}>No leaves on this day</Text>
+            </View>
+          ) : (
+            <View style={styles.cardList}>
+              {getLeavesForDate(selectedDate).map((item, idx) => {
+                const statusColor = getStatusColor(item.leave.status, isDark);
+                const isMine = item.leave.is_mine;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => isMine && router.push(`/(modules)/leave/${item.leave.id}` as any)}
+                    disabled={!isMine}
+                    style={[
+                      styles.leaveCard,
+                      {
+                        backgroundColor: theme.surface,
+                        borderColor: isMine ? statusColor.border : theme.border,
+                        borderLeftWidth: 4,
+                        borderLeftColor: isMine ? theme.primary : '#F59E0B',
+                      },
+                    ]}
+                  >
+                    <View style={styles.cardRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: getOpacityColor(isMine ? theme.primary : '#F59E0B', 0.15) }]}>
+                        <Ionicons name={isMine ? 'person' : 'people'} size={18} color={isMine ? theme.primary : '#F59E0B'} />
+                      </View>
+                      <View style={styles.cardContent}>
+                        <Text style={[styles.leaveType, { color: theme.text }]}>
+                          {item.leave.user_name} {isMine && '(You)'}
+                        </Text>
+                        <Text style={[styles.dateRange, { color: theme.textSecondary }]}>
+                          {item.leave.leave_type} • {item.leave.status.toUpperCase()}
+                        </Text>
+                      </View>
+                      <Badge label={item.leave.status} status={item.leave.status as any} size="sm" />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Legend */}
+      <View style={[styles.legendCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
+        <View style={styles.legendItems}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: theme.primary }]} />
+            <Text style={[styles.legendText, { color: theme.text }]}>My Leave</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#F59E0B', opacity: 0.7 }]} />
+            <Text style={[styles.legendText, { color: theme.text }]}>Team Leave</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 
@@ -513,22 +691,104 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  calendarPlaceholder: {
+  calendarCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calendarNavBtn: {
+    padding: 8,
+  },
+  calendarMonthTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  calendarDayLabels: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  calendarDayLabel: {
     flex: 1,
-    padding: 32,
+    alignItems: 'center',
+  },
+  calendarDayLabelText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDayCell: {
+    width: '14.28%',
+    aspectRatio: 1,
+    padding: 2,
+  },
+  calendarDayInner: {
+    flex: 1,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 300,
   },
-  calendarTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-  },
-  calendarSubtitle: {
+  calendarDayText: {
     fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
+  },
+  leaveIndicators: {
+    flexDirection: 'row',
+    gap: 2,
+    marginTop: 2,
+  },
+  leaveIndicator: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  selectedDateSection: {
+    marginBottom: 16,
+  },
+  noLeavesCard: {
+    padding: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  noLeavesText: {
+    fontSize: 14,
+  },
+  legendCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  legendTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 13,
   },
   approvalButton: {
     width: 36,

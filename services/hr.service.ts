@@ -334,6 +334,39 @@ class HRService {
    * Get leave balance for current user or specific employee
    * @param employeeId - If not provided, gets current user's balance
    */
+  /**
+   * Get leave balances as array for dedicated balance page
+   * Returns raw backend data with proper field mapping
+   */
+  async getLeaveBalancesList(): Promise<any[]> {
+    try {
+      const response = await api.get<any[]>('/leave_management/leave-balances/my_balance/');
+      const balances: any = response;
+      console.log('📊 Leave balances list response:', balances);
+
+      if (Array.isArray(balances)) {
+        // Map to consistent frontend format
+        return balances.map((b: any) => ({
+          id: b.id,
+          leave_type: b.leave_type_name || b.leave_type?.name || 'Unknown',
+          total_days: b.total_allocated || 0,
+          used_days: b.leave_takes || 0,
+          available_days: b.remaining_leaves || (b.total_allocated - b.leave_takes) || 0,
+          pending_days: 0, // Backend doesn't track pending separately yet
+          year: new Date().getFullYear(),
+          carry_forward: 0,
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.warn('Leave balances list not available:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get leave balance summary for current user (compact component)
+   */
   async getLeaveBalance(employeeId?: number): Promise<LeaveBalance> {
     try {
       // Try the new my_balance endpoint first
