@@ -196,7 +196,7 @@ class DashboardService {
     try {
       console.log(`🏆 Fetching ${filter} leaderboard for ${timeRange}...`);
 
-      const response = await api.get('/project_management/leaderboard/', {
+      const response = await api.get<any>('/project_management/leaderboard/', {
         params: { filter, time_range: timeRange, limit }
       });
 
