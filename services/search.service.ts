@@ -9,6 +9,7 @@ export interface SearchPerson {
   id: string;
   name: string;
   email?: string;
+  phone?: string;
   designation?: string;
   department?: string;
   avatar?: string | null;
@@ -47,16 +48,47 @@ export interface SearchDocument {
   module?: string;
 }
 
+export interface SearchEvent {
+  id: string;
+  name: string;
+  event_type?: string;
+  status?: string;
+  start_date?: string;
+  venue?: string;
+  client_name?: string;
+}
+
+export interface SearchClient {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  category?: string;
+}
+
+export interface SearchVendor {
+  id: string;
+  name: string;
+  category?: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+}
+
 export interface GlobalSearchResults {
   people: SearchPerson[];
   projects: SearchProject[];
   tasks: SearchTask[];
   documents: SearchDocument[];
+  events: SearchEvent[];
+  clients: SearchClient[];
+  vendors: SearchVendor[];
   total_count: number;
 }
 
 export interface SearchFilters {
-  category?: 'all' | 'people' | 'projects' | 'tasks' | 'documents';
+  category?: 'all' | 'people' | 'projects' | 'tasks' | 'documents' | 'events' | 'clients' | 'vendors';
   limit?: number;
 }
 
@@ -105,6 +137,9 @@ class SearchService {
         projects: [],
         tasks: [],
         documents: [],
+        events: [],
+        clients: [],
+        vendors: [],
         total_count: 0,
       };
     } catch (error) {
@@ -125,6 +160,9 @@ class SearchService {
       projects: [],
       tasks: [],
       documents: [],
+      events: [],
+      clients: [],
+      vendors: [],
       total_count: 0,
     };
 
@@ -135,22 +173,24 @@ class SearchService {
     if (category === 'all' || category === 'people') {
       try {
         const peopleResponse = await api.get<any[]>('/hr/users/', {
-          params: { search: query, limit: Math.ceil(limit / 4) }
+          params: { search: query, limit: Math.ceil(limit / 6) }
         });
         const people = Array.isArray(peopleResponse) ? peopleResponse :
-          (peopleResponse as any)?.data || [];
+          (peopleResponse as any)?.data || (peopleResponse as any)?.results || [];
 
         results.people = people.map((p: any) => ({
           id: p.id || p.user_id,
           name: p.full_name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
           email: p.email,
+          phone: p.phone || p.phone_number,
           designation: p.designation || p.position,
           department: p.department,
-          avatar: p.avatar || p.profile_picture,
+          avatar: p.avatar || p.profile_picture || p.photo,
           isOnline: p.is_online || false,
         }));
+        console.log(`✅ Found ${results.people.length} people`);
       } catch (e) {
-        console.log('No people results');
+        console.log('No people results', e);
       }
     }
 
@@ -158,10 +198,10 @@ class SearchService {
     if (category === 'all' || category === 'projects') {
       try {
         const projectsResponse = await api.get<any[]>('/project_management/projects/', {
-          params: { search: query, limit: Math.ceil(limit / 4) }
+          params: { search: query, limit: Math.ceil(limit / 6) }
         });
         const projects = Array.isArray(projectsResponse) ? projectsResponse :
-          (projectsResponse as any)?.data || [];
+          (projectsResponse as any)?.data || (projectsResponse as any)?.results || [];
 
         results.projects = projects.map((p: any) => ({
           id: p.id,
@@ -182,10 +222,10 @@ class SearchService {
     if (category === 'all' || category === 'tasks') {
       try {
         const tasksResponse = await api.get<any[]>('/project_management/tasks/', {
-          params: { search: query, limit: Math.ceil(limit / 4) }
+          params: { search: query, limit: Math.ceil(limit / 6) }
         });
         const tasks = Array.isArray(tasksResponse) ? tasksResponse :
-          (tasksResponse as any)?.data || [];
+          (tasksResponse as any)?.data || (tasksResponse as any)?.results || [];
 
         results.tasks = tasks.map((t: any) => ({
           id: t.id,
@@ -202,12 +242,85 @@ class SearchService {
       }
     }
 
+    // Search events
+    if (category === 'all' || category === 'events') {
+      try {
+        const eventsResponse = await api.get<any[]>('/events/events/', {
+          params: { search: query, limit: Math.ceil(limit / 6) }
+        });
+        const events = Array.isArray(eventsResponse) ? eventsResponse :
+          (eventsResponse as any)?.data || (eventsResponse as any)?.results || [];
+
+        results.events = events.map((e: any) => ({
+          id: e.id,
+          name: e.name || e.event_name,
+          event_type: e.event_type || e.type,
+          status: e.status,
+          start_date: e.start_date || e.date,
+          venue: e.venue?.name || e.venue_name,
+          client_name: e.client?.name || e.client_name,
+        }));
+        console.log(`✅ Found ${results.events.length} events`);
+      } catch (e) {
+        console.log('No events results', e);
+      }
+    }
+
+    // Search clients
+    if (category === 'all' || category === 'clients') {
+      try {
+        const clientsResponse = await api.get<any[]>('/events/clients/', {
+          params: { search: query, limit: Math.ceil(limit / 6) }
+        });
+        const clients = Array.isArray(clientsResponse) ? clientsResponse :
+          (clientsResponse as any)?.data || (clientsResponse as any)?.results || [];
+
+        results.clients = clients.map((c: any) => ({
+          id: c.id,
+          name: c.name || c.client_name,
+          email: c.email,
+          phone: c.phone || c.contact_number,
+          company: c.company || c.company_name,
+          category: c.category,
+        }));
+        console.log(`✅ Found ${results.clients.length} clients`);
+      } catch (e) {
+        console.log('No clients results', e);
+      }
+    }
+
+    // Search vendors - using finance_management path
+    if (category === 'all' || category === 'vendors') {
+      try {
+        const vendorsResponse = await api.get<any[]>('/finance_management/vendors/', {
+          params: { search: query, limit: Math.ceil(limit / 6) }
+        });
+        const vendors = Array.isArray(vendorsResponse) ? vendorsResponse :
+          (vendorsResponse as any)?.data || (vendorsResponse as any)?.results || [];
+
+        results.vendors = vendors.map((v: any) => ({
+          id: v.id,
+          name: v.name || v.vendor_name,
+          category: v.category || v.type,
+          contact_person: v.contact_person || v.contact_name,
+          phone: v.phone || v.contact_number,
+          email: v.email,
+        }));
+        console.log(`✅ Found ${results.vendors.length} vendors`);
+      } catch (e) {
+        console.log('No vendors results', e);
+      }
+    }
+
     // Calculate total count
     results.total_count =
       results.people.length +
       results.projects.length +
       results.tasks.length +
-      results.documents.length;
+      results.documents.length +
+      results.events.length +
+      results.clients.length +
+      results.vendors.length;
 
     console.log('✅ Fallback search results:', results.total_count);
     return results;
@@ -244,6 +357,31 @@ class SearchService {
     const results = await this.globalSearch(query, { category: 'documents', limit });
     return results.documents;
   }
+
+  /**
+   * Search only events
+   */
+  async searchEvents(query: string, limit: number = 10): Promise<SearchEvent[]> {
+    const results = await this.globalSearch(query, { category: 'events', limit });
+    return results.events;
+  }
+
+  /**
+   * Search only clients
+   */
+  async searchClients(query: string, limit: number = 10): Promise<SearchClient[]> {
+    const results = await this.globalSearch(query, { category: 'clients', limit });
+    return results.clients;
+  }
+
+  /**
+   * Search only vendors
+   */
+  async searchVendors(query: string, limit: number = 10): Promise<SearchVendor[]> {
+    const results = await this.globalSearch(query, { category: 'vendors', limit });
+    return results.vendors;
+  }
 }
 
 export default new SearchService();
+

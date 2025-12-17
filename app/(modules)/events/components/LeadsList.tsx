@@ -295,17 +295,6 @@ const LeadsList: React.FC<LeadsListProps> = ({
           ) : undefined
         }
       />
-
-      {/* Add Lead FAB Button - positioned at bottom-left 30px from bottom, 20px from left */}
-      {canCreateLeads && (
-        <FAB
-          icon="add"
-          label="Add Lead"
-          variant="extended"
-          position="bottom-left"
-          onPress={() => router.push('/(modules)/events/add-lead' as any)}
-        />
-      )}
     </View>
   );
 };

@@ -68,13 +68,13 @@ const NotificationIcon = ({ type, isRead }: { type: NotificationType; isRead: bo
   );
 };
 
-const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: { 
-  notification: NotificationItem; 
+const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: {
+  notification: NotificationItem;
   onPress: () => void;
   onMarkAsRead: () => void;
 }) => {
   const { theme, isDark } = useTheme();
-  
+
   const timeAgo = (() => {
     try {
       return formatDistanceToNow(new Date(notification.created_at), { addSuffix: true });
@@ -91,33 +91,34 @@ const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: {
     >
       <View style={[
         styles.notificationCard,
-        notification.is_read && styles.readNotification
+        { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' },
+        notification.is_read && { backgroundColor: isDark ? '#111827' : '#F9FAFB', borderLeftColor: isDark ? '#4B5563' : '#D1D5DB' }
       ]}>
         <View style={styles.cardContent}>
           <NotificationIcon type={notification.type} isRead={notification.is_read} />
-          
+
           <View style={{ flex: 1 }}>
-            <Text 
-              style={{ 
-                fontSize: 14, 
+            <Text
+              style={{
+                fontSize: 14,
                 fontWeight: notification.is_read ? '500' : '600',
                 color: notification.is_read ? theme.textSecondary : theme.text,
                 lineHeight: 19,
                 marginBottom: 3,
-              }} 
+              }}
               numberOfLines={2}
             >
               {notification.title}
             </Text>
-            
+
             {notification.message && (
-              <Text 
-                style={{ 
-                  fontSize: 13, 
+              <Text
+                style={{
+                  fontSize: 13,
                   color: theme.textSecondary,
                   lineHeight: 18,
                   marginBottom: 8,
-                }} 
+                }}
                 numberOfLines={2}
               >
                 {notification.message}
@@ -125,16 +126,16 @@ const NotificationItemComponent = ({ notification, onPress, onMarkAsRead }: {
             )}
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text 
-                style={{ 
-                  fontSize: 11, 
+              <Text
+                style={{
+                  fontSize: 11,
                   color: theme.textTertiary,
                 }}
               >
                 {timeAgo}{notification.user_name && ` • ${notification.user_name}`}
               </Text>
               {!notification.is_read && (
-                <View style={{ 
+                <View style={{
                   width: 6,
                   height: 6,
                   borderRadius: 3,
@@ -155,13 +156,13 @@ export default function NotificationsScreen() {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   // Fetch real notifications from API
-  const { 
-    data: notificationsData = [], 
-    isLoading, 
+  const {
+    data: notificationsData = [],
+    isLoading,
     refetch,
-    isRefetching 
+    isRefetching
   } = useNotifications(filter === 'unread' ? { status: 'unread' } : undefined);
-  
+
   const { mutate: markAsRead } = useMarkNotificationAsRead();
   const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
 
@@ -189,7 +190,7 @@ export default function NotificationsScreen() {
     if (!notification.is_read) {
       markAsRead(notification.id);
     }
-    
+
     // Navigate to relevant page if action_url exists
     if (notification.action_url) {
       router.push(notification.action_url as any);
@@ -223,7 +224,7 @@ export default function NotificationsScreen() {
               </View>
             )}
           </View>
-          
+
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <AnimatedPressable
               onPress={() => setFilter('all')}
@@ -296,7 +297,7 @@ export default function NotificationsScreen() {
               {filter === 'unread' ? 'All caught up!' : 'No notifications yet'}
             </Text>
             <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
-              {filter === 'unread' 
+              {filter === 'unread'
                 ? "You've read all your notifications"
                 : "We'll notify you when something new arrives"}
             </Text>
@@ -340,7 +341,6 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   notificationCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderLeftWidth: 3,
     borderLeftColor: '#6366F1',
@@ -351,10 +351,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 1,
-  },
-  readNotification: {
-    backgroundColor: '#F9FAFB',
-    borderLeftColor: '#D1D5DB',
   },
   cardContent: {
     flexDirection: 'row',

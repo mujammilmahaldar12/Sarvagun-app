@@ -44,8 +44,9 @@ export default function AddLeadScreen() {
   // Modal states
   const [showClientModal, setShowClientModal] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
-  const [showOrgInput, setShowOrgInput] = useState(false);
+  const [showOrgModal, setShowOrgModal] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
+  const [creatingOrg, setCreatingOrg] = useState(false);
 
 
   // Form mode: 'select' or 'create'
@@ -480,14 +481,26 @@ export default function AddLeadScreen() {
 
               {/* Organisation Selection (Conditional - only for B2B/B2G) */}
               {requiresOrganisation() && (
-                <Select
-                  label="Organisation"
-                  value={formData.organisationId}
-                  onChange={(val) => updateField('organisationId', val)}
-                  options={organisations.map(o => ({ label: o.name, value: o.id }))}
-                  placeholder="Select organisation"
-                  required
-                />
+                <View>
+                  <Select
+                    label="Organisation"
+                    value={formData.organisationId}
+                    onChange={(val) => {
+                      if (val === -1) {
+                        // "Add New" was selected
+                        setShowOrgModal(true);
+                      } else {
+                        updateField('organisationId', val);
+                      }
+                    }}
+                    options={[
+                      ...organisations.map(o => ({ label: o.name, value: o.id })),
+                      { label: '➕ Add New Organisation', value: -1 },
+                    ]}
+                    placeholder="Select organisation"
+                    required
+                  />
+                </View>
               )}
 
               <Input
@@ -784,6 +797,108 @@ export default function AddLeadScreen() {
                 )}
                 <View style={{ height: 20 }} />
               </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Organisation Creation Modal */}
+        <Modal
+          visible={showOrgModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowOrgModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: baseColors.neutral[900] + '80', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{
+              backgroundColor: theme.background,
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 400,
+              padding: 20,
+            }}>
+              {/* Modal Header */}
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
+                  Add New Organisation
+                </Text>
+                <Pressable onPress={() => setShowOrgModal(false)}>
+                  <Ionicons name="close" size={24} color={theme.text} />
+                </Pressable>
+              </View>
+
+              {/* Organisation Name Input */}
+              <Input
+                label="Organisation Name"
+                value={newOrgName}
+                onChangeText={setNewOrgName}
+                placeholder="Enter organisation name"
+                required
+                leftIcon="business-outline"
+              />
+
+              {/* Action Buttons */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <Pressable
+                  onPress={() => {
+                    setShowOrgModal(false);
+                    setNewOrgName('');
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: borderRadius.lg,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: theme.text, fontWeight: '600' }}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    if (!newOrgName.trim()) {
+                      Alert.alert('Error', 'Please enter organisation name');
+                      return;
+                    }
+                    setCreatingOrg(true);
+                    try {
+                      const newOrg = await eventsService.createOrganisation({ name: newOrgName.trim() });
+                      // Add to organisations list
+                      setOrganisations(prev => [...prev, newOrg]);
+                      // Select the new organisation
+                      updateField('organisationId', newOrg.id);
+                      setShowOrgModal(false);
+                      setNewOrgName('');
+                      Alert.alert('Success', 'Organisation created successfully');
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message || 'Failed to create organisation');
+                    } finally {
+                      setCreatingOrg(false);
+                    }
+                  }}
+                  disabled={creatingOrg || !newOrgName.trim()}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: borderRadius.lg,
+                    backgroundColor: newOrgName.trim() ? theme.primary : theme.border,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                >
+                  {creatingOrg && <ActivityIndicator size="small" color="#FFFFFF" />}
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                    {creatingOrg ? 'Creating...' : 'Create'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>

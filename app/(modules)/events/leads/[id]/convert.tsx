@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Text } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Text, Modal, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Card, Input, Button, Select, DatePicker } from '@/components/core';
 import { useToast } from '@/components/ui/Toast';
@@ -24,6 +25,11 @@ export default function ConvertLeadScreen() {
     const [categories, setCategories] = useState<ClientCategory[]>([]);
     const [organisations, setOrganisations] = useState<Organisation[]>([]);
     const [venues, setVenues] = useState<Venue[]>([]);
+
+    // Organisation Modal States
+    const [showOrgModal, setShowOrgModal] = useState(false);
+    const [newOrgName, setNewOrgName] = useState('');
+    const [creatingOrg, setCreatingOrg] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -86,6 +92,37 @@ export default function ConvertLeadScreen() {
             showToast({ message: 'Failed to load lead details', type: 'error' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Get categories that belong to this client
+    const getClientCategories = () => {
+        if (!lead?.client?.client_category || !Array.isArray(categories)) return [];
+        const clientCategoryIds = lead.client.client_category.map((c: any) => c.id || c.code);
+        // Filter categories by code (b2b, b2c, b2g) matching client's categories
+        return categories.filter(c =>
+            lead.client.client_category.some((cc: any) => cc.code === c.code || cc.id === c.id)
+        );
+    };
+
+    // Handle creating new organisation
+    const handleCreateOrganisation = async () => {
+        if (!newOrgName.trim()) {
+            Alert.alert('Error', 'Please enter organisation name');
+            return;
+        }
+        setCreatingOrg(true);
+        try {
+            const newOrg = await eventsService.createOrganisation({ name: newOrgName.trim() });
+            setOrganisations(prev => [...prev, newOrg]);
+            setFormData(prev => ({ ...prev, organisationId: newOrg.id }));
+            setShowOrgModal(false);
+            setNewOrgName('');
+            showToast({ message: 'Organisation created!', type: 'success' });
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to create organisation');
+        } finally {
+            setCreatingOrg(false);
         }
     };
 
@@ -162,22 +199,35 @@ export default function ConvertLeadScreen() {
                     />
 
                     <Select
-                        label="Client Category *"
-                        options={[
-                            { label: 'B2C (Individual)', value: 'b2c' },
-                            { label: 'B2B (Business)', value: 'b2b' },
-                            { label: 'B2G (Government)', value: 'b2g' },
-                        ]}
+                        label="Client Category (for this event) *"
+                        options={
+                            getClientCategories().length > 0
+                                ? getClientCategories().map(c => ({ label: c.name, value: c.code }))
+                                : [
+                                    { label: 'B2C (Individual)', value: 'b2c' },
+                                    { label: 'B2B (Business)', value: 'b2b' },
+                                    { label: 'B2G (Government)', value: 'b2g' },
+                                ]
+                        }
                         value={formData.clientCategory}
-                        onSelect={(val) => setFormData(prev => ({ ...prev, clientCategory: val as any }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, clientCategory: val as any, organisationId: null }))}
                     />
 
                     {['b2b', 'b2g'].includes(formData.clientCategory) && (
                         <Select
                             label="Organisation *"
-                            options={organisations.map(o => ({ label: o.name, value: o.id }))}
+                            options={[
+                                ...organisations.map(o => ({ label: o.name, value: o.id })),
+                                { label: '➕ Add New Organisation', value: -1 },
+                            ]}
                             value={formData.organisationId}
-                            onSelect={(val) => setFormData(prev => ({ ...prev, organisationId: val as number }))}
+                            onChange={(val) => {
+                                if (val === -1) {
+                                    setShowOrgModal(true);
+                                } else {
+                                    setFormData(prev => ({ ...prev, organisationId: val as number }));
+                                }
+                            }}
                             placeholder="Select Organisation"
                         />
                     )}
@@ -246,6 +296,55 @@ export default function ConvertLeadScreen() {
                 </Button>
 
             </ScrollView>
+
+            {/* Organisation Creation Modal */}
+            <Modal
+                visible={showOrgModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowOrgModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Add New Organisation</Text>
+                            <Pressable onPress={() => setShowOrgModal(false)}>
+                                <Ionicons name="close" size={24} color={Colors.text} />
+                            </Pressable>
+                        </View>
+
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={styles.inputLabel}>Organisation Name *</Text>
+                            <TextInput
+                                value={newOrgName}
+                                onChangeText={setNewOrgName}
+                                placeholder="Enter organisation name"
+                                placeholderTextColor={Colors.textSecondary}
+                                style={styles.modalInput}
+                            />
+                        </View>
+
+                        <View style={styles.modalButtons}>
+                            <Pressable
+                                onPress={() => { setShowOrgModal(false); setNewOrgName(''); }}
+                                style={[styles.modalBtn, styles.modalBtnCancel]}
+                            >
+                                <Text style={{ color: Colors.text, fontWeight: '600' }}>Cancel</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={handleCreateOrganisation}
+                                disabled={creatingOrg || !newOrgName.trim()}
+                                style={[styles.modalBtn, styles.modalBtnCreate, !newOrgName.trim() && { opacity: 0.5 }]}
+                            >
+                                {creatingOrg && <ActivityIndicator size="small" color="#FFF" />}
+                                <Text style={{ color: '#FFF', fontWeight: '600' }}>
+                                    {creatingOrg ? 'Creating...' : 'Create'}
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -281,5 +380,66 @@ const styles = StyleSheet.create({
     },
     submitBtn: {
         marginTop: 8,
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: Colors.background,
+        borderRadius: 16,
+        width: '100%',
+        maxWidth: 400,
+        padding: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: Colors.text,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.text,
+        marginBottom: 6,
+    },
+    modalInput: {
+        borderWidth: 1.5,
+        borderColor: Colors.border,
+        borderRadius: 10,
+        padding: 12,
+        fontSize: 15,
+        color: Colors.text,
+        backgroundColor: Colors.surface,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    modalBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    modalBtnCancel: {
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    modalBtnCreate: {
+        backgroundColor: Colors.primary,
     },
 });

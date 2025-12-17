@@ -6,14 +6,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // Permission types
-export type Permission = 
+export type Permission =
   // Events permissions
   | 'events:view'
   | 'events:create'
   | 'events:edit'
   | 'events:delete'
   | 'events:manage'
-  
+
   // Leads permissions  
   | 'leads:view'
   | 'leads:create'
@@ -21,21 +21,21 @@ export type Permission =
   | 'leads:delete'
   | 'leads:convert'
   | 'leads:manage'
-  
+
   // Clients permissions
   | 'clients:view'
   | 'clients:create'
   | 'clients:edit'
   | 'clients:delete'
   | 'clients:manage'
-  
+
   // Venues permissions
   | 'venues:view'
   | 'venues:create'
   | 'venues:edit'
   | 'venues:delete'
   | 'venues:manage'
-  
+
   // Leave Management permissions
   | 'leave:view'        // View leaves
   | 'leave:view_own'    // View only own leaves
@@ -46,13 +46,13 @@ export type Permission =
   | 'leave:delete'      // Delete/cancel leave
   | 'leave:approve'     // Approve/reject leaves
   | 'leave:manage'      // Full leave management
-  
+
   // HR permissions
   | 'hr:view'
   | 'hr:manage'
   | 'hr:employees'
   | 'hr:reimbursement'
-  
+
   // Admin permissions
   | 'admin:users'
   | 'admin:settings'
@@ -61,7 +61,7 @@ export type Permission =
   | 'admin:full';
 
 // Role definitions with associated permissions
-export type Role = 
+export type Role =
   | 'super_admin'
   | 'admin'
   | 'manager'
@@ -83,7 +83,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'hr:view', 'hr:manage', 'hr:employees', 'hr:reimbursement',
     'admin:users', 'admin:settings', 'admin:reports', 'admin:analytics', 'admin:full',
   ],
-  
+
   admin: [
     'events:view', 'events:create', 'events:edit', 'events:delete', 'events:manage',
     'leads:view', 'leads:create', 'leads:edit', 'leads:delete', 'leads:convert', 'leads:manage',
@@ -93,7 +93,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'hr:view', 'hr:manage', 'hr:employees', 'hr:reimbursement',
     'admin:reports', 'admin:analytics',
   ],
-  
+
   manager: [
     'events:view', 'events:create', 'events:edit', 'events:manage',
     'leads:view', 'leads:create', 'leads:edit', 'leads:convert', 'leads:manage',
@@ -103,7 +103,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'hr:view',
     'admin:reports',
   ],
-  
+
   coordinator: [
     'events:view', 'events:create', 'events:edit',
     'leads:view', 'leads:create', 'leads:edit', 'leads:convert',
@@ -111,7 +111,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'venues:view', 'venues:create', 'venues:edit',
     'leave:view', 'leave:view_own', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:approve',
   ],
-  
+
   intern: [
     'events:view',
     'leads:view', 'leads:create', 'leads:edit', 'leads:convert',
@@ -119,7 +119,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'venues:view',
     'leave:view', 'leave:view_own', 'leave:create',
   ],
-  
+
   employee: [
     'events:view',
     'leads:view', 'leads:create', 'leads:convert',
@@ -127,7 +127,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'venues:view',
     'leave:view', 'leave:view_own', 'leave:create',
   ],
-  
+
   viewer: [
     'events:view',
     'leads:view',
@@ -135,7 +135,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'venues:view',
     'leave:view', 'leave:view_own',
   ],
-  
+
   client: [
     'events:view', // Only their own events
   ],
@@ -153,13 +153,13 @@ interface PermissionState {
   permissions: Permission[];
   role: Role | null;
   company: string | null;
-  
+
   // Actions
   setPermissions: (permissions: Permission[]) => void;
   setRole: (role: Role) => void;
   setCompany: (company: string) => void;
   clearPermissions: () => void;
-  
+
   // Permission checks
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
@@ -169,7 +169,7 @@ interface PermissionState {
   canDelete: (resource: 'events' | 'leads' | 'clients' | 'venues') => boolean;
   canCreate: (resource: 'events' | 'leads' | 'clients' | 'venues') => boolean;
   canView: (resource: 'events' | 'leads' | 'clients' | 'venues') => boolean;
-  
+
   // Role checks
   isAdmin: () => boolean;
   isManager: () => boolean;
@@ -187,18 +187,18 @@ export const usePermissionStore = create<PermissionState>()(
       company: null,
 
       setPermissions: (permissions) => set({ permissions }),
-      
+
       setRole: (role) => {
         const permissions = ROLE_PERMISSIONS[role] || [];
         set({ role, permissions });
       },
-      
+
       setCompany: (company) => set({ company }),
-      
-      clearPermissions: () => set({ 
-        permissions: [], 
-        role: null, 
-        company: null 
+
+      clearPermissions: () => set({
+        permissions: [],
+        role: null,
+        company: null
       }),
 
       // Permission checks
@@ -223,26 +223,26 @@ export const usePermissionStore = create<PermissionState>()(
 
       canEdit: (resource) => {
         const { hasPermission } = get();
-        return hasPermission(`${resource}:edit` as Permission) || 
-               hasPermission(`${resource}:manage` as Permission);
+        return hasPermission(`${resource}:edit` as Permission) ||
+          hasPermission(`${resource}:manage` as Permission);
       },
 
       canDelete: (resource) => {
         const { hasPermission } = get();
-        return hasPermission(`${resource}:delete` as Permission) || 
-               hasPermission(`${resource}:manage` as Permission);
+        return hasPermission(`${resource}:delete` as Permission) ||
+          hasPermission(`${resource}:manage` as Permission);
       },
 
       canCreate: (resource) => {
         const { hasPermission } = get();
-        return hasPermission(`${resource}:create` as Permission) || 
-               hasPermission(`${resource}:manage` as Permission);
+        return hasPermission(`${resource}:create` as Permission) ||
+          hasPermission(`${resource}:manage` as Permission);
       },
 
       canView: (resource) => {
         const { hasPermission } = get();
-        return hasPermission(`${resource}:view` as Permission) || 
-               hasPermission(`${resource}:manage` as Permission);
+        return hasPermission(`${resource}:view` as Permission) ||
+          hasPermission(`${resource}:manage` as Permission);
       },
 
       // Role checks
@@ -285,37 +285,37 @@ export const usePermissionStore = create<PermissionState>()(
 // Hook for easy access to permission checks
 export const usePermissions = () => {
   const store = usePermissionStore();
-  
+
   return {
     // All store methods
     ...store,
-    
+
     // Convenience methods for common patterns
     canManageEvents: store.canManage('events'),
     canEditEvents: store.canEdit('events'),
     canDeleteEvents: store.canDelete('events'),
     canCreateEvents: store.canCreate('events'),
     canViewEvents: store.canView('events'),
-    
+
     canManageLeads: store.canManage('leads'),
     canEditLeads: store.canEdit('leads'),
     canDeleteLeads: store.canDelete('leads'),
     canCreateLeads: store.canCreate('leads'),
     canViewLeads: store.canView('leads'),
     canConvertLeads: store.hasPermission('leads:convert'),
-    
+
     canManageClients: store.canManage('clients'),
     canEditClients: store.canEdit('clients'),
     canDeleteClients: store.canDelete('clients'),
     canCreateClients: store.canCreate('clients'),
     canViewClients: store.canView('clients'),
-    
+
     canManageVenues: store.canManage('venues'),
     canEditVenues: store.canEdit('venues'),
     canDeleteVenues: store.canDelete('venues'),
     canCreateVenues: store.canCreate('venues'),
     canViewVenues: store.canView('venues'),
-    
+
     // Admin permissions
     canManageUsers: store.hasPermission('admin:users'),
     canViewReports: store.hasPermission('admin:reports'),
@@ -330,36 +330,36 @@ export const permissionUtils = {
   // Initialize permissions from user data
   initializeFromUser: (user: { role?: string; company?: string; permissions?: Permission[] }) => {
     const { setRole, setCompany, setPermissions } = usePermissionStore.getState();
-    
+
     if (user.role && isValidRole(user.role)) {
       setRole(user.role as Role);
     }
-    
+
     if (user.company) {
       setCompany(user.company);
     }
-    
+
     // Custom permissions override role-based permissions
     if (user.permissions?.length) {
       setPermissions(user.permissions);
     }
   },
-  
+
   // Check if user can access company resources
   canAccessCompany: (userCompany: string, resourceCompany: string): boolean => {
     // Super admins can access everything
     const { role } = usePermissionStore.getState();
     if (role === 'super_admin') return true;
-    
+
     // Users can only access their company's resources
     return userCompany === resourceCompany;
   },
-  
+
   // Get available roles for a company
   getCompanyRoles: (company: string): Role[] => {
     return COMPANY_ROLE_HIERARCHY[company] || ['viewer'];
   },
-  
+
   // Get all permissions for a role
   getRolePermissions: (role: Role): Permission[] => {
     return ROLE_PERMISSIONS[role] || [];
@@ -378,10 +378,10 @@ export const syncPermissionsWithAuth = () => {
   const { useAuthStore } = require('./authStore');
   const authStore = useAuthStore.getState();
   const user = authStore.user;
-  
+
   if (user) {
     permissionUtils.initializeFromUser({
-      role: user.role,
+      role: user.role || user.category, // Map category to role if role is missing
       company: user.company,
       permissions: user.permissions,
     });

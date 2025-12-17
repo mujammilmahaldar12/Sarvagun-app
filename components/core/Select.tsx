@@ -32,6 +32,7 @@ interface SelectProps {
   multiple?: boolean;
   clearable?: boolean;
   leadingIcon?: keyof typeof Ionicons.glyphMap;
+  size?: 'default' | 'compact';
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -47,6 +48,7 @@ export const Select: React.FC<SelectProps> = ({
   multiple = false,
   clearable = true,
   leadingIcon,
+  size = 'default',
 }) => {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -114,8 +116,10 @@ export const Select: React.FC<SelectProps> = ({
     setSearchQuery('');
   };
 
+  const isCompact = size === 'compact';
+
   return (
-    <View style={{ marginBottom: spacing[4] }}>
+    <View style={{ marginBottom: isCompact ? spacing[1] : spacing[4] }}>
       {/* Label */}
       {label && (
         <Text
@@ -140,12 +144,12 @@ export const Select: React.FC<SelectProps> = ({
           flexDirection: 'row',
           alignItems: 'center',
           backgroundColor: theme.surface || '#FFFFFF',
-          borderWidth: 1.5,
+          borderWidth: isCompact ? 1 : 1.5,
           borderColor: error ? (theme.error || '#EF4444') : (theme.border || '#E5E7EB'),
-          borderRadius: borderRadius.md,
-          paddingHorizontal: spacing[3],
-          paddingVertical: spacing[3],
-          minHeight: 48,
+          borderRadius: isCompact ? borderRadius.sm : borderRadius.md,
+          paddingHorizontal: isCompact ? spacing[2] : spacing[3],
+          paddingVertical: isCompact ? spacing[1] : spacing[3],
+          minHeight: isCompact ? 36 : 48,
           opacity: disabled ? 0.5 : 1,
         }}
       >
@@ -153,9 +157,9 @@ export const Select: React.FC<SelectProps> = ({
         {leadingIcon && (
           <Ionicons
             name={leadingIcon}
-            size={20}
+            size={isCompact ? 16 : 20}
             color={theme.textSecondary || '#6B7280'}
-            style={{ marginRight: spacing[2] }}
+            style={{ marginRight: isCompact ? spacing[1] : spacing[2] }}
           />
         )}
 
@@ -163,10 +167,10 @@ export const Select: React.FC<SelectProps> = ({
         <Text
           style={{
             flex: 1,
-            fontSize: typography.sizes.base,
+            fontSize: isCompact ? typography.sizes.sm : typography.sizes.base,
             color: (value !== null && value !== undefined && value !== '')
-              ? '#111827'  // Dark text for selected value
-              : '#6B7280', // Gray for placeholder
+              ? (theme.text || '#111827')  // Use theme text for selected value
+              : (theme.textSecondary || '#6B7280'), // Theme secondary for placeholder
           }}
           numberOfLines={1}
           ellipsizeMode="tail"

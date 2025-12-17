@@ -1,4 +1,8 @@
-﻿import { useState, useEffect } from "react";
+﻿/**
+ * Login Screen - Dark Gradient Theme
+ * Matches the premium look of the new-user onboarding screens
+ */
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,9 +13,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Keyboard,
   Image,
-  Dimensions,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,87 +22,46 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
-  withSequence,
   withRepeat,
   Easing,
-  interpolateColor,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 import { useAuthStore } from "@/store/authStore";
-import { useFirstTimeUser } from "@/hooks/useFirstTimeUser";
-import { useHapticFeedback } from "@/hooks/useHapticFeedback";
-import { BlurView } from 'expo-blur';
-
-const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
-  const { login } = useAuthStore();
   const router = useRouter();
-  const { isFirstTime } = useFirstTimeUser();
-  const { triggerHaptic } = useHapticFeedback();
+  const { login } = useAuthStore();
 
   // Animations
   const fadeAnim = useSharedValue(0);
-  const slideUp = useSharedValue(50);
-  const buttonScale = useSharedValue(1);
-  const usernameBorder = useSharedValue(0);
-  const passwordBorder = useSharedValue(0);
+  const slideUp = useSharedValue(30);
 
   useEffect(() => {
-    // Entrance Animation
-    fadeAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
-    slideUp.value = withSpring(0, { damping: 15 });
+    fadeAnim.value = withTiming(1, { duration: 600 });
+    slideUp.value = withTiming(0, { duration: 600 });
   }, []);
 
-  // Focus Animations
-  useEffect(() => {
-    usernameBorder.value = withTiming(usernameFocused ? 1 : 0, { duration: 250 });
-  }, [usernameFocused]);
-
-  useEffect(() => {
-    passwordBorder.value = withTiming(passwordFocused ? 1 : 0, { duration: 250 });
-  }, [passwordFocused]);
-
   const handleLogin = async () => {
-    if (!username || !password) {
-      triggerHaptic('error');
-      // Shake effect on button
-      buttonScale.value = withSequence(
-        withTiming(1.05, { duration: 50 }),
-        withTiming(0.95, { duration: 50 }),
-        withTiming(1, { duration: 50 })
-      );
+    if (!username.trim() || !password.trim()) {
       Alert.alert("Required", "Please enter both username and password");
       return;
     }
 
-    buttonScale.value = withSequence(withTiming(0.95, { duration: 100 }), withTiming(1, { duration: 100 }));
     setIsLoading(true);
-    Keyboard.dismiss();
-
     try {
-      const success = await login(username, password);
-      if (success) {
-        if (isFirstTime) {
-          router.replace("/welcome-celebration");
-        } else {
-          router.replace("/(dashboard)/home");
-        }
-      } else {
-        triggerHaptic('error');
-        Alert.alert("Login Failed", "Invalid credentials. Please try again.");
-      }
-    } catch (error) {
+      await login(username.trim(), password);
+      router.replace("/(dashboard)/home");
+    } catch (error: any) {
       console.error("Login error:", error);
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      const message = error?.message || "Invalid credentials. Please try again.";
+      Alert.alert("Login Failed", message);
     } finally {
       setIsLoading(false);
     }
@@ -110,153 +72,162 @@ export default function LoginScreen() {
     transform: [{ translateY: slideUp.value }],
   }));
 
-  const usernameStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(usernameBorder.value, [0, 1], ['#E5E7EB', '#8B5CF6']),
-    borderWidth: interpolateColor(usernameBorder.value, [0, 1], [1, 1.5]),
-    backgroundColor: interpolateColor(usernameBorder.value, [0, 1], ['#F9FAFB', '#FFFFFF']),
-  }));
-
-  const passwordStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(passwordBorder.value, [0, 1], ['#E5E7EB', '#8B5CF6']),
-    borderWidth: interpolateColor(passwordBorder.value, [0, 1], [1, 1.5]),
-    backgroundColor: interpolateColor(passwordBorder.value, [0, 1], ['#F9FAFB', '#FFFFFF']),
-  }));
-
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      {/* Background Decors */}
-      <View style={styles.backgroundContainer}>
-        <View style={styles.purpleBlob} />
-        <View style={styles.pinkBlob} />
-        <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="light" />
-      </View>
-
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#1A0B2E" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.container}
       >
-        <Animated.View style={[styles.contentContainer, containerStyle]}>
-          {/* Header Section */}
-          <View style={styles.header}>
-            <View style={styles.logoWrapper}>
-              <Image
-                source={require("@/assets/images/sarvagun_logo.jpg")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.welcomeText}>Welcome Back</Text>
-            <Text style={styles.subtitleText}>Sign in to continue to Sarvagun ERP</Text>
-          </View>
+        <LinearGradient
+          colors={['#1A0B2E', '#2D1545', '#3E1F5C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.gradient}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View style={[styles.content, containerStyle]}>
+              {/* Logo Section */}
+              <View style={styles.logoSection}>
+                <View style={styles.logoWrapper}>
+                  <Image
+                    source={require("@/assets/images/sarvagun_logo.jpg")}
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.welcomeText}>Welcome Back</Text>
+                <Text style={styles.subtitleText}>
+                  Sign in to continue to Sarvagun ERP
+                </Text>
+              </View>
 
-          {/* Form Section */}
-          <View style={styles.form}>
-            {/* Username Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Username</Text>
-              <Animated.View style={[styles.inputContainer, usernameStyle]}>
-                <Ionicons name="person-outline" size={20} color={usernameFocused ? "#8B5CF6" : "#9CA3AF"} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your username"
-                  placeholderTextColor="#9CA3AF"
-                  value={username}
-                  onChangeText={setUsername}
-                  onFocus={() => setUsernameFocused(true)}
-                  onBlur={() => setUsernameFocused(false)}
-                  autoCapitalize="none"
-                />
-              </Animated.View>
-            </View>
+              {/* Form Section */}
+              <View style={styles.form}>
+                {/* Username Input */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Username</Text>
+                  <View style={[
+                    styles.inputWrapper,
+                    usernameFocused && styles.inputWrapperFocused
+                  ]}>
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color={usernameFocused ? "#8B5CF6" : "#9CA3AF"}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your username"
+                      placeholderTextColor="#6B7280"
+                      value={username}
+                      onChangeText={setUsername}
+                      onFocus={() => setUsernameFocused(true)}
+                      onBlur={() => setUsernameFocused(false)}
+                      autoCapitalize="none"
+                      editable={!isLoading}
+                    />
+                  </View>
+                </View>
 
-            {/* Password Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
-              <Animated.View style={[styles.inputContainer, passwordStyle]}>
-                <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? "#8B5CF6" : "#9CA3AF"} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor="#9CA3AF"
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#9CA3AF" />
+                {/* Password Input */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Password</Text>
+                  <View style={[
+                    styles.inputWrapper,
+                    passwordFocused && styles.inputWrapperFocused
+                  ]}>
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={20}
+                      color={passwordFocused ? "#8B5CF6" : "#9CA3AF"}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your password"
+                      placeholderTextColor="#6B7280"
+                      value={password}
+                      onChangeText={setPassword}
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
+                      secureTextEntry={!showPassword}
+                      editable={!isLoading}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color="#9CA3AF"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Forgot Password */}
+                <TouchableOpacity style={styles.forgotPassword}>
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
-              </Animated.View>
-            </View>
 
-            {/* Forgot Password Link */}
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            {/* Login Button */}
-            <Animated.View style={buttonAnimatedStyle}>
-              <TouchableOpacity
-                onPress={handleLogin}
-                disabled={isLoading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={['#7E22CE', '#A855F7']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.button}
+                {/* Login Button */}
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                  style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
                 >
-                  {isLoading ? (
-                    <LoadingSpinner />
-                  ) : (
-                    <Text style={styles.buttonText}>Sign In</Text>
-                  )}
-                  {!isLoading && <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />}
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={['#6D376D', '#8B5CF6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.button}
+                  >
+                    {isLoading ? (
+                      <LoadingSpinner />
+                    ) : (
+                      <>
+                        <Text style={styles.buttonText}>Sign In</Text>
+                        <Ionicons name="arrow-forward" size={20} color="#fff" />
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* New User Link */}
+                <TouchableOpacity
+                  style={styles.newUserLink}
+                  onPress={() => router.push('/new-user')}
+                >
+                  <Text style={styles.newUserText}>
+                    New User? <Text style={styles.newUserBold}>Complete your onboarding</Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Footer */}
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Powered by BlingSquare © 2025</Text>
+              </View>
             </Animated.View>
-
-            {/* Biometric Placeholder (Visual Only) */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialButton}>
-                <Ionicons name="finger-print-outline" size={24} color="#6B7280" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialButton}>
-                <Ionicons name="scan-outline" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Powered by BlingSquare © 2025</Text>
-          </View>
-        </Animated.View>
+          </ScrollView>
+        </LinearGradient>
       </KeyboardAvoidingView>
-    </View>
+    </>
   );
 }
 
-// Simple Loading Spinner
+// Loading Spinner Component
 const LoadingSpinner = () => {
   const spinValue = useSharedValue(0);
 
   useEffect(() => {
-    spinValue.value = withRepeat(withTiming(360, { duration: 1000, easing: Easing.linear }), -1);
+    spinValue.value = withRepeat(
+      withTiming(360, { duration: 1000, easing: Easing.linear }),
+      -1
+    );
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -265,49 +236,27 @@ const LoadingSpinner = () => {
 
   return (
     <Animated.View style={animatedStyle}>
-      <Ionicons name="sync" size={20} color="white" />
+      <Ionicons name="sync" size={20} color="#fff" />
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
-  backgroundContainer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  purpleBlob: {
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(126, 34, 206, 0.1)', // Purple
-  },
-  pinkBlob: {
-    position: 'absolute',
-    top: 100,
-    left: -100,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(236, 72, 153, 0.1)', // Pink
-  },
-  keyboardView: {
+  gradient: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingVertical: 40,
   },
-  contentContainer: {
+  content: {
     paddingHorizontal: 24,
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
   },
-  header: {
+  logoSection: {
     alignItems: 'center',
     marginBottom: 40,
   },
@@ -315,34 +264,35 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 25,
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: "#000",
+    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
-    elevation: 5,
+    elevation: 10,
     marginBottom: 24,
   },
   logo: {
     width: 80,
     height: 80,
+    borderRadius: 15,
   },
   welcomeText: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#FFFFFF',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitleText: {
     fontSize: 15,
-    color: '#6B7280',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   form: {
-    gap: 20,
+    gap: 16,
   },
   inputGroup: {
     gap: 8,
@@ -350,77 +300,101 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#D1D5DB',
     marginLeft: 4,
   },
-  inputContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    backgroundColor: 'rgba(109, 55, 109, 0.15)',
     borderRadius: 12,
     paddingHorizontal: 16,
-    height: 52,
+    height: 54,
     gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
+  },
+  inputWrapperFocused: {
+    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#FFFFFF',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#7E22CE',
+    color: '#8B5CF6',
     fontSize: 14,
     fontWeight: '600',
   },
+  buttonContainer: {
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
   button: {
     flexDirection: 'row',
-    height: 56,
-    borderRadius: 16,
+    height: 54,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: "#7E22CE",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    gap: 8,
   },
   buttonText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontWeight: '600',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 12,
     fontWeight: '500',
   },
-  socialRow: {
+  biometricRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    gap: 20,
   },
-  socialButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+  biometricButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  newUserLink: {
+    alignItems: 'center',
+    marginTop: 24,
+    paddingVertical: 12,
+  },
+  newUserText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  newUserBold: {
+    color: '#8B5CF6',
+    fontWeight: '600',
   },
   footer: {
     marginTop: 40,
@@ -428,6 +402,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
 });

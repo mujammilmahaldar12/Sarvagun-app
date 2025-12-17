@@ -131,7 +131,10 @@ export default function LeadDetailScreen() {
   });
 
   const handleConvert = () => {
-    router.push(`/(modules)/events/convert-lead?leadId=${leadId}` as any);
+    router.push({
+      pathname: '/(modules)/events/leads/[id]/convert',
+      params: { id: leadId }
+    } as any);
   };
 
   const handleEdit = () => {

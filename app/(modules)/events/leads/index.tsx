@@ -49,28 +49,28 @@ export default function LeadsManagementScreen() {
     queryFn: async () => {
       console.log('🔍 Fetching leads with params:', { activeTab, page, pageSize, search: debouncedSearch });
       const status = activeTab === 'all' ? undefined : activeTab;
-      const response = await eventsService.getLeads({ 
-        status, 
+      const response = await eventsService.getLeads({
+        status,
         ...filters,
         search: debouncedSearch || undefined, // Server-side search
         page,
-        page_size: pageSize 
+        page_size: pageSize
       });
-      
-      console.log('📦 Leads response:', { 
-        resultsCount: response.results?.length, 
+
+      console.log('📦 Leads response:', {
+        resultsCount: response.results?.length,
         totalCount: response.count,
         page,
-        currentAllLeadsCount: allLeads.length 
+        currentAllLeadsCount: allLeads.length
       });
-      
+
       // Accumulate leads when loading more
       if (page === 1) {
         setAllLeads(response.results || []);
       } else {
         setAllLeads(prev => [...prev, ...(response.results || [])]);
       }
-      
+
       return response;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -90,7 +90,7 @@ export default function LeadsManagementScreen() {
   // Load more function
   const handleLoadMore = async () => {
     if (loadingMore || !leadsResponse?.next) return;
-    
+
     setLoadingMore(true);
     setPage(prev => prev + 1);
     setTimeout(() => setLoadingMore(false), 500);
@@ -99,13 +99,13 @@ export default function LeadsManagementScreen() {
   // Load all function
   const handleLoadAll = async () => {
     if (loadingMore) return;
-    
+
     setLoadingMore(true);
     try {
       const status = activeTab === 'all' ? undefined : activeTab;
-      const response = await eventsService.getLeads({ 
-        status, 
-        ...filters, 
+      const response = await eventsService.getLeads({
+        status,
+        ...filters,
         page: 1,
         page_size: 9999 // Load all
       });
@@ -141,7 +141,10 @@ export default function LeadsManagementScreen() {
   };
 
   const handleConvertLead = (leadId: number) => {
-    router.push(`/(modules)/events/convert-lead?leadId=${leadId}` as any);
+    router.push({
+      pathname: '/(modules)/events/leads/[id]/convert',
+      params: { id: leadId }
+    } as any);
   };
 
   const getStatusColor = (status: string) => {
@@ -331,162 +334,162 @@ export default function LeadsManagementScreen() {
             action={
               !searchQuery && activeTab === 'all'
                 ? {
-                    label: 'Add Lead',
-                    icon: 'add-circle',
-                    onPress: handleAddLead,
-                  }
+                  label: 'Add Lead',
+                  icon: 'add-circle',
+                  onPress: handleAddLead,
+                }
                 : undefined
             }
           />
         ) : (
           <>
             <View style={styles.leadsList}>
-            {filteredLeads.map((lead: Lead, index: number) => (
-              <Animated.View
-                key={lead.id}
-                entering={FadeIn.delay(index * 50)}
-                style={[styles.leadCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              >
-                <Pressable
-                  onPress={() => handleLeadDetails(lead.id)}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                  })}
+              {filteredLeads.map((lead: Lead, index: number) => (
+                <Animated.View
+                  key={lead.id}
+                  entering={FadeIn.delay(index * 50)}
+                  style={[styles.leadCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
                 >
-                  {/* Card Header */}
-                  <View style={styles.leadCardHeader}>
-                    <View style={styles.leadCardTitleContainer}>
-                      <Ionicons name="person-circle" size={24} color={theme.primary} />
-                      <View style={{ flex: 1, marginLeft: 8 }}>
-                        <Text style={[styles.leadCardTitle, { color: theme.text }]}>
-                          {lead.client?.name || 'Unnamed Client'}
-                        </Text>
-                        <Text style={[styles.leadCardSubtitle, { color: theme.textSecondary }]}>
-                          {formatDate(lead.created_at, 'short')}
-                        </Text>
+                  <Pressable
+                    onPress={() => handleLeadDetails(lead.id)}
+                    style={({ pressed }) => ({
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    {/* Card Header */}
+                    <View style={styles.leadCardHeader}>
+                      <View style={styles.leadCardTitleContainer}>
+                        <Ionicons name="person-circle" size={24} color={theme.primary} />
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={[styles.leadCardTitle, { color: theme.text }]}>
+                            {lead.client?.name || 'Unnamed Client'}
+                          </Text>
+                          <Text style={[styles.leadCardSubtitle, { color: theme.textSecondary }]}>
+                            {formatDate(lead.created_at, 'short')}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <View style={styles.leadCardBadges}>
-                      {lead.source && (
-                        <View
-                          style={[
-                            styles.sourceBadge,
-                            { backgroundColor: getSourceBadgeColor(lead.source) + '20' },
-                          ]}
-                        >
-                          <Ionicons
-                            name={lead.source === 'online' ? 'globe' : 'storefront'}
-                            size={12}
-                            color={getSourceBadgeColor(lead.source)}
-                          />
-                          <Text
+                      <View style={styles.leadCardBadges}>
+                        {lead.source && (
+                          <View
                             style={[
-                              styles.sourceBadgeText,
-                              { color: getSourceBadgeColor(lead.source) },
+                              styles.sourceBadge,
+                              { backgroundColor: getSourceBadgeColor(lead.source) + '20' },
                             ]}
                           >
-                            {lead.source}
+                            <Ionicons
+                              name={lead.source === 'online' ? 'globe' : 'storefront'}
+                              size={12}
+                              color={getSourceBadgeColor(lead.source)}
+                            />
+                            <Text
+                              style={[
+                                styles.sourceBadgeText,
+                                { color: getSourceBadgeColor(lead.source) },
+                              ]}
+                            >
+                              {lead.source}
+                            </Text>
+                          </View>
+                        )}
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: getStatusColor(lead.status) + '20' },
+                          ]}
+                        >
+                          <Text style={[styles.statusBadgeText, { color: getStatusColor(lead.status) }]}>
+                            {lead.status}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Card Body */}
+                    <View style={styles.leadCardBody}>
+                      {lead.client?.number && (
+                        <View style={styles.leadInfoRow}>
+                          <Ionicons name="call" size={14} color={theme.textSecondary} />
+                          <Text style={[styles.leadInfoText, { color: theme.textSecondary }]}>
+                            {lead.client.number}
                           </Text>
                         </View>
                       )}
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          { backgroundColor: getStatusColor(lead.status) + '20' },
-                        ]}
-                      >
-                        <Text style={[styles.statusBadgeText, { color: getStatusColor(lead.status) }]}>
-                          {lead.status}
+                      {lead.client?.email && (
+                        <View style={styles.leadInfoRow}>
+                          <Ionicons name="mail" size={14} color={theme.textSecondary} />
+                          <Text style={[styles.leadInfoText, { color: theme.textSecondary }]}>
+                            {lead.client.email}
+                          </Text>
+                        </View>
+                      )}
+                      {lead.referral && (
+                        <View style={styles.leadInfoRow}>
+                          <Ionicons name="ribbon" size={14} color={theme.textSecondary} />
+                          <Text style={[styles.leadInfoText, { color: theme.textSecondary }]}>
+                            Referred by: {lead.referral}
+                          </Text>
+                        </View>
+                      )}
+                      {lead.message && (
+                        <Text
+                          style={[styles.leadMessage, { color: theme.text }]}
+                          numberOfLines={2}
+                        >
+                          {lead.message}
                         </Text>
-                      </View>
+                      )}
                     </View>
-                  </View>
 
-                  {/* Card Body */}
-                  <View style={styles.leadCardBody}>
-                    {lead.client?.number && (
-                      <View style={styles.leadInfoRow}>
-                        <Ionicons name="call" size={14} color={theme.textSecondary} />
-                        <Text style={[styles.leadInfoText, { color: theme.textSecondary }]}>
-                          {lead.client.number}
+                    {/* Card Actions */}
+                    {lead.status === 'pending' && (
+                      <View style={styles.leadCardActions}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}
+                          onPress={() => handleLeadDetails(lead.id)}
+                        >
+                          <Ionicons name="eye" size={16} color={theme.text} />
+                          <Text style={[styles.actionButtonTextSecondary, { color: theme.text }]}>
+                            View
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {lead.status === 'converted' && lead.event_id && (
+                      <View style={styles.leadCardFooter}>
+                        <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                        <Text style={[styles.leadFooterText, { color: theme.textSecondary }]}>
+                          Converted to Event #{lead.event_id}
                         </Text>
                       </View>
                     )}
-                    {lead.client?.email && (
-                      <View style={styles.leadInfoRow}>
-                        <Ionicons name="mail" size={14} color={theme.textSecondary} />
-                        <Text style={[styles.leadInfoText, { color: theme.textSecondary }]}>
-                          {lead.client.email}
+
+                    {lead.status === 'rejected' && (
+                      <View style={styles.leadCardFooter}>
+                        <Ionicons name="close-circle" size={16} color="#ef4444" />
+                        <Text style={[styles.leadFooterText, { color: theme.textSecondary }]}>
+                          Rejected
                         </Text>
                       </View>
                     )}
-                    {lead.referral && (
-                      <View style={styles.leadInfoRow}>
-                        <Ionicons name="ribbon" size={14} color={theme.textSecondary} />
-                        <Text style={[styles.leadInfoText, { color: theme.textSecondary }]}>
-                          Referred by: {lead.referral}
-                        </Text>
-                      </View>
-                    )}
-                    {lead.message && (
-                      <Text
-                        style={[styles.leadMessage, { color: theme.text }]}
-                        numberOfLines={2}
-                      >
-                        {lead.message}
-                      </Text>
-                    )}
-                  </View>
+                  </Pressable>
+                </Animated.View>
+              ))}
 
-                  {/* Card Actions */}
-                  {lead.status === 'pending' && (
-                    <View style={styles.leadCardActions}>
-                      <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}
-                        onPress={() => handleLeadDetails(lead.id)}
-                      >
-                        <Ionicons name="eye" size={16} color={theme.text} />
-                        <Text style={[styles.actionButtonTextSecondary, { color: theme.text }]}>
-                          View
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {lead.status === 'converted' && lead.event_id && (
-                    <View style={styles.leadCardFooter}>
-                      <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-                      <Text style={[styles.leadFooterText, { color: theme.textSecondary }]}>
-                        Converted to Event #{lead.event_id}
-                      </Text>
-                    </View>
-                  )}
-
-                  {lead.status === 'rejected' && (
-                    <View style={styles.leadCardFooter}>
-                      <Ionicons name="close-circle" size={16} color="#ef4444" />
-                      <Text style={[styles.leadFooterText, { color: theme.textSecondary }]}>
-                        Rejected
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
-              </Animated.View>
-            ))}
-
-            {/* Debug Info */}
-            {__DEV__ && (
-              <View style={{ padding: 16, backgroundColor: '#f0f0f0', margin: 16 }}>
-                <Text>🔍 Debug Info:</Text>
-                <Text>isLoading: {isLoading ? 'true' : 'false'}</Text>
-                <Text>allLeads.length: {allLeads.length}</Text>
-                <Text>filteredLeads.length: {filteredLeads.length}</Text>
-                <Text>leadsResponse?.count: {leadsResponse?.count || 'N/A'}</Text>
-                <Text>leadsResponse?.next: {leadsResponse?.next ? 'YES' : 'NO'}</Text>
-                <Text>page: {page}</Text>
-              </View>
-            )}
-          </View>
+              {/* Debug Info */}
+              {__DEV__ && (
+                <View style={{ padding: 16, backgroundColor: '#f0f0f0', margin: 16 }}>
+                  <Text>🔍 Debug Info:</Text>
+                  <Text>isLoading: {isLoading ? 'true' : 'false'}</Text>
+                  <Text>allLeads.length: {allLeads.length}</Text>
+                  <Text>filteredLeads.length: {filteredLeads.length}</Text>
+                  <Text>leadsResponse?.count: {leadsResponse?.count || 'N/A'}</Text>
+                  <Text>leadsResponse?.next: {leadsResponse?.next ? 'YES' : 'NO'}</Text>
+                  <Text>page: {page}</Text>
+                </View>
+              )}
+            </View>
           </>
         )}
 

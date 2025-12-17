@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus } from '@/hooks/useHRQueries';
 import { usePermissions } from '@/store/permissionStore';
-import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton } from '@/components';
+import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import NotificationBell from '@/components/layout/NotificationBell';
 import type { Reimbursement } from '@/types/hr';
@@ -29,6 +29,24 @@ export default function HRScreen() {
   const [filters, setFilters] = useState<any>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Helper for button visibility
+  const userRole = (user?.category || user?.role || '').toLowerCase();
+  const canAccessHireActions = ['admin', 'hr', 'manager'].includes(userRole) || user?.is_team_leader;
+
+  // Debug logs
+  useEffect(() => {
+    console.log('👤 HR Module User Debug:', {
+      id: user?.id,
+      username: user?.username,
+      category: user?.category,
+      role: user?.role,
+      is_team_leader: user?.is_team_leader,
+      computedRole: userRole,
+      canAccessHireActions,
+      activeTab,
+    });
+  }, [user, activeTab]);
+
   const [refreshing, setRefreshing] = useState(false);
 
   // API Hooks
@@ -137,6 +155,21 @@ export default function HRScreen() {
     { key: 'designation', title: 'Role' },
     { key: 'department', title: 'Dept' },
     { key: 'status', title: 'Status', render: (v: string) => <Badge label={v} status={v.toLowerCase() as any} size="sm" /> },
+    {
+      key: 'actions',
+      title: '',
+      render: (_: any, row: any) => (
+        <TouchableOpacity
+          onPress={() => {
+            console.log('View staff:', row.id);
+            router.push({ pathname: '/hr/staff-detail/[id]', params: { id: row.id.toString() } } as any);
+          }}
+          style={{ padding: 8 }}
+        >
+          <Ionicons name="eye-outline" size={20} color={theme.primary} />
+        </TouchableOpacity>
+      )
+    },
   ];
 
   // Handlers
@@ -255,15 +288,36 @@ export default function HRScreen() {
   const renderContent = () => {
     if (activeTab === 'staff') {
       return (
-        <Table
-          data={filteredStaffData}
-          columns={staffColumns}
-          keyExtractor={(item: any) => item.id.toString()}
-          onRowPress={handleRowPress}
-          searchable={true}
-          searchPlaceholder="Search staff..."
-          onSearch={setSearchQuery}
-        />
+        <View style={{ flex: 1 }}>
+          {/* Hire Actions Bar - visible for HR/Admin/Manager/Team Lead */}
+          {canAccessHireActions && (
+            <View style={styles.hireActionsBar}>
+              <TouchableOpacity
+                style={styles.hireActionBtn}
+                onPress={() => router.push('/(modules)/hr/pending-hires' as any)}
+              >
+                <Ionicons name="hourglass-outline" size={18} color="#8B5CF6" />
+                <Text style={styles.hireActionText}>Pending Hires</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.hireActionBtn, styles.inviteBtn]}
+                onPress={() => router.push('/(modules)/hr/invite-hire' as any)}
+              >
+                <Ionicons name="person-add" size={18} color="#fff" />
+                <Text style={[styles.hireActionText, { color: '#fff' }]}>Invite Hire</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <Table
+            data={filteredStaffData}
+            columns={staffColumns}
+            keyExtractor={(item: any) => item.id.toString()}
+            onRowPress={handleRowPress}
+            searchable={true}
+            searchPlaceholder="Search staff..."
+            onSearch={setSearchQuery}
+          />
+        </View>
       );
     }
 
@@ -315,6 +369,7 @@ export default function HRScreen() {
         title="HR Management"
         rightActions={
           <View style={styles.headerActions}>
+
             <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
               <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
             </TouchableOpacity>
@@ -323,6 +378,23 @@ export default function HRScreen() {
               <TouchableOpacity onPress={handleAddNew} style={[styles.addBtn, { backgroundColor: theme.primary + '15' }]}>
                 <Ionicons name="add" size={24} color={theme.primary} />
               </TouchableOpacity>
+            )}
+            {/* Hire Actions - only for HR/Admin/Manager */}
+            {canAccessHireActions && activeTab === 'staff' && (
+              <>
+                <TouchableOpacity
+                  onPress={() => router.push('/(modules)/hr/pending-hires' as any)}
+                  style={[styles.iconBtn, { backgroundColor: theme.primary + '15' }]}
+                >
+                  <Ionicons name="hourglass-outline" size={22} color={theme.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push('/(modules)/hr/invite-hire' as any)}
+                  style={[styles.addBtn, { backgroundColor: '#10B981' }]}
+                >
+                  <Ionicons name="person-add" size={22} color="#fff" />
+                </TouchableOpacity>
+              </>
             )}
           </View>
         }
@@ -355,6 +427,7 @@ export default function HRScreen() {
       <View style={styles.content}>
         {renderContent()}
       </View>
+
     </Animated.View>
   );
 }
@@ -373,4 +446,34 @@ const styles = StyleSheet.create({
   cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 8 },
   actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  iconBtn: { padding: 6, borderRadius: 8 },
+  hireActionsBar: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F3E8FF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9D5FF',
+  },
+  hireActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+  },
+  hireActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+  inviteBtn: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
 });

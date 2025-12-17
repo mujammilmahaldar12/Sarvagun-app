@@ -306,17 +306,28 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Check for updates
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          Updates.reloadAsync();
+        // Only check for updates in production (not in development)
+        if (!__DEV__ && Updates.isEnabled) {
+          try {
+            const update = await Updates.checkForUpdateAsync();
+            if (update.isAvailable) {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
+            }
+          } catch (updateError) {
+            // Silently fail update check - don't crash the app
+            console.log("Update check skipped or failed:", updateError);
+          }
         }
       } catch (e) {
-        console.log("Update check failed:", e);
+        console.log("Prepare failed:", e);
       } finally {
         // Hide native splash and show animated splash
-        await SplashScreen.hideAsync();
+        try {
+          await SplashScreen.hideAsync();
+        } catch (splashError) {
+          console.log("Splash hide failed:", splashError);
+        }
         setAppReady(true);
       }
     }

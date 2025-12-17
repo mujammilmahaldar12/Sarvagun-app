@@ -171,16 +171,12 @@ export default function HomeScreen() {
         translucent
       />
 
-      {/* Glass Morphism Header */}
+      {/* Solid Header */}
       <Animated.View
         entering={FadeInDown.duration(600).springify()}
         style={styles.header}
       >
-        <BlurView
-          intensity={isDark ? 40 : 60}
-          tint={isDark ? 'dark' : 'light'}
-          style={styles.headerBlur}
-        >
+        <View style={[styles.headerSolid, { backgroundColor: theme.background }]}>
           <View style={styles.headerContent}>
             <View style={styles.headerRow}>
               <View style={styles.headerLeft}>
@@ -200,7 +196,7 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-        </BlurView>
+        </View>
       </Animated.View>
 
       {/* Scrollable Content */}
@@ -250,7 +246,7 @@ export default function HomeScreen() {
           entering={FadeInUp.delay(150).duration(600).springify()}
           style={styles.section}
         >
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Stats</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Statistics</Text>
         </Animated.View>
 
         {/* KPI Cards - Horizontal Scroll */}
@@ -693,6 +689,22 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
+      },
+    }),
+  },
+  headerSolid: {
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['4xl'],
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
       },
     }),
   },

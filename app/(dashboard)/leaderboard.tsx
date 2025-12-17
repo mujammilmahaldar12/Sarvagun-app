@@ -29,7 +29,7 @@ import Animated, {
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useInternLeaderboard, useTeamLeaderboard, useLeadersLeaderboard, useIndividualInternRanking } from '@/hooks/useDashboardQueries';
-import { Avatar, AnimatedPressable, Skeleton, DatePicker } from '@/components';
+import { Avatar, AnimatedPressable, Skeleton, DatePicker, EmptyState } from '@/components';
 import { Select } from '@/components/core/Select';
 import { spacing, borderRadius, iconSizes } from '@/constants/designSystem';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
@@ -275,21 +275,21 @@ const InternRow = ({ leader, index }: { leader: any; index: number }) => {
 
         {/* Info */}
         <View style={styles.internInfo}>
-          <View style={styles.internNameRow}>
-            <Text style={[styles.internName, { color: theme.text }]} numberOfLines={1}>
-              {leader.name}
-            </Text>
-            <ActiveStatusBadge isActive={leader.is_active} />
-          </View>
+          <Text style={[styles.internName, { color: theme.text }]} numberOfLines={1}>
+            {leader.name}
+          </Text>
 
-          {leader.team_name && (
-            <View style={styles.teamIndicator}>
-              <Ionicons name="people" size={12} color={theme.textSecondary} />
-              <Text style={[styles.teamText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {leader.team_name}
-              </Text>
-            </View>
-          )}
+          <View style={styles.internMetaRow}>
+            <ActiveStatusBadge isActive={leader.is_active} />
+            {leader.team_name && (
+              <View style={styles.teamIndicator}>
+                <Ionicons name="people" size={12} color={theme.textSecondary} />
+                <Text style={[styles.teamText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {leader.team_name}
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={styles.taskStats}>
             <View style={styles.taskStatItem}>
@@ -358,24 +358,23 @@ const LeaderRow = ({ leader, index }: { leader: any; index: number }) => {
 
         {/* Info */}
         <View style={styles.internInfo}>
-          <View style={styles.internNameRow}>
-            <Text style={[styles.internName, { color: theme.text }]} numberOfLines={1}>
-              {leader.name}
-            </Text>
+          <Text style={[styles.internName, { color: theme.text }]} numberOfLines={2}>
+            {leader.name}
+          </Text>
+          <View style={styles.internMetaRow}>
             <View style={[styles.leaderBadge, { backgroundColor: theme.primary + '15' }]}>
               <Ionicons name="shield-checkmark" size={10} color={theme.primary} />
               <Text style={[styles.leaderBadgeText, { color: theme.primary }]}>Leader</Text>
             </View>
+            {leader.team_name && (
+              <View style={styles.teamIndicator}>
+                <Ionicons name="people" size={12} color={theme.textSecondary} />
+                <Text style={[styles.teamText, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {leader.team_name}
+                </Text>
+              </View>
+            )}
           </View>
-
-          {leader.team_name && (
-            <View style={styles.teamIndicator}>
-              <Ionicons name="people" size={12} color={theme.textSecondary} />
-              <Text style={[styles.teamText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {leader.team_name}
-              </Text>
-            </View>
-          )}
 
           <View style={styles.taskStats}>
             <View style={styles.taskStatItem}>
@@ -575,9 +574,9 @@ export default function LeaderboardScreen() {
         {/* Filters Row */}
         <View style={{
           flexDirection: 'row',
-          gap: spacing.md,
+          gap: spacing.sm,
           paddingHorizontal: spacing.lg,
-          marginBottom: spacing.lg
+          marginBottom: spacing.md
         }}>
           <View style={{ flex: 1 }}>
             <Select
@@ -588,6 +587,8 @@ export default function LeaderboardScreen() {
               searchable={false}
               multiple={false}
               leadingIcon="filter"
+              size="compact"
+              clearable={false}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -604,6 +605,8 @@ export default function LeaderboardScreen() {
               searchable={false}
               multiple={false}
               leadingIcon="calendar"
+              size="compact"
+              clearable={false}
             />
           </View>
         </View>
@@ -778,23 +781,15 @@ export default function LeaderboardScreen() {
             )}
           </View>
         ) : (data.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name={filter === 'individual' ? 'school-outline' : (filter === 'team' ? 'people-outline' : 'shield-checkmark-outline')}
-              size={64}
-              color={theme.textSecondary}
-            />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              {filter === 'individual' ? 'No Interns Yet' : (filter === 'team' ? 'No Teams Yet' : 'No Leaders Yet')}
-            </Text>
-            <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
-              {filter === 'individual'
-                ? 'Intern rankings will appear here once tasks are assigned'
-                : (filter === 'team'
-                  ? 'Team rankings will appear once teams have active interns'
-                  : 'Leader rankings will appear once teams are created and led by leaders')}
-            </Text>
-          </View>
+          <EmptyState
+            icon={filter === 'individual' ? 'school-outline' : (filter === 'team' ? 'people-outline' : 'shield-checkmark-outline')}
+            title={filter === 'individual' ? 'No Interns Yet' : (filter === 'team' ? 'No Teams Yet' : 'No Leaders Yet')}
+            subtitle={filter === 'individual'
+              ? 'Intern rankings will appear here once tasks are assigned'
+              : (filter === 'team'
+                ? 'Team rankings will appear once teams have active interns'
+                : 'Leader rankings will appear once teams are created and led by leaders')}
+          />
         ) : (
           <>
             {/* Individual Leaderboard */}
@@ -1212,6 +1207,14 @@ const styles = StyleSheet.create({
   internInfo: {
     flex: 1,
     marginLeft: spacing.xs,
+    minWidth: 0,
+  },
+  internMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 2,
+    flexWrap: 'wrap',
   },
   internNameRow: {
     flexDirection: 'row',
@@ -1221,7 +1224,7 @@ const styles = StyleSheet.create({
   },
   internName: {
     ...getTypographyStyle('base', 'bold'),
-    flex: 1,
+    flexShrink: 1,
   },
   teamIndicator: {
     flexDirection: 'row',

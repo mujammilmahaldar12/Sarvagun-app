@@ -16,12 +16,12 @@ import {
 const NOTIFICATION_ENDPOINTS = {
   LIST: '/core/notifications/',
   DETAIL: (id: number) => `/core/notifications/${id}/`,
-  MARK_READ: (id: number) => `/core/notifications/${id}/mark-read/`,
-  MARK_ALL_READ: '/core/notifications/mark-all-read/',
+  MARK_READ: (id: number) => `/core/notifications/${id}/mark_as_read/`,
+  MARK_ALL_READ: '/core/notifications/mark_all_as_read/',
   DELETE: (id: number) => `/core/notifications/${id}/`,
-  DELETE_ALL: '/core/notifications/delete-all/',
-  STATS: '/core/notifications/stats/',
-  PREFERENCES: '/core/notifications/preferences/',
+  DELETE_ALL: '/core/notifications/delete_all/',
+  STATS: '/core/notification-summary/',
+  PREFERENCES: '/core/notification-preferences/my_preferences/',
 };
 
 class NotificationService {
@@ -30,7 +30,7 @@ class NotificationService {
    */
   async getNotifications(filters?: NotificationFilters): Promise<Notification[]> {
     const params = new URLSearchParams();
-    
+
     if (filters?.status) params.append('status', filters.status);
     if (filters?.type) params.append('type', filters.type);
     if (filters?.priority) params.append('priority', filters.priority);

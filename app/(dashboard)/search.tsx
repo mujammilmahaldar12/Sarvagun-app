@@ -18,7 +18,7 @@ import { AnimatedPressable, Avatar, GlassCard, Skeleton } from '@/components';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { designSystem, baseColors } from '@/constants/designSystem';
 import { useGlobalSearch } from '@/hooks/useSearchQueries';
-import type { SearchPerson, SearchProject, SearchTask, SearchDocument } from '@/services/search.service';
+import type { SearchPerson, SearchProject, SearchTask, SearchDocument, SearchEvent, SearchClient, SearchVendor } from '@/services/search.service';
 
 const { spacing, borderRadius, iconSizes } = designSystem;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -27,7 +27,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'people' | 'projects' | 'tasks' | 'documents'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'people' | 'projects' | 'tasks' | 'documents' | 'events' | 'clients' | 'vendors'>('all');
 
   // Real API search with React Query
   const { data: searchResults, isLoading: isSearching } = useGlobalSearch(searchQuery, {
@@ -38,8 +38,10 @@ export default function SearchScreen() {
   // Quick search categories
   const categories = [
     { id: 'people', label: 'People', icon: 'people-outline' },
+    { id: 'events', label: 'Events', icon: 'calendar-outline' },
+    { id: 'clients', label: 'Clients', icon: 'person-outline' },
+    { id: 'vendors', label: 'Vendors', icon: 'construct-outline' },
     { id: 'projects', label: 'Projects', icon: 'briefcase-outline' },
-    { id: 'documents', label: 'Documents', icon: 'document-text-outline' },
     { id: 'tasks', label: 'Tasks', icon: 'checkmark-circle-outline' },
   ];
 
@@ -60,6 +62,9 @@ export default function SearchScreen() {
     ...searchResults.projects,
     ...searchResults.tasks,
     ...searchResults.documents,
+    ...(searchResults.events || []),
+    ...(searchResults.clients || []),
+    ...(searchResults.vendors || []),
   ] : [];
 
   const totalResults = searchResults?.total_count || 0;
@@ -73,7 +78,7 @@ export default function SearchScreen() {
       />
 
       {/* Glass Morphism Header */}
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.duration(400).springify()}
         style={styles.header}
       >
@@ -110,14 +115,14 @@ export default function SearchScreen() {
                     autoFocus
                     style={[
                       styles.searchInput,
-                      { 
-                        ...getTypographyStyle('sm', 'regular'), 
+                      {
+                        ...getTypographyStyle('sm', 'regular'),
                         color: theme.text
                       }
                     ]}
                   />
                   {searchQuery.length > 0 && (
-                    <AnimatedPressable 
+                    <AnimatedPressable
                       onPress={() => handleSearch('')}
                       hapticType="light"
                     >
@@ -139,7 +144,7 @@ export default function SearchScreen() {
         {searchQuery.length === 0 ? (
           <>
             {/* Quick Categories */}
-            <Animated.View 
+            <Animated.View
               entering={FadeInUp.delay(100).duration(400)}
               style={styles.section}
             >
@@ -156,17 +161,17 @@ export default function SearchScreen() {
                       onPress={() => handleCategoryPress(category.id)}
                       hapticType="light"
                     >
-                      <GlassCard 
-                        variant="default" 
+                      <GlassCard
+                        variant="default"
                         intensity="light"
                         style={styles.categoryCard}
                       >
                         <View style={styles.categoryContent}>
                           <View style={[styles.categoryIcon, { backgroundColor: `${theme.primary}15` }]}>
-                            <Ionicons 
-                              name={category.icon as any} 
-                              size={24} 
-                              color={theme.primary} 
+                            <Ionicons
+                              name={category.icon as any}
+                              size={24}
+                              color={theme.primary}
                             />
                           </View>
                           <Text style={[styles.categoryLabel, { color: theme.text }]}>
@@ -181,7 +186,7 @@ export default function SearchScreen() {
             </Animated.View>
 
             {/* Empty State */}
-            <Animated.View 
+            <Animated.View
               entering={FadeInUp.delay(400).duration(400)}
               style={styles.emptyState}
             >
@@ -203,7 +208,7 @@ export default function SearchScreen() {
         ) : (
           <>
             {/* Search Results */}
-            <Animated.View 
+            <Animated.View
               entering={FadeInUp.delay(100).duration(400)}
               style={styles.section}
             >
@@ -242,8 +247,8 @@ export default function SearchScreen() {
                             onPress={() => router.push(`/(dashboard)/profile?id=${person.id}`)}
                             hapticType="light"
                           >
-                            <GlassCard 
-                              variant="default" 
+                            <GlassCard
+                              variant="default"
                               intensity="light"
                               style={styles.resultCard}
                             >
@@ -263,10 +268,10 @@ export default function SearchScreen() {
                                   </Text>
                                   {person.department && (
                                     <View style={styles.resultMeta}>
-                                      <Ionicons 
-                                        name="business-outline" 
-                                        size={14} 
-                                        color={theme.textSecondary} 
+                                      <Ionicons
+                                        name="business-outline"
+                                        size={14}
+                                        color={theme.textSecondary}
                                       />
                                       <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
                                         {person.department}
@@ -295,8 +300,8 @@ export default function SearchScreen() {
                             onPress={() => router.push(`/(modules)/projects/${project.id}`)}
                             hapticType="light"
                           >
-                            <GlassCard 
-                              variant="default" 
+                            <GlassCard
+                              variant="default"
                               intensity="light"
                               style={styles.resultCard}
                             >
@@ -338,8 +343,8 @@ export default function SearchScreen() {
                             onPress={() => console.log('Task:', task.title)}
                             hapticType="light"
                           >
-                            <GlassCard 
-                              variant="default" 
+                            <GlassCard
+                              variant="default"
                               intensity="light"
                               style={styles.resultCard}
                             >
@@ -381,8 +386,8 @@ export default function SearchScreen() {
                             onPress={() => console.log('Document:', doc.name)}
                             hapticType="light"
                           >
-                            <GlassCard 
-                              variant="default" 
+                            <GlassCard
+                              variant="default"
                               intensity="light"
                               style={styles.resultCard}
                             >
@@ -412,10 +417,145 @@ export default function SearchScreen() {
                       ))}
                     </View>
                   )}
+
+                  {/* Events Results */}
+                  {searchResults?.events && searchResults.events.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Events ({searchResults.events.length})</Text>
+                      {searchResults.events.map((event: SearchEvent, index) => (
+                        <Animated.View
+                          key={`event-${event.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => router.push(`/(modules)/events/${event.id}` as any)}
+                            hapticType="light"
+                          >
+                            <GlassCard
+                              variant="default"
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <View style={[styles.projectIcon, { backgroundColor: '#F59E0B15' }]}>
+                                  <Ionicons name="calendar" size={24} color="#F59E0B" />
+                                </View>
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {event.name}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]} numberOfLines={1}>
+                                    {event.event_type || 'Event'} • {event.client_name || 'No client'}
+                                  </Text>
+                                  <View style={styles.resultMeta}>
+                                    <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                      {event.status || 'Planned'} {event.venue ? `• ${event.venue}` : ''}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Clients Results */}
+                  {searchResults?.clients && searchResults.clients.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Clients ({searchResults.clients.length})</Text>
+                      {searchResults.clients.map((client: SearchClient, index) => (
+                        <Animated.View
+                          key={`client-${client.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => router.push(`/(modules)/events/clients/${client.id}` as any)}
+                            hapticType="light"
+                          >
+                            <GlassCard
+                              variant="default"
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <View style={[styles.projectIcon, { backgroundColor: '#10B98115' }]}>
+                                  <Ionicons name="person" size={24} color="#10B981" />
+                                </View>
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {client.name}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
+                                    {client.company || client.email || 'Client'}
+                                  </Text>
+                                  {client.phone && (
+                                    <View style={styles.resultMeta}>
+                                      <Ionicons name="call-outline" size={12} color={theme.textSecondary} />
+                                      <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                        {client.phone}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Vendors Results */}
+                  {searchResults?.vendors && searchResults.vendors.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Vendors ({searchResults.vendors.length})</Text>
+                      {searchResults.vendors.map((vendor: SearchVendor, index) => (
+                        <Animated.View
+                          key={`vendor-${vendor.id}`}
+                          entering={FadeInUp.delay(200 + index * 50).duration(400)}
+                        >
+                          <AnimatedPressable
+                            onPress={() => router.push(`/(modules)/finance/vendors/${vendor.id}` as any)}
+                            hapticType="light"
+                          >
+                            <GlassCard
+                              variant="default"
+                              intensity="light"
+                              style={styles.resultCard}
+                            >
+                              <View style={styles.resultContent}>
+                                <View style={[styles.projectIcon, { backgroundColor: '#8B5CF615' }]}>
+                                  <Ionicons name="construct" size={24} color="#8B5CF6" />
+                                </View>
+                                <View style={styles.resultInfo}>
+                                  <Text style={[styles.resultName, { color: theme.text }]}>
+                                    {vendor.name}
+                                  </Text>
+                                  <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
+                                    {vendor.category || 'Vendor'} {vendor.contact_person ? `• ${vendor.contact_person}` : ''}
+                                  </Text>
+                                  {(vendor.phone || vendor.email) && (
+                                    <View style={styles.resultMeta}>
+                                      <Ionicons name={vendor.phone ? 'call-outline' : 'mail-outline'} size={12} color={theme.textSecondary} />
+                                      <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                        {vendor.phone || vendor.email}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                            </GlassCard>
+                          </AnimatedPressable>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  )}
                 </>
               ) : (
                 // No Results
-                <Animated.View 
+                <Animated.View
                   entering={FadeInUp.duration(400)}
                   style={styles.noResults}
                 >

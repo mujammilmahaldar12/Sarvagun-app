@@ -10,23 +10,24 @@ export interface User {
   last_name?: string;
   full_name?: string; // Computed from first_name + last_name or standalone
   photo?: string; // Profile photo URL
-  
+
   // Professional hierarchy fields
   category?: 'hr' | 'admin' | 'manager' | 'employee' | 'intern';
   designation?: string;
   department?: string;
-  
+
   // Hierarchy & Team structure
   reports_to?: number; // Manager/Team lead user ID
   reports_to_name?: string;
   team_id?: number;
   team_name?: string;
-  
+
   // Permission system fields
   role?: Role;
   company?: string;
   permissions?: Permission[];
-  
+  is_team_leader?: boolean; // Flag for assigned team leaders (even if intern)
+
   // Profile fields
   phone?: string;
   mobileno?: string; // Mobile number field from backend
@@ -34,10 +35,10 @@ export interface User {
   is_active?: boolean;
   date_joined?: string;
   last_login?: string;
-  
+
   // Theme preference
   theme_preference?: 'light' | 'dark';
-  
+
   // Enhanced profile fields
   bio?: string;
   headline?: string; // Professional headline/tagline
@@ -48,7 +49,7 @@ export interface User {
   social_links?: SocialLink;
   attendance_percentage?: number;
   team_size?: number; // Number of team members if team lead/manager
-  
+
   // Leaderboard fields
   total_stars_received?: number; // Star-based ranking score
   rank?: number; // User's rank in leaderboard
@@ -76,15 +77,15 @@ export interface Certification {
   issue_date: string; // ISO date
   expiry_date?: string; // ISO date, optional for non-expiring certs
   description?: string;
-  
+
   // Type indicator
   certificate_type: 'external' | 'company_issued';
-  
+
   // External certifications
   credential_id?: string;
   credential_url?: string;
   certificate_file?: string; // URL to uploaded file
-  
+
   // Company-issued certificates
   verification_code?: string;
   generated_certificate_url?: string; // URL to generated PDF
@@ -92,7 +93,7 @@ export interface Certification {
   issued_by_admin_name?: string;
   related_module?: string;
   related_module_id?: number;
-  
+
   // Helper
   is_expired?: boolean;
   created_at?: string;
