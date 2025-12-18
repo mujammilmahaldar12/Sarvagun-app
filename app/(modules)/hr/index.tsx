@@ -72,6 +72,7 @@ export default function HRScreen() {
     { key: 'staff', label: 'Staff', icon: 'people-outline' },
     { key: 'myrequests', label: 'My Requests', icon: 'receipt-outline' },
     ...(canApprove ? [{ key: 'approvals', label: 'Approvals', icon: 'checkmark-circle-outline' }] : []),
+    ...(canAccessHireActions ? [{ key: 'extensions', label: 'Extensions', icon: 'time-outline' }] : []),
   ];
 
   // Filter configuration
@@ -174,6 +175,11 @@ export default function HRScreen() {
 
   // Handlers
   const handleTabChange = (key: string) => {
+    if (key === 'extensions') {
+      // Navigate to dedicated extensions page
+      router.push('/(modules)/hr/extensions' as any);
+      return;
+    }
     setActiveTab(key as TabType);
     setFilters({});
     setShowFilters(false);

@@ -1,9 +1,10 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { getToken, storeToken, removeToken } from "../../utils/storage";
+import { useAuthStore } from "../../store/authStore";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__
-  ? "http://10.119.112.230:8000/api"  // Your PC's current local IP
+  ? "http://10.119.112.157:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
@@ -64,19 +65,15 @@ api.interceptors.response.use(
           }
           return api(originalRequest);
         } else {
-          console.log('❌ API: No refresh token available, clearing storage');
-          // No refresh token, clear everything
-          await removeToken('access');
-          await removeToken('refresh');
-          await removeToken('user');
+          console.log('❌ API: No refresh token available, logging out...');
+          // No refresh token - call logout to clear state and redirect
+          await useAuthStore.getState().logout();
           throw new Error('Session expired');
         }
       } catch (refreshError) {
-        console.log('❌ API: Token refresh failed, clearing storage:', refreshError);
-        // Refresh failed - clear tokens and reject
-        await removeToken('access');
-        await removeToken('refresh');
-        await removeToken('user');
+        console.log('❌ API: Token refresh failed, logging out...', refreshError);
+        // Refresh failed - logout to clear state and redirect
+        await useAuthStore.getState().logout();
         return Promise.reject(new Error('Session expired, please login again'));
       }
     }

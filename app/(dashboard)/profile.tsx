@@ -257,6 +257,97 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Internship Journey - Only for Interns */}
+        {user?.category === 'intern' && (
+          <View style={{ padding: spacing.lg, paddingTop: 0 }}>
+            <Text
+              style={{
+                ...getTypographyStyle('lg', 'semibold'),
+                color: theme.text,
+                marginBottom: 16,
+              }}
+            >
+              🎓 Internship Journey
+            </Text>
+
+            <View
+              style={{
+                backgroundColor: theme.surface,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+                padding: 16,
+              }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Start Date</Text>
+                  <Text style={{ color: theme.text, fontWeight: '600' }}>
+                    {user?.joining_date ? new Date(user.joining_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>End Date</Text>
+                  <Text style={{ color: theme.text, fontWeight: '600' }}>
+                    {user?.end_date ? new Date(user.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Days Remaining */}
+              {user?.end_date && (
+                <View style={{
+                  backgroundColor: (() => {
+                    const days = Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    if (days < 0) return '#FEE2E2';
+                    if (days <= 14) return '#FEF3C7';
+                    return '#D1FAE5';
+                  })(),
+                  padding: 12,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                }}>
+                  <Text style={{
+                    fontWeight: '700',
+                    fontSize: 24,
+                    color: (() => {
+                      const days = Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      if (days < 0) return '#DC2626';
+                      if (days <= 14) return '#92400E';
+                      return '#065F46';
+                    })()
+                  }}>
+                    {Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                    {Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) < 0 ? 'Days Overdue' : 'Days Remaining'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Request Extension */}
+              <Pressable
+                onPress={() => router.push('/(settings)/request-extension' as any)}
+                style={({ pressed }) => ({
+                  marginTop: 12,
+                  padding: 12,
+                  backgroundColor: pressed ? theme.primary + '10' : 'transparent',
+                  borderWidth: 1,
+                  borderColor: theme.primary,
+                  borderRadius: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                })}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
+                <Text style={{ color: theme.primary, fontWeight: '600' }}>Request Extension</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
         {/* Settings */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SETTINGS</Text>

@@ -217,11 +217,10 @@ export const Select: React.FC<SelectProps> = ({
       <Modal
         visible={isOpen}
         transparent
-        animationType="none"
+        animationType="fade"
         onRequestClose={handleClose}
       >
-        <Animated.View
-          entering={FadeIn}
+        <View
           style={[
             StyleSheet.absoluteFill,
             {
@@ -234,13 +233,12 @@ export const Select: React.FC<SelectProps> = ({
         >
           <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
 
-          <Animated.View
-            entering={SlideInDown.springify()}
+          <View
             style={{
               backgroundColor: theme.surface || '#FFFFFF',
               borderRadius: borderRadius.xl,
               padding: spacing[4],
-              width: '100%',
+              width: '90%',
               maxWidth: 400,
               maxHeight: '80%',
             }}
@@ -297,8 +295,8 @@ export const Select: React.FC<SelectProps> = ({
                 />
               </View>
             )}
-          </Animated.View>
-        </Animated.View>
+          </View>
+        </View>
       </Modal>
     </View >
   );

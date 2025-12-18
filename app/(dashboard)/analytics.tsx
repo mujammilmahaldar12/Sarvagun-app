@@ -24,11 +24,11 @@ import { useAuthStore } from '@/store/authStore';
 import { AnimatedPressable, GlassCard, Button, PerformanceChart } from '@/components';
 import { spacing, borderRadius, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import { 
-  useLeaderboard, 
+import {
+  useLeaderboard,
   useActiveProjectsCount,
 } from '@/hooks/useDashboardQueries';
-import { 
+import {
   useAttendancePercentage,
   useUserProjects,
 } from '@/hooks/useHRQueries';
@@ -55,7 +55,7 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  
+
   const [dateRange, setDateRange] = useState<DateRange>('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -220,8 +220,8 @@ export default function AnalyticsScreen() {
         </View>
 
         {/* Date Range Selector */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dateRangeContainer}
         >
@@ -237,10 +237,10 @@ export default function AnalyticsScreen() {
                 },
               ]}
             >
-              <Ionicons 
-                name={range.icon as any} 
-                size={16} 
-                color={dateRange === range.value ? '#FFFFFF' : theme.textSecondary} 
+              <Ionicons
+                name={range.icon as any}
+                size={16}
+                color={dateRange === range.value ? '#FFFFFF' : theme.textSecondary}
               />
               <Text
                 style={[
@@ -286,7 +286,7 @@ export default function AnalyticsScreen() {
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.metricCard}>
             <GlassCard variant="default" intensity="light" style={styles.metricCardContent}>
               <View style={[styles.metricIcon, { backgroundColor: '#3B82F620' }]}>
-                <Ionicons name="calendar" size={24} color="#3B82F6" />
+                <Ionicons name="calendar" size={22} color="#3B82F6" />
               </View>
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {Math.round(attendancePercentage)}%
@@ -300,13 +300,13 @@ export default function AnalyticsScreen() {
           <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.metricCard}>
             <GlassCard variant="default" intensity="light" style={styles.metricCardContent}>
               <View style={[styles.metricIcon, { backgroundColor: '#10B98120' }]}>
-                <Ionicons name="briefcase" size={24} color="#10B981" />
+                <Ionicons name="briefcase" size={22} color="#10B981" />
               </View>
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {activeProjects}
               </Text>
               <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
-                Active Projects
+                Projects
               </Text>
             </GlassCard>
           </Animated.View>
@@ -314,13 +314,13 @@ export default function AnalyticsScreen() {
           <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.metricCard}>
             <GlassCard variant="default" intensity="light" style={styles.metricCardContent}>
               <View style={[styles.metricIcon, { backgroundColor: '#8B5CF620' }]}>
-                <Ionicons name="trophy" size={24} color="#8B5CF6" />
+                <Ionicons name="trophy" size={22} color="#8B5CF6" />
               </View>
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {myRank > 0 ? `#${myRank}` : '--'}
               </Text>
               <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
-                Leaderboard
+                Rank
               </Text>
             </GlassCard>
           </Animated.View>
@@ -328,11 +328,11 @@ export default function AnalyticsScreen() {
           <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.metricCard}>
             <GlassCard variant="default" intensity="light" style={styles.metricCardContent}>
               <View style={[styles.metricIcon, { backgroundColor: '#F59E0B20' }]}>
-                <Ionicons name="star" size={24} color="#F59E0B" />
+                <Ionicons name="star" size={22} color="#F59E0B" />
               </View>
               <Text style={[styles.metricValue, { color: theme.text }]}>4.6</Text>
               <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
-                Avg Rating
+                Rating
               </Text>
             </GlassCard>
           </Animated.View>
@@ -382,10 +382,10 @@ export default function AnalyticsScreen() {
                           <Text style={[styles.moduleMetricValueText, { color: theme.text }]}>
                             {metric.value}
                           </Text>
-                          <Ionicons 
-                            name={getTrendIcon(metric.trend) as any} 
-                            size={14} 
-                            color={getTrendColor(metric.trend)} 
+                          <Ionicons
+                            name={getTrendIcon(metric.trend) as any}
+                            size={14}
+                            color={getTrendColor(metric.trend)}
                           />
                         </View>
                       </View>
@@ -497,30 +497,33 @@ const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
   metricCard: {
-    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
+    width: '48%',
+    marginBottom: spacing.sm,
   },
   metricCardContent: {
     alignItems: 'center',
-    padding: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   metricIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   metricValue: {
-    ...getTypographyStyle('2xl', 'bold'),
+    ...getTypographyStyle('xl', 'bold'),
     marginBottom: 2,
   },
   metricLabel: {
     ...getTypographyStyle('xs', 'medium'),
+    textAlign: 'center',
   },
   modulesSection: {
     marginBottom: spacing.lg,
@@ -549,11 +552,14 @@ const styles = StyleSheet.create({
   },
   moduleMetrics: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   moduleMetricItem: {
-    flex: 1,
     alignItems: 'center',
+    paddingHorizontal: spacing.xs,
   },
   moduleMetricLabel: {
     ...getTypographyStyle('xs', 'regular'),

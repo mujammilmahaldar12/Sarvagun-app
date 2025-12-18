@@ -35,6 +35,8 @@ export interface User {
   is_active?: boolean;
   date_joined?: string;
   last_login?: string;
+  joining_date?: string; // For intern start date
+  end_date?: string; // For intern internship end date
 
   // Theme preference
   theme_preference?: 'light' | 'dark';

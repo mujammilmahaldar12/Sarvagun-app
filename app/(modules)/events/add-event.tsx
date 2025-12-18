@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, Pressable, Alert, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable, Alert, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
@@ -35,8 +35,14 @@ export default function AddEventScreen() {
   const [leadData, setLeadData] = useState<any>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [organisations, setOrganisations] = useState<any[]>([]);
+  const [clientCategories, setClientCategories] = useState<any[]>([]);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [isCreatingNewVenue, setIsCreatingNewVenue] = useState(false);
+
+  // Organisation Modal States
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [creatingOrg, setCreatingOrg] = useState(false);
 
   const [formData, setFormData] = useState({
     clientName: '',
@@ -64,6 +70,7 @@ export default function AddEventScreen() {
   useEffect(() => {
     fetchVenues();
     fetchOrganisations();
+    fetchClientCategories();
   }, []);
 
   // Fetch lead details if fromLead is present
@@ -88,6 +95,36 @@ export default function AddEventScreen() {
       setOrganisations(orgsData || []);
     } catch (error) {
       console.error('Error fetching organisations:', error);
+    }
+  };
+
+  const fetchClientCategories = async () => {
+    try {
+      const categories = await eventsService.getClientCategories();
+      setClientCategories(categories || []);
+    } catch (error) {
+      console.error('Error fetching client categories:', error);
+    }
+  };
+
+  // Handle creating new organisation
+  const handleCreateOrganisation = async () => {
+    if (!newOrgName.trim()) {
+      Alert.alert('Error', 'Please enter organisation name');
+      return;
+    }
+    setCreatingOrg(true);
+    try {
+      const newOrg = await eventsService.createOrganisation({ name: newOrgName.trim() });
+      setOrganisations(prev => [...prev, newOrg]);
+      setFormData(prev => ({ ...prev, organisationId: newOrg.id }));
+      setShowOrgModal(false);
+      setNewOrgName('');
+      Alert.alert('Success', 'Organisation created!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create organisation');
+    } finally {
+      setCreatingOrg(false);
     }
   };
 
@@ -459,36 +496,71 @@ export default function AddEventScreen() {
           )}
         </View>
 
+        {/* Client Category Selection (for conversion) */}
+        {fromLead && leadData && (
+          <View style={clientCardStyles.card}>
+            <View style={clientCardStyles.header}>
+              <Ionicons name="pricetag" size={20} color={theme.primary} />
+              <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text, flex: 1 }]}>
+                Client Category (for this event) *
+              </Text>
+            </View>
+            <Select
+              label="Select Category"
+              value={formData.clientCategory}
+              options={
+                leadData?.client?.client_category?.length > 0
+                  ? leadData.client.client_category.map((c: any) => ({ label: c.name, value: c.code }))
+                  : [
+                    { label: 'B2C (Individual)', value: 'b2c' },
+                    { label: 'B2B (Business)', value: 'b2b' },
+                    { label: 'B2G (Government)', value: 'b2g' },
+                  ]
+              }
+              onChange={(val) => setFormData(prev => ({ ...prev, clientCategory: val as string, organisationId: 0 }))}
+              placeholder="Select client category"
+              leadingIcon="pricetag-outline"
+            />
+          </View>
+        )}
+
         {/* Organisation Selection (for B2B/B2G clients) */}
-        {(formData.clientCategory === 'b2b' || formData.clientCategory === 'b2g' ||
-          leadData?.client?.client_category?.[0]?.code === 'b2b' ||
-          leadData?.client?.client_category?.[0]?.code === 'b2g') && (
-            <View style={clientCardStyles.card}>
-              <View style={clientCardStyles.header}>
-                <Ionicons name="business" size={20} color={theme.primary} />
-                <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text, flex: 1 }]}>
-                  Organisation *
+        {(formData.clientCategory === 'b2b' || formData.clientCategory === 'b2g') && (
+          <View style={clientCardStyles.card}>
+            <View style={clientCardStyles.header}>
+              <Ionicons name="business" size={20} color={theme.primary} />
+              <Text style={[getTypographyStyle('base', 'bold'), { color: theme.text, flex: 1 }]}>
+                Organisation *
+              </Text>
+            </View>
+            <Select
+              label="Select Organisation"
+              value={formData.organisationId}
+              options={[
+                ...organisations.map(o => ({ label: o.name, value: o.id })),
+                { label: '➕ Add New Organisation', value: -1 },
+              ]}
+              onChange={(val) => {
+                if (val === -1) {
+                  setShowOrgModal(true);
+                } else {
+                  setFormData(prev => ({ ...prev, organisationId: Number(val) }));
+                }
+              }}
+              placeholder="Select an organisation"
+              searchable
+              leadingIcon="business-outline"
+              required
+            />
+            {formData.organisationId > 0 && (
+              <View style={{ marginTop: spacing.sm, padding: spacing.sm, backgroundColor: theme.background, borderRadius: borderRadius.md }}>
+                <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
+                  {organisations.find(o => o.id === formData.organisationId)?.name || ''}
                 </Text>
               </View>
-              <Select
-                label="Select Organisation"
-                value={formData.organisationId}
-                options={organisations.map(o => ({ label: o.name, value: o.id }))}
-                onChange={(val) => setFormData(prev => ({ ...prev, organisationId: Number(val) }))}
-                placeholder="Select an organisation"
-                searchable
-                leadingIcon="business-outline"
-                required
-              />
-              {formData.organisationId > 0 && (
-                <View style={{ marginTop: spacing.sm, padding: spacing.sm, backgroundColor: theme.background, borderRadius: borderRadius.md }}>
-                  <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
-                    {organisations.find(o => o.id === formData.organisationId)?.name || ''}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
+            )}
+          </View>
+        )}
 
         {/* Event Information - Read-only when from lead */}
         {fromLead && leadData ? (
@@ -632,6 +704,55 @@ export default function AddEventScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Organisation Creation Modal */}
+      <Modal
+        visible={showOrgModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowOrgModal(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={[modalStyles.content, { backgroundColor: theme.surface }]}>
+            <View style={modalStyles.header}>
+              <Text style={[getTypographyStyle('lg', 'bold'), { color: theme.text }]}>Add New Organisation</Text>
+              <Pressable onPress={() => setShowOrgModal(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text, marginBottom: 6 }]}>Organisation Name *</Text>
+              <TextInput
+                value={newOrgName}
+                onChangeText={setNewOrgName}
+                placeholder="Enter organisation name"
+                placeholderTextColor={theme.textSecondary}
+                style={[modalStyles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              />
+            </View>
+
+            <View style={modalStyles.buttons}>
+              <Pressable
+                onPress={() => { setShowOrgModal(false); setNewOrgName(''); }}
+                style={[modalStyles.btn, modalStyles.btnCancel, { borderColor: theme.border }]}
+              >
+                <Text style={{ color: theme.text, fontWeight: '600' }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleCreateOrganisation}
+                disabled={creatingOrg || !newOrgName.trim()}
+                style={[modalStyles.btn, modalStyles.btnCreate, { backgroundColor: theme.primary }, !newOrgName.trim() && { opacity: 0.5 }]}
+              >
+                {creatingOrg && <ActivityIndicator size="small" color="#FFF" />}
+                <Text style={{ color: '#FFF', fontWeight: '600' }}>
+                  {creatingOrg ? 'Creating...' : 'Create'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -660,5 +781,52 @@ const styles = StyleSheet.create({
   submitContainer: {
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
+  },
+});
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  content: {
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+  },
+  buttons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  btnCancel: {
+    borderWidth: 1,
+  },
+  btnCreate: {
+    // backgroundColor set dynamically
   },
 });

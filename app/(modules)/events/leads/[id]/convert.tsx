@@ -195,7 +195,7 @@ export default function ConvertLeadScreen() {
                             { label: 'Bling Square Events', value: 'bling square events' },
                         ]}
                         value={formData.company}
-                        onSelect={(val) => setFormData(prev => ({ ...prev, company: val as any }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, company: val as any }))}
                     />
 
                     <Select
@@ -240,7 +240,7 @@ export default function ConvertLeadScreen() {
                         label="Venue *"
                         options={venues.map(v => ({ label: v.name, value: v.id }))}
                         value={formData.venueId}
-                        onSelect={(val) => setFormData(prev => ({ ...prev, venueId: val as number }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, venueId: val as number }))}
                     />
 
                     <View style={styles.row}>
@@ -282,7 +282,7 @@ export default function ConvertLeadScreen() {
                             { label: 'Other', value: 'other' },
                         ]}
                         value={formData.category}
-                        onSelect={(val) => setFormData(prev => ({ ...prev, category: val as string }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, category: val as string }))}
                     />
                 </Card>
 
