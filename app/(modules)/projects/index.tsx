@@ -57,6 +57,29 @@ import {
 
 const { spacing, borderRadius, typography } = designSystem;
 
+// Helper function to generate consistent color from string
+const getAvatarColor = (name: string): string => {
+    const colors = [
+        '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3',
+        '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#FF9800',
+        '#FF5722', '#795548', '#607D8B', '#F44336', '#E040FB',
+        '#00E676', '#FF6D00', '#6200EA', '#0091EA', '#00C853'
+    ];
+
+    // Generate a consistent index based on the name
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+};
+
+// Helper function to get first letter
+const getInitial = (name: string): string => {
+    return name.charAt(0).toUpperCase();
+};
+
 // Filter tab type
 type FilterTab = 'all' | 'active' | 'completed';
 
@@ -417,6 +440,12 @@ export default function ProjectsScreen() {
         );
     }, [selectedProject, projectsList, deleteProjectMutation, refetchProjects]);
 
+    // Handle add task from section header
+    const handleAddTaskFromSection = useCallback((sectionId: number) => {
+        setSelectedSectionForTask(sectionId);
+        setShowAddTask(true);
+    }, []);
+
     // Submit rating
     const handleSubmitRating = useCallback(() => {
         if (!selectedTaskForRating) return;
@@ -504,6 +533,8 @@ export default function ProjectsScreen() {
                     icon={item.data.icon}
                     isExpanded={expandedSections.includes(item.sectionId)}
                     onToggle={() => toggleSection(item.sectionId)}
+                    sectionId={item.sectionId}
+                    onAddTask={handleAddTaskFromSection}
                 />
             );
         }
@@ -522,7 +553,7 @@ export default function ProjectsScreen() {
                 </View>
             </View>
         );
-    }, [expandedSections, toggleSection, handleCompleteTask, handleUncompleteTask, handleDeleteTask, handleTaskPress, theme]);
+    }, [expandedSections, toggleSection, handleCompleteTask, handleUncompleteTask, handleDeleteTask, handleTaskPress, handleAddTaskFromSection, theme]);
 
     // Loading state
     if (projectsLoading) {
@@ -577,6 +608,15 @@ export default function ProjectsScreen() {
                             onPress={() => setShowProjectDropdown(!showProjectDropdown)}
                             style={[styles.projectSelector, { backgroundColor: theme.surface, borderColor: theme.border }]}
                         >
+                            {/* Project Avatar */}
+                            {selectedProject && (
+                                <View style={[styles.projectAvatar, { backgroundColor: getAvatarColor(selectedProject.project_name) }]}>
+                                    <Text style={styles.projectAvatarText}>
+                                        {getInitial(selectedProject.project_name)}
+                                    </Text>
+                                </View>
+                            )}
+
                             <View style={styles.projectInfo}>
                                 <Text style={[styles.projectLabel, { color: theme.textSecondary }]}>PROJECT</Text>
                                 <Text style={[styles.projectName, { color: theme.text }]} numberOfLines={1}>
@@ -600,6 +640,19 @@ export default function ProjectsScreen() {
                                         </TouchableOpacity>
                                     </>
                                 )}
+                                {/* Add Project Button */}
+                                <TouchableOpacity
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        const createUrl = isTeamLead && teamMemberId
+                                            ? `/projects/create-project?teamMemberId=${teamMemberId}&teamMemberName=${encodeURIComponent(teamMemberName)}&isTeamLead=true`
+                                            : '/projects/create-project';
+                                        router.push(createUrl as any);
+                                    }}
+                                    style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
+                                >
+                                    <Ionicons name="add" size={16} color="#fff" />
+                                </TouchableOpacity>
                                 <Ionicons
                                     name={showProjectDropdown ? 'chevron-up' : 'chevron-down'}
                                     size={18}
@@ -625,9 +678,15 @@ export default function ProjectsScreen() {
                                                 selectedProject?.id === project.id && { backgroundColor: theme.primary + '15' }
                                             ]}
                                         >
+                                            {/* Project Avatar in dropdown */}
+                                            <View style={[styles.projectAvatarSmall, { backgroundColor: getAvatarColor(project.project_name) }]}>
+                                                <Text style={styles.projectAvatarTextSmall}>
+                                                    {getInitial(project.project_name)}
+                                                </Text>
+                                            </View>
                                             <Text style={[
                                                 styles.dropdownItemText,
-                                                { color: selectedProject?.id === project.id ? theme.primary : theme.text }
+                                                { color: selectedProject?.id === project.id ? theme.primary : theme.text, flex: 1 }
                                             ]}>
                                                 {project.project_name}
                                             </Text>
@@ -677,82 +736,84 @@ export default function ProjectsScreen() {
 
                         {/* Section Filter Dropdown (only for All tab) */}
                         {filterTab === 'all' && (
-                            <View style={{ marginTop: spacing.sm, flexDirection: 'row', gap: spacing.xs }}>
-                                <View style={{ flex: 1 }}>
-                                    <TouchableOpacity
-                                        onPress={() => setShowSectionFilterDropdown(!showSectionFilterDropdown)}
-                                        style={[styles.sectionFilter, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                                    >
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                                            <Ionicons name="filter-outline" size={16} color={theme.primary} />
-                                            <Text style={[styles.sectionFilterText, { color: theme.text }]}>
-                                                {selectedSectionFilter === null
-                                                    ? 'All Sections'
-                                                    : sectionsList.find(s => s.id === selectedSectionFilter)?.section_name || 'All Sections'}
-                                            </Text>
-                                        </View>
+                            <View style={{ marginTop: spacing.sm }}>
+                                <TouchableOpacity
+                                    onPress={() => setShowSectionFilterDropdown(!showSectionFilterDropdown)}
+                                    style={[styles.sectionFilter, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1 }}>
+                                        <Ionicons name="filter-outline" size={16} color={theme.primary} />
+                                        <Text style={[styles.sectionFilterText, { color: theme.text }]}>
+                                            {selectedSectionFilter === null
+                                                ? 'All Sections'
+                                                : sectionsList.find(s => s.id === selectedSectionFilter)?.section_name || 'All Sections'}
+                                        </Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                                        {/* Add Section Button */}
+                                        <TouchableOpacity
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                setShowAddSection(true);
+                                            }}
+                                            style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
+                                        >
+                                            <Ionicons name="add" size={16} color="#fff" />
+                                        </TouchableOpacity>
                                         <Ionicons
                                             name={showSectionFilterDropdown ? 'chevron-up' : 'chevron-down'}
                                             size={16}
                                             color={theme.textSecondary}
                                         />
-                                    </TouchableOpacity>
-
-                                    {showSectionFilterDropdown && (
-                                        <View style={[styles.sectionFilterDropdown, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                                            {/* All Sections option */}
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    setSelectedSectionFilter(null);
-                                                    setShowSectionFilterDropdown(false);
-                                                }}
-                                                style={[
-                                                    styles.sectionFilterItem,
-                                                    selectedSectionFilter === null && { backgroundColor: theme.primary + '15' }
-                                                ]}
-                                            >
-                                                <Text style={{ color: selectedSectionFilter === null ? theme.primary : theme.text }}>
-                                                    All Sections
-                                                </Text>
-                                                {selectedSectionFilter === null && (
-                                                    <Ionicons name="checkmark" size={16} color={theme.primary} />
-                                                )}
-                                            </TouchableOpacity>
-
-                                            {/* Section options (excluding Completed and Overdue) */}
-                                            {sectionsList
-                                                .filter(s => !['Completed', 'Overdue'].includes(s.section_name))
-                                                .map((section) => (
-                                                    <TouchableOpacity
-                                                        key={section.id}
-                                                        onPress={() => {
-                                                            setSelectedSectionFilter(section.id);
-                                                            setShowSectionFilterDropdown(false);
-                                                        }}
-                                                        style={[
-                                                            styles.sectionFilterItem,
-                                                            selectedSectionFilter === section.id && { backgroundColor: theme.primary + '15' }
-                                                        ]}
-                                                    >
-                                                        <Text style={{ color: selectedSectionFilter === section.id ? theme.primary : theme.text }}>
-                                                            {section.section_name}
-                                                        </Text>
-                                                        {selectedSectionFilter === section.id && (
-                                                            <Ionicons name="checkmark" size={16} color={theme.primary} />
-                                                        )}
-                                                    </TouchableOpacity>
-                                                ))}
-                                        </View>
-                                    )}
-                                </View>
-
-                                {/* Add Section Button */}
-                                <TouchableOpacity
-                                    onPress={() => setShowAddSection(true)}
-                                    style={[styles.addSectionButton, { backgroundColor: theme.primary }]}
-                                >
-                                    <Ionicons name="add" size={20} color="#fff" />
+                                    </View>
                                 </TouchableOpacity>
+
+                                {showSectionFilterDropdown && (
+                                    <View style={[styles.sectionFilterDropdown, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                        {/* All Sections option */}
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setSelectedSectionFilter(null);
+                                                setShowSectionFilterDropdown(false);
+                                            }}
+                                            style={[
+                                                styles.sectionFilterItem,
+                                                selectedSectionFilter === null && { backgroundColor: theme.primary + '15' }
+                                            ]}
+                                        >
+                                            <Text style={{ color: selectedSectionFilter === null ? theme.primary : theme.text }}>
+                                                All Sections
+                                            </Text>
+                                            {selectedSectionFilter === null && (
+                                                <Ionicons name="checkmark" size={16} color={theme.primary} />
+                                            )}
+                                        </TouchableOpacity>
+
+                                        {/* Section options (excluding Completed and Overdue) */}
+                                        {sectionsList
+                                            .filter(s => !['Completed', 'Overdue'].includes(s.section_name))
+                                            .map((section) => (
+                                                <TouchableOpacity
+                                                    key={section.id}
+                                                    onPress={() => {
+                                                        setSelectedSectionFilter(section.id);
+                                                        setShowSectionFilterDropdown(false);
+                                                    }}
+                                                    style={[
+                                                        styles.sectionFilterItem,
+                                                        selectedSectionFilter === section.id && { backgroundColor: theme.primary + '15' }
+                                                    ]}
+                                                >
+                                                    <Text style={{ color: selectedSectionFilter === section.id ? theme.primary : theme.text }}>
+                                                        {section.section_name}
+                                                    </Text>
+                                                    {selectedSectionFilter === section.id && (
+                                                        <Ionicons name="checkmark" size={16} color={theme.primary} />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                    </View>
+                                )}
                             </View>
                         )}
 
@@ -761,7 +822,7 @@ export default function ProjectsScreen() {
                             data={renderListData}
                             renderItem={renderItem}
                             keyExtractor={(item) => item.key}
-                            contentContainerStyle={{ paddingBottom: 100 }}
+                            contentContainerStyle={{ paddingBottom: 20 }}
                             showsVerticalScrollIndicator={false}
                             refreshControl={
                                 <RefreshControl
@@ -781,23 +842,6 @@ export default function ProjectsScreen() {
                             }
                         />
                     </View>
-
-                    {/* FAB - Add Task */}
-                    <TouchableOpacity
-                        onPress={() => {
-                            if (sectionsList.length === 0) {
-                                Alert.alert('No Sections', 'Please create a section first', [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Create Section', onPress: () => setShowAddSection(true) }
-                                ]);
-                            } else {
-                                setShowAddTask(true);
-                            }
-                        }}
-                        style={[styles.fab, { backgroundColor: theme.primary }]}
-                    >
-                        <Ionicons name="add" size={28} color="#fff" />
-                    </TouchableOpacity>
 
                     {/* Add Section Modal */}
                     <Modal visible={showAddSection} transparent animationType="fade">
@@ -842,7 +886,15 @@ export default function ProjectsScreen() {
                                 </Text>
 
                                 {/* Section Selector */}
-                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Section *</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Section *</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setShowAddSection(true)}
+                                        style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
+                                    >
+                                        <Ionicons name="add" size={16} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
                                 <View style={[styles.sectionPickerContainer, { borderColor: theme.border }]}>
                                     {sectionsList.map((section) => (
                                         <TouchableOpacity
@@ -1206,11 +1258,38 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.md,
+        borderRadius: borderRadius.lg,
         borderWidth: 1,
-        marginBottom: spacing.xs,
+        marginBottom: spacing.md,
+        marginTop: spacing.sm,
+        gap: spacing.sm,
+    },
+    projectAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    projectAvatarText: {
+        color: '#FFFFFF',
+        fontSize: typography.sizes.lg,
+        fontWeight: 'bold',
+    },
+    projectAvatarSmall: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.sm,
+    },
+    projectAvatarTextSmall: {
+        color: '#FFFFFF',
+        fontSize: typography.sizes.sm,
+        fontWeight: 'bold',
     },
     projectInfo: {
         flex: 1,
@@ -1219,34 +1298,39 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontWeight: '600',
         letterSpacing: 0.5,
-        marginBottom: 0,
+        marginBottom: 2,
         color: '#666',
     },
     projectName: {
-        fontSize: typography.sizes.sm,
+        fontSize: typography.sizes.base,
         fontWeight: '600',
     },
     projectActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
     },
     iconButton: {
-        padding: 4,
-        borderRadius: 6,
+        padding: 6,
+        borderRadius: 8,
     },
     dropdown: {
-        borderRadius: borderRadius.md,
+        borderRadius: borderRadius.lg,
         borderWidth: 1,
-        marginBottom: spacing.xs,
-        maxHeight: 200,
+        marginBottom: spacing.md,
+        maxHeight: 250,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     dropdownItem: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: spacing.md,
-        borderBottomWidth: 1,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     dropdownItemText: {
         fontSize: typography.sizes.sm,
@@ -1254,22 +1338,22 @@ const styles = StyleSheet.create({
     },
     filterTabs: {
         flexDirection: 'row',
-        borderRadius: borderRadius.md,
-        padding: 2,
-        marginBottom: spacing.xs,
-        gap: 4,
+        borderRadius: borderRadius.lg,
+        padding: 3,
+        marginBottom: spacing.md,
+        gap: 6,
     },
     filterTab: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: spacing.xs,
-        borderRadius: borderRadius.sm,
+        paddingVertical: 8,
+        paddingHorizontal: spacing.sm,
+        borderRadius: borderRadius.md,
         borderWidth: 1,
         borderColor: 'transparent',
-        gap: 4,
+        gap: 5,
     },
     filterTabText: {
         fontSize: typography.sizes.xs,
@@ -1526,5 +1610,12 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
+    },
+    addSectionButtonInline: {
+        width: 28,
+        height: 28,
+        borderRadius: borderRadius.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
     }
 });

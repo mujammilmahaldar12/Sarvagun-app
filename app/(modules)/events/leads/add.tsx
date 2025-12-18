@@ -77,7 +77,7 @@ export default function AddLeadScreen() {
             setVenues(vens || []);
         } catch (error) {
             console.error('Failed to fetch reference data', error);
-            showToast({ message: 'Failed to load form data', type: 'error' });
+            showToast('Failed to load form data', 'error');
         }
     };
 
@@ -127,7 +127,7 @@ export default function AddLeadScreen() {
             };
 
             await eventsService.createLeadComplete(payload);
-            showToast({ message: 'Lead created successfully', type: 'success' });
+            showToast('Lead created successfully', 'success');
             router.back();
         } catch (error: any) {
             console.error('Create lead error:', error);
@@ -283,7 +283,7 @@ export default function AddLeadScreen() {
                             label="Select Venue *"
                             options={venues.map(v => ({ label: v.name, value: v.id }))}
                             value={formData.venueId}
-                            onSelect={(val) => setFormData(prev => ({ ...prev, venueId: val as number }))}
+                            onChange={(val) => setFormData(prev => ({ ...prev, venueId: val as number }))}
                             placeholder="Choose a venue"
                         />
                     )}
@@ -297,15 +297,15 @@ export default function AddLeadScreen() {
                         <View style={styles.col}>
                             <DatePicker
                                 label="Start Date"
-                                date={formData.startDate}
-                                onChange={(d) => setFormData(prev => ({ ...prev, startDate: d }))}
+                                value={formData.startDate}
+                                onChange={(d) => d && setFormData(prev => ({ ...prev, startDate: d }))}
                             />
                         </View>
                         <View style={styles.col}>
                             <DatePicker
                                 label="End Date"
-                                date={formData.endDate}
-                                onChange={(d) => setFormData(prev => ({ ...prev, endDate: d }))}
+                                value={formData.endDate}
+                                onChange={(d) => d && setFormData(prev => ({ ...prev, endDate: d }))}
                             />
                         </View>
                     </View>
@@ -317,7 +317,7 @@ export default function AddLeadScreen() {
                             { label: 'Offline', value: 'offline' },
                         ]}
                         value={formData.source}
-                        onSelect={(val) => setFormData(prev => ({ ...prev, source: val as string }))}
+                        onChange={(val) => setFormData(prev => ({ ...prev, source: val as string }))}
                     />
 
                     <Input

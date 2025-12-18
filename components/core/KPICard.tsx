@@ -1,10 +1,11 @@
 /**
  * KPICard Component
- * Display key performance indicators with trend indicators and optional actions
+ * Minimalist clean design with colored accents
+ * Display key performance indicators with subtle styling
  */
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '@/store/themeStore';
 import { designSystem } from '@/constants/designSystem';
@@ -28,12 +29,16 @@ export interface KPICardProps {
   icon?: keyof typeof Ionicons.glyphMap;
   /** Primary color for the card accent */
   color?: string;
+  /** Gradient colors (not used in minimalist design, kept for compatibility) */
+  gradient?: string[];
   /** Loading state */
   loading?: boolean;
   /** Press handler */
   onPress?: () => void;
   /** Disabled state */
   disabled?: boolean;
+  /** Use compact layout for horizontal scrolling */
+  compact?: boolean;
 }
 
 export const KPICard: React.FC<KPICardProps> = ({
@@ -43,11 +48,30 @@ export const KPICard: React.FC<KPICardProps> = ({
   subtitle,
   icon,
   color = '#6366f1',
+  gradient,
   loading = false,
   onPress,
   disabled = false,
+  compact = false,
 }) => {
-  const { colors } = useThemeStore();
+  const { colors, isDark } = useThemeStore();
+
+  // Animation for press interaction
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    if (onPress && !disabled && !loading) {
+      scale.value = withSpring(0.98);
+    }
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+  };
 
   const Container = onPress ? Pressable : View;
 
@@ -62,98 +86,126 @@ export const KPICard: React.FC<KPICardProps> = ({
   };
 
   return (
-    <Animated.View entering={FadeIn.duration(300)}>
+    <Animated.View
+      entering={FadeIn.duration(400).springify()}
+      style={[animatedStyle, compact ? styles.compactWrapper : styles.wrapper]}
+    >
       <Container
         style={[
           styles.container,
-          { backgroundColor: colors.surface },
-          onPress && styles.pressable,
-          disabled && styles.disabled,
+          {
+            backgroundColor: colors.surface,
+            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+          },
+          compact && styles.compactContainer,
         ]}
         onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         disabled={disabled || loading}
       >
-        {/* Icon Section */}
-        {icon && (
-          <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-            <Ionicons name={icon} size={24} color={color} />
-          </View>
-        )}
+        {/* Colored left border accent */}
+        <View style={[styles.borderAccent, { backgroundColor: color }]} />
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.textSecondary }]}>
-            {title}
-          </Text>
+        <View style={styles.cardContent}>
+          {/* Icon Section */}
+          {icon && (
+            <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+              <Ionicons name={icon} size={28} color={color} />
+            </View>
+          )}
 
-          {loading ? (
-            <ActivityIndicator size="small" color={color} style={styles.loader} />
-          ) : (
-            <>
-              <Text style={[styles.value, { color: colors.text }]}>
-                {typeof value === 'number' ? value.toLocaleString() : value}
-              </Text>
+          {/* Content */}
+          <View style={styles.content}>
+            <Text style={[styles.title, { color: colors.textSecondary }]} numberOfLines={1}>
+              {title}
+            </Text>
 
-              {trend && (
-                <View style={styles.trendContainer}>
-                  <Ionicons
-                    name={getTrendIcon()!}
-                    size={16}
-                    color={getTrendColor()}
-                  />
-                  <Text style={[styles.trendValue, { color: getTrendColor() }]}>
-                    {trend.value > 0 ? '+' : ''}
-                    {trend.value}%
-                  </Text>
-                  {trend.label && (
-                    <Text style={[styles.trendLabel, { color: colors.textSecondary }]}>
-                      {trend.label}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {subtitle && (
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  {subtitle}
+            {loading ? (
+              <ActivityIndicator size="small" color={color} style={styles.loader} />
+            ) : (
+              <>
+                <Text style={[styles.value, { color: colors.text }]} numberOfLines={1}>
+                  {typeof value === 'number' ? value.toLocaleString() : value}
                 </Text>
-              )}
-            </>
+
+                {trend && (
+                  <View style={styles.trendContainer}>
+                    <View style={[styles.trendBadge, { backgroundColor: getTrendColor() + '15' }]}>
+                      <Ionicons
+                        name={getTrendIcon()!}
+                        size={12}
+                        color={getTrendColor()}
+                      />
+                      <Text style={[styles.trendValue, { color: getTrendColor() }]}>
+                        {trend.value > 0 ? '+' : ''}
+                        {trend.value}%
+                      </Text>
+                    </View>
+                    {trend.label && (
+                      <Text style={[styles.trendLabel, { color: colors.textSecondary }]}>
+                        {trend.label}
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                {subtitle && (
+                  <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {subtitle}
+                  </Text>
+                )}
+              </>
+            )}
+          </View>
+
+          {/* Arrow indicator for pressable cards */}
+          {onPress && !loading && (
+            <View style={[styles.arrowContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </View>
           )}
         </View>
-
-        {/* Arrow indicator for pressable cards */}
-        {onPress && !loading && (
-          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-        )}
       </Container>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    minWidth: 200,
+  },
+  compactWrapper: {
+    width: 170, // Slightly smaller for cleaner look
+  },
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    gap: spacing.md,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 3,
+    borderWidth: 1,
   },
-  pressable: {
-    shadowOpacity: 0.15,
+  compactContainer: {
+    minHeight: 120,
   },
-  disabled: {
-    opacity: 0.5,
+  borderAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  cardContent: {
+    padding: spacing.lg,
+    gap: spacing.sm,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -162,13 +214,18 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   title: {
-    fontSize: typography.sizes.sm,
-    fontWeight: '500',
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    // Color applied inline via props
   },
   value: {
-    fontSize: typography.sizes['2xl'],
+    fontSize: 28,
     fontWeight: '700',
     letterSpacing: -0.5,
+    marginTop: spacing.xs,
+    // Color applied inline via props
   },
   loader: {
     alignSelf: 'flex-start',
@@ -177,17 +234,41 @@ const styles = StyleSheet.create({
   trendContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 4,
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
   },
   trendValue: {
-    fontSize: typography.sizes.sm,
-    fontWeight: '600',
+    fontSize: typography.sizes.xs,
+    fontWeight: '700',
+    // Color applied inline via props
   },
   trendLabel: {
     fontSize: typography.sizes.xs,
+    fontWeight: '500',
+    // Color applied inline via props
   },
   subtitle: {
     fontSize: typography.sizes.xs,
-    marginTop: spacing.xs,
+    marginTop: 4,
+    fontWeight: '500',
+    // Color applied inline via props
+  },
+  arrowContainer: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

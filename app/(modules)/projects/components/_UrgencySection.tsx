@@ -18,6 +18,7 @@ import type { UrgencyGroup } from '@/utils/taskGrouping';
 
 const { spacing, typography, borderRadius } = designSystem;
 
+
 interface UrgencySectionProps {
     groupKey: UrgencyGroup;
     title: string;
@@ -27,11 +28,13 @@ interface UrgencySectionProps {
     isExpanded: boolean;
     onToggle: () => void;
     isEmpty?: boolean;
+    sectionId?: number;
+    onAddTask?: (sectionId: number) => void;
 }
 
 /**
  * Collapsible urgency section header
- * Shows: Icon, Title, Count, Expand/Collapse indicator
+ * Shows: Icon, Title, Count, Add Task button, Expand/Collapse indicator
  */
 export const UrgencySection = memo(({
     groupKey,
@@ -42,6 +45,8 @@ export const UrgencySection = memo(({
     isExpanded,
     onToggle,
     isEmpty = false,
+    sectionId,
+    onAddTask,
 }: UrgencySectionProps) => {
     const { theme } = useTheme();
 
@@ -84,8 +89,21 @@ export const UrgencySection = memo(({
                 </View>
             </View>
 
-            {/* Right: Expand/Collapse Indicator */}
+            {/* Right: Add Task Button + Expand/Collapse Indicator */}
             <View style={styles.rightContent}>
+                {/* Add Task Button */}
+                {sectionId && onAddTask && !isCompletedSection && (
+                    <TouchableOpacity
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onAddTask(sectionId);
+                        }}
+                        style={[styles.addTaskButton, { backgroundColor: theme.primary }]}
+                    >
+                        <Ionicons name="add" size={14} color="#fff" />
+                    </TouchableOpacity>
+                )}
+
                 {isCompletedSection && !isExpanded ? (
                     <Text style={[styles.showText, { color: theme.primary }]}>
                         Show
@@ -109,12 +127,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
         paddingHorizontal: spacing.md,
         borderLeftWidth: 4,
-        marginTop: spacing.sm,
-        marginBottom: 2,
-        borderRadius: borderRadius.sm,
+        marginTop: spacing.md,
+        marginBottom: 4,
+        borderRadius: borderRadius.md,
+        minHeight: 48,
     },
     leftContent: {
         flexDirection: 'row',
@@ -154,6 +173,14 @@ const styles = StyleSheet.create({
     showText: {
         fontSize: typography.sizes.xs,
         fontWeight: '600',
+    },
+    addTaskButton: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.xs,
     },
 });
 

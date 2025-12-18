@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthStore } from '@/store/authStore';  // Import auth store for user data
 import { useMyInternship, useMyExtensions } from '@/hooks/useInternshipQueries';
 import { ModuleHeader, Badge, AnimatedButton } from '@/components';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
@@ -11,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function InternshipScreen() {
     const router = useRouter();
     const { theme } = useTheme();
+    const { user } = useAuthStore();  // Get user from auth store for joiningdate fallback
     const { data: internship, isLoading: internshipLoading, refetch: refetchInternship } = useMyInternship();
     const { data: extensions, isLoading: extensionsLoading, refetch: refetchExtensions } = useMyExtensions();
 
@@ -38,7 +40,7 @@ export default function InternshipScreen() {
                 refreshControl={<RefreshControl refreshing={isLoading} onRefresh={onRefresh} />}
             >
                 {/* Internship Details Card */}
-                {internship ? (
+                {internship || user?.joiningdate ? (
                     <View style={[
                         getCardStyle(theme.surface, 'lg', 'md'),
                         { marginBottom: spacing.xl, padding: spacing.lg }
@@ -48,8 +50,8 @@ export default function InternshipScreen() {
                                 Program Details
                             </Text>
                             <Badge
-                                label={internship.is_active ? 'Active' : 'Completed'}
-                                status={internship.is_active ? 'active' : 'inactive'}
+                                label={internship?.is_active ? 'Active' : user?.joiningdate ? 'Active' : 'Completed'}
+                                status={internship?.is_active || user?.joiningdate ? 'active' : 'inactive'}
                             />
                         </View>
 
@@ -58,7 +60,18 @@ export default function InternshipScreen() {
                                 <Ionicons name="calendar-outline" size={20} color={theme.primary} />
                                 <View>
                                     <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>Start Date</Text>
-                                    <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>{internship.start_date}</Text>
+                                    <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
+                                        {(() => {
+                                            // Priority: Internship.start_date > User.joiningdate
+                                            const startDate = internship?.start_date || user?.joiningdate;
+                                            if (!startDate) return 'N/A';
+                                            try {
+                                                return new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                                            } catch {
+                                                return 'N/A';
+                                            }
+                                        })()}
+                                    </Text>
                                 </View>
                             </View>
 
@@ -66,11 +79,22 @@ export default function InternshipScreen() {
                                 <Ionicons name="flag-outline" size={20} color={theme.primary} />
                                 <View>
                                     <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>End Date</Text>
-                                    <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>{internship.end_date || 'Ongoing'}</Text>
+                                    <Text style={{ ...getTypographyStyle('base', 'medium'), color: theme.text }}>
+                                        {(() => {
+                                            // Only Internship has end_date, User doesn't
+                                            const endDate = internship?.end_date;
+                                            if (!endDate) return 'N/A';
+                                            try {
+                                                return new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                                            } catch {
+                                                return 'N/A';
+                                            }
+                                        })()}
+                                    </Text>
                                 </View>
                             </View>
 
-                            {internship.days_remaining !== null && (
+                            {internship?.days_remaining !== null && internship?.days_remaining !== undefined && (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                                     <Ionicons name="time-outline" size={20} color={theme.primary} />
                                     <View>
@@ -93,11 +117,11 @@ export default function InternshipScreen() {
                         Extensions
                     </Text>
                     <AnimatedButton
-                        title="Request Extension"
+                        title="🚀 Ready to Build Something More Exciting?"
                         onPress={() => router.push('/(modules)/internship/extension-request')}
                         variant="primary"
                         size="sm"
-                        leftIcon="add"
+                        leftIcon="rocket"
                     />
                 </View>
 

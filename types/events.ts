@@ -121,9 +121,12 @@ export interface CreateClientRequest {
 export interface CreateVenueRequest {
     name: string;
     address: string;
-    capacity: number;
-    type_of_venue: string;
-    region: string;
+    capacity?: number;
+    type_of_venue?: string;
+    region?: string;
+    contact_person?: string;
+    contact_phone?: string;
+    facilities?: string;
 }
 
 export interface LeadStatistics {
@@ -132,6 +135,24 @@ export interface LeadStatistics {
     rejected_leads: number;
     pending_leads: number;
     conversion_rate: number;
+}
+
+export interface EventStatistics {
+    total_events: number;
+    scheduled_events: number;
+    ongoing_events: number;
+    completed_events: number;
+    cancelled_events: number;
+    total_revenue?: number;
+    average_event_duration?: number;
+}
+
+export interface ClientStatistics {
+    total_clients: number;
+    b2b_clients: number;
+    b2c_clients: number;
+    b2g_clients: number;
+    active_clients: number;
 }
 
 // Finance Management Types

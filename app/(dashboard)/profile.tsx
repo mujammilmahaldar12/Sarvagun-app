@@ -31,6 +31,18 @@ export default function ProfileScreen() {
   const { data: internshipData, isLoading: internshipLoading } = useMyInternship();
   const { data: extensionsData = [], isLoading: extensionsLoading } = useMyExtensions();
 
+  // Debug logging to see what data we actually have
+  React.useEffect(() => {
+    console.log('=== PROFILE DEBUG ===');
+    console.log('User object:', user);
+    console.log('User joiningdate:', user?.joiningdate);
+    console.log('User joining_date:', user?.joining_date);
+    console.log('Internship data:', internshipData);
+    console.log('Internship start_date:', internshipData?.start_date);
+    console.log('Internship end_date:', internshipData?.end_date);
+    console.log('===================');
+  }, [user, internshipData]);
+
   // Swipe to logout animation
   const translateX = useSharedValue(0);
   const containerWidth = 300;
@@ -293,31 +305,41 @@ export default function ProfileScreen() {
                   <View>
                     <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Start Date</Text>
                     <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {internshipData?.start_date
-                        ? new Date(internshipData.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : user?.joining_date
-                          ? new Date(user.joining_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : 'N/A'}
+                      {(() => {
+                        // Backend field is 'joiningdate' (no underscore), internship has 'start_date'
+                        const startDate = internshipData?.start_date || user?.joiningdate || user?.joining_date;
+                        if (!startDate) return 'N/A';
+                        try {
+                          return new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                        } catch {
+                          return 'N/A';
+                        }
+                      })()}
                     </Text>
                   </View>
                   <View>
                     <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Current End Date</Text>
                     <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {internshipData?.end_date
-                        ? new Date(internshipData.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : user?.end_date
-                          ? new Date(user.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : 'N/A'}
+                      {(() => {
+                        // end_date only exists in Internship model, NOT on User model
+                        const endDate = internshipData?.end_date;
+                        if (!endDate) return 'N/A';
+                        try {
+                          return new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                        } catch {
+                          return 'N/A';
+                        }
+                      })()}
                     </Text>
                   </View>
                 </View>
 
                 {/* Days Remaining Badge */}
-                {(internshipData?.end_date || user?.end_date) && (
+                {internshipData?.end_date && (
                   <View style={{
                     backgroundColor: (() => {
-                      const endDate = internshipData?.end_date || user?.end_date;
-                      const days = Math.ceil((new Date(endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      const endDate = internshipData.end_date;
+                      const days = Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                       if (days < 0) return '#FEE2E2';
                       if (days <= 14) return '#FEF3C7';
                       return '#D1FAE5';
@@ -331,17 +353,17 @@ export default function ProfileScreen() {
                       fontWeight: '700',
                       fontSize: 24,
                       color: (() => {
-                        const endDate = internshipData?.end_date || user?.end_date;
+                        const endDate = internshipData.end_date;
                         const days = Math.ceil((new Date(endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                         if (days < 0) return '#DC2626';
                         if (days <= 14) return '#92400E';
                         return '#065F46';
                       })()
                     }}>
-                      {internshipData?.days_remaining ?? Math.ceil((new Date(internshipData?.end_date || user?.end_date!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
+                      {internshipData.days_remaining ?? Math.ceil((new Date(internshipData.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
                     </Text>
                     <Text style={{ fontSize: 12, color: theme.textSecondary }}>
-                      {(internshipData?.days_remaining ?? Math.ceil((new Date(internshipData?.end_date || user?.end_date!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) < 0 ? 'Days Overdue' : 'Days Remaining'}
+                      {(internshipData.days_remaining ?? Math.ceil((new Date(internshipData.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) < 0 ? 'Days Overdue' : 'Days Remaining'}
                     </Text>
                   </View>
                 )}
@@ -400,19 +422,19 @@ export default function ProfileScreen() {
                 <Pressable
                   onPress={() => router.push('/(settings)/request-extension' as any)}
                   style={({ pressed }) => ({
-                    padding: 12,
-                    backgroundColor: pressed ? theme.primary + '10' : 'transparent',
-                    borderWidth: 1,
+                    padding: 14,
+                    backgroundColor: pressed ? theme.primary + '20' : theme.primary + '10',
+                    borderWidth: 2,
                     borderColor: theme.primary,
-                    borderRadius: 8,
+                    borderRadius: 12,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
                   })}
                 >
-                  <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-                  <Text style={{ color: theme.primary, fontWeight: '600' }}>Request Extension</Text>
+                  <Text style={{ fontSize: 20 }}>🚀</Text>
+                  <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 15 }}>Ready to Build Something More Exciting?</Text>
                 </Pressable>
               </>
             ) : (
@@ -423,8 +445,8 @@ export default function ProfileScreen() {
                   <View>
                     <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Joined</Text>
                     <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {user?.joining_date
-                        ? new Date(user.joining_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                      {user?.joiningdate || user?.joining_date
+                        ? new Date(user.joiningdate || user.joining_date!).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
                         : 'N/A'}
                     </Text>
                   </View>
@@ -438,7 +460,7 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                 </View>
-                {user?.joining_date && (
+                {user?.joiningdate && (
                   <View style={{
                     backgroundColor: theme.primary + '10',
                     padding: 12,
@@ -446,7 +468,7 @@ export default function ProfileScreen() {
                     alignItems: 'center',
                   }}>
                     <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 20 }}>
-                      {Math.floor((Date.now() - new Date(user.joining_date).getTime()) / (1000 * 60 * 60 * 24 * 30))}
+                      {Math.floor((Date.now() - new Date(user.joiningdate).getTime()) / (1000 * 60 * 60 * 24 * 30))}
                     </Text>
                     <Text style={{ color: theme.primary, fontSize: 12 }}>Months Tenure</Text>
                   </View>

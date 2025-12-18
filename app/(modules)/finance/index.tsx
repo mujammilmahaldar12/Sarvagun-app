@@ -207,24 +207,28 @@ export default function FinanceManagementScreen() {
             value={formatCurrency(kpiStats.totalSales)}
             icon="trending-up"
             color="#10b981"
+            compact
           />
           <KPICard
             title="Total Expenses"
             value={formatCurrency(kpiStats.totalExpenses)}
             icon="trending-down"
             color="#ef4444"
+            compact
           />
           <KPICard
             title="Net Profit"
             value={formatCurrency(kpiStats.netProfit)}
             icon="analytics"
             color={kpiStats.netProfit >= 0 ? "#6366f1" : "#ef4444"}
+            compact
           />
           <KPICard
             title="Pending Sales"
             value={kpiStats.pendingSales}
             icon="time"
             color="#f59e0b"
+            compact
           />
         </ScrollView>
       )}
@@ -373,7 +377,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kpiContainer: {
-    maxHeight: 130,
+    maxHeight: 140,
   },
   kpiContent: {
     paddingHorizontal: 16,

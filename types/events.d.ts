@@ -193,7 +193,7 @@ export interface CreateClientRequest {
   address?: string;
   category_ids: number[];  // Changed to array for multi-select
   organisation_ids?: number[];  // Changed to array for multi-select
-  
+
   // Legacy single-select support (deprecated)
   category_id?: number;
   organisation_id?: number;
@@ -205,6 +205,9 @@ export interface CreateVenueRequest {
   capacity?: number;
   contact_person?: string;
   contact_phone?: string;
+  facilities?: string;
+}
+
 // Goods List Request
 export interface CreateGoodsListRequest {
   sender: number;

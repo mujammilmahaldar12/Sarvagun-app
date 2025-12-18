@@ -10,9 +10,9 @@ const getApiBaseUrl = () => {
     if (Platform.OS === 'android') {
       // For Android emulator, use 10.0.2.2
       // For Android physical device, use your computer's local IP
-      return 'http://10.119.112.71:8000/api';
+      return 'http://10.119.112.85:8000/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://10.119.112.71:8000/api';
+      return 'http://10.119.112.85:8000/api';
     } else {
       // For web
       return 'http://localhost:8000/api';

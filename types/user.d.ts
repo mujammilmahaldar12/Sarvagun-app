@@ -35,8 +35,9 @@ export interface User {
   is_active?: boolean;
   date_joined?: string;
   last_login?: string;
-  joining_date?: string; // For intern start date
-  end_date?: string; // For intern internship end date
+  joiningdate?: string; // Backend field name (no underscore)
+  joining_date?: string; // Alias for compatibility (maps to joiningdate)
+  // Note: end_date is NOT on User model - it's only on Internship model
 
   // Theme preference
   theme_preference?: 'light' | 'dark';

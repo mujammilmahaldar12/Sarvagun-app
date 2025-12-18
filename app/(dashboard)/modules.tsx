@@ -162,7 +162,6 @@ export default function ModulesScreen() {
                   hapticType="medium"
                   springConfig="gentle"
                   animateOnMount={true}
-                  delay={index * 50}
                   style={[
                     styles.moduleCard,
                     getCardStyle(theme.surface, 'md', 'xl'),
@@ -296,10 +295,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   moduleCard: {
-    minHeight: 180,
+    minHeight: 200,
     padding: spacing.lg,
     position: 'relative',
     overflow: 'hidden',
+    justifyContent: 'flex-start',
   },
   cardGradient: {
     position: 'absolute',
@@ -321,14 +321,18 @@ const styles = StyleSheet.create({
   },
   moduleDetails: {
     flex: 1,
+    paddingRight: spacing['2xl'] + spacing.sm, // Prevent overlap with categoryTag
+    paddingBottom: spacing.lg, // Prevent overlap with arrowIcon
   },
   moduleName: {
     ...getTypographyStyle('base', 'bold'),
     marginBottom: spacing.xs,
+    lineHeight: 20,
   },
   moduleDescription: {
     ...getTypographyStyle('xs', 'regular'),
     lineHeight: 18,
+    marginTop: spacing.xs,
   },
   categoryTag: {
     position: 'absolute',
