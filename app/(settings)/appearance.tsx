@@ -18,11 +18,7 @@ export default function AppearanceScreen() {
   const [selectedTheme, setSelectedTheme] = useState<ThemeOption>(mode);
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(dashboard)/profile');
-    }
+    router.back();
   };
 
   useEffect(() => {
@@ -35,10 +31,10 @@ export default function AppearanceScreen() {
     try {
       setIsChangingTheme(true);
       setSelectedTheme(newTheme);
-      
+
       // Toggle mode (which now syncs with backend)
       await toggleMode();
-      
+
     } catch (error: any) {
       console.error('Theme change error:', error);
       Alert.alert('Error', 'Failed to update theme. Please try again.');
@@ -201,8 +197,8 @@ export default function AppearanceScreen() {
                   padding: 16,
                   borderBottomWidth: index < themeOptions.length - 1 ? 1 : 0,
                   borderBottomColor: theme.border,
-                  backgroundColor: selectedTheme === option.value 
-                    ? theme.primary + '10' 
+                  backgroundColor: selectedTheme === option.value
+                    ? theme.primary + '10'
                     : 'transparent',
                   opacity: isChangingTheme ? 0.6 : 1,
                 }}

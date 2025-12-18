@@ -29,6 +29,23 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'people' | 'projects' | 'tasks' | 'documents' | 'events' | 'clients' | 'vendors'>('all');
 
+  // State for expanded sections - initially all collapsed (showing limited items)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const ITEMS_PER_SECTION = 3; // Show only 3 items initially per section
+
+  // Toggle section expansion
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  };
+
   // Real API search with React Query
   const { data: searchResults, isLoading: isSearching } = useGlobalSearch(searchQuery, {
     category: selectedCategory,
@@ -237,8 +254,10 @@ export default function SearchScreen() {
                   {/* People Results */}
                   {searchResults?.people && searchResults.people.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>People ({searchResults.people.length})</Text>
-                      {searchResults.people.map((person: SearchPerson, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>People ({searchResults.people.length})</Text>
+                      </View>
+                      {(expandedSections.has('people') ? searchResults.people : searchResults.people.slice(0, ITEMS_PER_SECTION)).map((person: SearchPerson, index) => (
                         <Animated.View
                           key={`person-${person.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
@@ -284,14 +303,32 @@ export default function SearchScreen() {
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.people.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('people')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: `${theme.primary}10` }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: theme.primary }]}>
+                            {expandedSections.has('people') ? 'Show Less' : `Show ${searchResults.people.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('people') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color={theme.primary}
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
 
                   {/* Projects Results */}
                   {searchResults?.projects && searchResults.projects.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Projects ({searchResults.projects.length})</Text>
-                      {searchResults.projects.map((project: SearchProject, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>Projects ({searchResults.projects.length})</Text>
+                      </View>
+                      {(expandedSections.has('projects') ? searchResults.projects : searchResults.projects.slice(0, ITEMS_PER_SECTION)).map((project: SearchProject, index) => (
                         <Animated.View
                           key={`project-${project.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
@@ -327,20 +364,38 @@ export default function SearchScreen() {
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.projects.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('projects')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: `${theme.primary}10` }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: theme.primary }]}>
+                            {expandedSections.has('projects') ? 'Show Less' : `Show ${searchResults.projects.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('projects') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color={theme.primary}
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
 
                   {/* Tasks Results */}
                   {searchResults?.tasks && searchResults.tasks.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Tasks ({searchResults.tasks.length})</Text>
-                      {searchResults.tasks.map((task: SearchTask, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>Tasks ({searchResults.tasks.length})</Text>
+                      </View>
+                      {(expandedSections.has('tasks') ? searchResults.tasks : searchResults.tasks.slice(0, ITEMS_PER_SECTION)).map((task: SearchTask, index) => (
                         <Animated.View
                           key={`task-${task.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
                         >
                           <AnimatedPressable
-                            onPress={() => console.log('Task:', task.title)}
+                            onPress={() => router.push('/(modules)/projects' as any)}
                             hapticType="light"
                           >
                             <GlassCard
@@ -370,14 +425,32 @@ export default function SearchScreen() {
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.tasks.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('tasks')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: `${theme.primary}10` }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: theme.primary }]}>
+                            {expandedSections.has('tasks') ? 'Show Less' : `Show ${searchResults.tasks.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('tasks') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color={theme.primary}
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
 
                   {/* Documents Results */}
                   {searchResults?.documents && searchResults.documents.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Documents ({searchResults.documents.length})</Text>
-                      {searchResults.documents.map((doc: SearchDocument, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>Documents ({searchResults.documents.length})</Text>
+                      </View>
+                      {(expandedSections.has('documents') ? searchResults.documents : searchResults.documents.slice(0, ITEMS_PER_SECTION)).map((doc: SearchDocument, index) => (
                         <Animated.View
                           key={`doc-${doc.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
@@ -415,14 +488,32 @@ export default function SearchScreen() {
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.documents.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('documents')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: `${theme.primary}10` }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: theme.primary }]}>
+                            {expandedSections.has('documents') ? 'Show Less' : `Show ${searchResults.documents.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('documents') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color={theme.primary}
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
 
                   {/* Events Results */}
                   {searchResults?.events && searchResults.events.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Events ({searchResults.events.length})</Text>
-                      {searchResults.events.map((event: SearchEvent, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>Events ({searchResults.events.length})</Text>
+                      </View>
+                      {(expandedSections.has('events') ? searchResults.events : searchResults.events.slice(0, ITEMS_PER_SECTION)).map((event: SearchEvent, index) => (
                         <Animated.View
                           key={`event-${event.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
@@ -458,20 +549,38 @@ export default function SearchScreen() {
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.events.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('events')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: '#F59E0B10' }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: '#F59E0B' }]}>
+                            {expandedSections.has('events') ? 'Show Less' : `Show ${searchResults.events.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('events') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color="#F59E0B"
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
 
                   {/* Clients Results */}
                   {searchResults?.clients && searchResults.clients.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Clients ({searchResults.clients.length})</Text>
-                      {searchResults.clients.map((client: SearchClient, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>Clients ({searchResults.clients.length})</Text>
+                      </View>
+                      {(expandedSections.has('clients') ? searchResults.clients : searchResults.clients.slice(0, ITEMS_PER_SECTION)).map((client: SearchClient, index) => (
                         <Animated.View
                           key={`client-${client.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
                         >
                           <AnimatedPressable
-                            onPress={() => router.push(`/(modules)/events/clients/${client.id}` as any)}
+                            onPress={() => router.push(`/(modules)/events` as any)}
                             hapticType="light"
                           >
                             <GlassCard
@@ -490,34 +599,49 @@ export default function SearchScreen() {
                                   <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
                                     {client.company || client.email || 'Client'}
                                   </Text>
-                                  {client.phone && (
-                                    <View style={styles.resultMeta}>
-                                      <Ionicons name="call-outline" size={12} color={theme.textSecondary} />
-                                      <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
-                                        {client.phone}
-                                      </Text>
-                                    </View>
-                                  )}
+                                  <View style={styles.resultMeta}>
+                                    <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
+                                      {client.category || 'General'} • {client.phone || 'No phone'}
+                                    </Text>
+                                  </View>
                                 </View>
                               </View>
                             </GlassCard>
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.clients.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('clients')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: '#10B98110' }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: '#10B981' }]}>
+                            {expandedSections.has('clients') ? 'Show Less' : `Show ${searchResults.clients.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('clients') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color="#10B981"
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
 
                   {/* Vendors Results */}
                   {searchResults?.vendors && searchResults.vendors.length > 0 && (
                     <View style={{ marginBottom: spacing.md }}>
-                      <Text style={[styles.categoryTitle, { color: theme.text }]}>Vendors ({searchResults.vendors.length})</Text>
-                      {searchResults.vendors.map((vendor: SearchVendor, index) => (
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.categoryTitle, { color: theme.text }]}>Vendors ({searchResults.vendors.length})</Text>
+                      </View>
+                      {(expandedSections.has('vendors') ? searchResults.vendors : searchResults.vendors.slice(0, ITEMS_PER_SECTION)).map((vendor: SearchVendor, index) => (
                         <Animated.View
                           key={`vendor-${vendor.id}`}
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
                         >
                           <AnimatedPressable
-                            onPress={() => router.push(`/(modules)/finance/vendors/${vendor.id}` as any)}
+                            onPress={() => router.push(`/(modules)/finance/add-vendor?id=${vendor.id}` as any)}
                             hapticType="light"
                           >
                             <GlassCard
@@ -534,13 +658,14 @@ export default function SearchScreen() {
                                     {vendor.name}
                                   </Text>
                                   <Text style={[styles.resultDetails, { color: theme.textSecondary }]}>
-                                    {vendor.category || 'Vendor'} {vendor.contact_person ? `• ${vendor.contact_person}` : ''}
+                                    {(typeof vendor.category === 'object' && vendor.category !== null)
+                                      ? (vendor.category as any).name
+                                      : vendor.category || 'Vendor'} • {vendor.contact_person || 'No contact'}
                                   </Text>
-                                  {(vendor.phone || vendor.email) && (
+                                  {vendor.phone && (
                                     <View style={styles.resultMeta}>
-                                      <Ionicons name={vendor.phone ? 'call-outline' : 'mail-outline'} size={12} color={theme.textSecondary} />
                                       <Text style={[styles.resultMetaText, { color: theme.textSecondary }]}>
-                                        {vendor.phone || vendor.email}
+                                        {vendor.phone} {vendor.email ? `• ${vendor.email}` : ''}
                                       </Text>
                                     </View>
                                   )}
@@ -550,6 +675,22 @@ export default function SearchScreen() {
                           </AnimatedPressable>
                         </Animated.View>
                       ))}
+                      {searchResults.vendors.length > ITEMS_PER_SECTION && (
+                        <AnimatedPressable
+                          onPress={() => toggleSection('vendors')}
+                          hapticType="light"
+                          style={[styles.showMoreBtn, { backgroundColor: '#8B5CF610' }]}
+                        >
+                          <Text style={[styles.showMoreText, { color: '#8B5CF6' }]}>
+                            {expandedSections.has('vendors') ? 'Show Less' : `Show ${searchResults.vendors.length - ITEMS_PER_SECTION} More`}
+                          </Text>
+                          <Ionicons
+                            name={expandedSections.has('vendors') ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color="#8B5CF6"
+                          />
+                        </AnimatedPressable>
+                      )}
                     </View>
                   )}
                 </>
@@ -760,5 +901,23 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  showMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  showMoreText: {
+    ...getTypographyStyle('sm', 'semibold'),
   },
 });

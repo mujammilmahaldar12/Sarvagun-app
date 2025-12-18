@@ -19,7 +19,7 @@ import type {
 
 class ProjectService {
   // ==================== Tasks ====================
-  
+
   /**
    * Get tasks based on role-based filtering
    * - Intern: Only own tasks
@@ -28,7 +28,7 @@ class ProjectService {
    */
   async getTasks(filters?: TaskFilters): Promise<Task[]> {
     const params = new URLSearchParams();
-    
+
     if (filters?.status) params.append('status', filters.status);
     if (filters?.project_id) params.append('project_id', filters.project_id.toString());
     if (filters?.section_id) params.append('section_id', filters.section_id.toString());
@@ -36,10 +36,10 @@ class ProjectService {
     if (filters?.starred !== undefined) params.append('starred', filters.starred.toString());
     if (filters?.user_id) params.append('user_id', filters.user_id.toString());
     if (filters?.search) params.append('search', filters.search);
-    
+
     const queryString = params.toString();
     const url = queryString ? `/project_management/tasks/?${queryString}` : '/project_management/tasks/';
-    
+
     return api.get<Task[]>(url);
   }
 
@@ -190,14 +190,14 @@ class ProjectService {
    */
   async getProjects(filters?: ProjectFilters): Promise<TaskProject[]> {
     const params = new URLSearchParams();
-    
+
     if (filters?.status) params.append('status', filters.status);
     if (filters?.starred !== undefined) params.append('starred', filters.starred.toString());
     if (filters?.search) params.append('search', filters.search);
-    
+
     const queryString = params.toString();
     const url = queryString ? `/project_management/projects/?${queryString}` : '/project_management/projects/';
-    
+
     return api.get<TaskProject[]>(url);
   }
 
@@ -349,7 +349,19 @@ class ProjectService {
    * Get priorities
    */
   async getPriorities(): Promise<Priority[]> {
-    return api.get<Priority[]>('/project_management/priorities/');
+    try {
+      const response = await api.get<Priority[]>('/project_management/priorities/');
+      // Handle response based on structure
+      if (Array.isArray(response)) {
+        return response;
+      } else if ((response as any)?.data && Array.isArray((response as any).data)) {
+        return (response as any).data;
+      }
+      return [];
+    } catch (error) {
+      console.log('❌ Project Service: Error fetching priorities:', error);
+      return [];
+    }
   }
 
   // ==================== Team Lead Functionality ====================
@@ -358,28 +370,28 @@ class ProjectService {
    * Get team members for team lead
    */
   async getTeamMembers(): Promise<any[]> {
-    return api.get<any[]>('/team/members/');
+    return api.get<any[]>('/core/team/members/');
   }
 
   /**
    * Get team members' tasks for rating
    */
   async getTeamTasks(): Promise<Task[]> {
-    return api.get<Task[]>('/team/tasks/');
+    return api.get<Task[]>('/core/team/tasks/');
   }
 
   /**
    * Get rateable users (team members for team lead)
    */
   async getRateableUsers(): Promise<any[]> {
-    return api.get<any[]>('/team/rateable-users/');
+    return api.get<any[]>('/core/team/rateable-users/');
   }
 
   /**
    * Get team projects
    */
   async getTeamProjects(): Promise<TaskProject[]> {
-    return api.get<TaskProject[]>('/team/projects/');
+    return api.get<TaskProject[]>('/core/team/projects/');
   }
 
   /**
@@ -387,7 +399,7 @@ class ProjectService {
    */
   async getTeamMemberProjects(memberId: string): Promise<TaskProject[]> {
     console.log(`🔍 ProjectService.getTeamMemberProjects for member: ${memberId}`);
-    const result = await api.get<TaskProject[]>(`/team/members/${memberId}/projects/`);
+    const result = await api.get<TaskProject[]>(`/core/team/members/${memberId}/projects/`);
     console.log(`📋 Team member projects result:`, {
       type: typeof result,
       isArray: Array.isArray(result),

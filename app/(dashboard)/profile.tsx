@@ -16,6 +16,9 @@ import { useAIStore } from '@/store/aiStore';
 import { Avatar, ListItem, AnimatedPressable } from '@/components';
 import { spacing, borderRadius, baseColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle } from '@/utils/styleHelpers';
+import { useMyInternship, useMyExtensions } from '@/hooks/useInternshipQueries';
+import { JourneyTimeline } from '@/components/ui/JourneyTimeline';
+import type { JourneyEvent } from '@/components/ui/JourneyTimeline';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -23,6 +26,10 @@ export default function ProfileScreen() {
   const { user, logout, isAuthenticated } = useAuthStore();
   const { isAIModeEnabled, toggleAIMode } = useAIStore();
   const [shouldLogout, setShouldLogout] = useState(false);
+
+  // Internship and extensions data
+  const { data: internshipData, isLoading: internshipLoading } = useMyInternship();
+  const { data: extensionsData = [], isLoading: extensionsLoading } = useMyExtensions();
 
   // Swipe to logout animation
   const translateX = useSharedValue(0);
@@ -257,96 +264,197 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Internship Journey - Only for Interns */}
-        {user?.category === 'intern' && (
-          <View style={{ padding: spacing.lg, paddingTop: 0 }}>
-            <Text
-              style={{
-                ...getTypographyStyle('lg', 'semibold'),
-                color: theme.text,
-                marginBottom: 16,
-              }}
-            >
-              🎓 Internship Journey
-            </Text>
+        {/* Career Journey Section */}
+        <View style={{ padding: spacing.lg, paddingTop: 0 }}>
+          <Text
+            style={{
+              ...getTypographyStyle('lg', 'semibold'),
+              color: theme.text,
+              marginBottom: 16,
+            }}
+          >
+            {user?.category === 'intern' ? '🎓 Internship Journey' : '🎯 My Journey'}
+          </Text>
 
-            <View
-              style={{
-                backgroundColor: theme.surface,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme.border,
-                padding: 16,
-              }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View>
-                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Start Date</Text>
-                  <Text style={{ color: theme.text, fontWeight: '600' }}>
-                    {user?.joining_date ? new Date(user.joining_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-                  </Text>
+          <View
+            style={{
+              backgroundColor: theme.surface,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.border,
+              padding: 16,
+            }}
+          >
+            {/* For Interns: Show internship timeline */}
+            {user?.category === 'intern' ? (
+              <>
+                {/* Date Summary */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <View>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Start Date</Text>
+                    <Text style={{ color: theme.text, fontWeight: '600' }}>
+                      {internshipData?.start_date
+                        ? new Date(internshipData.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : user?.joining_date
+                          ? new Date(user.joining_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'N/A'}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Current End Date</Text>
+                    <Text style={{ color: theme.text, fontWeight: '600' }}>
+                      {internshipData?.end_date
+                        ? new Date(internshipData.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : user?.end_date
+                          ? new Date(user.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'N/A'}
+                    </Text>
+                  </View>
                 </View>
-                <View>
-                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>End Date</Text>
-                  <Text style={{ color: theme.text, fontWeight: '600' }}>
-                    {user?.end_date ? new Date(user.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-                  </Text>
-                </View>
-              </View>
 
-              {/* Days Remaining */}
-              {user?.end_date && (
-                <View style={{
-                  backgroundColor: (() => {
-                    const days = Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                    if (days < 0) return '#FEE2E2';
-                    if (days <= 14) return '#FEF3C7';
-                    return '#D1FAE5';
-                  })(),
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                }}>
-                  <Text style={{
-                    fontWeight: '700',
-                    fontSize: 24,
-                    color: (() => {
-                      const days = Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                      if (days < 0) return '#DC2626';
-                      if (days <= 14) return '#92400E';
-                      return '#065F46';
-                    })()
+                {/* Days Remaining Badge */}
+                {(internshipData?.end_date || user?.end_date) && (
+                  <View style={{
+                    backgroundColor: (() => {
+                      const endDate = internshipData?.end_date || user?.end_date;
+                      const days = Math.ceil((new Date(endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      if (days < 0) return '#FEE2E2';
+                      if (days <= 14) return '#FEF3C7';
+                      return '#D1FAE5';
+                    })(),
+                    padding: 12,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    marginBottom: 16,
                   }}>
-                    {Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
-                    {Math.ceil((new Date(user.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) < 0 ? 'Days Overdue' : 'Days Remaining'}
-                  </Text>
-                </View>
-              )}
+                    <Text style={{
+                      fontWeight: '700',
+                      fontSize: 24,
+                      color: (() => {
+                        const endDate = internshipData?.end_date || user?.end_date;
+                        const days = Math.ceil((new Date(endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                        if (days < 0) return '#DC2626';
+                        if (days <= 14) return '#92400E';
+                        return '#065F46';
+                      })()
+                    }}>
+                      {internshipData?.days_remaining ?? Math.ceil((new Date(internshipData?.end_date || user?.end_date!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                      {(internshipData?.days_remaining ?? Math.ceil((new Date(internshipData?.end_date || user?.end_date!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) < 0 ? 'Days Overdue' : 'Days Remaining'}
+                    </Text>
+                  </View>
+                )}
 
-              {/* Request Extension */}
-              <Pressable
-                onPress={() => router.push('/(settings)/request-extension' as any)}
-                style={({ pressed }) => ({
-                  marginTop: 12,
-                  padding: 12,
-                  backgroundColor: pressed ? theme.primary + '10' : 'transparent',
-                  borderWidth: 1,
-                  borderColor: theme.primary,
-                  borderRadius: 8,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                })}
-              >
-                <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-                <Text style={{ color: theme.primary, fontWeight: '600' }}>Request Extension</Text>
-              </Pressable>
-            </View>
+                {/* Extensions History */}
+                {extensionsData && extensionsData.length > 0 && (
+                  <View style={{ marginBottom: 16 }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginBottom: 8 }}>
+                      📅 Extensions History
+                    </Text>
+                    {extensionsData.map((ext: any) => (
+                      <View
+                        key={ext.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          backgroundColor: ext.status === 'approved' ? '#D1FAE510' : ext.status === 'pending' ? '#FEF3C710' : '#FEE2E210',
+                          borderRadius: 8,
+                          marginBottom: 6,
+                          borderLeftWidth: 3,
+                          borderLeftColor: ext.status === 'approved' ? '#10B981' : ext.status === 'pending' ? '#F59E0B' : '#EF4444',
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: theme.text, fontWeight: '500' }}>
+                            +{ext.duration_months} month{ext.duration_months > 1 ? 's' : ''}
+                          </Text>
+                          <Text style={{ color: theme.textSecondary, fontSize: 11 }}>
+                            {new Date(ext.original_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {new Date(ext.new_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 4,
+                            backgroundColor: ext.status === 'approved' ? '#D1FAE5' : ext.status === 'pending' ? '#FEF3C7' : '#FEE2E2',
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 10,
+                            fontWeight: '600',
+                            color: ext.status === 'approved' ? '#065F46' : ext.status === 'pending' ? '#92400E' : '#DC2626',
+                          }}>
+                            {ext.status.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Request Extension Button */}
+                <Pressable
+                  onPress={() => router.push('/(settings)/request-extension' as any)}
+                  style={({ pressed }) => ({
+                    padding: 12,
+                    backgroundColor: pressed ? theme.primary + '10' : 'transparent',
+                    borderWidth: 1,
+                    borderColor: theme.primary,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  })}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
+                  <Text style={{ color: theme.primary, fontWeight: '600' }}>Request Extension</Text>
+                </Pressable>
+              </>
+            ) : (
+              /* For Employees: Show tenure info */
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <Ionicons name="calendar-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                  <View>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Joined</Text>
+                    <Text style={{ color: theme.text, fontWeight: '600' }}>
+                      {user?.joining_date
+                        ? new Date(user.joining_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <Ionicons name="briefcase-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                  <View>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Current Position</Text>
+                    <Text style={{ color: theme.text, fontWeight: '600' }}>
+                      {user?.designation || 'Team Member'}
+                    </Text>
+                  </View>
+                </View>
+                {user?.joining_date && (
+                  <View style={{
+                    backgroundColor: theme.primary + '10',
+                    padding: 12,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                  }}>
+                    <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 20 }}>
+                      {Math.floor((Date.now() - new Date(user.joining_date).getTime()) / (1000 * 60 * 60 * 24 * 30))}
+                    </Text>
+                    <Text style={{ color: theme.primary, fontSize: 12 }}>Months Tenure</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
-        )}
+        </View>
 
         {/* Settings */}
         <View style={styles.section}>

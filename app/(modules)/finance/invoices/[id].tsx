@@ -140,10 +140,10 @@ export default function InvoiceDetailScreen() {
         <ModuleHeader title="Invoice Details" showBack />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg }}>
           <Ionicons name="alert-circle" size={48} color={theme.error} />
-          <Text style={[getTypographyStyle('h2', theme), { marginTop: spacing.md, textAlign: 'center' }]}>
+          <Text style={[getTypographyStyle('2xl'), { marginTop: spacing.md, textAlign: 'center', color: theme.text }]}>
             Failed to load invoice
           </Text>
-          <Text style={[getTypographyStyle('body', theme), { marginTop: spacing.sm, textAlign: 'center', color: theme.textSecondary }]}>
+          <Text style={[getTypographyStyle('base'), { marginTop: spacing.sm, textAlign: 'center', color: theme.textSecondary }]}>
             {error?.message || 'Something went wrong'}
           </Text>
           <Pressable
@@ -190,7 +190,7 @@ export default function InvoiceDetailScreen() {
       <ModuleHeader
         title="Invoice Details"
         showBack
-        rightAction={
+        rightActions={
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <TouchableOpacity
               onPress={handleDownloadPDF}
@@ -241,7 +241,7 @@ export default function InvoiceDetailScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
       >
         {/* Invoice Header Card */}
-        <View style={[getCardStyle(theme), { margin: 16, padding: 20, borderRadius: 12 }]}>
+        <View style={[getCardStyle(theme.surface), { margin: 16, padding: 20, borderRadius: 12 }]}>
           {/* Client Name - Most Prominent */}
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontWeight: '600', color: theme.textSecondary, letterSpacing: 1, marginBottom: 6 }}>
@@ -251,7 +251,7 @@ export default function InvoiceDetailScreen() {
               {client?.name || invoice.client_name || 'N/A'}
             </Text>
           </View>
-          
+
           {/* Invoice Number and Date Row */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 16, borderTopWidth: 1, borderTopColor: theme.border + '30' }}>
             <View>
@@ -309,11 +309,11 @@ export default function InvoiceDetailScreen() {
         </ScrollView>
 
         {/* Tabs */}
-        <TabBar tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+        <TabBar tabs={tabs} activeTab={activeTab} onTabChange={(key) => setActiveTab(key as TabType)} />
 
         <View style={{ padding: spacing.md }}>
-          {activeTab === 'details' && <DetailsTab invoice={invoice} client={client} event={event} />}
-          {activeTab === 'items' && <ItemsTab items={invoice.items || []} />}
+          {activeTab === 'details' && <DetailsTab invoice={invoice} client={client} event={event} theme={theme} />}
+          {activeTab === 'items' && <ItemsTab items={invoice.items || []} theme={theme} />}
         </View>
       </ScrollView>
     </View>
@@ -351,7 +351,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
   return (
     <Animated.View entering={FadeIn} style={{ gap: 16 }}>
       {/* Client Info Card */}
-      <View style={[getCardStyle(theme), { padding: 20, borderRadius: 12 }]}>
+      <View style={[getCardStyle(theme.surface), { padding: 20, borderRadius: 12 }]}>
         <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textSecondary, letterSpacing: 0.5, marginBottom: 16 }}>
           CLIENT INFORMATION
         </Text>
@@ -365,7 +365,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </Text>
             </View>
           </View>
-          
+
           {client?.organisation && client.organisation.length > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="business" size={18} color={theme.primary} style={{ marginRight: 12 }} />
@@ -377,7 +377,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </View>
             </View>
           )}
-          
+
           {client?.number && (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="call" size={18} color={theme.primary} style={{ marginRight: 12 }} />
@@ -387,7 +387,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </View>
             </View>
           )}
-          
+
           {client?.email && (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="mail" size={18} color={theme.primary} style={{ marginRight: 12 }} />
@@ -397,7 +397,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </View>
             </View>
           )}
-          
+
           {client?.leadperson && (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="person-circle" size={18} color={theme.primary} style={{ marginRight: 12 }} />
@@ -412,8 +412,8 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
 
       {/* Event Info Card */}
       {event && (
-        <View style={[getCardStyle(theme), { padding: spacing.md }]}>
-          <Text style={[getTypographyStyle('label', theme), { color: theme.textSecondary, marginBottom: spacing.sm }]}>
+        <View style={[getCardStyle(theme.surface), { padding: spacing.md }]}>
+          <Text style={[getTypographyStyle('sm'), { color: theme.textSecondary, marginBottom: spacing.sm }]}>
             EVENT DETAILS
           </Text>
           <View style={{ gap: spacing.sm }}>
@@ -450,7 +450,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
       )}
 
       {/* Invoice Amount Breakdown */}
-      <View style={[getCardStyle(theme), { padding: 20, borderRadius: 12, backgroundColor: theme.surface }]}>
+      <View style={[getCardStyle(theme.surface), { padding: 20, borderRadius: 12, backgroundColor: theme.surface }]}>
         <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textSecondary, letterSpacing: 0.5, marginBottom: 16 }}>
           AMOUNT BREAKDOWN
         </Text>
@@ -461,7 +461,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               {formatCurrency(invoice.total_amount)}
             </Text>
           </View>
-          
+
           {invoice.discount > 0 && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: theme.text }}>Discount</Text>
@@ -470,7 +470,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </Text>
             </View>
           )}
-          
+
           {cgst > 0 && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: theme.text }}>CGST</Text>
@@ -479,7 +479,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </Text>
             </View>
           )}
-          
+
           {sgst > 0 && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: theme.text }}>SGST</Text>
@@ -488,9 +488,9 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
               </Text>
             </View>
           )}
-          
+
           <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 8 }} />
-          
+
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, backgroundColor: theme.primary + '10', paddingHorizontal: 12, borderRadius: 8, marginTop: 4 }}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text }}>Final Amount</Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: theme.success }}>
@@ -501,8 +501,8 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ invoice, client, event, theme }
       </View>
 
       {/* Meta Info Card */}
-      <View style={[getCardStyle(theme), { padding: spacing.md }]}>
-        <Text style={[getTypographyStyle('label', theme), { color: theme.textSecondary, marginBottom: spacing.sm }]}>
+      <View style={[getCardStyle(theme.surface), { padding: spacing.md }]}>
+        <Text style={[getTypographyStyle('sm'), { color: theme.textSecondary, marginBottom: spacing.sm }]}>
           RECORD INFORMATION
         </Text>
         <View style={{ gap: spacing.sm }}>
@@ -551,10 +551,10 @@ const ItemsTab: React.FC<ItemsTabProps> = ({ items, theme }) => {
     return (
       <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
         <Ionicons name="list-outline" size={64} color={theme.textSecondary} opacity={0.3} />
-        <Text style={[getTypographyStyle('h3', theme), { marginTop: spacing.md, color: theme.textSecondary }]}>
+        <Text style={[getTypographyStyle('lg'), { marginTop: spacing.md, color: theme.textSecondary }]}>
           No Line Items
         </Text>
-        <Text style={[getTypographyStyle('body', theme), { marginTop: spacing.xs, color: theme.textSecondary }]}>
+        <Text style={[getTypographyStyle('base'), { marginTop: spacing.xs, color: theme.textSecondary }]}>
           This invoice has no line items
         </Text>
       </View>
@@ -564,50 +564,57 @@ const ItemsTab: React.FC<ItemsTabProps> = ({ items, theme }) => {
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
   return (
-    <Animated.View entering={FadeIn} style={{ gap: spacing.md }}>
+    <Animated.View entering={FadeIn} style={{ gap: spacing.sm }}>
       {/* Line Items */}
       {items.map((item, index) => (
-        <View key={item.id || index} style={[getCardStyle(theme), { padding: spacing.md }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 4 }}>
-                <View style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  backgroundColor: theme.primary + '20',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <Text style={[getTypographyStyle('caption', theme), { color: theme.primary, fontWeight: '700' }]}>
-                    {item.sr_no || index + 1}
-                  </Text>
-                </View>
-                <Text style={[getTypographyStyle('h3', theme)]}>
-                  {item.particulars}
-                </Text>
-              </View>
-              <Text style={[getTypographyStyle('body', theme), { color: theme.textSecondary }]}>
-                Quantity: {item.quantity}
+        <View key={item.id || index} style={{
+          backgroundColor: theme.surface,
+          padding: 16,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.border,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: theme.primary + '10',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary }}>
+                {item.sr_no || index + 1}
               </Text>
             </View>
-            <Text style={[getTypographyStyle('h3', theme), { color: theme.success }]}>
-              {formatCurrency(item.amount)}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text, marginBottom: 4 }}>
+                {item.particulars}
+              </Text>
+              <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                Qty: {item.quantity}
+              </Text>
+            </View>
           </View>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
+            {formatCurrency(item.amount)}
+          </Text>
         </View>
       ))}
 
       {/* Total Summary */}
-      <View style={[getCardStyle(theme), { padding: spacing.md, backgroundColor: theme.primary + '10' }]}>
+      <View style={[getCardStyle(theme.surface), { padding: spacing.md, backgroundColor: theme.primary + '10' }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Ionicons name="calculator" size={20} color={theme.primary} />
-            <Text style={[getTypographyStyle('h3', theme), { color: theme.primary }]}>
+            <Text style={[getTypographyStyle('lg'), { color: theme.primary }]}>
               Total ({items.length} items)
             </Text>
           </View>
-          <Text style={[getTypographyStyle('h2', theme), { color: theme.primary }]}>
+          <Text style={[getTypographyStyle('2xl'), { color: theme.primary }]}>
             {formatCurrency(totalAmount)}
           </Text>
         </View>

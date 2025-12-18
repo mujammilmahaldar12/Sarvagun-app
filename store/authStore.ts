@@ -35,10 +35,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       console.log('🔐 Starting login process...');
       set({ isLoading: true });
-      
+
       const response = await authService.login({ username, password });
       console.log('✅ Login API successful, received tokens');
-      
+
       // Check if first-time user
       const isFirstTime = await isFirstTimeUser();
       console.log('👤 First time user check:', isFirstTime);
@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   logout: async () => {
     console.log('🔄 Starting logout...');
     const { refreshToken } = get();
-    
+
     try {
       // STEP 1: Call logout API first
       if (refreshToken) {
@@ -143,14 +143,90 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         storedUserEmail: storedUser?.email,
       });
 
+      // Helper function to decode JWT and check expiration
+      const isTokenExpired = (token: string): boolean => {
+        try {
+          const parts = token.split('.');
+          if (parts.length !== 3) return true;
+
+          const payload = JSON.parse(atob(parts[1]));
+          const exp = payload.exp;
+
+          if (!exp) return true;
+
+          // Check if token is expired (with 60 second buffer)
+          const currentTime = Math.floor(Date.now() / 1000);
+          const isExpired = exp < currentTime + 60;
+
+          console.log('🔐 Token expiration check:', {
+            exp: new Date(exp * 1000).toISOString(),
+            now: new Date(currentTime * 1000).toISOString(),
+            isExpired,
+          });
+
+          return isExpired;
+        } catch (e) {
+          console.log('⚠️ Error decoding token:', e);
+          return true; // If we can't decode, assume expired
+        }
+      };
+
       if (accessToken && storedUser) {
-        console.log('✅ User found, restoring session');
+        // Check if access token is expired
+        if (isTokenExpired(accessToken)) {
+          console.log('⚠️ Access token expired, attempting refresh...');
+
+          if (refreshToken && !isTokenExpired(refreshToken)) {
+            try {
+              // Attempt to refresh the token
+              const newAccessToken = await authService.refreshToken();
+              console.log('✅ Token refreshed successfully');
+
+              // Restore session with new token
+              set({
+                user: storedUser,
+                accessToken: newAccessToken,
+                refreshToken,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+
+              // Initialize theme from stored user preference
+              if (storedUser.theme_preference) {
+                useThemeStore.getState().initializeTheme(storedUser.theme_preference);
+                console.log('🎨 Theme restored:', storedUser.theme_preference);
+              }
+
+              // Sync permissions after loading user
+              syncPermissionsWithAuth();
+              console.log('🔒 Permissions synced for restored session');
+              return;
+            } catch (refreshError) {
+              console.log('❌ Token refresh failed, clearing session:', refreshError);
+              // Clear storage and state - force re-login
+              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+              await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
+              set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null, refreshToken: null });
+              return;
+            }
+          } else {
+            console.log('❌ Refresh token expired or missing, clearing session');
+            // Clear storage and state - force re-login
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
+            set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null, refreshToken: null });
+            return;
+          }
+        }
+
+        // Token is valid, restore session
+        console.log('✅ Token valid, restoring session');
         console.log('👤 Restored user:', {
           id: storedUser.id,
           email: storedUser.email,
           name: storedUser.first_name + ' ' + storedUser.last_name,
         });
-        
+
         set({
           user: storedUser,
           accessToken,

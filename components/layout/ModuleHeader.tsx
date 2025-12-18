@@ -30,11 +30,9 @@ export default function ModuleHeader({
   const handleBack = () => {
     if (onBack) {
       onBack();
-    } else if (router.canGoBack()) {
-      router.back();
     } else {
-      // Fallback to home if no valid back route
-      router.replace('/(dashboard)/home');
+      // Simply go back - expo-router handles this correctly
+      router.back();
     }
   };
 

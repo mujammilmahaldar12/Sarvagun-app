@@ -4,7 +4,7 @@ import { useAuthStore } from "../../store/authStore";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__
-  ? "http://10.119.112.157:8000/api"  // Your PC's current local IP
+  ? "http://10.119.112.71:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
@@ -95,6 +95,12 @@ export interface PaginatedResponse<T> {
 export const apiClient = {
   get: <T>(url: string, config?: AxiosRequestConfig) =>
     api.get<T>(url, config).then((res) => {
+      // Check if response is HTML (server error page)
+      if (typeof res.data === 'string' && res.data.includes('<!doctype html>')) {
+        console.error(`❌ API returned HTML error page for ${url}`);
+        throw new Error('Server error - please try again later');
+      }
+
       console.log(`📦 apiClient.get response for ${url}:`, {
         hasResults: res.data && typeof res.data === 'object' && 'results' in res.data,
         isArray: Array.isArray(res.data),
@@ -110,6 +116,13 @@ export const apiClient = {
       }
       console.log(`✅ Returning data directly`);
       return res.data;
+    }).catch((error) => {
+      // Check if error response is HTML
+      if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<!doctype html>')) {
+        console.error(`❌ API returned HTML error for ${url}:`, error.response.status);
+        throw new Error(`Server error (${error.response.status}) - please try again later`);
+      }
+      throw error;
     }),
 
   post: <T>(url: string, data?: any, config?: AxiosRequestConfig) =>

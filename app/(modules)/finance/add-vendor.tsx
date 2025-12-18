@@ -73,6 +73,11 @@ export default function AddVendorScreen() {
       return;
     }
 
+    if (!formData.organization_name.trim()) {
+      Alert.alert('Error', 'Please enter organization name');
+      return;
+    }
+
     if (!formData.contact_number.trim()) {
       Alert.alert('Error', 'Please enter contact number');
       return;
@@ -110,7 +115,7 @@ export default function AddVendorScreen() {
         await createVendor.mutateAsync(vendorData);
         Alert.alert('Success', 'Vendor created successfully');
       }
-      
+
       router.back();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save vendor');
@@ -156,7 +161,7 @@ export default function AddVendorScreen() {
         {/* Basic Information */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Basic Information" />
-          
+
           <Input
             label="Vendor Name"
             value={formData.name}
@@ -172,6 +177,7 @@ export default function AddVendorScreen() {
             onChangeText={(text: string) => updateField('organization_name', text)}
             placeholder="Enter organization name"
             leftIcon="briefcase-outline"
+            required
           />
 
           <Input
@@ -219,11 +225,11 @@ export default function AddVendorScreen() {
 
         {/* Tax Information */}
         <View style={{ gap: 16 }}>
-          <SectionHeader 
-            title="Tax Information" 
+          <SectionHeader
+            title="Tax Information"
             subtitle="GST details for invoicing"
           />
-          
+
           <Input
             label="GST Number"
             value={formData.gstin}
@@ -236,7 +242,7 @@ export default function AddVendorScreen() {
         {/* Additional Notes */}
         <View style={{ gap: 16 }}>
           <SectionHeader title="Comments (Optional)" />
-          
+
           <Input
             label="Comments"
             value={formData.comments}

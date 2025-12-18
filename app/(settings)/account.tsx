@@ -17,11 +17,7 @@ export default function AccountScreen() {
   const { user, setUser } = useAuthStore();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(dashboard)/profile');
-    }
+    router.back();
   };
 
   const [isEditing, setIsEditing] = useState(false);

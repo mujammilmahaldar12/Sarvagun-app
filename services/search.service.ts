@@ -281,7 +281,12 @@ class SearchService {
           email: c.email,
           phone: c.phone || c.contact_number,
           company: c.company || c.company_name,
-          category: c.category,
+          // Safely map category to string whether it's an object, array of objects, or string
+          category: Array.isArray(c.category)
+            ? c.category.map((cat: any) => cat.name || cat).join(', ')
+            : (typeof c.category === 'object' && c.category !== null)
+              ? (c.category.name || 'General')
+              : (c.category || 'General'),
         }));
         console.log(`✅ Found ${results.clients.length} clients`);
       } catch (e) {
@@ -301,7 +306,10 @@ class SearchService {
         results.vendors = vendors.map((v: any) => ({
           id: v.id,
           name: v.name || v.vendor_name,
-          category: v.category || v.type,
+          // Safely map category to string
+          category: (typeof v.category === 'object' && v.category !== null)
+            ? (v.category.name || v.type || 'Vendor')
+            : (v.category || v.type || 'Vendor'),
           contact_person: v.contact_person || v.contact_name,
           phone: v.phone || v.contact_number,
           email: v.email,

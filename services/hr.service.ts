@@ -23,6 +23,7 @@ import type {
   CreateReimbursementRequest,
   TeamMemberLeave,
   CalendarLeave,
+  Team,
 } from '../types/hr';
 
 class HRService {

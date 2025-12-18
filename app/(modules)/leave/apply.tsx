@@ -164,8 +164,7 @@ export default function ApplyLeaveScreen() {
                 {
                   text: 'OK',
                   onPress: () => {
-                    // Force navigation back to leave list
-                    router.replace('/(modules)/leave');
+                    router.back();
                   },
                 },
               ],

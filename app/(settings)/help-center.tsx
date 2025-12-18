@@ -169,11 +169,7 @@ export default function HelpCenterScreen() {
   const { resetFirstTime } = useFirstTimeUser();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(dashboard)/profile');
-    }
+    router.back();
   };
 
   const handleResetFirstTime = () => {

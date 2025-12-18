@@ -81,12 +81,7 @@ export default function AboutScreen() {
   const router = useRouter();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      // Fallback to profile if no back history
-      router.replace('/(dashboard)/profile');
-    }
+    router.back();
   };
 
   const openLink = async (url: string) => {

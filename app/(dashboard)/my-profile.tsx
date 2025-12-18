@@ -29,6 +29,7 @@ import {
   useUserSocialLinks,
   useAttendancePercentage
 } from '@/hooks/useHRQueries';
+import { useMyInternship, useMyExtensions } from '@/hooks/useInternshipQueries';
 import {
   Avatar,
   AnimatedPressable,
@@ -48,6 +49,8 @@ import { CertificationCard } from '@/components/ui/CertificationCard';
 import { EducationCard } from '@/components/ui/EducationCard';
 import { ExperienceCard } from '@/components/ui/ExperienceCard';
 import { CollaborationTree } from '@/components/ui/CollaborationTree';
+import { JourneyTimeline } from '@/components/ui/JourneyTimeline';
+import type { JourneyEvent } from '@/components/ui/JourneyTimeline';
 import { spacing, borderRadius } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 import {
@@ -72,6 +75,100 @@ const generateDefaultBio = (userData: any): string => {
   return bios[category as keyof typeof bios] || bios.employee;
 };
 
+// Build journey events from profile, internship, and extensions data
+const buildJourneyEvents = (
+  profile: any,
+  internship: any,
+  extensions: any[]
+): JourneyEvent[] => {
+  const events: JourneyEvent[] = [];
+
+  // For interns with internship data
+  if (profile?.category === 'intern' && internship) {
+    // Start event
+    events.push({
+      id: 'start',
+      type: 'start',
+      title: 'Started Internship',
+      subtitle: `Position: ${profile.designation || 'Intern'}`,
+      date: internship.start_date,
+      details: `Joined as an intern in the ${profile.department || 'team'}`,
+      durationLabel: internship.is_active ? undefined : 'Completed',
+    });
+
+    // Extension events (sorted by date)
+    if (extensions && extensions.length > 0) {
+      const sortedExtensions = [...extensions].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      sortedExtensions.forEach((ext, index) => {
+        events.push({
+          id: `extension-${ext.id}`,
+          type: 'extension',
+          title: `Extension ${ext.status === 'approved' ? 'Approved' : ext.status === 'pending' ? 'Requested' : 'Rejected'}`,
+          subtitle: `Duration: ${ext.duration_months} month${ext.duration_months > 1 ? 's' : ''}`,
+          date: ext.original_end_date,
+          endDate: ext.new_end_date,
+          status: ext.status as 'approved' | 'pending' | 'rejected',
+          details: ext.reason || undefined,
+          durationLabel: `+${ext.duration_months} month${ext.duration_months > 1 ? 's' : ''}`,
+        });
+      });
+    }
+
+    // Current status
+    if (internship.is_active && internship.end_date) {
+      const daysRemaining = internship.days_remaining;
+      events.push({
+        id: 'current',
+        type: 'current',
+        title: 'Current Status',
+        subtitle: daysRemaining && daysRemaining > 0
+          ? `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`
+          : daysRemaining && daysRemaining < 0
+            ? `${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} overdue`
+            : 'Ending soon',
+        date: internship.end_date,
+        details: 'Your current internship end date',
+      });
+    }
+  } else {
+    // For non-interns (employees, managers, etc.)
+    const joinDate = profile?.date_joined || profile?.joiningdate || profile?.joining_date;
+
+    if (joinDate) {
+      events.push({
+        id: 'start',
+        type: 'start',
+        title: `Joined as ${profile.designation || 'Team Member'}`,
+        subtitle: `Department: ${profile.department || 'N/A'}`,
+        date: joinDate,
+        details: `Started your journey with the company`,
+      });
+
+      // Calculate tenure and add current milestone
+      const tenureMonths = Math.floor(
+        (new Date().getTime() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24 * 30)
+      );
+
+      events.push({
+        id: 'current',
+        type: 'current',
+        title: 'Current Position',
+        subtitle: profile.designation || 'Team Member',
+        date: new Date().toISOString().split('T')[0],
+        details: tenureMonths >= 12
+          ? `${Math.floor(tenureMonths / 12)} year${Math.floor(tenureMonths / 12) > 1 ? 's' : ''} ${tenureMonths % 12} month${tenureMonths % 12 !== 1 ? 's' : ''} tenure`
+          : `${tenureMonths} month${tenureMonths !== 1 ? 's' : ''} tenure`,
+        durationLabel: `${tenureMonths} months`,
+      });
+    }
+  }
+
+  return events;
+};
+
 export default function MyProfileScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
@@ -84,18 +181,26 @@ export default function MyProfileScreen() {
   const { data: profileData, isLoading: profileLoading, refetch: refetchProfile } = useMyProfile();
   const { data: teamMembers, isLoading: teamLoading } = useTeamMembers();
 
-  // Fetch user profile data (use current user ID)
+  // Safe userId - don't force non-null assertion
   const userId = profileData?.id || user?.id;
-  const { data: userProjects = [], isLoading: projectsLoading } = useUserProjects(userId!);
-  const { data: userSkills = [], isLoading: skillsLoading } = useUserSkills(userId!);
-  const { data: userCertifications = [], isLoading: certificationsLoading } = useUserCertifications(userId!);
-  const { data: userEducation = [], isLoading: educationLoading } = useUserEducation(userId);
-  const { data: userExperience = [], isLoading: experienceLoading } = useUserExperience(userId);
-  const { data: userSocialLinks, isLoading: socialLinksLoading } = useUserSocialLinks(userId);
-  const { data: userPerformance, isLoading: performanceLoading } = useUserPerformance(userId!);
-  const { data: userGoals = [], isLoading: goalsLoading } = useUserGoals(userId!);
-  const { data: userActivities = [], isLoading: activitiesLoading } = useUserActivities(userId!, 20);
+
+  // Fetch user profile data - only when userId is available
+  // Using ?? 0 provides a safe fallback that won't break hooks but will be disabled
+  const safeUserId = userId ?? 0;
+  const { data: userProjects = [], isLoading: projectsLoading } = useUserProjects(safeUserId);
+  const { data: userSkills = [], isLoading: skillsLoading } = useUserSkills(safeUserId);
+  const { data: userCertifications = [], isLoading: certificationsLoading } = useUserCertifications(safeUserId);
+  const { data: userEducation = [], isLoading: educationLoading } = useUserEducation(safeUserId || undefined);
+  const { data: userExperience = [], isLoading: experienceLoading } = useUserExperience(safeUserId || undefined);
+  const { data: userSocialLinks, isLoading: socialLinksLoading } = useUserSocialLinks(safeUserId || undefined);
+  const { data: userPerformance, isLoading: performanceLoading } = useUserPerformance(safeUserId);
+  const { data: userGoals = [], isLoading: goalsLoading } = useUserGoals(safeUserId);
+  const { data: userActivities = [], isLoading: activitiesLoading } = useUserActivities(safeUserId, 20);
   const { data: attendanceData, isLoading: attendanceLoading } = useAttendancePercentage();
+
+  // Internship and extensions data for journey
+  const { data: internshipData, isLoading: internshipLoading } = useMyInternship();
+  const { data: extensionsData = [], isLoading: extensionsLoading } = useMyExtensions();
 
   // Calculate enhanced profile data
   const enhancedProfile = useMemo(() => {
@@ -323,6 +428,7 @@ export default function MyProfileScreen() {
               { key: 'certifications', label: 'Certifications' },
               { key: 'education', label: 'Education' },
               { key: 'experience', label: 'Experience' },
+              { key: 'journey', label: 'Journey' },
               { key: 'team', label: 'Team' },
             ]}
             activeTab={activeTab}
@@ -685,6 +791,27 @@ export default function MyProfileScreen() {
                     </Card>
                   </View>
                 )}
+            </View>
+          )}
+
+          {activeTab === 'journey' && (
+            <View style={styles.tabPanel}>
+              <View style={styles.contentSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Career Journey
+                </Text>
+                <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+                  Your professional timeline and milestones
+                </Text>
+                {(internshipLoading || extensionsLoading) ? (
+                  <LoadingState />
+                ) : (
+                  <JourneyTimeline
+                    events={buildJourneyEvents(enhancedProfile, internshipData, extensionsData)}
+                    currentPosition={enhancedProfile.designation}
+                  />
+                )}
+              </View>
             </View>
           )}
 

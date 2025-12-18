@@ -44,11 +44,7 @@ export default function ReportProblemScreen() {
   const { user } = useAuthStore();
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(dashboard)/profile');
-    }
+    router.back();
   };
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -176,11 +172,7 @@ export default function ReportProblemScreen() {
           {
             text: 'OK',
             onPress: () => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(dashboard)/profile');
-              }
+              router.back();
             },
           },
         ]

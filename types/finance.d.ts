@@ -131,6 +131,7 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   items?: InvoiceItem[]; // Line items
+  notes?: string; // Additional notes
 }
 
 export interface CreateInvoiceRequest {
@@ -143,6 +144,7 @@ export interface CreateInvoiceRequest {
   cgst?: string;
   sgst?: string;
   items: Omit<InvoiceItem, 'id' | 'invoice'>[];
+  notes?: string; // Additional notes
 }
 
 export interface UpdateInvoiceRequest extends Partial<CreateInvoiceRequest> {

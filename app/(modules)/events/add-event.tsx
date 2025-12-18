@@ -23,12 +23,8 @@ export default function AddEventScreen() {
 
   // Safe back navigation helper
   const safeGoBack = useCallback(() => {
-    if (navigation.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(modules)/events');
-    }
-  }, [navigation, router]);
+    router.back();
+  }, [router]);
 
   const [loading, setLoading] = useState(false);
   const [fetchingLead, setFetchingLead] = useState(false);
@@ -259,9 +255,9 @@ export default function AddEventScreen() {
         const response = await eventsService.convertLead(Number(fromLead), convertPayload);
         console.log('✅ Lead conversion response received:', response);
 
-        // Navigate immediately - don't wait for alert
-        console.log('🔀 Navigating to events list...');
-        router.replace('/(modules)/events');
+        // Navigate back
+        console.log('🔀 Navigating back...');
+        router.back();
 
         // Show success message after a short delay (toast-style)
         setTimeout(() => {

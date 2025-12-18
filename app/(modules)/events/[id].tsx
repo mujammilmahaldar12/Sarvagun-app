@@ -347,11 +347,7 @@ export default function EventDetailScreen() {
 
   // Safe back navigation helper
   const safeGoBack = () => {
-    if (navigation.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(modules)/events');
-    }
+    router.back();
   };
 
   useEffect(() => {

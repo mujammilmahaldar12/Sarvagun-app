@@ -1,24 +1,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, Pressable, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Text } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, Platform, Alert, Modal, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { Input } from '@/components/core/Input';
-import { Select } from '@/components/core/Select';
+import { FormSection } from '@/components';
 import { Button } from '@/components/core/Button';
 import { DatePicker } from '@/components/core/DatePicker';
 import { useTheme } from '@/hooks/useTheme';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import { 
-  useInvoice, 
-  useCreateInvoice, 
+import { spacing, borderRadius } from '@/constants/designSystem';
+import {
+  useInvoice,
+  useCreateInvoice,
   useUpdateInvoice
 } from '@/hooks/useFinanceQueries';
-import { useEvents } from '@/hooks/useEventsQueries';
-import type { InvoiceItem } from '@/types/finance';
-import type { Event } from '@/types/events';
-import type { SelectOption } from '@/components/core/Select';
+import { useEvents, useClients } from '@/hooks/useEventsQueries';
+import type { InvoiceItem } from '@/types/finance.d';
+import type { Event, Client } from '@/types/events.d';
 
 // Form-specific type for invoice items with editable fields
 interface FormInvoiceItem {
@@ -34,17 +33,17 @@ export default function AddInvoiceScreen() {
   const isEditMode = !!id;
 
   // Fetch data
-  const { data: invoice, isLoading: invoiceLoading } = useInvoice(Number(id), { enabled: isEditMode });
+  const { data: invoice, isLoading: invoiceLoading } = useInvoice(Number(id)); // checking useInvoice definition, it takes only id
   const { data: events = [] } = useEvents();
+  const { data: clients = [] } = useClients();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
 
   // Form state
   const [formData, setFormData] = useState({
-    invoice_number: '',
-    client_name: '',
+    client: null as number | null,
     event: null as number | null,
-    date: '',
+    date: new Date(), // Changed to Date object
     total_amount: 0,
     discount: 0,
     final_amount: 0,
@@ -54,52 +53,80 @@ export default function AddInvoiceScreen() {
   });
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedClient, setSelectedClient] = useState<any>(null); // Using any due to Client type variations
   const [items, setItems] = useState<FormInvoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Modal states
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
-  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [eventSearch, setEventSearch] = useState('');
   const [editingItem, setEditingItem] = useState<FormInvoiceItem | null>(null);
   const [editingIndex, setEditingIndex] = useState(-1);
 
   // Load existing invoice data
+  // Load existing invoice data - updated to handle event/client as IDs or objects
   useEffect(() => {
-    if (invoice && isEditMode) {
-      const eventData = typeof invoice.event === 'object' ? invoice.event : null;
+    if (invoice && isEditMode && events.length > 0 && clients.length > 0) {
+      // Get event data - check if it's an object or ID
+      let eventData = null;
+      if (typeof invoice.event === 'object' && invoice.event) {
+        eventData = invoice.event;
+      } else if (typeof invoice.event === 'number') {
+        // Find event in events list
+        eventData = events.find((e: Event) => e.id === invoice.event) || null;
+      }
+
+      // Get client data - check if it's an object or ID
+      let clientData = null;
+      if (typeof invoice.client === 'object' && invoice.client) {
+        clientData = invoice.client;
+      } else if (typeof invoice.client === 'number') {
+        // Find client in clients list
+        clientData = clients.find((c: any) => c.id === invoice.client) || null;
+      }
+
       setFormData({
-        invoice_number: invoice.invoice_number || '',
-        client_name: invoice.client_name || '',
+        client: typeof invoice.client === 'number' ? invoice.client : invoice.client?.id || null,
         event: typeof invoice.event === 'number' ? invoice.event : invoice.event?.id || null,
-        date: invoice.date || '',
+        date: invoice.date ? new Date(invoice.date) : new Date(),
         total_amount: invoice.total_amount || 0,
         discount: invoice.discount || 0,
         final_amount: invoice.final_amount || 0,
         cgst: invoice.cgst || '9',
         sgst: invoice.sgst || '9',
-        notes: '',
+        notes: (invoice as any).notes || '',
       });
       setSelectedEvent(eventData);
+      setSelectedClient(clientData);
+
       // Convert InvoiceItem to FormInvoiceItem
       const formItems: FormInvoiceItem[] = (invoice.items || []).map(item => ({
         particulars: item.particulars,
-        quantity: Number(item.quantity) || 0,
-        unit_price: 0, // Not available in InvoiceItem, calculate from amount/quantity if needed
+        quantity: Number(item.quantity) || 1,
+        unit_price: item.amount / (Number(item.quantity) || 1), // Calculate from amount/quantity
         amount: item.amount
       }));
       setItems(formItems);
     }
-  }, [invoice, isEditMode]);
+  }, [invoice, isEditMode, events, clients]);
 
   const updateField = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  // Filtered events
-  const filteredEvents = events.filter((event) =>
-    event.name?.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
-    event.client?.name?.toLowerCase().includes(eventSearchQuery.toLowerCase())
+  // Filtered lists
+  const filteredEvents = events.filter((event: Event) => {
+    const clientName = typeof event.client === 'object' ? event.client?.name : '';
+    return event.name?.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      clientName?.toLowerCase().includes(eventSearch.toLowerCase());
+  });
+
+  const filteredClients = clients.filter((client: any) =>
+    client.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Handlers
@@ -107,11 +134,27 @@ export default function AddInvoiceScreen() {
     setSelectedEvent(event);
     updateField('event', event.id);
     // Auto-fill client details from event
-    if (event.client) {
-      updateField('client_name', event.client.name);
+    if (event.client && typeof event.client === 'object') {
+      setSelectedClient(event.client as Client);
+      updateField('client', event.client.id);
+    } else {
+      // Event has no client object - user must select client manually
+      setSelectedClient(null);
+      updateField('client', null);
+      if (event.client) {
+        // Event has client ID but not object - shouldn't happen but handle it
+        Alert.alert('Note', 'Please select the client for this invoice manually');
+      }
     }
     setShowEventModal(false);
-    setEventSearchQuery('');
+    setEventSearch('');
+  };
+
+  const handleSelectClient = (client: any) => {
+    setSelectedClient(client);
+    updateField('client', client.id);
+    setShowClientModal(false);
+    setSearchQuery('');
   };
 
   const handleAddItem = () => {
@@ -184,23 +227,28 @@ export default function AddInvoiceScreen() {
   }, [items]);
 
   const gstAmount = useMemo(() => {
-    const cgst = (subtotal * (Number(formData.cgst) || 0)) / 100;
-    const sgst = (subtotal * (Number(formData.sgst) || 0)) / 100;
+    // Only calculate GST if percentages are provided
+    const cgstRate = Number(formData.cgst) || 0;
+    const sgstRate = Number(formData.sgst) || 0;
+
+    const cgst = (subtotal * cgstRate) / 100;
+    const sgst = (subtotal * sgstRate) / 100;
     return cgst + sgst;
   }, [subtotal, formData.cgst, formData.sgst]);
 
   const totalAmount = useMemo(() => {
-    return subtotal + gstAmount;
-  }, [subtotal, gstAmount]);
+    return subtotal + gstAmount - (Number(formData.discount) || 0);
+  }, [subtotal, gstAmount, formData.discount]);
 
   const handleSubmit = async () => {
     // Validation
-    if (!formData.invoice_number.trim()) {
-      Alert.alert('Error', 'Please enter invoice number');
-      return;
-    }
-    if (!formData.client_name.trim()) {
-      Alert.alert('Error', 'Please enter client name');
+    // Client can come from event or be manually selected
+    const clientId = selectedEvent && typeof selectedEvent.client === 'object'
+      ? selectedEvent.client.id
+      : formData.client;
+
+    if (!clientId) {
+      Alert.alert('Error', 'Please select a client or an event with a client');
       return;
     }
     if (!formData.date) {
@@ -216,10 +264,10 @@ export default function AddInvoiceScreen() {
 
     try {
       const invoiceData = {
-        invoice_number: formData.invoice_number,
-        client_name: formData.client_name,
-        event: formData.event,
-        date: formData.date,
+        // invoice_number is handled by backend
+        client: clientId!, // Use computed clientId (from event or manual selection)
+        event: formData.event || undefined, // Convert null to undefined for TS
+        date: formData.date.toISOString().split('T')[0], // Ensure YYYY-MM-DD string
         total_amount: subtotal,
         discount: formData.discount,
         final_amount: totalAmount,
@@ -231,6 +279,7 @@ export default function AddInvoiceScreen() {
           quantity: String(item.quantity),
           amount: item.amount,
         })),
+        notes: formData.notes, // Include notes if in state
       };
 
       if (isEditMode) {
@@ -240,8 +289,8 @@ export default function AddInvoiceScreen() {
         await createInvoice.mutateAsync(invoiceData);
         Alert.alert('Success', 'Invoice created successfully');
       }
-      
-      router.back();
+
+      router.replace('/(modules)/finance');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save invoice');
     } finally {
@@ -260,73 +309,7 @@ export default function AddInvoiceScreen() {
     );
   }
 
-  // Helper components
-  const FormInput = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = 'default',
-    multiline = false,
-    prefix,
-    required = false,
-    editable = true,
-  }: any) => (
-    <View style={{ gap: 8 }}>
-      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-        {label} {required && <Text style={{ color: '#EF4444' }}>*</Text>}
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {prefix && (
-          <Text style={{
-            position: 'absolute',
-            left: 12,
-            ...getTypographyStyle('sm', 'regular'),
-            color: theme.text,
-            zIndex: 1,
-          }}>
-            {prefix}
-          </Text>
-        )}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
-          keyboardType={keyboardType}
-          multiline={multiline}
-          numberOfLines={multiline ? 4 : 1}
-          editable={editable}
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: 8,
-            padding: 12,
-            paddingLeft: prefix ? 28 : 12,
-            ...getTypographyStyle('sm', 'regular'),
-            color: theme.text,
-            backgroundColor: editable ? theme.surface : theme.background,
-            textAlignVertical: multiline ? 'top' : 'center',
-            minHeight: multiline ? 100 : 44,
-          }}
-        />
-      </View>
-    </View>
-  );
 
-  const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
-    <View style={{ gap: 4 }}>
-      <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
-        {title}
-      </Text>
-      {subtitle && (
-        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-          {subtitle}
-        </Text>
-      )}
-    </View>
-  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -335,20 +318,23 @@ export default function AddInvoiceScreen() {
         showBack
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
         {/* Invoice Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Invoice Details" />
-          
-          <FormInput
-            label="Invoice Number"
-            value={formData.invoice_number}
-            onChangeText={(text: string) => updateField('invoice_number', text)}
-            placeholder="INV-001"
-            required
-          />
+        <FormSection title="Invoice Details">
+          {/* Invoice Number is Auto-generated, so we only show it in edit mode or hide it */}
+          {isEditMode && invoice?.invoice_number && (
+            <View style={{ opacity: 0.7 }}>
+              <Input
+                label="Invoice Number"
+                value={invoice.invoice_number}
+                onChangeText={() => { }}
+                editable={false}
+                placeholder="Auto-generated"
+              />
+            </View>
+          )}
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <View style={{ flex: 1 }}>
               <DatePicker
                 label="Invoice Date"
@@ -358,76 +344,134 @@ export default function AddInvoiceScreen() {
               />
             </View>
           </View>
-        </View>
+        </FormSection>
 
-        {/* Event Linking (Optional) */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader 
-            title="Event Linking (Optional)" 
-            subtitle="Link this invoice to an event"
-          />
-          
-          <View style={{ gap: 4 }}>
-            <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary }]}>
+        {/* Event Selection (Primary - select event first to auto-populate client) */}
+        <FormSection
+          title="Event Linking"
+          description="Select an event to auto-populate client details"
+        >
+          <Pressable
+            onPress={() => setShowEventModal(true)}
+            style={{ gap: spacing.xs }}
+          >
+            <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
               Select Event
             </Text>
-            <Pressable
-              onPress={() => setShowEventModal(true)}
+            <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: 12,
+                padding: spacing.sm,
                 borderWidth: 1,
-                borderColor: theme.border,
-                borderRadius: 8,
-                backgroundColor: theme.surface,
+                borderColor: selectedEvent ? theme.primary : theme.border,
+                borderRadius: borderRadius.md,
+                backgroundColor: selectedEvent ? theme.primary + '10' : theme.surface,
               }}
             >
-              <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedEvent?.name ? theme.text : theme.textSecondary }]}>
-                {selectedEvent?.name || 'Tap to select event (optional)'}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
-            </Pressable>
-          </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedEvent?.name ? theme.text : theme.textSecondary }]}>
+                  {selectedEvent?.name || 'Tap to select event'}
+                </Text>
+                {selectedEvent && (
+                  <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: 2 }]}>
+                    {selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : ''}
+                    {typeof selectedEvent.client === 'object' && selectedEvent.client?.name
+                      ? ` • ${selectedEvent.client.name}`
+                      : ''}
+                  </Text>
+                )}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {selectedEvent && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedEvent(null);
+                      updateField('event', null);
+                      // Clear auto-populated client when event is removed
+                      setSelectedClient(null);
+                      updateField('client', null);
+                    }}
+                    style={{ padding: 4 }}
+                  >
+                    <Ionicons name="close-circle" size={20} color={theme.error || '#EF4444'} />
+                  </TouchableOpacity>
+                )}
+                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+              </View>
+            </View>
+          </Pressable>
+        </FormSection>
 
-          {selectedEvent && (
-            <View style={{
-              padding: 12,
-              backgroundColor: theme.primary + '10',
-              borderRadius: 8,
-              borderLeftWidth: 4,
-              borderLeftColor: theme.primary,
-            }}>
-              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                Client
+        {/* Client Information - Conditional based on event selection */}
+        <FormSection title="Client Information">
+          {selectedEvent && typeof selectedEvent.client === 'object' && selectedEvent.client ? (
+            // Read-only display when client is derived from event
+            <View style={{ gap: spacing.xs }}>
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                Client (from Event)
               </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
-                {selectedEvent.client?.name || 'N/A'}
+              <View
+                style={{
+                  padding: spacing.sm,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: borderRadius.md,
+                  backgroundColor: theme.surface,
+                  opacity: 0.8,
+                }}
+              >
+                <Text style={[getTypographyStyle('sm', 'medium'), { color: theme.text }]}>
+                  {selectedEvent.client.name}
+                </Text>
+                {(selectedEvent.client.email || selectedEvent.client.number) && (
+                  <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: 2 }]}>
+                    {selectedEvent.client.email || ''}{selectedEvent.client.email && selectedEvent.client.number ? ' • ' : ''}{selectedEvent.client.number || ''}
+                  </Text>
+                )}
+              </View>
+              <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, fontStyle: 'italic' }]}>
+                Client is automatically set from the selected event
               </Text>
             </View>
+          ) : (
+            // Client selector when no event is selected or event has no client
+            <Pressable
+              onPress={() => setShowClientModal(true)}
+              style={{ gap: spacing.xs }}
+            >
+              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                Client Name <Text style={{ color: '#EF4444' }}>*</Text>
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: spacing.sm,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderRadius: borderRadius.md,
+                  backgroundColor: theme.surface,
+                }}
+              >
+                <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedClient?.name ? theme.text : theme.textSecondary }]}>
+                  {selectedClient?.name || 'Select Client'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+              </View>
+              {!selectedEvent && (
+                <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary }]}>
+                  Or select an event above to auto-populate client
+                </Text>
+              )}
+            </Pressable>
           )}
-        </View>
-
-        {/* Client Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Client Information" />
-          
-          <FormInput
-            label="Client Name"
-            value={formData.client_name}
-            onChangeText={(text: string) => updateField('client_name', text)}
-            placeholder="Enter client name"
-            required
-          />
-        </View>
+        </FormSection>
 
         {/* Invoice Items */}
-        <View style={{ gap: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <SectionHeader title="Invoice Items" subtitle="Add products or services" />
-          </View>
-
+        <FormSection title="Invoice Items" description="Add products or services">
           <Button
             title="Add Item"
             onPress={handleAddItem}
@@ -437,7 +481,7 @@ export default function AddInvoiceScreen() {
           />
 
           {items.length > 0 && (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: spacing.xs }}>
               {items.map((item, index) => (
                 <View
                   key={index}
@@ -445,14 +489,14 @@ export default function AddInvoiceScreen() {
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: 14,
-                    borderRadius: 8,
+                    padding: spacing.sm,
+                    borderRadius: borderRadius.md,
                     backgroundColor: theme.surface,
                     borderWidth: 1,
                     borderColor: theme.border,
                   }}
                 >
-                  <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ flex: 1, gap: spacing.xs }}>
                     <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
                       {item.particulars}
                     </Text>
@@ -460,7 +504,7 @@ export default function AddInvoiceScreen() {
                       Qty: {item.quantity} × ₹{Number(item.unit_price || 0).toLocaleString('en-IN')} = ₹{Number(item.amount).toLocaleString('en-IN')}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                     <Pressable onPress={() => handleEditItem(index)}>
                       <Ionicons name="create-outline" size={20} color={theme.primary} />
                     </Pressable>
@@ -476,10 +520,10 @@ export default function AddInvoiceScreen() {
           {/* Calculation Summary */}
           {items.length > 0 && (
             <View style={{
-              padding: 16,
+              padding: spacing.md,
               backgroundColor: theme.surface,
-              borderRadius: 12,
-              gap: 12,
+              borderRadius: borderRadius.lg,
+              gap: spacing.sm,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
@@ -504,6 +548,17 @@ export default function AddInvoiceScreen() {
                 </Text>
               </View>
 
+              {Number(formData.discount) > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                    Discount
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
+                    - ₹{Number(formData.discount).toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              )}
+
               <View style={{ height: 1, backgroundColor: theme.border }} />
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -517,9 +572,9 @@ export default function AddInvoiceScreen() {
             </View>
           )}
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <View style={{ flex: 1 }}>
-              <FormInput
+              <Input
                 label="CGST %"
                 value={formData.cgst}
                 onChangeText={(text: string) => updateField('cgst', text)}
@@ -528,7 +583,7 @@ export default function AddInvoiceScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <FormInput
+              <Input
                 label="SGST %"
                 value={formData.sgst}
                 onChangeText={(text: string) => updateField('sgst', text)}
@@ -537,24 +592,30 @@ export default function AddInvoiceScreen() {
               />
             </View>
           </View>
-        </View>
+        </FormSection>
 
         {/* Additional Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Additional Details (Optional)" />
-          
-          <FormInput
+        <FormSection title="Additional Details (Optional)">
+          <Input
             label="Discount"
             value={String(formData.discount)}
             onChangeText={(text: string) => updateField('discount', Number(text) || 0)}
             placeholder="0"
             keyboardType="numeric"
-            prefix="₹"
           />
-        </View>
+
+          <Input
+            label="Notes"
+            value={formData.notes}
+            onChangeText={(text: string) => updateField('notes', text)}
+            placeholder="Add any additional notes..."
+            multiline
+            numberOfLines={3}
+          />
+        </FormSection>
 
         {/* Submit Button */}
-        <View style={{ marginTop: 8, marginBottom: 20 }}>
+        <View style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
           <Button
             title={isEditMode ? 'Update Invoice' : 'Create Invoice'}
             onPress={handleSubmit}
@@ -573,91 +634,137 @@ export default function AddInvoiceScreen() {
         animationType="slide"
         onRequestClose={() => setShowEventModal(false)}
       >
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
-          onPress={() => setShowEventModal(false)}
-        >
-          <Pressable
-            style={{
-              backgroundColor: theme.surface,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 20,
-              maxHeight: '80%',
-            }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={{ gap: 16 }}>
-              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
-                Select Event
-              </Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: theme.background,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            height: '90%',
+            overflow: 'hidden'
+          }}>
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={() => setShowEventModal(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={{ ...getTypographyStyle('lg', 'semibold'), color: theme.text }}>Select Event</Text>
+            </View>
 
-              <TextInput
-                value={eventSearchQuery}
-                onChangeText={setEventSearchQuery}
+            <View style={{ padding: 16 }}>
+              <Input
+                label=""
                 placeholder="Search events..."
-                placeholderTextColor={theme.textSecondary}
-                style={{
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 8,
-                  padding: 12,
-                  ...getTypographyStyle('sm', 'regular'),
-                  color: theme.text,
-                  backgroundColor: theme.background,
-                }}
+                value={eventSearch}
+                onChangeText={setEventSearch}
+                leftIcon="search"
               />
+            </View>
 
-              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-                {filteredEvents.length === 0 ? (
-                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, textAlign: 'center', paddingVertical: 20 }}>
-                    No events found
-                  </Text>
-                ) : (
-                  filteredEvents.map((event) => (
-                    <Pressable
-                      key={event.id}
-                      onPress={() => handleSelectEvent(event)}
-                      style={({ pressed }) => ({
-                        padding: 14,
-                        borderRadius: 8,
-                        backgroundColor: pressed ? theme.primary + '10' : 'transparent',
-                        borderBottomWidth: 1,
-                        borderBottomColor: theme.border,
-                      })}
-                    >
-                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+            <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
+              {filteredEvents.map((event: any) => (
+                <TouchableOpacity
+                  key={event.id}
+                  style={{
+                    backgroundColor: theme.surface,
+                    padding: 16,
+                    borderRadius: 12,
+                    marginBottom: 12,
+                    borderWidth: 1,
+                    borderColor: formData.event === event.id ? theme.primary : theme.border,
+                  }}
+                  onPress={() => handleSelectEvent(event)}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 4 }}>
                         {event.name}
                       </Text>
-                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 4 }}>
-                        {event.client?.name || 'N/A'} • {new Date(event.start_date).toLocaleDateString('en-IN')}
+                      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+                        {event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date'}
                       </Text>
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
+                      {/* Finance Info */}
+                      <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                        <View style={{ backgroundColor: theme.primary + '10', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 11, color: theme.primary, fontWeight: '600' }}>
+                            Budget: ₹{event.total_budget?.toLocaleString() || '0'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    {formData.event === event.id && (
+                      <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Button
-                  title="Clear Selection"
-                  onPress={() => {
-                    setSelectedEvent(null);
-                    updateField('event', null);
-                    setShowEventModal(false);
-                  }}
-                  variant="secondary"
-                  fullWidth
-                />
-                <Button
-                  title="Cancel"
-                  onPress={() => setShowEventModal(false)}
-                  variant="secondary"
-                  fullWidth
-                />
-              </View>
+      {/* Client Selection Modal */}
+      <Modal
+        visible={showClientModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowClientModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: theme.background,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            height: '90%',
+            overflow: 'hidden'
+          }}>
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={() => setShowClientModal(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={{ ...getTypographyStyle('lg', 'semibold'), color: theme.text }}>Select Client</Text>
             </View>
-          </Pressable>
-        </Pressable>
+
+            <View style={{ padding: 16 }}>
+              <Input
+                label=""
+                placeholder="Search clients..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                leftIcon="search"
+              />
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
+              {filteredClients.map((client: any) => (
+                <TouchableOpacity
+                  key={client.id}
+                  style={{
+                    backgroundColor: theme.surface,
+                    padding: 16,
+                    borderRadius: 12,
+                    marginBottom: 12,
+                    borderWidth: 1,
+                    borderColor: formData.client === client.id ? theme.primary : theme.border,
+                  }}
+                  onPress={() => handleSelectClient(client)}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 4 }}>
+                        {client.name}
+                      </Text>
+                      <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
+                        {client.email || 'No email'} • {client.phone || 'No phone'}
+                      </Text>
+                    </View>
+                    {formData.client === client.id && (
+                      <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       {/* Add/Edit Item Modal */}
@@ -667,101 +774,100 @@ export default function AddInvoiceScreen() {
         animationType="slide"
         onRequestClose={() => setShowItemModal(false)}
       >
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}
-          onPress={() => setShowItemModal(false)}
-        >
-          <Pressable
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{
-              backgroundColor: theme.surface,
+              backgroundColor: theme.background,
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
-              padding: 20,
-              maxHeight: '80%',
+              maxHeight: '90%',
+              overflow: 'hidden'
             }}
-            onPress={(e) => e.stopPropagation()}
           >
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ gap: 16 }}>
-                <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text }}>
-                  {editingIndex >= 0 ? 'Edit' : 'Add'} Invoice Item
-                </Text>
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={() => setShowItemModal(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={{ ...getTypographyStyle('lg', 'semibold'), color: theme.text }}>
+                {editingIndex >= 0 ? 'Edit' : 'Add'} Invoice Item
+              </Text>
+            </View>
 
-                <FormInput
-                  label="Description"
-                  value={editingItem?.particulars || ''}
-                  onChangeText={(text: string) => 
-                    setEditingItem({ ...editingItem, particulars: text } as FormInvoiceItem)
-                  }
-                  placeholder="Enter item description"
-                  multiline
-                  required
-                />
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+              <Input
+                label="Description"
+                value={editingItem?.particulars || ''}
+                onChangeText={(text: string) =>
+                  setEditingItem({ ...editingItem, particulars: text } as FormInvoiceItem)
+                }
+                placeholder="Enter item description"
+                multiline
+                required
+              />
 
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <FormInput
-                      label="Quantity"
-                      value={String(editingItem?.quantity || '')}
-                      onChangeText={(text: string) => 
-                        setEditingItem({ ...editingItem, quantity: Number(text) || 0 } as FormInvoiceItem)
-                      }
-                      placeholder="1"
-                      keyboardType="numeric"
-                      required
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <FormInput
-                      label="Unit Price"
-                      value={String(editingItem?.unit_price || '')}
-                      onChangeText={(text: string) => 
-                        setEditingItem({ ...editingItem, unit_price: Number(text) || 0 } as FormInvoiceItem)
-                      }
-                      placeholder="0"
-                      keyboardType="numeric"
-                      prefix="₹"
-                      required
-                    />
-                  </View>
-                </View>
-
-                {editingItem && editingItem.quantity && editingItem.unit_price && (
-                  <View style={{
-                    padding: 12,
-                    backgroundColor: theme.primary + '10',
-                    borderRadius: 8,
-                  }}>
-                    <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                      Amount
-                    </Text>
-                    <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.primary, marginTop: 4 }}>
-                      ₹{((editingItem.quantity || 0) * (editingItem.unit_price || 0)).toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                  <Button
-                    title="Cancel"
-                    onPress={() => {
-                      setShowItemModal(false);
-                      setEditingItem(null);
-                      setEditingIndex(-1);
-                    }}
-                    variant="secondary"
-                    fullWidth
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="Quantity"
+                    value={String(editingItem?.quantity || '')}
+                    onChangeText={(text: string) =>
+                      setEditingItem({ ...editingItem, quantity: Number(text) || 0 } as FormInvoiceItem)
+                    }
+                    placeholder="1"
+                    keyboardType="numeric"
+                    required
                   />
-                  <Button
-                    title={editingIndex >= 0 ? 'Update' : 'Add'}
-                    onPress={handleSaveItem}
-                    fullWidth
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="Unit Price"
+                    value={String(editingItem?.unit_price || '')}
+                    onChangeText={(text: string) =>
+                      setEditingItem({ ...editingItem, unit_price: Number(text) || 0 } as FormInvoiceItem)
+                    }
+                    placeholder="0"
+                    keyboardType="numeric"
+                    required
                   />
                 </View>
               </View>
+
+              {editingItem && editingItem.quantity && editingItem.unit_price && (
+                <View style={{
+                  padding: 12,
+                  backgroundColor: theme.primary + '10',
+                  borderRadius: 8,
+                }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                    Amount
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.primary, marginTop: 4 }}>
+                    ₹{((editingItem.quantity || 0) * (editingItem.unit_price || 0)).toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 20 }}>
+                <Button
+                  title="Cancel"
+                  onPress={() => {
+                    setShowItemModal(false);
+                    setEditingItem(null);
+                    setEditingIndex(-1);
+                  }}
+                  variant="secondary" // Removed fullWidth from secondary variant based on typical patterns or keeping it if valid, keeping fullWidth prop for Layout
+                  fullWidth
+                />
+                <Button
+                  title={editingIndex >= 0 ? 'Update' : 'Add'}
+                  onPress={handleSaveItem}
+                  fullWidth
+                />
+              </View>
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );

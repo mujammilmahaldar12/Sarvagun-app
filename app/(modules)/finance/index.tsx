@@ -1,24 +1,22 @@
 /**
  * Finance Management Screen
  * Professional, modular implementation with proper separation of concerns
- * Includes Sales, Expenses, Invoices, and Vendors
+ * Includes Sales, Expenses, Invoices, Vendors, and Analytics
  */
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, RefreshControl, BackHandler, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, ScrollView, BackHandler, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import { FilterBar } from '@/components';
-import { KPICard } from '@/components';
+import { FilterBar, KPICard } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import financeService from '@/services/finance.service';
-import { getTypographyStyle } from '@/utils/styleHelpers';
 import NotificationBell from '@/components/layout/NotificationBell';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSales, useExpenses } from '@/hooks/useFinanceQueries';
 import { formatCurrency } from '@/utils/formatters';
 
 // Import modular components
@@ -26,8 +24,9 @@ import SalesList from './components/SalesList';
 import ExpensesList from './components/ExpensesList';
 import InvoicesList from './components/InvoicesList';
 import VendorsList from './components/VendorsList';
+import FinanceAnalytics from './components/FinanceAnalytics';
 
-type TabType = 'sales' | 'expenses' | 'invoices' | 'vendors';
+type TabType = 'analytics' | 'sales' | 'expenses' | 'invoices' | 'vendors';
 
 interface Tab {
   key: TabType;
@@ -42,19 +41,34 @@ export default function FinanceManagementScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
 
-  // UI State
+  // UI State - Default to Sales tab
   const [activeTab, setActiveTab] = useState<TabType>('sales');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<any>({});
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch statistics
-  const { data: statistics, refetch: refetchStats } = useQuery({
-    queryKey: ['financeStatistics'],
-    queryFn: () => financeService.getFinanceStatistics(),
-    staleTime: 10 * 60 * 1000,
-  });
+  // Fetch data for KPI cards (uses same React Query cache as FinanceAnalytics)
+  const { data: salesData } = useSales();
+  const { data: expensesData } = useExpenses();
+
+  // Calculate KPI statistics from actual data
+  const kpiStats = useMemo(() => {
+    const sales = (salesData as any)?.results || (Array.isArray(salesData) ? salesData : []);
+    const expenses = (expensesData as any)?.results || (Array.isArray(expensesData) ? expensesData : []);
+
+    const totalSalesAmount = sales.reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0);
+    const totalDiscount = sales.reduce((sum: number, s: any) => sum + Number(s.discount || 0), 0);
+    const totalExpensesAmount = expenses.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
+    const pendingSalesCount = sales.filter((s: any) => s.payment_status === 'pending' || s.payment_status === 'not_yet').length;
+
+    return {
+      totalSales: totalSalesAmount - totalDiscount,
+      totalExpenses: totalExpensesAmount,
+      netProfit: (totalSalesAmount - totalDiscount) - totalExpensesAmount,
+      pendingSales: pendingSalesCount,
+    };
+  }, [salesData, expensesData]);
 
   // Handle back button on Android
   const navigation = useNavigation();
@@ -73,20 +87,20 @@ export default function FinanceManagementScreen() {
     }, [router, navigation])
   );
 
-  // Handle pull-to-refresh for global stats
+  // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        refetchStats(),
-        queryClient.invalidateQueries({ queryKey: [activeTab] })
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ['sales'] });
+      await queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      await queryClient.invalidateQueries({ queryKey: ['vendors'] });
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [activeTab, refetchStats, queryClient]);
+  }, [queryClient]);
 
   // Tab configuration
   const tabs: Tab[] = [
@@ -94,6 +108,7 @@ export default function FinanceManagementScreen() {
     { key: 'expenses', label: 'Expenses', icon: 'receipt-outline' },
     { key: 'invoices', label: 'Invoices', icon: 'document-text-outline' },
     { key: 'vendors', label: 'Vendors', icon: 'people-outline' },
+    { key: 'analytics', label: 'Analytics', icon: 'analytics-outline' },
   ];
 
   // Filter configuration based on active tab
@@ -168,8 +183,6 @@ export default function FinanceManagementScreen() {
 
   const handleTabChange = (key: TabType) => {
     setActiveTab(key);
-    // Optional: Reset filters or keep them if applicable
-    // setFilters({});
   };
 
   const commonProps = {
@@ -178,10 +191,11 @@ export default function FinanceManagementScreen() {
     onRefresh,
   };
 
+  // Header with KPI cards and tabs
   const headerComponent = (
     <View>
       {/* KPI Cards Carousel */}
-      {statistics && (
+      {activeTab !== 'analytics' && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -190,31 +204,32 @@ export default function FinanceManagementScreen() {
         >
           <KPICard
             title="Total Sales"
-            value={formatCurrency(statistics.sales.total_amount || 0)}
+            value={formatCurrency(kpiStats.totalSales)}
             icon="trending-up"
             color="#10b981"
           />
           <KPICard
             title="Total Expenses"
-            value={formatCurrency(statistics.expenses.total_amount || 0)}
+            value={formatCurrency(kpiStats.totalExpenses)}
             icon="trending-down"
             color="#ef4444"
           />
           <KPICard
             title="Net Profit"
-            value={formatCurrency((statistics.sales.total_amount || 0) - (statistics.expenses.total_amount || 0))}
+            value={formatCurrency(kpiStats.netProfit)}
             icon="analytics"
-            color="#6366f1"
+            color={kpiStats.netProfit >= 0 ? "#6366f1" : "#ef4444"}
           />
           <KPICard
             title="Pending Sales"
-            value={statistics.sales.pending_count || 0}
+            value={kpiStats.pendingSales}
             icon="time"
             color="#f59e0b"
           />
         </ScrollView>
       )}
 
+      {/* Tab Navigation */}
       <View style={[styles.tabsContainer, { borderBottomColor: theme.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.tabs}>
@@ -258,6 +273,16 @@ export default function FinanceManagementScreen() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'analytics':
+        return (
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {headerComponent}
+            <FinanceAnalytics />
+          </ScrollView>
+        );
       case 'sales':
         return (
           <SalesList
@@ -348,13 +373,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kpiContainer: {
-    maxHeight: 120,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0', // Pass theme color via props if needed, simpler here
+    maxHeight: 130,
   },
   kpiContent: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     gap: 12,
   },
   tabsContainer: {

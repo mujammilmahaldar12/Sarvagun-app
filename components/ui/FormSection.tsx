@@ -10,7 +10,7 @@ import { getTypographyStyle } from '@/utils/styleHelpers';
 
 interface FormSectionProps {
   title: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   description?: string;
 }
 
@@ -33,9 +33,11 @@ export const FormSection: React.FC<FormSectionProps> = ({
           </Text>
         )}
       </View>
-      <View style={styles.content}>
-        {children}
-      </View>
+      {children && (
+        <View style={styles.content}>
+          {children}
+        </View>
+      )}
     </View>
   );
 };

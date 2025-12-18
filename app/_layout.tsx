@@ -1,6 +1,6 @@
 import "./disable-logs";
 import "./global.css";
-import { Slot } from "expo-router";
+import { Stack } from "expo-router";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -352,7 +352,15 @@ export default function RootLayout() {
             <ErrorBoundary>
               <View style={styles.container}>
                 <NetworkStatusBanner />
-                <Slot />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(dashboard)" />
+                  <Stack.Screen name="(settings)" />
+                  <Stack.Screen name="(modules)" />
+                  <Stack.Screen name="splash" />
+                  <Stack.Screen name="welcome-celebration" />
+                </Stack>
               </View>
             </ErrorBoundary>
           </PushNotificationProvider>

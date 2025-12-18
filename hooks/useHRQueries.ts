@@ -664,7 +664,8 @@ export const useUserProjects = (userId: string | number) => {
     queryKey: userProfileKeys.projects(userId),
     queryFn: () => hrService.getUserProjects(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId,
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -676,7 +677,8 @@ export const useUserSkills = (userId: string | number) => {
     queryKey: userProfileKeys.skills(userId),
     queryFn: () => hrService.getUserSkills(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId,
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -688,7 +690,8 @@ export const useUserCertifications = (userId: string | number) => {
     queryKey: userProfileKeys.certifications(userId),
     queryFn: () => hrService.getUserCertifications(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId,
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -700,7 +703,8 @@ export const useUserPerformance = (userId: string | number) => {
     queryKey: userProfileKeys.performance(userId),
     queryFn: () => hrService.getUserPerformance(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId,
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -712,7 +716,8 @@ export const useUserGoals = (userId: string | number) => {
     queryKey: userProfileKeys.goals(userId),
     queryFn: () => hrService.getUserGoals(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!userId,
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -724,7 +729,8 @@ export const useUserActivities = (userId: string | number, limit: number = 20) =
     queryKey: userProfileKeys.activities(userId),
     queryFn: () => hrService.getUserActivities(userId, limit),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!userId,
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -813,6 +819,8 @@ export const useUserEducation = (userId?: number) => {
   return useQuery({
     queryKey: ['hr', 'user-profile', 'education', userId || 'me'],
     queryFn: () => hrService.getUserEducation(userId || 'me'),
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -823,6 +831,8 @@ export const useUserExperience = (userId?: number) => {
   return useQuery({
     queryKey: ['hr', 'user-profile', 'experience', userId || 'me'],
     queryFn: () => hrService.getUserExperience(userId || 'me'),
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 
@@ -833,6 +843,8 @@ export const useUserSocialLinks = (userId?: number) => {
   return useQuery({
     queryKey: ['hr', 'user-profile', 'social-links', userId || 'me'],
     queryFn: () => hrService.getUserSocialLinks(userId || 'me'),
+    enabled: !!userId && userId !== 0,
+    retry: false, // Don't retry on 404
   });
 };
 

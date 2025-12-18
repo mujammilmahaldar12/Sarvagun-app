@@ -17,12 +17,8 @@ export default function AddVenueScreen() {
 
   // Safe back navigation helper
   const safeGoBack = useCallback(() => {
-    if (navigation.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(modules)/events');
-    }
-  }, [navigation, router]);
+    router.back();
+  }, [router]);
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({

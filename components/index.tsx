@@ -57,11 +57,11 @@ export { NetworkStatusBanner, NetworkStatusIndicator, SyncStatusCard } from './l
 // Real-time Collaboration Components
 export { PresenceIndicator, OnlineUsersList } from './ui/PresenceIndicator';
 export { TypingIndicator, MiniTypingIndicator } from './ui/TypingIndicator';
-export { 
-  ActiveUsersIndicator, 
-  LiveEditingIndicator, 
-  ViewingIndicator, 
-  RealtimeUpdateBadge 
+export {
+  ActiveUsersIndicator,
+  LiveEditingIndicator,
+  ViewingIndicator,
+  RealtimeUpdateBadge
 } from './ui/CollaborationIndicators';
 
 export { FilterBar } from './core/FilterBar';
@@ -130,6 +130,8 @@ export { ExperienceCard } from './ui/ExperienceCard';
 export type { ExperienceCardProps } from './ui/ExperienceCard';
 export { CollaborationTree } from './ui/CollaborationTree';
 export type { CollaborationTreeProps } from './ui/CollaborationTree';
+export { JourneyTimeline } from './ui/JourneyTimeline';
+export type { JourneyEvent } from './ui/JourneyTimeline';
 
 // Events & Module Components
 export { InfoRow } from './ui/InfoRow';
