@@ -62,7 +62,7 @@ export default function LeaveApprovalsScreen() {
                 entering={FadeIn.duration(300)}
                 style={[styles.container, { backgroundColor: theme.background }]}
             >
-                <ModuleHeader title="Leave Approvals" showBack />
+                <ModuleHeader title="Leave Approvals" showBack showNotifications={false} />
                 <View style={styles.centerContent}>
                     <Ionicons name="lock-closed" size={64} color={theme.textSecondary} />
                     <Text style={[getTypographyStyle('lg', 'semibold'), { color: theme.text, marginTop: spacing.md }]}>
@@ -82,26 +82,27 @@ export default function LeaveApprovalsScreen() {
         setRefreshing(false);
     };
 
-    const handleApprove = (leave: LeaveRequest) => {
-        Alert.alert(
-            '✅ Approve Leave',
-            `Approve ${leave.employee_name || 'Employee'}'s ${leave.leave_type} request?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Approve',
-                    style: 'default',
-                    onPress: async () => {
-                        try {
-                            await approveMutation.mutateAsync(leave.id);
-                            Alert.alert('Success', 'Leave approved successfully!');
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to approve leave. Please try again.');
-                        }
-                    },
-                },
-            ]
-        );
+    const handleApprove = (leave: any) => {
+        const employeeName = (leave as any).user_name || leave.employee_name || 'Employee';
+        const leaveTypeName = (leave as any).leave_type_name || leave.leave_type || 'leave';
+
+        console.log('🔵 handleApprove called for leave:', leave.id, employeeName);
+        console.log('📋 Full leave data:', leave);
+        console.log('🚀 DIRECTLY calling approve mutation WITHOUT Alert for leave ID:', leave.id);
+
+        // Call mutation directly WITHOUT Alert to test
+        approveMutation.mutate(leave.id, {
+            onSuccess: (result) => {
+                console.log('✅ Approve mutation successful:', result);
+                Alert.alert('Success', `Leave for ${employeeName} approved successfully!`);
+            },
+            onError: (error: any) => {
+                console.error('❌ Approve error:', error);
+                console.error('❌ Error message:', error?.message);
+                console.error('❌ Error response:', error?.response);
+                Alert.alert('Error', `Failed to approve: ${error?.message || 'Unknown error'}`);
+            }
+        });
     };
 
     const handleRejectClick = (leave: LeaveRequest) => {
@@ -140,7 +141,8 @@ export default function LeaveApprovalsScreen() {
 
     const renderLeaveCard = (leave: LeaveRequest, index: number) => {
         const config = getLeaveConfig(leave.leave_type);
-        const isProcessing = approveMutation.isPending || rejectMutation.isPending;
+        // Only disable a button if THAT specific mutation is pending
+        console.log('🔍 Render card for leave', leave.id, '| Approve pending:', approveMutation.isPending, '| Reject pending:', rejectMutation.isPending);
 
         return (
             <Animated.View
@@ -202,7 +204,7 @@ export default function LeaveApprovalsScreen() {
                     <View style={styles.actionButtons}>
                         <TouchableOpacity
                             onPress={() => handleRejectClick(leave)}
-                            disabled={isProcessing}
+                            disabled={rejectMutation.isPending}
                             style={[styles.actionButton, styles.rejectButton, { borderColor: '#EF4444' }]}
                             activeOpacity={0.7}
                         >
@@ -219,9 +221,12 @@ export default function LeaveApprovalsScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            onPress={() => handleApprove(leave)}
-                            disabled={isProcessing}
-                            style={[styles.actionButton, styles.approveButton, { backgroundColor: '#10B981' }]}
+                            onPress={() => {
+                                console.log('👆 Approve button clicked for leave:', leave.id);
+                                handleApprove(leave);
+                            }}
+                            disabled={approveMutation.isPending}
+                            style={[styles.actionButton, styles.approveButton, { backgroundColor: approveMutation.isPending ? '#86EFAC' : '#10B981' }]}
                             activeOpacity={0.7}
                         >
                             {approveMutation.isPending ? (
@@ -249,6 +254,7 @@ export default function LeaveApprovalsScreen() {
             <ModuleHeader
                 title="Leave Approvals"
                 showBack
+                showNotifications={false}
                 subtitle={pendingLeaves?.length ? `${pendingLeaves.length} pending` : undefined}
             />
 
@@ -318,23 +324,21 @@ export default function LeaveApprovalsScreen() {
 
                         <View style={styles.modalButtons}>
                             <Button
+                                title="Cancel"
                                 variant="outline"
                                 size="md"
                                 onPress={() => setShowRejectModal(false)}
                                 style={{ flex: 1 }}
-                            >
-                                Cancel
-                            </Button>
+                            />
                             <View style={{ width: spacing.sm }} />
                             <Button
-                                variant="filled"
+                                title="Reject"
+                                variant="danger"
                                 size="md"
                                 onPress={handleRejectConfirm}
                                 loading={rejectMutation.isPending}
-                                style={{ flex: 1, backgroundColor: '#EF4444' }}
-                            >
-                                Reject
-                            </Button>
+                                style={{ flex: 1 }}
+                            />
                         </View>
                     </View>
                 </View>

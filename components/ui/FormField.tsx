@@ -17,7 +17,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { spacing, typography, borderRadius } from '../../constants/designSystem';
 
 interface FormFieldProps extends Omit<TextInputProps, 'style'> {
-  label: string;
+  label?: string;
   error?: string;
   required?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
@@ -84,22 +84,24 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <View style={[{ marginBottom: spacing[4] }, containerStyle]}>
       {/* Label */}
-      <Text
-        style={[
-          {
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.semibold,
-            color: theme.text,
-            marginBottom: spacing[1],
-          },
-          labelStyle,
-        ]}
-      >
-        {label}
-        {required && (
-          <Text style={{ color: theme.error }}> *</Text>
-        )}
-      </Text>
+      {label && (
+        <Text
+          style={[
+            {
+              fontSize: typography.sizes.sm,
+              fontWeight: typography.weights.semibold,
+              color: theme.text,
+              marginBottom: spacing[1],
+            },
+            labelStyle,
+          ]}
+        >
+          {label}
+          {required && (
+            <Text style={{ color: theme.error }}> *</Text>
+          )}
+        </Text>
+      )}
 
       {/* Input Container */}
       <View

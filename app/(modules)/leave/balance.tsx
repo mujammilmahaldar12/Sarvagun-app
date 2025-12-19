@@ -163,7 +163,7 @@ export default function LeaveBalanceScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ModuleHeader title="Leave Balance" showBack />
+      <ModuleHeader title="Leave Balance" showBack showNotifications={false} />
 
       <ScrollView
         style={styles.scrollView}

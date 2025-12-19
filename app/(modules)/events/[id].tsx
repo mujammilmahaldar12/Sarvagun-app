@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import TabBar, { Tab } from '@/components/layout/TabBar';
 import { StatusBadge, InfoRow, KPICard, LoadingState } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
@@ -16,7 +15,7 @@ import eventsService from '@/services/events.service';
 import { getTypographyStyle, getCardStyle } from '@/utils/styleHelpers';
 import type { Sales, Expense } from '@/types/events';
 
-type TabType = 'info' | 'timeline' | 'documents';
+// Tabs removed as per user request
 
 // Finance Section Component
 interface DetailSectionProps {
@@ -334,7 +333,7 @@ export default function EventDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
   const user = useAuthStore((state) => state.user);
 
-  const [activeTab, setActiveTab] = useState<TabType>('info');
+  // Tab state removed - showing info directly
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -428,63 +427,59 @@ export default function EventDetailScreen() {
         <View style={{ padding: 16 }}>
           {/* Quick Actions - Only show for pending leads */}
           {item.status === 'pending' && !item.reject && !item.convert && (
-            <Animated.View entering={FadeIn.delay(300)} style={{ gap: 12, marginBottom: 24 }}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  paddingVertical: 16,
-                  borderRadius: 14,
-                  backgroundColor: theme.primary,
-                  shadowColor: theme.primary,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-                onPress={() => router.push(`/(modules)/events/add-event?fromLead=${id}` as any)}
-              >
-                <Ionicons name="checkmark-circle" size={22} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Convert to Event</Text>
-              </TouchableOpacity>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Animated.View entering={FadeIn.delay(300)} style={{ gap: 10, marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity
                   style={{
                     flex: 1,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 8,
-                    paddingVertical: 14,
-                    borderRadius: 12,
+                    gap: 6,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    backgroundColor: theme.primary,
+                  }}
+                  onPress={() => router.push(`/(modules)/events/add-event?fromLead=${id}` as any)}
+                >
+                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Convert</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 0.6,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    paddingVertical: 10,
+                    borderRadius: 10,
                     backgroundColor: theme.surface,
                     borderWidth: 1,
                     borderColor: theme.border,
                   }}
                   onPress={handleEdit}
                 >
-                  <Ionicons name="create-outline" size={20} color={theme.text} />
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Edit</Text>
+                  <Ionicons name="create-outline" size={16} color={theme.text} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={{
-                    flex: 1,
+                    flex: 0.6,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 8,
-                    paddingVertical: 14,
-                    borderRadius: 12,
-                    backgroundColor: '#ef4444' + '10',
+                    gap: 6,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    backgroundColor: '#ef4444' + '15',
                     borderWidth: 1,
-                    borderColor: '#ef4444' + '30',
+                    borderColor: '#ef4444' + '40',
                   }}
                   onPress={handleDelete}
                 >
-                  <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#ef4444' }}>Reject</Text>
+                  <Ionicons name="close-circle-outline" size={16} color="#ef4444" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#ef4444' }}>Reject</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -535,147 +530,247 @@ export default function EventDetailScreen() {
       );
     } else if (itemType === 'events') {
       return (
-        <View style={styles.content}>
+        <View style={{ padding: 16 }}>
           {/* Event Information */}
-          <View style={styles.section}>
-            <Text style={[getTypographyStyle('lg', 'semibold'), { color: theme.text }]}>
-              Event Information
-            </Text>
-            <InfoRow label="Event Name" value={item.name} />
-            <InfoRow label="Status" value={<StatusBadge status={item.status} />} />
-            <InfoRow label="Start Date" value={item.start_date ? new Date(item.start_date).toLocaleDateString('en-IN') : 'N/A'} />
-            <InfoRow label="End Date" value={item.end_date ? new Date(item.end_date).toLocaleDateString('en-IN') : 'N/A'} />
-            <InfoRow label="Created By" value={item.created_by_name || 'N/A'} />
-          </View>
+          <DetailSection title="Event Information" icon="calendar" delay={0}>
+            <DetailRow icon="diamond-outline" label="Event Name" value={item.name} />
+            <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+              <View style={{ width: 20, alignItems: 'center' }}>
+                <Ionicons name="information-circle-outline" size={18} color={theme.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 2 }}>Status</Text>
+                <StatusBadge status={item.status} />
+              </View>
+            </View>
+            <DetailRow icon="calendar-outline" label="Start Date" value={item.start_date ? new Date(item.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+            <DetailRow icon="calendar-outline" label="End Date" value={item.end_date ? new Date(item.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+            <DetailRow icon="heart-outline" label="Event Type" value={item.type_of_event} />
+            <DetailRow icon="pricetags-outline" label="Category" value={item.category} />
+            <DetailRow icon="person-circle-outline" label="Created By" value={item.created_by_name} isLast />
+          </DetailSection>
 
           {/* Client Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Client Information
-            </Text>
-            <InfoRow label="Client Name" value={item.client?.name || 'N/A'} />
-            <InfoRow label="Contact" value={item.client?.number || 'N/A'} />
-            <InfoRow label="Email" value={item.client?.email || 'N/A'} />
-          </View>
+          <DetailSection title="Client Information" icon="person" delay={100}>
+            <DetailRow icon="person-outline" label="Client Name" value={item.client?.name} />
+            <DetailRow icon="call-outline" label="Contact Number" value={item.client?.number} />
+            <DetailRow icon="mail-outline" label="Email Address" value={item.client?.email} isLast />
+          </DetailSection>
 
           {/* Venue Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Venue Information
-            </Text>
-            <InfoRow label="Venue" value={item.venue?.name || 'N/A'} />
-            <InfoRow label="Address" value={item.venue?.address || 'N/A'} />
-            <InfoRow label="Capacity" value={item.venue?.capacity?.toString() || 'N/A'} />
-            <InfoRow label="Contact Person" value={item.venue?.contact_person || 'N/A'} />
-            <InfoRow label="Contact Phone" value={item.venue?.contact_phone || 'N/A'} />
-          </View>
+          <DetailSection title="Venue Information" icon="location" delay={200}>
+            <DetailRow icon="business-outline" label="Venue Name" value={item.venue?.name} />
+            <DetailRow icon="location-outline" label="Address" value={item.venue?.address} />
+            <DetailRow icon="people-outline" label="Capacity" value={item.venue?.capacity ? `${item.venue.capacity} people` : null} />
+            <DetailRow icon="person-outline" label="Contact Person" value={item.venue?.contact_person} />
+            <DetailRow icon="call-outline" label="Contact Phone" value={item.venue?.contact_phone} isLast />
+          </DetailSection>
 
-          {/* Financial Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Financial Information
-            </Text>
-            <InfoRow label="Total Budget" value={item.total_budget ? `₹${item.total_budget.toLocaleString('en-IN')}` : 'N/A'} />
-          </View>
-
-          {/* Sales & Expenses - Enhanced */}
-          <FinanceSection eventId={parseInt(id)} />
-
-          {/* Additional Details */}
+          {/* Active Days */}
           {item.active_days?.length > 0 && (
-            <View style={{ gap: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-                Active Days
-              </Text>
-              <Text style={{ fontSize: 14, color: theme.text }}>
-                {item.active_days.map((day: any) =>
-                  new Date(day.date).toLocaleDateString('en-IN')
-                ).join(', ')}
-              </Text>
-            </View>
+            <Animated.View
+              entering={FadeIn}
+              style={{
+                backgroundColor: theme.surface,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  backgroundColor: theme.primary + '15',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Ionicons name="calendar-clear" size={18} color={theme.primary} />
+                </View>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Active Days ({item.active_days.length})</Text>
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {item.active_days.map((day: any, index: number) => (
+                  <View
+                    key={index}
+                    style={{
+                      backgroundColor: theme.primary + '10',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: theme.primary + '30',
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: theme.primary }}>
+                      {new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
           )}
 
           {/* Vendors Information */}
           {item.vendors?.length > 0 && (
-            <View style={{ gap: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-                Assigned Vendors
-              </Text>
-              {item.vendors.map((vendor: any, index: number) => (
-                <View key={index} style={{
-                  backgroundColor: theme.surface,
-                  padding: 12,
+            <Animated.View
+              entering={FadeIn}
+              style={{
+                backgroundColor: theme.surface,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
                   borderRadius: 8,
-                  borderLeftWidth: 3,
-                  borderLeftColor: theme.primary,
+                  backgroundColor: theme.primary + '15',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: theme.text }}>
-                    {vendor.name}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
-                    {vendor.organization_name}
-                  </Text>
-                  {vendor.category && (
-                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
-                      {vendor.category}
-                    </Text>
-                  )}
+                  <Ionicons name="people" size={18} color={theme.primary} />
                 </View>
-              ))}
-            </View>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Assigned Vendors ({item.vendors.length})</Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                {item.vendors.map((vendor: any, index: number) => (
+                  <View key={index} style={{
+                    backgroundColor: theme.background,
+                    padding: 12,
+                    borderRadius: 10,
+                    borderLeftWidth: 3,
+                    borderLeftColor: theme.primary,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                  }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                      {vendor.name}
+                    </Text>
+                    {vendor.organization_name && (
+                      <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+                        {vendor.organization_name}
+                      </Text>
+                    )}
+                    {vendor.category && (
+                      <View style={{ marginTop: 6 }}>
+                        <Text style={{ fontSize: 11, color: theme.primary, fontWeight: '500' }}>
+                          {vendor.category}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
           )}
         </View>
       );
     } else if (itemType === 'clients') {
       return (
-        <View style={{ padding: 16, gap: 20 }}>
+        <View style={{ padding: 16 }}>
           {/* Client Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Client Information
-            </Text>
-            <InfoRow label="Name" value={item.name} />
-            <InfoRow label="Contact Number" value={item.number || 'N/A'} />
-            <InfoRow label="Email" value={item.email || 'N/A'} />
-            <InfoRow label="Lead Person" value={item.leadperson || 'N/A'} />
-            <InfoRow label="Bookings Count" value={item.bookings_count?.toString() || '0'} />
-          </View>
+          <DetailSection title="Client Information" icon="person" delay={0}>
+            <DetailRow icon="person-outline" label="Client Name" value={item.name} />
+            <DetailRow icon="call-outline" label="Primary Contact" value={item.number} />
+            <DetailRow icon="mail-outline" label="Email Address" value={item.email} />
+            <DetailRow icon="person-circle-outline" label="Lead Person" value={item.leadperson && item.leadperson !== 'nonleadclient' ? item.leadperson : null} />
+            <DetailRow icon="calendar-outline" label="Total Bookings" value={item.bookings_count?.toString() || '0'} isLast />
+          </DetailSection>
 
-          {/* Category & Organisation */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Classification
-            </Text>
-            {item.category?.length > 0 && (
-              <InfoRow label="Categories" value={item.category.map((c: any) => c.name).join(', ')} />
-            )}
-            {item.organisation?.length > 0 && (
-              <InfoRow label="Organisations" value={item.organisation.map((o: any) => o.name).join(', ')} />
-            )}
-          </View>
+          {/* Classification */}
+          {(item.category?.length > 0 || item.organisation?.length > 0) && (
+            <DetailSection title="Classification" icon="pricetag" delay={100}>
+              {item.category?.length > 0 && (
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 6 }}>
+                    Client Categories
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {item.category.map((c: any, index: number) => (
+                      <View
+                        key={index}
+                        style={{
+                          backgroundColor: theme.primary + '15',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: theme.primary + '30',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>
+                          {c.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              {item.organisation?.length > 0 && (
+                <View>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 6 }}>
+                    Associated Organizations
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {item.organisation.map((o: any, index: number) => (
+                      <View
+                        key={index}
+                        style={{
+                          backgroundColor: theme.surface,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: theme.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '500', color: theme.text }}>
+                          {o.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </DetailSection>
+          )}
         </View>
       );
     } else if (itemType === 'venues') {
       return (
-        <View style={{ padding: 16, gap: 20 }}>
+        <View style={{ padding: 16 }}>
           {/* Venue Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Venue Information
-            </Text>
-            <InfoRow label="Name" value={item.name} />
-            <InfoRow label="Address" value={item.address || 'N/A'} />
-            <InfoRow label="Capacity" value={item.capacity?.toString() || 'N/A'} />
-          </View>
+          <DetailSection title="Venue Information" icon="location" delay={0}>
+            <DetailRow icon="business-outline" label="Venue Name" value={item.name} />
+            <DetailRow icon="location-outline" label="Full Address" value={item.address} />
+            <DetailRow
+              icon="people-outline"
+              label="Maximum Capacity"
+              value={item.capacity ? `${item.capacity} people` : null}
+            />
+            <DetailRow icon="home-outline" label="Venue Type" value={item.type_of_venue ? item.type_of_venue.charAt(0).toUpperCase() + item.type_of_venue.slice(1) : null} />
+            <DetailRow icon="map-outline" label="Region" value={item.region} isLast />
+          </DetailSection>
 
           {/* Contact Information */}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: theme.text }}>
-              Contact Information
-            </Text>
-            <InfoRow label="Contact Person" value={item.contact_person || 'N/A'} />
-            <InfoRow label="Contact Phone" value={item.contact_phone || 'N/A'} />
-          </View>
+          <DetailSection title="Contact Information" icon="call" delay={100}>
+            <DetailRow icon="person-outline" label="Contact Person" value={item.contact_person} />
+            <DetailRow icon="call-outline" label="Contact Phone" value={item.contact_phone} />
+            <DetailRow icon="construct-outline" label="Available Facilities" value={item.facilities} isLast />
+          </DetailSection>
+
+          {/* Additional Details */}
+          <DetailSection title="Additional Details" icon="information-circle" delay={200}>
+            <DetailRow icon="person-circle-outline" label="Created By" value={item.created_by?.name || item.created_by?.username || 'N/A'} isLast />
+          </DetailSection>
         </View>
       );
     }
@@ -683,27 +778,7 @@ export default function EventDetailScreen() {
     return null;
   };
 
-  const renderTimelineTab = () => (
-    <View style={styles.content}>
-      <Text style={[getTypographyStyle('base', 'regular'), { color: theme.textSecondary, textAlign: 'center', marginTop: spacing.xl }]}>
-        Timeline coming soon
-      </Text>
-    </View>
-  );
-
-  const renderDocumentsTab = () => (
-    <View style={styles.content}>
-      <Text style={[getTypographyStyle('base', 'regular'), { color: theme.textSecondary, textAlign: 'center', marginTop: spacing.xl }]}>
-        Documents coming soon
-      </Text>
-    </View>
-  );
-
-  const tabs = [
-    { key: 'info' as TabType, label: 'Info' },
-    { key: 'timeline' as TabType, label: 'Timeline' },
-    { key: 'documents' as TabType, label: 'Documents' },
-  ];
+  // Tab functions removed - showing info directly
 
   if (loading) {
     return (
@@ -807,13 +882,7 @@ export default function EventDetailScreen() {
         }
       />
 
-      {/* Tabs */}
-      <TabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={(key) => setActiveTab(key as TabType)}
-        variant="underline"
-      />
+      {/* Tab bar removed as per user request */}
 
       {/* Content */}
       <ScrollView
@@ -821,9 +890,7 @@ export default function EventDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'info' && renderInfoTab()}
-        {activeTab === 'timeline' && renderTimelineTab()}
-        {activeTab === 'documents' && renderDocumentsTab()}
+        {renderInfoTab()}
       </ScrollView>
     </View>
   );

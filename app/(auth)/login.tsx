@@ -56,8 +56,10 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      await login(username.trim(), password);
-      router.replace("/(dashboard)/home");
+      const success = await login(username.trim(), password);
+      if (success) {
+        router.replace("/(dashboard)/home");
+      }
     } catch (error: any) {
       console.error("Login error:", error);
       const message = error?.message || "Invalid credentials. Please try again.";

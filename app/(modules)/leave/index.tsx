@@ -490,7 +490,6 @@ export default function LeaveManagementScreen() {
             <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
               <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
             </TouchableOpacity>
-            <NotificationBell size={22} color={theme.text} />
             {/* Approvals Button for Admin/HR */}
             {canApprove && (
               <TouchableOpacity

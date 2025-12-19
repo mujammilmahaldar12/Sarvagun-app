@@ -112,16 +112,18 @@ export interface LeadConvertPayload {
 
 export interface CreateClientRequest {
     name: string;
+    contact_person: string;
     email: string;
-    number: string;
-    client_category: number[];
-    organisation?: number[];
+    phone: string;
+    address?: string;
+    category_ids: number[];
+    organisation_ids?: number[];
 }
 
 export interface CreateVenueRequest {
     name: string;
     address: string;
-    capacity?: number;
+    capacity: number; // Required - backend model requires this
     type_of_venue?: string;
     region?: string;
     contact_person?: string;

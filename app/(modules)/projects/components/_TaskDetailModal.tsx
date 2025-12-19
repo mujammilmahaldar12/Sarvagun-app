@@ -42,6 +42,7 @@ interface TaskDetailModalProps {
     onSave: (taskId: number, data: any) => void;
     canRate: boolean;
     userId?: number;
+    isTeamLeadView?: boolean; // True when viewing team member tasks
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
@@ -57,6 +58,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     onSave,
     canRate,
     userId,
+    isTeamLeadView = false,
 }) => {
     const { theme } = useTheme();
     const [isEditing, setIsEditing] = React.useState(false);
@@ -107,8 +109,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const priorityLabel = getPriorityLabel(task.priority_level);
     const formattedDate = formatDueDate(task.due_date);
 
-    // Can show rate button if user can rate and task is complete and not own task
-    const showRateButton = canRate && isCompleted && task.user !== userId;
+    // Show rate button: user must have permission, task completed, AND not their own task
+    const isOwnTask = task.user === userId;
+    const showRateButton = canRate && isCompleted && !isOwnTask;
+
+    // Debug logging for rate button visibility
+    console.log('🔍 Show Rate Button Debug:', {
+        canRate,
+        isCompleted,
+        taskUser: task.user,
+        currentUserId: userId,
+        isOwnTask,
+        showRateButton,
+        taskTitle: task.task_title,
+        taskStatus: task.status
+    });
 
     return (
         <Modal
@@ -132,7 +147,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <Text style={[styles.headerTitle, { color: theme.text }]}>Task Details</Text>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {!isEditing && (
+                            {!isEditing && !isTeamLeadView && (
                                 <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.headerActionButton}>
                                     <Ionicons name="pencil" size={20} color={theme.text} />
                                 </TouchableOpacity>

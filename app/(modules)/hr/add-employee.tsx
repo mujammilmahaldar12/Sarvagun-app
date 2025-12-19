@@ -77,7 +77,7 @@ export default function AddEmployeeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Add Employee" />
+      <ModuleHeader title="Add Employee" showNotifications={false} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

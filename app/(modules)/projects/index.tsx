@@ -36,6 +36,7 @@ import {
     useUpdateTask,
     useDeleteTask,
     useCreateSection,
+    useUpdateSection,
     useDeleteSection,
     useUpdateProject,
     useDeleteProject,
@@ -48,6 +49,7 @@ import { useAuthStore } from '@/store/authStore';
 import { SwipeableTaskRow } from './components/_SwipeableTaskRow';
 import { UrgencySection } from './components/_UrgencySection';
 import { TaskDetailModal } from './components/_TaskDetailModal';
+import { ConfirmDialog } from './components/_ConfirmDialog';
 import {
     groupTasksByUrgency,
     URGENCY_SECTIONS,
@@ -121,6 +123,11 @@ export default function ProjectsScreen() {
     const [editProjectName, setEditProjectName] = useState('');
     const [editProjectDescription, setEditProjectDescription] = useState('');
 
+    // Section edit
+    const [showEditSection, setShowEditSection] = useState(false);
+    const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
+    const [editSectionName, setEditSectionName] = useState('');
+
     // Rating
     const [showRating, setShowRating] = useState(false);
     const [selectedTaskForRating, setSelectedTaskForRating] = useState<Task | null>(null);
@@ -131,6 +138,14 @@ export default function ProjectsScreen() {
     // Task Detail Modal
     const [showTaskDetail, setShowTaskDetail] = useState(false);
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null);
+
+    // Confirm dialogs
+    const [showDeleteTaskConfirm, setShowDeleteTaskConfirm] = useState(false);
+    const [showDeleteSectionConfirm, setShowDeleteSectionConfirm] = useState(false);
+    const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+    const [sectionToDelete, setSectionToDelete] = useState<{ id: number, name: string } | null>(null);
+    const [projectToDelete, setProjectToDelete] = useState<{ id: number, name: string } | null>(null);
 
     // Data hooks
     const { data: myProjects, isLoading: myProjectsLoading, refetch: refetchMyProjects } = useMyProjects();
@@ -154,6 +169,7 @@ export default function ProjectsScreen() {
 
     // Mutations
     const createSectionMutation = useCreateSection();
+    const updateSectionMutation = useUpdateSection();
     const deleteSectionMutation = useDeleteSection();
     const createTaskMutation = useCreateTask();
     const deleteTaskMutation = useDeleteTask();
@@ -166,12 +182,25 @@ export default function ProjectsScreen() {
     const isLeadOrAdmin = user?.category === 'admin' || user?.category === 'manager';
     const canRateTasks = isLeadOrAdmin || (isTeamLead && teamMemberId);
 
-    // Auto-select first project
+    // Debug logging for rating permissions
+    console.log('🔍 Rating Permission Debug:', {
+        userCategory: user?.category,
+        userId: user?.id,
+        isLeadOrAdmin,
+        canRateTasks,
+        isTeamLead,
+        teamMemberId
+    });
+
+    // Auto-select first project (newest = highest ID)
     useEffect(() => {
         if (projectsList.length > 0 && !selectedProject) {
-            setSelectedProject(projectsList[0]);
+            // Sort by ID descending to get the newest project first
+            const sortedProjects = [...projectsList].sort((a, b) => b.id - a.id);
+            setSelectedProject(sortedProjects[0]);
         }
     }, [projectsList]);
+
 
     // Flatten all tasks from sections
     const allTasks = useMemo(() => {
@@ -278,12 +307,32 @@ export default function ProjectsScreen() {
         });
     }, [updateTaskMutation, refetchSections]);
 
-    // Handle delete task
+    // Handle delete task - Show confirmation dialog
     const handleDeleteTask = useCallback((taskId: number) => {
-        deleteTaskMutation.mutate(taskId, {
-            onSuccess: () => refetchSections()
+        console.log('🗑️ handleDeleteTask called with taskId:', taskId);
+        setTaskToDelete(taskId);
+        setShowDeleteTaskConfirm(true);
+    }, []);
+
+    // Confirm delete task
+    const confirmDeleteTask = useCallback(() => {
+        if (!taskToDelete) return;
+
+        console.log('🗑️ Confirmed: Deleting task', taskToDelete);
+        deleteTaskMutation.mutate(taskToDelete, {
+            onSuccess: () => {
+                console.log('✅ Task deleted successfully');
+                refetchSections();
+                setShowDeleteTaskConfirm(false);
+                setTaskToDelete(null);
+            },
+            onError: (error: any) => {
+                console.error('❌ Task delete failed:', error);
+                Alert.alert('Error', 'Failed to delete task. Please try again.');
+                setShowDeleteTaskConfirm(false);
+            }
         });
-    }, [deleteTaskMutation, refetchSections]);
+    }, [taskToDelete, deleteTaskMutation, refetchSections]);
 
     // Handle task press - open detail modal
     const handleTaskPress = useCallback((task: Task) => {
@@ -414,31 +463,105 @@ export default function ProjectsScreen() {
         });
     }, [editProjectName, editProjectDescription, selectedProject, updateProjectMutation, refetchProjects]);
 
+    // Handle delete project - Show confirmation dialog
     const handleDeleteProject = useCallback(() => {
-        if (!selectedProject) return;
+        if (!selectedProject) {
+            console.warn('⚠️ No project selected for delete');
+            return;
+        }
 
-        Alert.alert(
-            'Delete Project',
-            `Are you sure you want to delete "${selectedProject.project_name}"?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        deleteProjectMutation.mutate(selectedProject.id, {
-                            onSuccess: () => {
-                                const remaining = projectsList.filter(p => p.id !== selectedProject.id);
-                                setSelectedProject(remaining.length > 0 ? remaining[0] : null);
-                                setShowProjectDropdown(false);
-                                refetchProjects();
-                            }
-                        });
-                    }
-                }
-            ]
-        );
-    }, [selectedProject, projectsList, deleteProjectMutation, refetchProjects]);
+        console.log('🗑️ handleDeleteProject called for:', selectedProject.project_name);
+        setProjectToDelete({ id: selectedProject.id, name: selectedProject.project_name });
+        setShowDeleteProjectConfirm(true);
+    }, [selectedProject]);
+
+    // Confirm delete project
+    const confirmDeleteProject = useCallback(() => {
+        if (!projectToDelete) return;
+
+        console.log('🗑️ Confirmed: Deleting project', projectToDelete.name);
+        deleteProjectMutation.mutate(projectToDelete.id, {
+            onSuccess: () => {
+                console.log('✅ Project deleted successfully');
+                const remaining = projectsList.filter(p => p.id !== projectToDelete.id);
+                setSelectedProject(remaining.length > 0 ? remaining[0] : null);
+                setShowProjectDropdown(false);
+                setShowDeleteProjectConfirm(false);
+                setProjectToDelete(null);
+                refetchProjects();
+            },
+            onError: (error: any) => {
+                console.error('❌ Project delete failed:', error);
+                Alert.alert('Error', 'Failed to delete project. Please try again.');
+                setShowDeleteProjectConfirm(false);
+            }
+        });
+    }, [projectToDelete, projectsList, deleteProjectMutation, refetchProjects]);
+
+    // Handle edit section
+    const handleEditSection = useCallback((sectionId: number, currentName: string) => {
+        setEditingSectionId(sectionId);
+        setEditSectionName(currentName);
+        setShowEditSection(true);
+    }, []);
+
+    // Handle update section
+    const handleUpdateSection = useCallback(() => {
+        if (!editSectionName.trim() || !editingSectionId) {
+            Alert.alert('Validation', 'Please enter a section name');
+            return;
+        }
+
+        updateSectionMutation.mutate({
+            sectionId: editingSectionId,
+            data: { section_name: editSectionName.trim() }
+        }, {
+            onSuccess: () => {
+                console.log('✅ Section updated successfully');
+                setShowEditSection(false);
+                setEditingSectionId(null);
+                setEditSectionName('');
+                refetchSections();
+            },
+            onError: (error) => {
+                console.error('❌ Section update failed:', error);
+                Alert.alert('Error', 'Failed to update section. Please try again.');
+            }
+        });
+    }, [editSectionName, editingSectionId, updateSectionMutation, refetchSections]);
+
+    // Handle delete section - Show confirmation dialog
+    const handleDeleteSection = useCallback((sectionId: number) => {
+        console.log('🗑️ handleDeleteSection called with sectionId:', sectionId);
+        const section = sectionsList.find(s => s.id === sectionId);
+        if (!section) {
+            console.warn('⚠️ Section not found:', sectionId);
+            return;
+        }
+
+        setSectionToDelete({ id: sectionId, name: section.section_name });
+        setShowDeleteSectionConfirm(true);
+    }, [sectionsList]);
+
+    // Confirm delete section  
+    const confirmDeleteSection = useCallback(() => {
+        if (!sectionToDelete) return;
+
+        console.log('🗑️ Confirmed: Deleting section', sectionToDelete.name);
+        deleteSectionMutation.mutate(sectionToDelete.id, {
+            onSuccess: () => {
+                console.log('✅ Section deleted successfully');
+                setShowDeleteSectionConfirm(false);
+                setSectionToDelete(null);
+                refetchSections();
+            },
+            onError: (error: any) => {
+                console.error('❌ Section delete failed:', error);
+                Alert.alert('Error', 'Failed to delete section. Please try again.');
+                setShowDeleteSectionConfirm(false);
+            }
+        });
+    }, [sectionToDelete, deleteSectionMutation, refetchSections]);
 
     // Handle add task from section header
     const handleAddTaskFromSection = useCallback((sectionId: number) => {
@@ -487,8 +610,10 @@ export default function ProjectsScreen() {
 
             // determine if we should show this section
             // Show if it has tasks OR if we are in 'all' view with no dropdown filter (to show empty sections)
-            // But actually, for cleaner view, let's only show if tasks exist or if it's the specific filtered section
-            const shouldShow = sectionTasks.length > 0 || (selectedSectionFilter === section.id);
+            // OR if it's the specific filtered section
+            const shouldShow = sectionTasks.length > 0
+                || (selectedSectionFilter === section.id)
+                || (selectedSectionFilter === null && filterTab === 'all');
 
             if (shouldShow) {
                 // Add Section Header (The "Thread Starter")
@@ -535,6 +660,8 @@ export default function ProjectsScreen() {
                     onToggle={() => toggleSection(item.sectionId)}
                     sectionId={item.sectionId}
                     onAddTask={handleAddTaskFromSection}
+                    onEdit={handleEditSection}
+                    onDelete={handleDeleteSection}
                 />
             );
         }
@@ -599,7 +726,7 @@ export default function ProjectsScreen() {
             <Animated.View entering={FadeIn.duration(300)} style={{ flex: 1 }}>
                 <View style={[styles.container, { backgroundColor: theme.background }]}>
                     <ModuleHeader
-                        title={isTeamLead && teamMemberName ? `${teamMemberName}'s Tasks` : "Task Tracker"}
+                        title={isTeamLead && teamMemberName ? `Rating ${decodeURIComponent(teamMemberName)}'s Tasks` : "Task Tracker"}
                     />
 
                     <View style={styles.content}>
@@ -886,7 +1013,7 @@ export default function ProjectsScreen() {
                                 </Text>
 
                                 {/* Section Selector */}
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
                                     <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Section *</Text>
                                     <TouchableOpacity
                                         onPress={() => setShowAddSection(true)}
@@ -895,39 +1022,56 @@ export default function ProjectsScreen() {
                                         <Ionicons name="add" size={16} color="#fff" />
                                     </TouchableOpacity>
                                 </View>
-                                <View style={[styles.sectionPickerContainer, { borderColor: theme.border }]}>
-                                    {sectionsList.map((section) => (
-                                        <TouchableOpacity
-                                            key={section.id}
-                                            onPress={() => setSelectedSectionForTask(section.id)}
-                                            style={[
-                                                styles.sectionChip,
-                                                { backgroundColor: selectedSectionForTask === section.id ? theme.primary : theme.background }
-                                            ]}
-                                        >
-                                            <Text style={{
-                                                color: selectedSectionForTask === section.id ? '#fff' : theme.text,
-                                                fontSize: typography.sizes.xs,
-                                                fontWeight: '600'
-                                            }}>
-                                                {section.section_name}
+                                {selectedSectionForTask ? (
+                                    <View style={[styles.selectedSectionDisplay, { backgroundColor: theme.primary + '15', borderColor: theme.primary, marginBottom: spacing.md }]}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                            <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+                                            <Text style={{ color: theme.primary, fontSize: typography.sizes.sm, fontWeight: '600', flex: 1 }}>
+                                                {sectionsList.find(s => s.id === selectedSectionForTask)?.section_name}
                                             </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedSectionForTask(null)}
+                                            style={{ padding: 4 }}
+                                        >
+                                            <Text style={{ color: theme.textSecondary, fontSize: typography.sizes.xs }}>Change</Text>
                                         </TouchableOpacity>
-                                    ))}
-                                </View>
+                                    </View>
+                                ) : (
+                                    <View style={[styles.sectionPickerContainer, { borderColor: theme.border, marginBottom: spacing.md }]}>
+                                        {sectionsList.map((section) => (
+                                            <TouchableOpacity
+                                                key={section.id}
+                                                onPress={() => setSelectedSectionForTask(section.id)}
+                                                style={[
+                                                    styles.sectionChip,
+                                                    { backgroundColor: theme.background }
+                                                ]}
+                                            >
+                                                <Text style={{
+                                                    color: theme.text,
+                                                    fontSize: typography.sizes.xs,
+                                                    fontWeight: '600'
+                                                }}>
+                                                    {section.section_name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
 
                                 <TextInput
                                     value={newTaskTitle}
                                     onChangeText={setNewTaskTitle}
                                     placeholder="Task title *"
                                     placeholderTextColor={theme.textTertiary}
-                                    style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                                    style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginBottom: spacing.md }]}
                                 />
 
                                 {/* Due Date */}
                                 <TouchableOpacity
                                     onPress={() => setShowDatePicker(true)}
-                                    style={[styles.input, styles.dateInput, { backgroundColor: theme.background, borderColor: theme.border }]}
+                                    style={[styles.input, styles.dateInput, { backgroundColor: theme.background, borderColor: theme.border, marginBottom: spacing.md }]}
                                 >
                                     <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
                                     <Text style={{ color: newTaskDueDate ? theme.text : theme.textTertiary, marginLeft: 8 }}>
@@ -936,8 +1080,8 @@ export default function ProjectsScreen() {
                                 </TouchableOpacity>
 
                                 {/* Priority Dropdown */}
-                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Priority</Text>
-                                <View style={{ zIndex: 10 }}>
+                                <Text style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: spacing.xs }]}>Priority</Text>
+                                <View style={{ zIndex: 10, marginBottom: spacing.md }}>
                                     <TouchableOpacity
                                         onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}
                                         style={[styles.dropdownButton, { borderColor: theme.border, backgroundColor: theme.background }]}
@@ -1103,6 +1247,40 @@ export default function ProjectsScreen() {
                         </View>
                     </Modal>
 
+                    {/* Edit Section Modal */}
+                    <Modal visible={showEditSection} transparent animationType="fade">
+                        <View style={styles.modalOverlay}>
+                            <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+                                <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Section</Text>
+                                <TextInput
+                                    value={editSectionName}
+                                    onChangeText={setEditSectionName}
+                                    placeholder="Section name *"
+                                    placeholderTextColor={theme.textTertiary}
+                                    style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                                    autoFocus
+                                />
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity
+                                        onPress={() => setShowEditSection(false)}
+                                        style={[styles.modalButton, { backgroundColor: theme.border }]}
+                                    >
+                                        <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={handleUpdateSection}
+                                        disabled={updateSectionMutation.isPending}
+                                        style={[styles.modalButton, { backgroundColor: theme.primary }]}
+                                    >
+                                        <Text style={styles.modalButtonTextWhite}>
+                                            {updateSectionMutation.isPending ? 'Updating...' : 'Update'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
+
                     {/* Rating Modal */}
                     <Modal visible={showRating} transparent animationType="fade">
                         <View style={styles.modalOverlay}>
@@ -1207,8 +1385,40 @@ export default function ProjectsScreen() {
                         }}
                         canRate={!!canRateTasks}
                         userId={user?.id}
+                        isTeamLeadView={isTeamLead && !!teamMemberId}
                         sections={sectionsList}
                         priorities={prioritiesList}
+                    />
+
+                    {/* Delete Confirmations */}
+                    <ConfirmDialog
+                        visible={showDeleteTaskConfirm}
+                        title="Delete Task?"
+                        message="Are you sure you want to delete this task? This action cannot be undone."
+                        confirmText="Delete"
+                        cancelText="Cancel"
+                        onConfirm={confirmDeleteTask}
+                        onCancel={() => setShowDeleteTaskConfirm(false)}
+                    />
+
+                    <ConfirmDialog
+                        visible={showDeleteSectionConfirm}
+                        title="Delete Section?"
+                        message={`Are you sure you want to delete "${sectionToDelete?.name}"? All tasks in this section will also be deleted.`}
+                        confirmText="Delete"
+                        cancelText="Cancel"
+                        onConfirm={confirmDeleteSection}
+                        onCancel={() => setShowDeleteSectionConfirm(false)}
+                    />
+
+                    <ConfirmDialog
+                        visible={showDeleteProjectConfirm}
+                        title="Delete Project?"
+                        message={`Are you sure you want to delete "${projectToDelete?.name}"? This will delete all sections and tasks in this project.`}
+                        confirmText="Delete"
+                        cancelText="Cancel"
+                        onConfirm={confirmDeleteProject}
+                        onCancel={() => setShowDeleteProjectConfirm(false)}
                     />
                 </View>
             </Animated.View>
@@ -1617,5 +1827,14 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.sm,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    selectedSectionDisplay: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: spacing.sm,
+        borderRadius: borderRadius.md,
+        borderWidth: 1,
+        marginTop: spacing.xs,
     }
 });

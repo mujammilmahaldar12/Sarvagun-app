@@ -203,7 +203,7 @@ export default function AddExpenseScreen() {
   if (expenseLoading && isEditMode) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <ModuleHeader title="Edit Expense" showBack />
+        <ModuleHeader title="Edit Expense" showBack showNotifications={false} />
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -213,7 +213,7 @@ export default function AddExpenseScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title={isEditMode ? 'Edit Expense' : 'Add Expense'} showBack />
+      <ModuleHeader title={isEditMode ? 'Edit Expense' : 'Add Expense'} showBack showNotifications={false} />
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         <Select

@@ -7,11 +7,13 @@ import { designSystem } from '@/constants/designSystem';
 import { ModuleHeader } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useCreateProject } from '@/hooks/useProjectQueries';
+import { Toast, useToast } from '@/components/ui/Toast';
 
 const { spacing, borderRadius, typography } = designSystem;
 
 export default function CreateProjectScreen() {
   const { theme } = useTheme();
+  const { toast, showToast, hideToast } = useToast();
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'On Track' | 'At Risk' | 'Off Track' | 'On Hold' | 'Completed'>('On Track');
@@ -21,7 +23,7 @@ export default function CreateProjectScreen() {
 
   const statusOptions: ('On Track' | 'At Risk' | 'Off Track' | 'On Hold' | 'Completed')[] = [
     'On Track',
-    'At Risk', 
+    'At Risk',
     'Off Track',
     'On Hold',
     'Completed'
@@ -45,16 +47,20 @@ export default function CreateProjectScreen() {
     }
 
     try {
-      await createProjectMutation.mutateAsync({
+      const newProject = await createProjectMutation.mutateAsync({
         project_name: projectName.trim(),
         description: description.trim(),
         status,
         starred
       });
 
-      Alert.alert('Success', 'Project created successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      // Show success toast
+      showToast('Project created successfully! 🎉', 'success');
+
+      // Navigate back to projects screen after a short delay
+      setTimeout(() => {
+        router.replace('/projects');
+      }, 500);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to create project');
     }
@@ -62,9 +68,15 @@ export default function CreateProjectScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       <ModuleHeader title="Create Project" showBack />
 
-      <ScrollView 
+      <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing.lg }}
       >
@@ -182,10 +194,10 @@ export default function CreateProjectScreen() {
             </Text>
           </View>
           <TouchableOpacity onPress={() => setStarred(!starred)}>
-            <Ionicons 
-              name={starred ? 'star' : 'star-outline'} 
-              size={28} 
-              color={starred ? '#F59E0B' : theme.textSecondary} 
+            <Ionicons
+              name={starred ? 'star' : 'star-outline'}
+              size={28}
+              color={starred ? '#F59E0B' : theme.textSecondary}
             />
           </TouchableOpacity>
         </View>

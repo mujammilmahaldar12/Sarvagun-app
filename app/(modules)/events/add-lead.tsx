@@ -17,15 +17,17 @@ export default function AddLeadScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ leadId?: string }>();
-  const user = useAuthStore((state) => state.user);
+  const params = useLocalSearchParams<{ leadId?: string; id?: string }>();
 
-  // Extract leadId - handle both string and array cases
-  const leadId = params.leadId ? (Array.isArray(params.leadId) ? params.leadId[0] : params.leadId) : undefined;
+  // Extract leadId - handle both string and array cases, and accept both 'leadId' and 'id' params
+  const rawLeadId = params.leadId || params.id;
+  const leadId = rawLeadId ? (Array.isArray(rawLeadId) ? rawLeadId[0] : rawLeadId) : undefined;
   const isEditMode = !!leadId;
 
   console.log('📝 AddLeadScreen mounted. Params:', JSON.stringify(params));
-  console.log('🆔 leadId:', leadId, '| isEditMode:', isEditMode);
+  console.log('🆔 Raw leadId from params:', params.leadId, '| Raw id from params:', params.id);
+  console.log('🆔 Extracted leadId:', leadId, '| isEditMode:', isEditMode);
+  console.log('🆔 leadId type:', typeof leadId);
 
   // Safe back navigation helper
   const safeGoBack = useCallback(() => {
@@ -107,19 +109,45 @@ export default function AddLeadScreen() {
   const fetchLeadDetails = async (id: number) => {
     setLoading(true);
     try {
+      console.log('🔍 Fetching lead details for ID:', id);
       const lead = await eventsService.getLeadById(id);
+      console.log('📦 Lead data received:', JSON.stringify(lead, null, 2));
 
       const leadAny = lead as any;
-      const eventData = lead.event && typeof lead.event === 'object' ? lead.event as any : null;
+      let eventData = null;
 
-      // Parse dates
+      // Check if we have an event_id to fetch event details
+      if (leadAny.event_id) {
+        console.log('🎯 Event ID found:', leadAny.event_id, '- fetching event details...');
+        try {
+          eventData = await eventsService.getEvent(leadAny.event_id);
+          console.log('📦 Event data fetched:', JSON.stringify(eventData, null, 2));
+        } catch (eventError) {
+          console.warn('⚠️ Could not fetch event details:', eventError);
+        }
+      }
+
+      console.log('📅 Event data:', eventData);
+      console.log('📅 Lead data fields:', {
+        start_date: leadAny.start_date,
+        end_date: leadAny.end_date,
+        type_of_event: leadAny.type_of_event,
+        active_days: eventData?.active_days
+      });
+
+      // Parse dates - prioritize event data if available
       const startDate = eventData?.start_date ? new Date(eventData.start_date) :
         (leadAny.start_date ? new Date(leadAny.start_date) : null);
       const endDate = eventData?.end_date ? new Date(eventData.end_date) :
         (leadAny.end_date ? new Date(leadAny.end_date) : null);
 
-      // Handle event_dates
-      const eventDates = eventData?.event_dates?.map((d: any) => new Date(d.date)) || [];
+      console.log('📅 Parsed dates:', { startDate, endDate });
+
+      // Handle active_days - the API returns 'active_days', not 'event_dates'
+      const activeDaysArray = eventData?.active_days || eventData?.event_dates || leadAny.active_days || leadAny.event_dates || [];
+      const eventDates = activeDaysArray.map((d: any) => new Date(d.date || d));
+
+      console.log('📅 Active dates:', eventDates);
 
       setActiveDates(eventDates);
 
@@ -133,7 +161,7 @@ export default function AddLeadScreen() {
 
       setFormData(prev => ({
         ...prev,
-        // Event Info
+        // Event Info - prioritize event data
         company: eventData?.company || leadAny.company || 'redmagic events',
         startDate: startDate,
         endDate: endDate,
@@ -160,8 +188,10 @@ export default function AddLeadScreen() {
         message: lead.message || '',
       }));
 
+      console.log('✅ Form data updated with lead details');
+
     } catch (error: any) {
-      console.error('Error fetching lead:', error);
+      console.error('❌ Error fetching lead:', error);
       Alert.alert('Error', 'Failed to fetch lead details');
     } finally {
       setLoading(false);
@@ -286,9 +316,9 @@ export default function AddLeadScreen() {
         console.log('🔄 Updating lead:', leadId);
         const result = await eventsService.updateLead(Number(leadId), payload);
         console.log('✅ Lead updated successfully:', result);
-        Alert.alert('Success', 'Lead updated successfully', [
-          { text: 'OK', onPress: safeGoBack }
-        ]);
+
+        // Navigate back immediately
+        safeGoBack();
       } else {
         // CREATE NEW LEAD
         if (clientMode === 'select') {
@@ -308,9 +338,9 @@ export default function AddLeadScreen() {
           console.log('✅ Lead created (with new client):', result);
         }
 
-        Alert.alert('Success', 'Lead added successfully', [
-          { text: 'OK', onPress: safeGoBack }
-        ]);
+        // SUCCESS - Navigate back immediately
+        console.log('✅ Lead operation successful, navigating back');
+        safeGoBack();
       }
     } catch (error: any) {
       console.error('❌ Error creating lead:', error);
@@ -343,6 +373,7 @@ export default function AddLeadScreen() {
           title={isEditMode ? "Edit Lead" : "Add Lead"}
           showBack
           onBack={safeGoBack}
+          showNotifications={false}
         />
 
         <ScrollView
@@ -634,13 +665,17 @@ export default function AddLeadScreen() {
           {/* Submit Button */}
           <View style={styles.submitContainer}>
             <Button
-              title={loading ? 'Creating Lead...' : 'Create Lead'}
+              title={
+                loading
+                  ? (isEditMode ? 'Updating Lead...' : 'Creating Lead...')
+                  : (isEditMode ? 'Update Lead' : 'Create Lead')
+              }
               onPress={handleSubmit}
               disabled={loading}
               loading={loading}
               size="md"
               shape="pill"
-              leftIcon={loading ? undefined : "checkmark-circle"}
+              leftIcon={loading ? undefined : (isEditMode ? "checkmark-circle" : "checkmark-circle")}
             />
             {loading && (
               <View style={{ marginTop: spacing.sm, alignItems: 'center' }}>

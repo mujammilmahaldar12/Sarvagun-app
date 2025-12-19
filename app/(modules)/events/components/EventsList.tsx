@@ -32,7 +32,6 @@ interface EventRowData {
   endDate: string;
   venue: string;
   status: string;
-  budget: number;
   createdBy: string | number;
 }
 
@@ -108,7 +107,6 @@ const EventsList: React.FC<EventsListProps> = ({
       endDate: event.end_date ? new Date(event.end_date).toLocaleDateString('en-IN') : 'N/A',
       venue: event.venue?.name || 'N/A',
       status: event.status || 'scheduled',
-      budget: 0, // Budget not available in AppEvent type
       createdBy: event.created_by_name || event.eventlead || 'N/A',
     }));
   }, [events, selectedStatus, searchQuery]);
@@ -255,26 +253,6 @@ const EventsList: React.FC<EventsListProps> = ({
           status={value as any}
           size="sm"
         />
-      ),
-    },
-    {
-      key: 'budget',
-      title: 'Budget',
-      width: 100,
-      sortable: true,
-      align: 'right' as const,
-      render: (value: number) => (
-        <Text
-          style={[styles.cellText, {
-            color: value > 0 ? designSystem.baseColors.success[600] : theme.textSecondary,
-            fontWeight: value > 0 ? designSystem.typography.weights.medium : designSystem.typography.weights.regular,
-            fontSize: designSystem.typography.sizes.xs,
-            textAlign: 'right',
-          }]}
-          numberOfLines={1}
-        >
-          {value > 0 ? formatCurrency(value) : 'Not set'}
-        </Text>
       ),
     },
     {

@@ -16,7 +16,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useEventsStore } from '@/store/eventsStore';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import NotificationBell from '@/components/layout/NotificationBell';
 
 // Import modular components
 import EventsAnalytics from './components/EventsAnalytics';
@@ -406,7 +405,6 @@ export default function EventManagementScreen() {
             <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
               <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
             </TouchableOpacity>
-            <NotificationBell size={22} color={theme.text} />
             {['leads', 'clients', 'venues'].includes(activeTab) && (
               <TouchableOpacity
                 onPress={() => {

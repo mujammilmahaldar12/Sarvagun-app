@@ -155,6 +155,7 @@ export default function AddVendorScreen() {
       <ModuleHeader
         title={isEditMode ? 'Edit Vendor' : 'Add Vendor'}
         showBack
+        showNotifications={false}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>

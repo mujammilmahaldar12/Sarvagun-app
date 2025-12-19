@@ -138,10 +138,11 @@ export default function LeadDetailScreen() {
   };
 
   const handleEdit = () => {
+    console.log('🔧 Editing lead ID:', leadId);
     router.push({
-      pathname: '/(modules)/events/leads/add',
-      params: { leadId: leadId }
-    } as any);
+      pathname: '/(modules)/events/add-lead',
+      params: { leadId: String(leadId) }
+    });
   };
 
   const handleReject = () => {
@@ -290,6 +291,48 @@ export default function LeadDetailScreen() {
             </View>
           </View>
         </View>
+        {/* Action Buttons - Compact Design */}
+        {lead.status === 'pending' && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.compactButton, { backgroundColor: theme.primary }]}
+              onPress={handleConvert}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={styles.compactButtonText}>Convert to Event</Text>
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.compactButton, styles.compactButtonSecondary, { borderColor: theme.border }]}
+                onPress={handleEdit}
+              >
+                <Ionicons name="create" size={16} color={theme.text} />
+                <Text style={[styles.compactButtonTextSecondary, { color: theme.text }]}>Edit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.compactButton, styles.compactButtonDanger]}
+                onPress={handleReject}
+              >
+                <Ionicons name="close-circle" size={16} color="#ef4444" />
+                <Text style={[styles.compactButtonTextSecondary, { color: '#ef4444' }]}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {lead.status !== 'pending' && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.compactButton, styles.compactButtonSecondary, { borderColor: theme.border }]}
+              onPress={handleEdit}
+            >
+              <Ionicons name="create" size={16} color={theme.text} />
+              <Text style={[styles.compactButtonTextSecondary, { color: theme.text }]}>Edit Lead</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <TouchableOpacity
           onPress={() => setShowActionSheet(true)}
           style={[styles.menuButton, { backgroundColor: theme.surface }]}
@@ -631,6 +674,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   secondaryActionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionButtons: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  compactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  compactButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+  },
+  compactButtonDanger: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  compactButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  compactButtonTextSecondary: {
     fontSize: 14,
     fontWeight: '600',
   },

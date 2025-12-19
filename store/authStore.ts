@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (error: any) {
       console.log('❌ Login error:', error);
       set({ isLoading: false });
-      return false;
+      throw error;
     }
   },
 

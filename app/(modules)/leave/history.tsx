@@ -32,7 +32,7 @@ export default function LeaveHistoryScreen() {
   const renderFilterChip = (type: FilterType, label: string, count: number) => {
     const isSelected = selectedFilter === type;
     const statusColorObj = getStatusColor(type, isDark);
-    
+
     return (
       <TouchableOpacity
         onPress={() => setSelectedFilter(type)}
@@ -138,7 +138,7 @@ export default function LeaveHistoryScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Leave History" showBack />
+      <ModuleHeader title="Leave History" showBack showNotifications={false} />
 
       <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: theme.surface, borderBottomWidth: 1, borderBottomColor: theme.border }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: spacing.lg }}>

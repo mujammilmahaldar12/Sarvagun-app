@@ -136,6 +136,7 @@ export default function AddClientScreen() {
       <ModuleHeader
         title="Add Client"
         showBack
+        showNotifications={false}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.md }}>

@@ -72,7 +72,7 @@ const MODULES: Module[] = [
   {
     id: 'team',
     name: 'Team Lead Dashboard',
-    description: 'Manage & rate team members tasks',
+    description: 'Review & rate team performance',
     icon: 'people-circle',
     route: '/(modules)/team',
     color: moduleColors.projects.main,

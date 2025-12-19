@@ -27,10 +27,7 @@ interface VenueRowData {
   name: string;
   address: string;
   capacity?: number;
-  contactPerson?: string;
-  contactPhone?: string;
   type?: string;
-  facilities?: string;
   createdBy: string | number;
 }
 
@@ -70,9 +67,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
       filtered = filtered.filter(venue =>
         venue.name?.toLowerCase().includes(query) ||
         venue.address?.toLowerCase().includes(query) ||
-        venue.contact_person?.toLowerCase().includes(query) ||
-        venue.type?.toLowerCase().includes(query) ||
-        venue.facilities?.toLowerCase().includes(query)
+        venue.contact_person?.toLowerCase().includes(query)
       );
     }
 
@@ -82,10 +77,7 @@ const VenuesList: React.FC<VenuesListProps> = ({
       name: venue.name || 'N/A',
       address: venue.address || 'N/A',
       capacity: venue.capacity,
-      contactPerson: venue.contact_person,
-      contactPhone: venue.contact_phone,
       type: venue.type,
-      facilities: venue.facilities,
       createdBy: venue.created_by || 'N/A',
     }));
   }, [venues, searchQuery]);
@@ -175,64 +167,6 @@ const VenuesList: React.FC<VenuesListProps> = ({
           {formatCapacity(value)}
         </Text>
       ),
-    },
-    {
-      key: 'contactPerson',
-      title: 'Contact',
-      width: 120,
-      render: (value: string | undefined, row: VenueRowData) => (
-        <View>
-          {value && (
-            <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={1}>
-              {value}
-            </Text>
-          )}
-          {row.contactPhone && (
-            <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]} numberOfLines={1}>
-              {row.contactPhone}
-            </Text>
-          )}
-          {!value && !row.contactPhone && (
-            <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]}>
-              N/A
-            </Text>
-          )}
-        </View>
-      ),
-    },
-    {
-      key: 'facilities',
-      title: 'Facilities',
-      width: 120,
-      render: (value: string | undefined, row: VenueRowData) => {
-        if (!value) {
-          return (
-            <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]}>
-              N/A
-            </Text>
-          );
-        }
-
-        const facilities = value.split(',').map(f => f.trim()).slice(0, 2);
-        return (
-          <View>
-            {facilities.map((facility, index) => (
-              <Text
-                key={`${row.id}-facility-${index}-${facility}`}
-                style={[styles.cellTextSecondary, { color: theme.textSecondary }]}
-                numberOfLines={1}
-              >
-                {facility}
-              </Text>
-            ))}
-            {value.split(',').length > 2 && (
-              <Text style={[styles.cellTextSecondary, { color: theme.textSecondary }]}>
-                +{value.split(',').length - 2} more
-              </Text>
-            )}
-          </View>
-        );
-      },
     },
     {
       key: 'actions',

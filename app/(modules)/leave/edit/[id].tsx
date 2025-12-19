@@ -205,7 +205,7 @@ export default function EditLeaveScreen() {
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-            <ModuleHeader title="Edit Leave Request" showBack />
+            <ModuleHeader title="Edit Leave Request" showBack showNotifications={false} />
 
             <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}>
                 {/* Balance (Read only / Helper) */}

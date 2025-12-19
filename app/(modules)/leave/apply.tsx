@@ -198,6 +198,7 @@ export default function ApplyLeaveScreen() {
       <ModuleHeader
         title="Apply Leave"
         showBack={true}
+        showNotifications={false}
       />
 
       <KeyboardAvoidingView

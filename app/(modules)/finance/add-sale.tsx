@@ -399,7 +399,7 @@ export default function AddSaleScreen() {
   if (loadingSale) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <ModuleHeader title={isEditMode ? 'Edit Sale' : 'Create Sale'} showBack />
+        <ModuleHeader title={isEditMode ? 'Edit Sale' : 'Create Sale'} showBack showNotifications={false} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 12 }}>
@@ -415,6 +415,7 @@ export default function AddSaleScreen() {
       <ModuleHeader
         title={isEditMode ? 'Edit Sale' : 'Create Sale'}
         showBack
+        showNotifications={false}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>

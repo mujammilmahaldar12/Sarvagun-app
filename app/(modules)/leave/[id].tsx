@@ -44,7 +44,7 @@ export default function LeaveDetailScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <ModuleHeader title="Leave Details" showBack />
+        <ModuleHeader title="Leave Details" showBack showNotifications={false} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[getTypographyStyle('sm', 'medium'), { marginTop: spacing.md, color: theme.textSecondary }]}>
@@ -60,7 +60,7 @@ export default function LeaveDetailScreen() {
   if (!leaveData) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <ModuleHeader title="Leave Details" showBack />
+        <ModuleHeader title="Leave Details" showBack showNotifications={false} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={[getTypographyStyle('base', 'medium'), { color: theme.textSecondary }]}>
             Leave request not found
@@ -72,7 +72,7 @@ export default function LeaveDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Leave Details" showBack />
+      <ModuleHeader title="Leave Details" showBack showNotifications={false} />
       {(() => {
         const statusColor = getStatusColor(leaveData.status, isDark);
         return (

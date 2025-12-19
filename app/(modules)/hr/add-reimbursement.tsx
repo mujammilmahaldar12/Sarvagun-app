@@ -280,7 +280,7 @@ export default function AddReimbursementScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Request Reimbursement" />
+      <ModuleHeader title="Request Reimbursement" showNotifications={false} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>

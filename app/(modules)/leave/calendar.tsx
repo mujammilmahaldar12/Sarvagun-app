@@ -60,7 +60,7 @@ export default function LeaveCalendarScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ModuleHeader title="Leave Calendar" showBack />
+      <ModuleHeader title="Leave Calendar" showBack showNotifications={false} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
         {isLoading ? (

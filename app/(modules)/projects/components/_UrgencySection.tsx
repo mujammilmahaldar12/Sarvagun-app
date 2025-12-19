@@ -30,6 +30,8 @@ interface UrgencySectionProps {
     isEmpty?: boolean;
     sectionId?: number;
     onAddTask?: (sectionId: number) => void;
+    onEdit?: (sectionId: number, currentName: string) => void;
+    onDelete?: (sectionId: number) => void;
 }
 
 /**
@@ -47,6 +49,8 @@ export const UrgencySection = memo(({
     isEmpty = false,
     sectionId,
     onAddTask,
+    onEdit,
+    onDelete,
 }: UrgencySectionProps) => {
     const { theme } = useTheme();
 
@@ -89,8 +93,36 @@ export const UrgencySection = memo(({
                 </View>
             </View>
 
-            {/* Right: Add Task Button + Expand/Collapse Indicator */}
+            {/* Right: Section Actions + Add Task Button + Expand/Collapse Indicator */}
             <View style={styles.rightContent}>
+                {/* Section Edit/Delete Buttons */}
+                {sectionId && (onEdit || onDelete) && (
+                    <View style={styles.sectionActions}>
+                        {onEdit && (
+                            <TouchableOpacity
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    onEdit(sectionId, title);
+                                }}
+                                style={[styles.actionButton, { backgroundColor: theme.primary + '20' }]}
+                            >
+                                <Ionicons name="pencil" size={14} color={theme.primary} />
+                            </TouchableOpacity>
+                        )}
+                        {onDelete && (
+                            <TouchableOpacity
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(sectionId);
+                                }}
+                                style={[styles.actionButton, { backgroundColor: theme.error + '20' }]}
+                            >
+                                <Ionicons name="trash-outline" size={14} color={theme.error} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
+
                 {/* Add Task Button */}
                 {sectionId && onAddTask && !isCompletedSection && (
                     <TouchableOpacity
@@ -181,6 +213,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: spacing.xs,
+    },
+    sectionActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginRight: spacing.xs,
+    },
+    actionButton: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 

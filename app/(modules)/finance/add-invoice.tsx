@@ -316,6 +316,7 @@ export default function AddInvoiceScreen() {
       <ModuleHeader
         title={isEditMode ? 'Edit Invoice' : 'Create Invoice'}
         showBack
+        showNotifications={false}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>

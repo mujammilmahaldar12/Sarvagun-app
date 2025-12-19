@@ -68,19 +68,8 @@ export const SwipeableTaskRow: React.FC<SwipeableTaskRowProps> = ({
     // Handle swipe delete action
     const handleSwipeDelete = useCallback(() => {
         closeSwipeable();
-        Alert.alert(
-            'Delete Task',
-            `Are you sure you want to delete "${task.task_title}"?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => onDelete(task.id)
-                },
-            ]
-        );
-    }, [task.id, task.task_title, onDelete, closeSwipeable]);
+        onDelete(task.id);
+    }, [task.id, onDelete, closeSwipeable]);
 
     // Render right action (Delete - red)
     const renderRightActions = (

@@ -18,7 +18,8 @@ export default function AddEventScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const navigation = useNavigation();
-  const { fromLead } = useLocalSearchParams<{ fromLead?: string }>();
+  const { fromLead, id } = useLocalSearchParams<{ fromLead?: string; id?: string }>();
+  const isEditMode = !!id;
   const user = useAuthStore((state) => state.user);
 
   // Safe back navigation helper
@@ -73,8 +74,10 @@ export default function AddEventScreen() {
   useEffect(() => {
     if (fromLead) {
       fetchLeadDetails(Number(fromLead));
+    } else if (isEditMode && id) {
+      fetchEventDetails(Number(id));
     }
-  }, [fromLead]);
+  }, [fromLead, isEditMode, id]);
 
   const fetchVenues = async () => {
     try {
@@ -121,6 +124,40 @@ export default function AddEventScreen() {
       Alert.alert('Error', error.message || 'Failed to create organisation');
     } finally {
       setCreatingOrg(false);
+    }
+  };
+
+  const fetchEventDetails = async (eventId: number) => {
+    setFetchingLead(true); // Reuse same loading state
+    try {
+      const event = await eventsService.getEvent(eventId);
+      console.log('📝 Fetched event for edit:', event);
+
+      const eventAny = event as any;
+
+      // Pre-fill form with event data
+      setFormData(prev => ({
+        ...prev,
+        clientName: eventAny.client?.name || '',
+        clientEmail: eventAny.client?.email || '',
+        clientPhone: eventAny.client?.number || eventAny.client?.phone || '',
+        eventType: eventAny.type_of_event || eventAny.event_type || '',
+        startDate: eventAny.start_date ? new Date(eventAny.start_date) : null,
+        endDate: eventAny.end_date ? new Date(eventAny.end_date) : null,
+        venueId: eventAny.venue?.id || 0,
+        venue: eventAny.venue?.name || '',
+        venueAddress: eventAny.venue?.address || '',
+        company: eventAny.company || 'bling square events',
+        category: eventAny.category || 'corporate events',
+        clientCategory: eventAny.client?.client_category?.[0]?.code || '',
+        organisationId: eventAny.client?.organisation?.[0]?.id || 0,
+      }));
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      Alert.alert('Error', 'Failed to fetch event details');
+      safeGoBack();
+    } finally {
+      setFetchingLead(false);
     }
   };
 
@@ -263,6 +300,45 @@ export default function AddEventScreen() {
         setTimeout(() => {
           Alert.alert('Success', 'Lead converted to event successfully!');
         }, 300);
+      } else if (isEditMode && id) {
+        // UPDATE EXISTING EVENT
+        console.log('🔄 Updating event:', id);
+
+        // Prepare venue data
+        const venueData = formData.venueId > 0
+          ? formData.venueId
+          : { name: formData.venue, address: formData.venueAddress };
+
+        const startDate = formData.startDate ? formData.startDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        const endDate = formData.endDate ? formData.endDate.toISOString().split('T')[0] : startDate;
+
+        const updatePayload: any = {
+          company: formData.company,
+          type_of_event: formData.eventType,
+          category: formData.category,
+          venue: venueData,
+          start_date: startDate,
+          end_date: endDate,
+        };
+
+        // Add organisation if B2B/B2G
+        const categoryCode = formData.clientCategory;
+        if ((categoryCode === 'b2b' || categoryCode === 'b2g') && formData.organisationId > 0) {
+          updatePayload.organisation = formData.organisationId;
+        }
+
+        console.log('📤 Update payload:', JSON.stringify(updatePayload, null, 2));
+
+        await eventsService.updateEvent(Number(id), updatePayload);
+        console.log('✅ Event updated successfully');
+
+        // Navigate back
+        router.back();
+
+        // Show success message
+        setTimeout(() => {
+          Alert.alert('Success', 'Event updated successfully!');
+        }, 300);
       } else {
         // Create new standalone event
         Alert.alert('Notice', 'Direct event creation is currently restricted. Please start from a Lead.');
@@ -317,9 +393,10 @@ export default function AddEventScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ModuleHeader
-        title={fromLead ? "Convert Lead to Event" : "Add New Event"}
+        title={isEditMode ? "Edit Event" : (fromLead ? "Convert Lead to Event" : "Add New Event")}
         showBack
         onBack={safeGoBack}
+        showNotifications={false}
       />
 
       <ScrollView
@@ -690,7 +767,13 @@ export default function AddEventScreen() {
 
         <View style={styles.submitContainer}>
           <Button
-            title={loading ? 'Processing...' : (fromLead ? 'Confirm Conversion' : 'Create Event')}
+            title={
+              loading
+                ? 'Processing...'
+                : isEditMode
+                  ? 'Update Event'
+                  : (fromLead ? 'Confirm Conversion' : 'Create Event')
+            }
             onPress={handleSubmit}
             size="lg"
             leftIcon="calendar"
