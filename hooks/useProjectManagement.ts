@@ -83,7 +83,7 @@ export function useProjectManagement({
     // Compute which projects to use based on context
     const projects = isTeamLead && teamMemberId ? teamMemberProjects : myProjects;
     const projectsLoading = isTeamLead && teamMemberId ? teamMemberProjectsLoading : myProjectsLoading;
-    const refetchProjects = isTeamLead && teamMemberId ? refetchTeamMem berProjects: refetchMyProjects;
+    const refetchProjects = isTeamLead && teamMemberId ? refetchTeamMemberProjects : refetchMyProjects;
 
     // Normalize data
     const projectsList = useMemo(() => {
@@ -111,7 +111,7 @@ export function useProjectManagement({
 
         try {
             await updateProjectMutation.mutateAsync({
-                id: selectedProject.id,
+                projectId: selectedProject.id,
                 data: {
                     project_name: editProjectName,
                     description: editProjectDescription,
