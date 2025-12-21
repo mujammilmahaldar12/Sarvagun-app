@@ -11,15 +11,15 @@ type ThemeState = {
   mode: ThemeName;
   colors: Theme;
   isDark: boolean;
-  
+
   // Actions
   toggleMode: () => Promise<void>;
   setMode: (mode: ThemeName, syncBackend?: boolean) => Promise<void>;
   initializeTheme: (userTheme?: 'light' | 'dark') => void;
-  
+
   // Status color helpers
   getStatusColor: (status: string, type?: 'bg' | 'text') => string;
-  
+
   // Component style helpers
   getCardStyle: () => object;
   getInputStyle: () => object;
@@ -36,11 +36,11 @@ export const useThemeStore = create<ThemeState>()(
       toggleMode: async () => {
         const current = get().mode;
         const next = current === "light" ? "dark" : "light";
-        
+
         // Update local state immediately for smooth UX
-        set({ 
-          mode: next, 
-          colors: designSystem.themes[next],
+        set({
+          mode: next,
+          colors: designSystem.themes[next] as any,
           isDark: next === "dark"
         });
 
@@ -54,9 +54,9 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       setMode: async (mode, syncBackend = true) => {
-        set({ 
-          mode, 
-          colors: designSystem.themes[mode],
+        set({
+          mode,
+          colors: designSystem.themes[mode] as any,
           isDark: mode === "dark"
         });
 
@@ -73,9 +73,9 @@ export const useThemeStore = create<ThemeState>()(
       initializeTheme: (userTheme) => {
         if (userTheme) {
           // Load theme from user preferences (from login response)
-          set({ 
-            mode: userTheme, 
-            colors: designSystem.themes[userTheme],
+          set({
+            mode: userTheme,
+            colors: designSystem.themes[userTheme] as any,
             isDark: userTheme === "dark"
           });
         }
@@ -85,7 +85,7 @@ export const useThemeStore = create<ThemeState>()(
       getStatusColor: (status, type = 'bg') => {
         const { statusColors } = designSystem;
         const { mode } = get();
-        
+
         // Map common status values
         const statusMap: Record<string, keyof typeof statusColors> = {
           'pending': 'pending',
@@ -97,10 +97,10 @@ export const useThemeStore = create<ThemeState>()(
           'completed': 'completed',
           'cancelled': 'cancelled',
         };
-        
+
         const statusKey = statusMap[status] || 'pending';
         const colorConfig = statusColors[statusKey]?.[mode];
-        
+
         return colorConfig?.[type] || get().colors.text;
       },
 
@@ -131,7 +131,7 @@ export const useThemeStore = create<ThemeState>()(
 
       getButtonStyle: (variant = 'primary') => {
         const { colors } = get();
-        
+
         const variants = {
           primary: {
             backgroundColor: colors.primary,
@@ -167,6 +167,13 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: "sarvagun-theme-store",
       partialize: (state) => ({ mode: state.mode }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Sync derived state with persisted mode
+          state.colors = designSystem.themes[state.mode] as any;
+          state.isDark = state.mode === 'dark';
+        }
+      },
     }
   )
 );

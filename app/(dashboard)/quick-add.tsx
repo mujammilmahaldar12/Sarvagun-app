@@ -42,7 +42,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     title: 'Apply Leave',
     description: 'Submit leave request',
     icon: 'time-outline',
-    route: '/(modules)/hr/apply-leave',
+    route: '/(modules)/leave/apply',
     color: moduleColors.leave.main,
     category: 'HR',
   },
@@ -103,8 +103,8 @@ export default function QuickAddScreen() {
 
   const categories = ['All', ...Array.from(new Set(QUICK_ACTIONS.map(a => a.category)))];
 
-  const filteredActions = selectedCategory === 'All' 
-    ? QUICK_ACTIONS 
+  const filteredActions = selectedCategory === 'All'
+    ? QUICK_ACTIONS
     : QUICK_ACTIONS.filter(a => a.category === selectedCategory);
 
   const handleActionPress = (action: QuickAction) => {

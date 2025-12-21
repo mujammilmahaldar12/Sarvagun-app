@@ -178,7 +178,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           style={{
             flex: 1,
             fontSize: typography.sizes.base,
-            color: value ? '#111827' : '#6B7280',
+            color: value ? (theme.text || '#111827') : (theme.textSecondary || '#6B7280'),
           }}
           numberOfLines={1}
           ellipsizeMode="tail"

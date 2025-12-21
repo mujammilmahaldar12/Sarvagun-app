@@ -9,9 +9,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus } from '@/hooks/useHRQueries';
+import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus, useLeaves, useMyLeaves, useUpdateLeaveStatus } from '@/hooks/useHRQueries';
 import { useModule } from '@/hooks/useModule';
-import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB } from '@/components';
+import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB, ActionSheet } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import type { Reimbursement } from '@/types/hr';
 
@@ -51,8 +51,11 @@ export default function HRScreen() {
     message?: string;
     confirmText: string;
     type: 'approve' | 'reject' | null;
+    requestType?: 'leave' | 'reimbursement';
     onConfirm?: () => void;
   }>({ visible: false, title: '', message: '', onConfirm: () => { }, confirmText: '', type: null });
+  const [showAddActionSheet, setShowAddActionSheet] = useState(false);
+
   const [showHireMenu, setShowHireMenu] = useState(false);
 
   // Debug logs
@@ -89,6 +92,13 @@ export default function HRScreen() {
   const { data: reimbursementsData, isLoading: reimbursementsLoading, refetch: refetchReimbursements } = useReimbursements(reimbursementFilters);
   const { data: reimbursementStats } = useReimbursementStatistics();
   const updateReimbursementStatus = useUpdateReimbursementStatus();
+
+  // Leave Hooks
+  const { data: allLeaves, isLoading: allLeavesLoading, refetch: refetchAllLeaves } = useLeaves(activeTab === 'approvals' ? { status: 'pending' } : undefined);
+  const { data: myLeaves, isLoading: myLeavesLoading, refetch: refetchMyLeaves } = useMyLeaves();
+  const updateLeaveStatus = useUpdateLeaveStatus();
+
+  const isLoading = reimbursementsLoading || (activeTab === 'approvals' ? allLeavesLoading : myLeavesLoading);
 
   // Debounce search
   useEffect(() => {
@@ -141,23 +151,55 @@ export default function HRScreen() {
   const reimbursementData = useMemo(() => {
     return (reimbursementsData?.results || []).map((item: Reimbursement) => ({
       id: item.id,
+      requestType: 'reimbursement',
       employee: item.requested_by_name || `User ${item.requested_by}`,
       employeeId: item.requested_by,
       type: (item as any).expense?.particulars || (item as any).expense_details?.particulars || 'Expense',
       amount: Number(item.reimbursement_amount) || 0,
       date: item.submitted_at ? new Date(item.submitted_at).toISOString().split('T')[0] : 'N/A',
       status: (item.latest_status?.status || item.status || 'pending').toLowerCase(),
+      description: (item as any).expense?.description || (item as any).expense_details?.description || '', // Description
       hasBill: item.bill_evidence === 'yes',
     }));
   }, [reimbursementsData]);
 
-  // My Requests - filter by current user
-  const myRequests = useMemo(() => {
-    return reimbursementData.filter((r: any) => r.employeeId === user?.id);
-  }, [reimbursementData, user?.id]);
+  // Transform Leaves Data
+  const leaveDataTransform = (response: any) => {
+    // Handle both direct array and paginated response
+    const leaves = Array.isArray(response) ? response : (response?.results || []);
+    if (!leaves) return [];
 
-  // Server already filtered - no client filtering needed for approvals
-  const pendingApprovals = reimbursementData;
+    return leaves.map((l: any) => ({
+      id: l.id,
+      requestType: 'leave',
+      employee: l.employee_name || `User ${l.employee}`,
+      employeeId: l.employee, // or correct field
+      type: l.leave_type || 'Leave', // Leave Type e.g., Annual Leave
+      date: `${l.from_date} to ${l.to_date}`, // Date Range
+      status: (l.status || 'pending').toLowerCase(),
+      description: l.reason || '',
+      days: l.days_count || 0 // Assuming days info available or calculated
+    }));
+  };
+
+  const allLeavesData = useMemo(() => leaveDataTransform(allLeaves || []), [allLeaves]);
+  const myLeavesData = useMemo(() => leaveDataTransform(myLeaves || []), [myLeaves]);
+
+  // My Requests - Combine Reimbursements and Leaves
+  const myRequests = useMemo(() => {
+    const myReimbursements = reimbursementData.filter((r: any) => r.employeeId === user?.id);
+    // Combine and sort by date descending (assuming id for now as proxy or add timestamp)
+    return [...myReimbursements, ...myLeavesData].sort((a, b) => b.id - a.id);
+  }, [reimbursementData, myLeavesData, user?.id]);
+
+  // Pending Approvals - Combine
+  const pendingApprovals = useMemo(() => {
+    // Server side filtered reimbursementData
+    // Filter leaves if not already filtered by query
+    const pendingLeaves = allLeavesData.filter(l => l.status === 'pending');
+    // Since reimbursementData is already filtered by status if activeTab is approvals
+    return [...reimbursementData, ...pendingLeaves].sort((a, b) => b.id - a.id);
+  }, [reimbursementData, allLeavesData]);
 
   // Apply status filter (only if set)
   const filteredStaffData = useMemo(() => {
@@ -212,72 +254,84 @@ export default function HRScreen() {
     if (activeTab === 'staff') {
       router.push('/(modules)/hr/add-employee' as any);
     } else {
-      router.push('/(modules)/hr/add-reimbursement' as any);
+      setShowAddActionSheet(true); // Show options: Leave or Reimbursement
     }
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchUsers(), refetchReimbursements()]);
+    await Promise.all([
+      refetchUsers(),
+      refetchReimbursements(),
+      refetchAllLeaves(),
+      refetchMyLeaves()
+    ]);
     setRefreshing(false);
-  }, [refetchUsers, refetchReimbursements]);
+  }, [refetchUsers, refetchReimbursements, refetchAllLeaves, refetchMyLeaves]);
 
   // Approve/Reject handlers with confirmation dialog
-  const handleApprove = (id: number, employeeName: string) => {
-    console.log('🟢 Approve clicked for:', { id, employeeName });
+  const handleApprove = (item: any) => {
+    console.log('🟢 Approve clicked for:', { id: item.id, employee: item.employee });
     setConfirmDialog({
       visible: true,
-      title: 'Approve Reimbursement',
-      message: `Approve ${employeeName}'s request?`,
+      title: item.requestType === 'leave' ? 'Approve Leave' : 'Approve Reimbursement',
+      message: `Approve ${item.employee}'s ${item.type} request?`,
       confirmText: 'Approve',
       type: 'approve',
-      onConfirm: () => performApprove(id, employeeName),
+      requestType: item.requestType,
+      onConfirm: () => performApprove(item),
     });
   };
 
-  const handleReject = (id: number, employeeName: string) => {
-    console.log('🔴 Reject clicked for:', { id, employeeName });
+  const handleReject = (item: any) => {
+    console.log('🔴 Reject clicked for:', { id: item.id, employee: item.employee });
     setConfirmDialog({
       visible: true,
-      title: 'Reject Reimbursement',
-      message: `Reject ${employeeName}'s request?`,
+      title: item.requestType === 'leave' ? 'Reject Leave' : 'Reject Reimbursement',
+      message: `Reject ${item.employee}'s request?`,
       confirmText: 'Reject',
       type: 'reject',
-      onConfirm: () => performReject(id, employeeName),
+      requestType: item.requestType,
+      onConfirm: () => performReject(item),
     });
   };
 
-  const performApprove = async (id: number, employeeName: string) => {
-    console.log('✅ Performing approve for:', { id, employeeName });
+  const performApprove = async (item: any) => {
+
+    console.log('✅ Performing approve for:', { id: item.id, type: item.requestType });
     setConfirmDialog({ ...confirmDialog, visible: false });
-    setProcessingId(id);
+    setProcessingId(item.id);
 
     try {
-      console.log('📡 Calling mutateAsync with:', { id, status: 'approved' });
-      await updateReimbursementStatus.mutateAsync({ id, status: 'approved', reason: 'Approved' });
+      if (item.requestType === 'leave') {
+        await updateLeaveStatus.mutateAsync({ id: item.id, data: { status: 'approved' } });
+      } else {
+        await updateReimbursementStatus.mutateAsync({ id: item.id, status: 'approved', reason: 'Approved' });
+      }
       console.log('✅ Approve successful');
-      // Query will auto-refetch due to mutation, no manual refetch needed
     } catch (error) {
       console.error('❌ Approve failed:', error);
-      Alert.alert('Error', 'Failed to approve reimbursement');
+      Alert.alert('Error', 'Failed to approve request');
     } finally {
       setProcessingId(null);
     }
   };
 
-  const performReject = async (id: number, employeeName: string) => {
-    console.log('❌ Performing reject for:', { id, employeeName });
+  const performReject = async (item: any) => {
+    console.log('❌ Performing reject for:', { id: item.id, type: item.requestType });
     setConfirmDialog({ ...confirmDialog, visible: false });
-    setProcessingId(id);
+    setProcessingId(item.id);
 
     try {
-      console.log('📡 Calling mutateAsync with:', { id, status: 'rejected' });
-      await updateReimbursementStatus.mutateAsync({ id, status: 'rejected', reason: 'Rejected' });
+      if (item.requestType === 'leave') {
+        await updateLeaveStatus.mutateAsync({ id: item.id, data: { status: 'rejected' } });
+      } else {
+        await updateReimbursementStatus.mutateAsync({ id: item.id, status: 'rejected', reason: 'Rejected' });
+      }
       console.log('✅ Reject successful');
-      // Query will auto-refetch due to mutation, no manual refetch needed
     } catch (error) {
       console.error('❌ Reject failed:', error);
-      Alert.alert('Error', 'Failed to reject reimbursement');
+      Alert.alert('Error', 'Failed to reject request');
     } finally {
       setProcessingId(null);
     }
@@ -293,9 +347,14 @@ export default function HRScreen() {
     >
       {/* Compact Header */}
       <View style={styles.cardHeader}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{item.employee}</Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{item.type}</Text>
+        <View style={{ flex: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ padding: 4, borderRadius: 6, backgroundColor: theme.primary + '15' }}>
+            <Ionicons name="receipt-outline" size={14} color={theme.primary} />
+          </View>
+          <View>
+            <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{item.employee}</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{item.type}</Text>
+          </View>
         </View>
         <Badge label={item.status.charAt(0).toUpperCase() + item.status.slice(1)} status={item.status as any} size="sm" />
       </View>
@@ -315,7 +374,7 @@ export default function HRScreen() {
         <View style={styles.cardActions}>
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
-            onPress={(e) => { e.stopPropagation(); handleReject(item.id, item.employee); }}
+            onPress={(e) => { e.stopPropagation(); handleReject(item); }}
             disabled={processingId === item.id}
           >
             {processingId === item.id ? (
@@ -329,7 +388,72 @@ export default function HRScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#10b981' }]}
-            onPress={(e) => { e.stopPropagation(); handleApprove(item.id, item.employee); }}
+            onPress={(e) => { e.stopPropagation(); handleApprove(item); }}
+            disabled={processingId === item.id}
+          >
+            {processingId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={14} color="#fff" />
+                <Text style={styles.actionBtnText}>Approve</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
+  const renderLeaveCard = (item: any, showActions: boolean = false) => (
+    <TouchableOpacity
+      key={item.id}
+      // onPress={() => handleRowPress(item)} 
+      activeOpacity={0.9} // Leaves don't have detail page yet?
+      style={[styles.card, { backgroundColor: theme.surface }]}
+    >
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ padding: 4, borderRadius: 6, backgroundColor: '#8B5CF615' }}>
+            <Ionicons name="calendar-outline" size={14} color="#8B5CF6" />
+          </View>
+          <View>
+            <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{item.employee}</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{item.type}</Text>
+          </View>
+        </View>
+        <Badge label={item.status.charAt(0).toUpperCase() + item.status.slice(1)} status={item.status as any} size="sm" />
+      </View>
+
+      <View style={styles.cardRow}>
+        <Text style={{ color: theme.text, fontSize: 14, fontWeight: '500' }}>
+          {item.date}
+          {item.days > 0 && <Text style={{ fontSize: 12, color: theme.textSecondary, fontWeight: '400' }}> ({item.days} days)</Text>}
+        </Text>
+      </View>
+      <View style={{ marginBottom: 4 }}>
+        <Text style={{ color: theme.textSecondary, fontSize: 12, fontStyle: 'italic' }} numberOfLines={1}>"{item.description}"</Text>
+      </View>
+
+      {showActions && item.status === 'pending' && (
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
+            onPress={(e) => { e.stopPropagation(); handleReject(item); }}
+            disabled={processingId === item.id}
+          >
+            {processingId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="close" size={14} color="#fff" />
+                <Text style={styles.actionBtnText}>Reject</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#10b981' }]}
+            onPress={(e) => { e.stopPropagation(); handleApprove(item); }}
             disabled={processingId === item.id}
           >
             {processingId === item.id ? (
@@ -444,7 +568,7 @@ export default function HRScreen() {
           {isApprovalsTab ? 'Pending Approvals' : 'My Requests'} ({data.length})
         </Text>
 
-        {reimbursementsLoading ? (
+        {isLoading ? (
           <View style={{ gap: 12 }}>
             <Skeleton height={100} style={{ borderRadius: 12 }} />
             <Skeleton height={100} style={{ borderRadius: 12 }} />
@@ -457,7 +581,12 @@ export default function HRScreen() {
             action={!isApprovalsTab ? { label: 'Add Request', onPress: handleAddNew } : undefined}
           />
         ) : (
-          <View style={{ gap: 12 }}>{data.map((item: any) => renderReimbursementCard(item, isApprovalsTab))}</View>
+          <View style={{ gap: 12 }}>
+            {data.map((item: any) => {
+              if (item.requestType === 'leave') return renderLeaveCard(item, isApprovalsTab);
+              return renderReimbursementCard(item, isApprovalsTab);
+            })}
+          </View>
         )}
       </ScrollView>
     );
@@ -536,6 +665,25 @@ export default function HRScreen() {
           </View>
         </View>
       )}
+
+      {/* Add New Action Sheet */}
+      <ActionSheet
+        visible={showAddActionSheet}
+        onClose={() => setShowAddActionSheet(false)}
+        title="Create New Request"
+        actions={[
+          {
+            label: 'Apply for Leave',
+            icon: 'calendar-outline',
+            onPress: () => router.push('/(modules)/leave/apply' as any),
+          },
+          {
+            label: 'Request Reimbursement',
+            icon: 'cash-outline',
+            onPress: () => router.push('/(modules)/hr/add-reimbursement' as any),
+          },
+        ]}
+      />
 
     </Animated.View>
   );

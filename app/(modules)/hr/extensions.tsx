@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePicker } from '@/components/core/DatePicker';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { api } from '@/src/lib/api';
@@ -83,6 +83,7 @@ export default function ExtensionsScreen() {
     // Modals
     const [showPromoteModal, setShowPromoteModal] = useState(false);
     const [showExtendModal, setShowExtendModal] = useState(false);
+    const [showIgnoreModal, setShowIgnoreModal] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedIntern, setSelectedIntern] = useState<ExpiredIntern | InternEndingSoon | null>(null);
 
@@ -201,29 +202,23 @@ export default function ExtensionsScreen() {
 
     // Ignore/Deactivate
     const handleIgnore = (intern: ExpiredIntern) => {
-        Alert.alert(
-            'Ignore Intern',
-            `What would you like to do with ${intern.intern_name}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Deactivate Account',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setActionLoading(`ignore-${intern.intern_id}`);
-                        try {
-                            await api.post(`/hr/extensions/ignore/${intern.intern_id}/`, { action: 'deactivate' });
-                            Alert.alert('Done', 'Account deactivated');
-                            loadData();
-                        } catch (e: any) {
-                            Alert.alert('Error', e.response?.data?.error || 'Failed');
-                        } finally {
-                            setActionLoading(null);
-                        }
-                    }
-                }
-            ]
-        );
+        setSelectedIntern(intern);
+        setShowIgnoreModal(true);
+    };
+
+    const confirmIgnore = async () => {
+        if (!selectedIntern) return;
+        setShowIgnoreModal(false);
+        setActionLoading(`ignore-${selectedIntern.intern_id}`);
+        try {
+            await api.post(`/hr/extensions/ignore/${selectedIntern.intern_id}/`, { action: 'deactivate' });
+            console.log('✅ Account deactivated');
+            loadData();
+        } catch (e: any) {
+            console.error('Error:', e.response?.data?.error || 'Failed');
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     // Approve Extension Request
@@ -289,15 +284,15 @@ export default function ExtensionsScreen() {
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <ModuleHeader title="Intern Extensions" />
 
-            {/* Tabs */}
+            {/* Tabs - Fixed height */}
             <View style={[styles.tabs, { borderBottomColor: theme.border }]}>
                 <TouchableOpacity
                     style={[styles.tab, activeSection === 'ending' && { borderBottomColor: theme.primary }]}
                     onPress={() => setActiveSection('ending')}
                 >
-                    <Ionicons name="time-outline" size={18} color={activeSection === 'ending' ? theme.primary : theme.textSecondary} />
-                    <Text style={[styles.tabText, { color: activeSection === 'ending' ? theme.primary : theme.text }]}>
-                        Ending Soon ({interns.length})
+                    <Ionicons name="time-outline" size={16} color={activeSection === 'ending' ? theme.primary : theme.textSecondary} />
+                    <Text style={[styles.tabText, { color: activeSection === 'ending' ? theme.primary : theme.text }]} numberOfLines={1}>
+                        Soon ({interns.length})
                     </Text>
                 </TouchableOpacity>
                 {canManage && (
@@ -306,8 +301,8 @@ export default function ExtensionsScreen() {
                             style={[styles.tab, activeSection === 'expired' && { borderBottomColor: '#EF4444' }]}
                             onPress={() => setActiveSection('expired')}
                         >
-                            <Ionicons name="alert-circle" size={18} color={activeSection === 'expired' ? '#EF4444' : theme.textSecondary} />
-                            <Text style={[styles.tabText, { color: activeSection === 'expired' ? '#EF4444' : theme.text }]}>
+                            <Ionicons name="alert-circle" size={16} color={activeSection === 'expired' ? '#EF4444' : theme.textSecondary} />
+                            <Text style={[styles.tabText, { color: activeSection === 'expired' ? '#EF4444' : theme.text }]} numberOfLines={1}>
                                 Overdue ({expiredInterns.length})
                             </Text>
                         </TouchableOpacity>
@@ -315,8 +310,8 @@ export default function ExtensionsScreen() {
                             style={[styles.tab, activeSection === 'pending' && { borderBottomColor: '#F59E0B' }]}
                             onPress={() => setActiveSection('pending')}
                         >
-                            <Ionicons name="hourglass" size={18} color={activeSection === 'pending' ? '#F59E0B' : theme.textSecondary} />
-                            <Text style={[styles.tabText, { color: activeSection === 'pending' ? '#F59E0B' : theme.text }]}>
+                            <Ionicons name="hourglass" size={16} color={activeSection === 'pending' ? '#F59E0B' : theme.textSecondary} />
+                            <Text style={[styles.tabText, { color: activeSection === 'pending' ? '#F59E0B' : theme.text }]} numberOfLines={1}>
                                 Pending ({pendingRequests.length})
                             </Text>
                         </TouchableOpacity>
@@ -467,21 +462,14 @@ export default function ExtensionsScreen() {
                         </Text>
 
                         {/* New End Date */}
-                        <Text style={{ color: theme.text, marginBottom: 4, marginTop: 12 }}>New End Date *</Text>
-                        <TouchableOpacity style={[styles.dateInput, { backgroundColor: theme.background }]} onPress={() => setShowDatePicker(true)}>
-                            <Ionicons name="calendar" size={20} color={theme.primary} />
-                            <Text style={{ color: theme.text, flex: 1, marginLeft: 10 }}>{newEndDate.toLocaleDateString()}</Text>
-                        </TouchableOpacity>
-
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={newEndDate}
-                                mode="date"
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                minimumDate={new Date()}
-                                onChange={(e, date) => { setShowDatePicker(Platform.OS === 'ios'); if (date) setNewEndDate(date); }}
-                            />
-                        )}
+                        <DatePicker
+                            label="New End Date *"
+                            value={newEndDate}
+                            onChange={(date) => { if (date) setNewEndDate(date); }}
+                            minDate={new Date()}
+                            placeholder="Select new end date"
+                            format="long"
+                        />
 
                         {/* New Designation */}
                         <Text style={{ color: theme.text, marginBottom: 4, marginTop: 12 }}>New Designation</Text>
@@ -547,15 +535,40 @@ export default function ExtensionsScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Ignore Confirmation Modal */}
+            <Modal visible={showIgnoreModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+                        <Text style={[styles.modalTitle, { color: theme.text }]}>⚠️ Deactivate Account</Text>
+                        <Text style={[styles.modalSub, { color: theme.textSecondary }]}>
+                            Are you sure you want to deactivate {selectedIntern?.intern_name}'s account? This will prevent them from logging in.
+                        </Text>
+
+                        <View style={styles.modalBtns}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowIgnoreModal(false)}>
+                                <Text style={{ color: theme.textSecondary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, { backgroundColor: '#EF4444' }, actionLoading && { opacity: 0.5 }]}
+                                onPress={confirmIgnore}
+                                disabled={!!actionLoading}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: '600' }}>{actionLoading ? 'Processing...' : 'Deactivate'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    tabs: { flexDirection: 'row', borderBottomWidth: 1, paddingHorizontal: 16 },
-    tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    tabText: { fontSize: 14, fontWeight: '600' },
+    tabs: { flexDirection: 'row', borderBottomWidth: 1, paddingHorizontal: 8 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+    tabText: { fontSize: 12, fontWeight: '600' },
     card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12 },
     cardRow: { flexDirection: 'row', alignItems: 'center' },
     avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },

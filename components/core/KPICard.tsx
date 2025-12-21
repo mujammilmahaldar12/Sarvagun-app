@@ -1,43 +1,24 @@
-/**
- * KPICard Component
- * Minimalist clean design with colored accents
- * Display key performance indicators with subtle styling
- */
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeStore } from '@/store/themeStore';
+import { useTheme } from '@/hooks/useTheme';
 import { designSystem } from '@/constants/designSystem';
 
-const { spacing, typography, borderRadius } = designSystem;
-
 export interface KPICardProps {
-  /** The title/label of the KPI */
   title: string;
-  /** The main value to display */
   value: number | string;
-  /** Trend indicator */
   trend?: {
     value: number;
     direction: 'up' | 'down';
     label?: string;
   };
-  /** Subtitle or additional context */
   subtitle?: string;
-  /** Icon name from Ionicons */
   icon?: keyof typeof Ionicons.glyphMap;
-  /** Primary color for the card accent */
   color?: string;
-  /** Gradient colors (not used in minimalist design, kept for compatibility) */
   gradient?: string[];
-  /** Loading state */
   loading?: boolean;
-  /** Press handler */
   onPress?: () => void;
-  /** Disabled state */
   disabled?: boolean;
-  /** Use compact layout for horizontal scrolling */
   compact?: boolean;
 }
 
@@ -48,238 +29,163 @@ export const KPICard: React.FC<KPICardProps> = ({
   subtitle,
   icon,
   color = '#6366f1',
-  gradient,
   loading = false,
   onPress,
   disabled = false,
   compact = false,
 }) => {
-  const { colors, isDark } = useThemeStore();
+  // Use simple theme hook - rely on standard colors
+  const { theme, isDark } = useTheme();
 
-  // Animation for press interaction
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    if (onPress && !disabled && !loading) {
-      scale.value = withSpring(0.98);
-    }
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1);
-  };
-
-  const Container = onPress ? Pressable : View;
+  // Explicit color logic to prevent any "invisible text" issues
+  const bgColor = isDark ? '#1A171D' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#111827';
+  const subtextColor = isDark ? '#9CA3AF' : '#6B7280';
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
   const getTrendColor = () => {
-    if (!trend) return colors.textSecondary;
+    if (!trend) return subtextColor;
     return trend.direction === 'up' ? '#10b981' : '#ef4444';
   };
 
   const getTrendIcon = () => {
-    if (!trend) return null;
+    if (!trend) return undefined;
     return trend.direction === 'up' ? 'trending-up' : 'trending-down';
   };
 
+  const Container = onPress ? Pressable : View;
+
   return (
-    <Animated.View
-      entering={FadeIn.duration(400).springify()}
-      style={[animatedStyle, compact ? styles.compactWrapper : styles.wrapper]}
+    <Container
+      style={[
+        styles.container,
+        {
+          backgroundColor: bgColor,
+          borderColor: borderColor,
+        },
+        compact && styles.compactContainer,
+      ]}
+      onPress={onPress}
+      disabled={disabled || loading}
     >
-      <Container
-        style={[
-          styles.container,
-          {
-            backgroundColor: colors.surface,
-            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-          },
-          compact && styles.compactContainer,
-        ]}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={disabled || loading}
-      >
-        {/* Colored left border accent - only show on non-compact */}
-        {!compact && <View style={[styles.borderAccent, { backgroundColor: color }]} />}
+      {/* Icon */}
+      {icon && (
+        <View style={[styles.iconContainer, compact && styles.compactIconContainer, { backgroundColor: color + '15' }]}>
+          <Ionicons name={icon} size={compact ? 20 : 24} color={color} />
+        </View>
+      )}
 
-        <View style={[compact ? styles.compactCardContent : styles.cardContent]}>
-          {/* Icon Section */}
-          {icon && (
-            <View style={[compact ? styles.compactIconContainer : styles.iconContainer, { backgroundColor: color + '15' }]}>
-              <Ionicons name={icon} size={compact ? 20 : 28} color={color} />
-            </View>
-          )}
+      {/* Content */}
+      <View style={styles.content}>
+        <Text
+          style={[
+            styles.title,
+            { color: subtextColor }
+          ]}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
 
-          {/* Content */}
-          <View style={styles.content}>
-            <Text style={[styles.title, { color: colors.textSecondary }]} numberOfLines={1}>
-              {title}
+        {loading ? (
+          <ActivityIndicator size="small" color={color} style={{ marginVertical: 8 }} />
+        ) : (
+          <View>
+            <Text
+              style={[
+                compact ? styles.compactValue : styles.value,
+                { color: textColor }
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {typeof value === 'number' ? value.toLocaleString() : value}
             </Text>
 
-            {loading ? (
-              <ActivityIndicator size="small" color={color} style={styles.loader} />
-            ) : (
-              <>
-                <Text style={[styles.value, { color: colors.text }]} numberOfLines={1}>
-                  {typeof value === 'number' ? value.toLocaleString() : value}
+            {trend && (
+              <View style={styles.trendRow}>
+                <Ionicons name={getTrendIcon() as any} size={14} color={getTrendColor()} />
+                <Text style={[styles.trendText, { color: getTrendColor() }]}>
+                  {trend.value}%
                 </Text>
+              </View>
+            )}
 
-                {trend && (
-                  <View style={styles.trendContainer}>
-                    <View style={[styles.trendBadge, { backgroundColor: getTrendColor() + '15' }]}>
-                      <Ionicons
-                        name={getTrendIcon()!}
-                        size={12}
-                        color={getTrendColor()}
-                      />
-                      <Text style={[styles.trendValue, { color: getTrendColor() }]}>
-                        {trend.value > 0 ? '+' : ''}
-                        {trend.value}%
-                      </Text>
-                    </View>
-                    {trend.label && (
-                      <Text style={[styles.trendLabel, { color: colors.textSecondary }]}>
-                        {trend.label}
-                      </Text>
-                    )}
-                  </View>
-                )}
-
-                {subtitle && (
-                  <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {subtitle}
-                  </Text>
-                )}
-              </>
+            {subtitle && (
+              <Text style={[styles.subtitle, { color: subtextColor }]}>
+                {subtitle}
+              </Text>
             )}
           </View>
-
-          {/* Arrow indicator for pressable cards */}
-          {onPress && !loading && (
-            <View style={[styles.arrowContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </View>
-          )}
-        </View>
-      </Container>
-    </Animated.View>
+        )}
+      </View>
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
-    minWidth: 200,
-  },
-  compactWrapper: {
-    width: 170, // Slightly smaller for cleaner look
-  },
   container: {
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    borderRadius: 16,
     borderWidth: 1,
+    padding: 16,
+    minWidth: 160,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    // Add simple shadow for depth
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   compactContainer: {
-    minHeight: 90, // Reduced from 120px for better density
-  },
-  borderAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-  },
-  cardContent: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  compactCardContent: {
-    padding: 12, // Proper padding all around
-    gap: 6,
+    padding: 12,
+    minWidth: 140,
+    gap: 10,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   compactIconContainer: {
-    width: 40, // Smaller icon container for compact
-    height: 40,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
   },
   content: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 4,
   },
   title: {
-    fontSize: typography.sizes.xs,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    // Color applied inline via props
   },
   value: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    letterSpacing: -0.5,
-    marginTop: spacing.xs,
-    // Color applied inline via props
+    marginVertical: 4,
   },
-  loader: {
-    alignSelf: 'flex-start',
-    marginVertical: spacing.sm,
+  compactValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginVertical: 2,
   },
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 4,
-  },
-  trendBadge: {
+  trendRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
   },
-  trendValue: {
-    fontSize: typography.sizes.xs,
-    fontWeight: '700',
-    // Color applied inline via props
-  },
-  trendLabel: {
-    fontSize: typography.sizes.xs,
-    fontWeight: '500',
-    // Color applied inline via props
+  trendText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   subtitle: {
-    fontSize: typography.sizes.xs,
-    marginTop: 4,
-    fontWeight: '500',
-    // Color applied inline via props
-  },
-  arrowContainer: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    width: 28,
-    height: 28,
-    borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+    fontSize: 11,
+    marginTop: 2,
+  }
 });

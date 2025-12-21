@@ -215,24 +215,65 @@ export default function SalesDetailScreen() {
 
           {/* Amount Grid */}
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1, padding: 10, backgroundColor: theme.background, borderRadius: 8 }}>
+            <View style={{ flex: 1, padding: 10, backgroundColor: theme.primary + '10', borderRadius: 8 }}>
               <Text style={{ fontSize: 10, color: theme.textSecondary }}>Net Amount</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: theme.primary }}>{formatCurrency(netAmount)}</Text>
             </View>
-            <View style={{ flex: 1, padding: 10, backgroundColor: theme.background, borderRadius: 8 }}>
+            <View style={{ flex: 1, padding: 10, backgroundColor: '#10B98110', borderRadius: 8 }}>
               <Text style={{ fontSize: 10, color: theme.textSecondary }}>Received</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10B981' }}>{formatCurrency(totalReceived)}</Text>
             </View>
-            <View style={{ flex: 1, padding: 10, backgroundColor: theme.background, borderRadius: 8 }}>
+            <View style={{ flex: 1, padding: 10, backgroundColor: balanceDue > 0 ? '#EF444410' : '#10B98110', borderRadius: 8 }}>
               <Text style={{ fontSize: 10, color: theme.textSecondary }}>Balance</Text>
               <Text style={{ fontSize: 16, fontWeight: '700', color: balanceDue > 0 ? '#EF4444' : '#10B981' }}>{formatCurrency(balanceDue)}</Text>
             </View>
           </View>
         </View>
 
-        {/* Tabs */}
-        <View style={{ paddingHorizontal: 16 }}>
-          <TabBar tabs={tabs} activeTab={activeTab} onTabChange={(key) => setActiveTab(key as TabType)} />
+        {/* Compact Horizontal Tabs */}
+        <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16 }}>
+              {tabs.map((tab) => (
+                <TouchableOpacity
+                  key={tab.id}
+                  onPress={() => setActiveTab(tab.id as TabType)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    borderBottomWidth: 2,
+                    borderBottomColor: activeTab === tab.id ? theme.primary : 'transparent',
+                  }}
+                >
+                  <Ionicons
+                    name={tab.icon as any}
+                    size={16}
+                    color={activeTab === tab.id ? theme.primary : theme.textSecondary}
+                  />
+                  <Text style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: activeTab === tab.id ? theme.primary : theme.text,
+                  }}>
+                    {tab.label}
+                  </Text>
+                  {tab.badge ? (
+                    <View style={{
+                      backgroundColor: theme.primary,
+                      borderRadius: 10,
+                      paddingHorizontal: 6,
+                      paddingVertical: 1
+                    }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{tab.badge}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
 
         {/* Tab Content */}
@@ -257,12 +298,9 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ sale, event, theme }) => {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const fmt = (amt: number) => `₹${amt.toLocaleString('en-IN')}`;
 
-  const Row = ({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) => (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border + '30' }}>
-      <Text style={{ fontSize: 12, color: theme.textSecondary }}>{label}</Text>
-      <Text style={{ fontSize: 12, fontWeight: '600', color: valueColor || theme.text }}>{value}</Text>
-    </View>
-  );
+  const rowStyle = { flexDirection: 'row' as const, justifyContent: 'space-between' as const, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border + '30' };
+  const labelStyle = { fontSize: 12, color: theme.textSecondary };
+  const valueStyle = (color?: string) => ({ fontSize: 12, fontWeight: '600' as const, color: color || theme.text });
 
   return (
     <Animated.View entering={FadeIn} style={{ gap: 12 }}>
@@ -270,32 +308,28 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ sale, event, theme }) => {
       {event && (
         <View style={{ padding: 12, backgroundColor: theme.surface, borderRadius: 10 }}>
           <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8 }}>EVENT</Text>
-          <Row label="Client" value={event.client?.name || 'N/A'} />
-          <Row label="Venue" value={event.venue?.name || 'N/A'} />
-          <Row label="Event Date" value={event.event_date ? formatDate(event.event_date) : 'N/A'} />
+          <View style={rowStyle}><Text style={labelStyle}>Client</Text><Text style={valueStyle()}>{event.client?.name || 'N/A'}</Text></View>
+          <View style={rowStyle}><Text style={labelStyle}>Venue</Text><Text style={valueStyle()}>{event.venue?.name || 'N/A'}</Text></View>
+          <View style={rowStyle}><Text style={labelStyle}>Event Date</Text><Text style={valueStyle()}>{event.event_date ? formatDate(event.event_date) : 'N/A'}</Text></View>
         </View>
       )}
 
       {/* Sale Info */}
       <View style={{ padding: 12, backgroundColor: theme.surface, borderRadius: 10 }}>
         <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8 }}>SALE</Text>
-        <Row label="Amount" value={fmt(sale.amount)} />
-        <Row label="Discount" value={fmt(sale.discount || 0)} />
-        <Row label="Net Amount" value={fmt(sale.amount - (sale.discount || 0))} valueColor={theme.primary} />
-        <Row label="Sale Date" value={formatDate(sale.date)} />
+        <View style={rowStyle}><Text style={labelStyle}>Amount</Text><Text style={valueStyle()}>{fmt(sale.amount)}</Text></View>
+        <View style={rowStyle}><Text style={labelStyle}>Discount</Text><Text style={valueStyle()}>{fmt(sale.discount || 0)}</Text></View>
+        <View style={rowStyle}><Text style={labelStyle}>Net Amount</Text><Text style={valueStyle(theme.primary)}>{fmt(sale.amount - (sale.discount || 0))}</Text></View>
+        <View style={rowStyle}><Text style={labelStyle}>Sale Date</Text><Text style={valueStyle()}>{formatDate(sale.date)}</Text></View>
       </View>
 
       {/* Payment Summary */}
       <View style={{ padding: 12, backgroundColor: theme.surface, borderRadius: 10 }}>
         <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8 }}>PAYMENT</Text>
-        <Row
-          label="Status"
-          value={sale.payment_status?.toUpperCase() || 'N/A'}
-          valueColor={sale.payment_status === 'completed' ? '#10B981' : sale.payment_status === 'pending' ? '#F59E0B' : '#EF4444'}
-        />
-        <Row label="Received" value={fmt(sale.total_received || 0)} valueColor="#10B981" />
-        <Row label="Balance Due" value={fmt(sale.balance_due || 0)} valueColor={(sale.balance_due || 0) > 0 ? '#EF4444' : '#10B981'} />
-        {sale.created_by_name && <Row label="Created By" value={sale.created_by_name} />}
+        <View style={rowStyle}><Text style={labelStyle}>Status</Text><Text style={valueStyle(sale.payment_status === 'completed' ? '#10B981' : sale.payment_status === 'pending' ? '#F59E0B' : '#EF4444')}>{sale.payment_status?.toUpperCase() || 'N/A'}</Text></View>
+        <View style={rowStyle}><Text style={labelStyle}>Received</Text><Text style={valueStyle('#10B981')}>{fmt(sale.total_received || 0)}</Text></View>
+        <View style={rowStyle}><Text style={labelStyle}>Balance Due</Text><Text style={valueStyle((sale.balance_due || 0) > 0 ? '#EF4444' : '#10B981')}>{fmt(sale.balance_due || 0)}</Text></View>
+        {sale.created_by_name && <View style={rowStyle}><Text style={labelStyle}>Created By</Text><Text style={valueStyle()}>{sale.created_by_name}</Text></View>}
       </View>
     </Animated.View>
   );
