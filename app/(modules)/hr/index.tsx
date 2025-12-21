@@ -3,7 +3,7 @@
  * Updated with 3 tabs: Staff | My Requests | Pending Approvals
  */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +29,15 @@ export default function HRScreen() {
   const [filters, setFilters] = useState<any>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText: string;
+    type: 'approve' | 'reject' | null;
+  }>({ visible: false, title: '', message: '', onConfirm: () => { }, confirmText: '', type: null });
   // Helper for button visibility
   const userRole = (user?.category || user?.role || '').toLowerCase();
   const canAccessHireActions = ['admin', 'hr', 'manager'].includes(userRole) || user?.is_team_leader;
@@ -204,39 +213,67 @@ export default function HRScreen() {
     setRefreshing(false);
   }, [refetchUsers, refetchReimbursements]);
 
-  // TODO: Implement notification when status changes
+  // Approve/Reject handlers with confirmation dialog
   const handleApprove = (id: number, employeeName: string) => {
-    Alert.alert('Approve Reimbursement', `Approve ${employeeName}'s request?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Approve', onPress: async () => {
-          try {
-            await updateReimbursementStatus.mutateAsync({ id, status: 'approved', reason: 'Approved' });
-            // TODO: Send notification to employee
-            // await notificationService.send({ to: employeeId, title: 'Reimbursement Approved', ... });
-            Alert.alert('Success', 'Reimbursement approved');
-            refetchReimbursements();
-          } catch { Alert.alert('Error', 'Failed to approve'); }
-        }
-      },
-    ]);
+    console.log('🟢 Approve clicked for:', { id, employeeName });
+    setConfirmDialog({
+      visible: true,
+      title: 'Approve Reimbursement',
+      message: `Approve ${employeeName}'s request?`,
+      confirmText: 'Approve',
+      type: 'approve',
+      onConfirm: () => performApprove(id, employeeName),
+    });
   };
 
   const handleReject = (id: number, employeeName: string) => {
-    Alert.alert('Reject Reimbursement', `Reject ${employeeName}'s request?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Reject', style: 'destructive', onPress: async () => {
-          try {
-            await updateReimbursementStatus.mutateAsync({ id, status: 'rejected', reason: 'Rejected' });
-            // TODO: Send notification to employee
-            // await notificationService.send({ to: employeeId, title: 'Reimbursement Rejected', ... });
-            Alert.alert('Success', 'Reimbursement rejected');
-            refetchReimbursements();
-          } catch { Alert.alert('Error', 'Failed to reject'); }
-        }
-      },
-    ]);
+    console.log('🔴 Reject clicked for:', { id, employeeName });
+    setConfirmDialog({
+      visible: true,
+      title: 'Reject Reimbursement',
+      message: `Reject ${employeeName}'s request?`,
+      confirmText: 'Reject',
+      type: 'reject',
+      onConfirm: () => performReject(id, employeeName),
+    });
+  };
+
+  const performApprove = async (id: number, employeeName: string) => {
+    console.log('✅ Performing approve for:', { id, employeeName });
+    setConfirmDialog({ ...confirmDialog, visible: false });
+    setProcessingId(id);
+
+    try {
+      console.log('📡 Calling mutateAsync with:', { id, status: 'approved' });
+      await updateReimbursementStatus.mutateAsync({ id, status: 'approved', reason: 'Approved' });
+      console.log('✅ Approve successful');
+      Alert.alert('Success', 'Reimbursement approved');
+      refetchReimbursements();
+    } catch (error) {
+      console.error('❌ Approve failed:', error);
+      Alert.alert('Error', 'Failed to approve reimbursement');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const performReject = async (id: number, employeeName: string) => {
+    console.log('❌ Performing reject for:', { id, employeeName });
+    setConfirmDialog({ ...confirmDialog, visible: false });
+    setProcessingId(id);
+
+    try {
+      console.log('📡 Calling mutateAsync with:', { id, status: 'rejected' });
+      await updateReimbursementStatus.mutateAsync({ id, status: 'rejected', reason: 'Rejected' });
+      console.log('✅ Reject successful');
+      Alert.alert('Success', 'Reimbursement rejected');
+      refetchReimbursements();
+    } catch (error) {
+      console.error('❌ Reject failed:', error);
+      Alert.alert('Error', 'Failed to reject reimbursement');
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   // Render Reimbursement Card
@@ -272,18 +309,32 @@ export default function HRScreen() {
       {showActions && item.status === 'pending' && (
         <View style={styles.cardActions}>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
+            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#10b981' }]}
             onPress={(e) => { e.stopPropagation(); handleApprove(item.id, item.employee); }}
+            disabled={processingId === item.id}
           >
-            <Ionicons name="checkmark" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Approve</Text>
+            {processingId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Approve</Text>
+              </>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
+            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
             onPress={(e) => { e.stopPropagation(); handleReject(item.id, item.employee); }}
+            disabled={processingId === item.id}
           >
-            <Ionicons name="close" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Reject</Text>
+            {processingId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="close" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Reject</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -434,6 +485,34 @@ export default function HRScreen() {
         {renderContent()}
       </View>
 
+      {/* Confirmation Dialog */}
+      {confirmDialog.visible && (
+        <View style={styles.dialogOverlay}>
+          <View style={[styles.dialogContainer, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.dialogTitle, { color: theme.text }]}>{confirmDialog.title}</Text>
+            <Text style={[styles.dialogMessage, { color: theme.textSecondary }]}>{confirmDialog.message}</Text>
+            <View style={styles.dialogButtons}>
+              <TouchableOpacity
+                style={[styles.dialogButton, styles.dialogButtonCancel, { borderColor: theme.border }]}
+                onPress={() => setConfirmDialog({ ...confirmDialog, visible: false })}
+              >
+                <Text style={[styles.dialogButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.dialogButton,
+                  styles.dialogButtonConfirm,
+                  { backgroundColor: confirmDialog.type === 'reject' ? '#ef4444' : '#10b981' }
+                ]}
+                onPress={confirmDialog.onConfirm}
+              >
+                <Text style={[styles.dialogButtonText, { color: '#fff' }]}>{confirmDialog.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
     </Animated.View>
   );
 }
@@ -481,5 +560,52 @@ const styles = StyleSheet.create({
   inviteBtn: {
     backgroundColor: '#10B981',
     borderColor: '#10B981',
+  },
+  dialogOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dialogContainer: {
+    marginHorizontal: 32,
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 400,
+    width: '100%',
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  dialogMessage: {
+    fontSize: 14,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  dialogButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dialogButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  dialogButtonCancel: {
+    borderWidth: 1,
+  },
+  dialogButtonConfirm: {
+    // backgroundColor set dynamically
+  },
+  dialogButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
