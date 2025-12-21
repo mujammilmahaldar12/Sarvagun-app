@@ -23,7 +23,8 @@ import { useAuthStore } from '@/store/authStore';
 import { AnimatedPressable, GlassCard, PerformanceChart } from '@/components';
 import { spacing, borderRadius, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import { useUserProjects, useActiveProjectsCount } from '@/hooks/useDashboardQueries';
+import { useActiveProjectsCount } from '@/hooks/useDashboardQueries';
+import { useUserProjects } from '@/hooks/useHRQueries';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -42,7 +43,7 @@ export default function ProjectAnalyticsScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch project data
@@ -60,7 +61,7 @@ export default function ProjectAnalyticsScreen() {
     totalProjects: userProjects.length,
     activeProjects: activeCount || 0,
     completedProjects: userProjects.filter(p => p.status === 'completed').length,
-    completionRate: userProjects.length > 0 
+    completionRate: userProjects.length > 0
       ? Math.round((userProjects.filter(p => p.status === 'completed').length / userProjects.length) * 100)
       : 0,
     avgProjectDuration: 45, // Mock data
@@ -88,13 +89,13 @@ export default function ProjectAnalyticsScreen() {
 
   // Task completion trend
   const taskTrendData = [
-    { date: 'Mon', value: 5 },
-    { date: 'Tue', value: 8 },
-    { date: 'Wed', value: 6 },
-    { date: 'Thu', value: 9 },
-    { date: 'Fri', value: 7 },
-    { date: 'Sat', value: 4 },
-    { date: 'Sun', value: 6 },
+    { label: 'Mon', value: 5 },
+    { label: 'Tue', value: 8 },
+    { label: 'Wed', value: 6 },
+    { label: 'Thu', value: 9 },
+    { label: 'Fri', value: 7 },
+    { label: 'Sat', value: 4 },
+    { label: 'Sun', value: 6 },
   ];
 
   return (
@@ -197,14 +198,14 @@ export default function ProjectAnalyticsScreen() {
                   </Text>
                 </View>
                 <View style={[styles.distributionBar, { backgroundColor: theme.border }]}>
-                  <View 
+                  <View
                     style={[
-                      styles.distributionBarFill, 
-                      { 
+                      styles.distributionBarFill,
+                      {
                         width: `${(item.count / metrics.totalProjects) * 100}%`,
-                        backgroundColor: item.color 
+                        backgroundColor: item.color
                       }
-                    ]} 
+                    ]}
                   />
                 </View>
               </Animated.View>
@@ -237,7 +238,7 @@ export default function ProjectAnalyticsScreen() {
           <Text style={[styles.sectionSubtitle, { color: theme.textSecondary, marginBottom: spacing.md }]}>
             Your active projects
           </Text>
-          
+
           {userProjects.slice(0, 5).map((project, index) => (
             <Animated.View
               key={project.id}

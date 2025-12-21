@@ -8,6 +8,9 @@ import Animated, {
   withSpring,
   withTiming,
   runOnJS,
+  useAnimatedScrollHandler,
+  FadeInDown,
+  FadeInUp
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/useTheme';
@@ -114,6 +117,25 @@ export default function ProfileScreen() {
     );
   };
 
+  // Quantum Leap Premium Design - hooks MUST be before early return
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event: any) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateY: scrollY.value * 0.5 }, // Parallax effect
+        { scale: Math.max(0.8, 1 - scrollY.value * 0.001) }
+      ],
+      opacity: Math.max(0, 1 - scrollY.value * 0.003),
+    };
+  });
+
   // Don't render if not authenticated - placed AFTER all hooks
   if (!isAuthenticated || !user) {
     return null;
@@ -127,423 +149,230 @@ export default function ProfileScreen() {
         translucent
       />
 
-      {/* Minimal Glass Header */}
-      <View style={[styles.header, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)', borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
+      {/* Animated Gradient Background Mesh - Simplified simulation */}
+      <View style={StyleSheet.absoluteFill}>
+        <View style={[styles.gradientBlob, {
+          backgroundColor: theme.primary,
+          top: -100,
+          left: -50,
+          opacity: 0.08
+        }]} />
+        <View style={[styles.gradientBlob, {
+          backgroundColor: '#3B82F6',
+          top: 100,
+          right: -80,
+          opacity: 0.06
+        }]} />
+        <View style={[styles.gradientBlob, {
+          backgroundColor: '#F59E0B',
+          bottom: -150,
+          left: 50,
+          opacity: 0.05
+        }]} />
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
-        {/* Profile Header */}
-        <View style={styles.profileSection}>
-          <AnimatedPressable
-            onPress={() => router.push('/(settings)/account')}
-            hapticType="light"
-            style={[styles.profileHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}
-          >
-            <Avatar
-              size={64}
-              source={user?.photo ? { uri: user.photo } : undefined}
-              name={user?.full_name}
-              onlineStatus={true}
-            />
-            <View style={styles.profileInfo}>
-              <Text style={[styles.userName, { color: theme.text }]}>
-                {user?.full_name || user?.first_name || user?.username}
-              </Text>
-              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-                {user?.email}
-              </Text>
+        {/* Parallax Hero Header */}
+        <Animated.View style={[styles.headerSection, headerAnimatedStyle]}>
+          <View style={styles.avatarWrapper}>
+            {/* Double Ring Gradient Effect */}
+            <View style={[styles.ringOuter, { borderColor: theme.primary + '40' }]}>
+              <View style={[styles.ringInner, { borderColor: theme.primary + '80' }]}>
+                <Avatar
+                  size={110}
+                  source={user?.photo ? { uri: user.photo } : undefined}
+                  name={user?.full_name}
+                  onlineStatus={true}
+                />
+              </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </AnimatedPressable>
-        </View>
+            <View style={[styles.proBadge, { backgroundColor: theme.primary }]}>
+              <Ionicons name="star" size={10} color="#FFF" />
+              <Text style={styles.proText}>PRO</Text>
+            </View>
+          </View>
 
-        {/* Quick Actions */}
+          <View style={styles.userInfo}>
+            <Text style={[styles.userName, { color: theme.text }]}>
+              {user?.full_name || user?.first_name || user?.username}
+            </Text>
+            <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
+              {user?.email}
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* Hero Stats - Glassmorphism */}
         <View style={styles.section}>
-          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}>
-            <ListItem
-              title="My Public Profile"
-              leftIcon="person-circle-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(dashboard)/my-profile')}
-            />
-            <ListItem
-              title="Edit Account"
-              leftIcon="create-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/account')}
-            />
-            <ListItem
-              title="Notifications"
-              leftIcon="notifications-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(dashboard)/notifications')}
-            />
-            <ListItem
-              title="Leaderboard"
-              leftIcon="trophy-outline"
-              rightIcon="chevron-forward-outline"
-              showDivider={false}
-              onPress={() => router.push('/(dashboard)/leaderboard')}
-            />
+          <View style={[styles.heroStatsContainer, {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.7)',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.8)'
+          }]}>
+            <View style={[styles.heroStatItem, { flex: 0.8 }]}>
+              <View style={[styles.heroStatIcon, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name={user?.category === 'intern' ? "hourglass-outline" : "ribbon-outline"} size={22} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.heroStatValue, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {user?.category === 'intern'
+                    ? (internshipData?.days_remaining ?? '--')
+                    : `${Math.floor((Date.now() - new Date(user?.joiningdate || 0).getTime()) / (1000 * 60 * 60 * 24 * 30))} Mo`
+                  }
+                </Text>
+                <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {user?.category === 'intern' ? 'Days Left' : 'Tenure'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.verticalDivider, { backgroundColor: theme.border }]} />
+
+            <View style={[styles.heroStatItem, { flex: 1.2 }]}>
+              <View style={[styles.heroStatIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="briefcase-outline" size={22} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[styles.heroStatValue, { color: theme.text, fontSize: 15, lineHeight: 20 }]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit={true}
+                  minimumFontScale={0.85}
+                >
+                  {user?.designation || 'Member'}
+                </Text>
+                <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                  Current Role
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* AI Assistant */}
+        {/* Quick Actions Grid - Enhanced */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>AI ASSISTANT</Text>
-          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}>
-            <View style={styles.aiToggleRow}>
-              <View style={styles.aiToggleLeft}>
-                <View style={[styles.aiIconContainer, { backgroundColor: theme.primary + '20' }]}>
-                  <Ionicons name="sparkles" size={20} color={theme.primary} />
-                </View>
-                <Text style={[styles.aiToggleTitle, { color: theme.text }]}>AI Mode</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>QUICK ACCESS</Text>
+          <View style={styles.gridContainer}>
+            {[
+              { title: 'My Profile', icon: 'person', route: '/(dashboard)/my-profile', color: '#3B82F6', gradient: ['#3B82F6', '#2563EB'] },
+              { title: 'Settings', icon: 'settings', route: '/(settings)/account', color: '#8B5CF6', gradient: ['#8B5CF6', '#7C3AED'] },
+              { title: 'Alerts', icon: 'notifications', route: '/(dashboard)/notifications', color: '#F59E0B', gradient: ['#F59E0B', '#D97706'] },
+              { title: 'Rankings', icon: 'trophy', route: '/(dashboard)/leaderboard', color: '#10B981', gradient: ['#10B981', '#059669'] },
+            ].map((item, index) => (
+              <Animated.View
+                key={index}
+                entering={FadeInUp.delay(100 + index * 50).duration(600).springify()}
+                style={styles.gridItemWrapper}
+              >
+                <AnimatedPressable
+                  onPress={() => router.push(item.route as any)}
+                  style={[styles.gridCard, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.02)'
+                  }]}
+                >
+                  <View style={[styles.gridIcon, { backgroundColor: item.color + '15' }]}>
+                    <Ionicons name={item.icon as any} size={28} color={item.color} />
+                  </View>
+                  <View>
+                    <Text style={[styles.gridTitle, { color: theme.text }]}>{item.title}</Text>
+                    <Text style={[styles.gridSubtitle, { color: theme.textSecondary }]}>Tap to view</Text>
+                  </View>
+                  <View style={[styles.actionArrow, { backgroundColor: theme.surface }]}>
+                    <Ionicons name="arrow-forward" size={14} color={theme.textSecondary} />
+                  </View>
+                </AnimatedPressable>
+              </Animated.View>
+            ))}
+          </View>
+        </View>
+
+        {/* AI Assistant - Glassmorphism Premium */}
+        <View style={styles.section}>
+          <AnimatedPressable
+            onPress={isAIModeEnabled ? () => router.push('/(dashboard)/ai-chat') : toggleAIMode}
+            style={[
+              styles.aiCard,
+              {
+                backgroundColor: isDark ? 'rgba(109, 55, 109, 0.15)' : 'rgba(109, 55, 109, 0.04)',
+                borderColor: theme.primary + '30'
+              }
+            ]}
+          >
+            <View style={styles.aiContent}>
+              <View style={[styles.aiIconBox, { backgroundColor: theme.primary }]}>
+                <Ionicons name="sparkles" size={24} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.aiTitle, { color: theme.text }]}>Sarvagun AI</Text>
+                <Text style={[styles.aiDesc, { color: theme.textSecondary }]}>
+                  {isAIModeEnabled ? 'Your personal assistant is active' : 'Unlock smart assistance'}
+                </Text>
               </View>
               <Switch
                 value={isAIModeEnabled}
                 onValueChange={toggleAIMode}
-                trackColor={{ false: theme.border, true: theme.primary + '60' }}
-                thumbColor={isAIModeEnabled ? theme.primary : theme.surface}
-                ios_backgroundColor={theme.border}
+                trackColor={{ false: theme.border, true: theme.primary }}
+                thumbColor={isAIModeEnabled ? '#FFF' : '#F4F4F5'}
               />
             </View>
-
-            {isAIModeEnabled && (
-              <>
-                <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                <ListItem
-                  title="Chat with AI"
-                  leftIcon="chatbubble-ellipses-outline"
-                  rightIcon="chevron-forward-outline"
-                  showDivider={false}
-                  onPress={() => router.push('/(dashboard)/ai-chat')}
-                />
-              </>
-            )}
-          </View>
+          </AnimatedPressable>
         </View>
 
-        {/* Professional Profile */}
-        <View style={{ padding: spacing.lg, paddingTop: 0 }}>
-          <Text
-            style={{
-              ...getTypographyStyle('lg', 'semibold'),
-              color: theme.text,
-              marginBottom: 16,
-            }}
-          >
-            Professional Profile
-          </Text>
-
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-              overflow: 'hidden',
-            }}
-          >
-            <ListItem
-              title="Education"
-              leftIcon="school-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/edit-education')}
-            />
-            <ListItem
-              title="Work Experience"
-              leftIcon="briefcase-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/edit-experience')}
-            />
-            <ListItem
-              title="Skills"
-              leftIcon="ribbon-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/edit-skills')}
-            />
-            <ListItem
-              title="Certifications"
-              leftIcon="medal-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/edit-certifications')}
-              showDivider={false}
-            />
-          </View>
-        </View>
-
-        {/* Career Journey Section */}
-        <View style={{ padding: spacing.lg, paddingTop: 0 }}>
-          <Text
-            style={{
-              ...getTypographyStyle('lg', 'semibold'),
-              color: theme.text,
-              marginBottom: 16,
-            }}
-          >
-            {user?.category === 'intern' ? '🎓 Internship Journey' : '🎯 My Journey'}
-          </Text>
-
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-              padding: 16,
-            }}
-          >
-            {/* For Interns: Show internship timeline */}
-            {user?.category === 'intern' ? (
-              <>
-                {/* Date Summary */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <View>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Start Date</Text>
-                    <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {(() => {
-                        // Backend field is 'joiningdate' (no underscore), internship has 'start_date'
-                        const startDate = internshipData?.start_date || user?.joiningdate || user?.joining_date;
-                        if (!startDate) return 'N/A';
-                        try {
-                          return new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                        } catch {
-                          return 'N/A';
-                        }
-                      })()}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Current End Date</Text>
-                    <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {(() => {
-                        // end_date only exists in Internship model, NOT on User model
-                        const endDate = internshipData?.end_date;
-                        if (!endDate) return 'N/A';
-                        try {
-                          return new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                        } catch {
-                          return 'N/A';
-                        }
-                      })()}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Days Remaining Badge */}
-                {internshipData?.end_date && (
-                  <View style={{
-                    backgroundColor: (() => {
-                      const endDate = internshipData.end_date;
-                      const days = Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                      if (days < 0) return '#FEE2E2';
-                      if (days <= 14) return '#FEF3C7';
-                      return '#D1FAE5';
-                    })(),
-                    padding: 12,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    marginBottom: 16,
-                  }}>
-                    <Text style={{
-                      fontWeight: '700',
-                      fontSize: 24,
-                      color: (() => {
-                        const endDate = internshipData.end_date;
-                        const days = Math.ceil((new Date(endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                        if (days < 0) return '#DC2626';
-                        if (days <= 14) return '#92400E';
-                        return '#065F46';
-                      })()
-                    }}>
-                      {internshipData.days_remaining ?? Math.ceil((new Date(internshipData.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: theme.textSecondary }}>
-                      {(internshipData.days_remaining ?? Math.ceil((new Date(internshipData.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) < 0 ? 'Days Overdue' : 'Days Remaining'}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Extensions History */}
-                {extensionsData && extensionsData.length > 0 && (
-                  <View style={{ marginBottom: 16 }}>
-                    <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginBottom: 8 }}>
-                      📅 Extensions History
-                    </Text>
-                    {extensionsData.map((ext: any) => (
-                      <View
-                        key={ext.id}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingVertical: 8,
-                          paddingHorizontal: 12,
-                          backgroundColor: ext.status === 'approved' ? '#D1FAE510' : ext.status === 'pending' ? '#FEF3C710' : '#FEE2E210',
-                          borderRadius: 8,
-                          marginBottom: 6,
-                          borderLeftWidth: 3,
-                          borderLeftColor: ext.status === 'approved' ? '#10B981' : ext.status === 'pending' ? '#F59E0B' : '#EF4444',
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: theme.text, fontWeight: '500' }}>
-                            +{ext.duration_months} month{ext.duration_months > 1 ? 's' : ''}
-                          </Text>
-                          <Text style={{ color: theme.textSecondary, fontSize: 11 }}>
-                            {new Date(ext.original_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {new Date(ext.new_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </Text>
-                        </View>
-                        <View
-                          style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
-                            borderRadius: 4,
-                            backgroundColor: ext.status === 'approved' ? '#D1FAE5' : ext.status === 'pending' ? '#FEF3C7' : '#FEE2E2',
-                          }}
-                        >
-                          <Text style={{
-                            fontSize: 10,
-                            fontWeight: '600',
-                            color: ext.status === 'approved' ? '#065F46' : ext.status === 'pending' ? '#92400E' : '#DC2626',
-                          }}>
-                            {ext.status.toUpperCase()}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Request Extension Button */}
-                <Pressable
-                  onPress={() => router.push('/(settings)/request-extension' as any)}
-                  style={({ pressed }) => ({
-                    padding: 14,
-                    backgroundColor: pressed ? theme.primary + '20' : theme.primary + '10',
-                    borderWidth: 2,
-                    borderColor: theme.primary,
-                    borderRadius: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                  })}
-                >
-                  <Text style={{ fontSize: 20 }}>🚀</Text>
-                  <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 15 }}>Ready to Build Something More Exciting?</Text>
-                </Pressable>
-              </>
-            ) : (
-              /* For Employees: Show tenure info */
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Ionicons name="calendar-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
-                  <View>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Joined</Text>
-                    <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {user?.joiningdate || user?.joining_date
-                        ? new Date(user.joiningdate || user.joining_date!).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-                        : 'N/A'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Ionicons name="briefcase-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
-                  <View>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Current Position</Text>
-                    <Text style={{ color: theme.text, fontWeight: '600' }}>
-                      {user?.designation || 'Team Member'}
-                    </Text>
-                  </View>
-                </View>
-                {user?.joiningdate && (
-                  <View style={{
-                    backgroundColor: theme.primary + '10',
-                    padding: 12,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                  }}>
-                    <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 20 }}>
-                      {Math.floor((Date.now() - new Date(user.joiningdate).getTime()) / (1000 * 60 * 60 * 24 * 30))}
-                    </Text>
-                    <Text style={{ color: theme.primary, fontSize: 12 }}>Months Tenure</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Settings */}
+        {/* Settings List - Clean */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SETTINGS</Text>
-          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF' }]}>
-            <ListItem
-              title="Appearance"
-              leftIcon="color-palette-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/appearance')}
-            />
-            <ListItem
-              title="Help & Support"
-              leftIcon="help-circle-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/help-center')}
-            />
-            <ListItem
-              title="Report a Problem"
-              leftIcon="alert-circle-outline"
-              rightIcon="chevron-forward-outline"
-              onPress={() => router.push('/(settings)/report-problem')}
-            />
-            <ListItem
-              title="About"
-              leftIcon="information-circle-outline"
-              rightIcon="chevron-forward-outline"
-              showDivider={false}
-              onPress={() => router.push('/(settings)/about')}
-            />
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
+          <View style={[styles.settingsContainer, {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.02)'
+          }]}>
+            {[
+              { title: 'Education', icon: 'school-outline', route: '/(settings)/edit-education' },
+              { title: 'Experience', icon: 'briefcase-outline', route: '/(settings)/edit-experience' },
+              { title: 'Skills', icon: 'ribbon-outline', route: '/(settings)/edit-skills' },
+              { title: 'Appearance', icon: 'color-palette-outline', route: '/(settings)/appearance' },
+            ].map((item, index) => (
+              <AnimatedPressable
+                key={index}
+                onPress={() => router.push(item.route as any)}
+                style={[styles.settingRow, index < 3 ? { borderBottomWidth: 1, borderBottomColor: theme.border } : {}]}
+              >
+                <View style={styles.settingIconRow}>
+                  <View style={[styles.miniIcon, { backgroundColor: theme.surface }]}>
+                    <Ionicons name={item.icon as any} size={18} color={theme.text} />
+                  </View>
+                  <Text style={[styles.settingText, { color: theme.text }]}>{item.title}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary + '60'} />
+              </AnimatedPressable>
+            ))}
           </View>
         </View>
 
-        {/* Logout */}
+        {/* Logout - Glowing Slide */}
         <View style={styles.section}>
-          <View style={styles.sliderContainer}>
-            <View style={[styles.sliderTrack, { backgroundColor: baseColors.error[600] }]}>
-              <Animated.Text style={[styles.sliderText, textOpacity]}>
-                Slide to Logout →
+          <View style={[styles.sliderContainer, { shadowColor: baseColors.error[500] }]}>
+            <View style={[styles.sliderTrack, { backgroundColor: baseColors.error[500] + '15', borderColor: baseColors.error[500] + '30', borderWidth: 1 }]}>
+              <Animated.Text style={[styles.sliderText, textOpacity, { color: baseColors.error[500] }]}>
+                Slide to Logout
               </Animated.Text>
             </View>
 
             <GestureDetector gesture={panGesture}>
-              <Animated.View style={[styles.sliderButton, logoutAnimatedStyle]}>
+              <Animated.View style={[styles.sliderButton, logoutAnimatedStyle, { shadowColor: baseColors.error[600] }]}>
                 <View style={styles.sliderButtonInner}>
-                  <Ionicons name="log-out-outline" size={24} color={baseColors.neutral[0]} />
+                  <Ionicons name="log-out-outline" size={24} color="#FFF" />
                 </View>
               </Animated.View>
             </GestureDetector>
           </View>
-
-          <Pressable
-            onPress={handleLogout}
-            style={({ pressed }) => [
-              styles.tapLogoutButton,
-              {
-                borderColor: theme.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <Text style={[styles.tapLogoutText, { color: theme.textSecondary }]}>
-              Or tap here for confirmation
-            </Text>
-          </Pressable>
         </View>
-      </ScrollView>
+
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -552,112 +381,218 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.md : spacing.xl,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    ...getTypographyStyle('lg', 'bold'),
-  },
   scrollContent: {
-    paddingTop: spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+    paddingTop: 60,
+    paddingBottom: 100,
   },
-  profileSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+  gradientBlob: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
   },
-  profileHeader: {
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+    zIndex: 10,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  ringOuter: {
+    padding: 4,
+    borderRadius: 75,
+    borderWidth: 1,
+  },
+  ringInner: {
+    padding: 4,
+    borderRadius: 70,
+    borderWidth: 1,
+  },
+  proBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.xl,
+    gap: 2,
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
-  profileInfo: {
-    flex: 1,
+  proText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  userInfo: {
+    alignItems: 'center',
+    gap: 4,
   },
   userName: {
-    ...getTypographyStyle('lg', 'bold'),
-    marginBottom: 2,
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   userEmail: {
-    ...getTypographyStyle('sm', 'regular'),
+    fontSize: 14,
+    fontWeight: '500',
   },
   section: {
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-  },
-  listCard: {
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
+    marginBottom: 24,
+    paddingHorizontal: 24,
   },
   sectionTitle: {
-    ...getTypographyStyle('xs', 'bold'),
-    letterSpacing: 0.5,
-    marginBottom: spacing.md,
-    marginLeft: spacing.xs,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    marginLeft: spacing.xs,
-  },
-  betaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  betaText: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
+    marginBottom: 16,
+    opacity: 0.6,
   },
-  actionCard: {
+  heroStatsContainer: {
+    flexDirection: 'row',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
     overflow: 'hidden',
-    borderRadius: borderRadius.xl,
   },
-  aiToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.base,
-  },
-  aiToggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  heroStatItem: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  aiIconContainer: {
+  verticalDivider: {
+    width: 1,
+    height: '100%',
+    marginHorizontal: 16,
+    opacity: 0.5,
+  },
+  heroStatIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  aiToggleTitle: {
-    ...getTypographyStyle('base', 'semibold'),
+  heroStatValue: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  divider: {
-    height: 1,
-    marginHorizontal: spacing.base,
+  heroStatLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  gridItemWrapper: {
+    width: '48%',
+  },
+  gridCard: {
+    padding: 14,
+    borderRadius: 20,
+    minHeight: 120, // Reduced from 160
+    justifyContent: 'space-between',
+    borderWidth: 1,
+  },
+  gridIcon: {
+    width: 44, // Reduced from 52
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gridTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 0,
+  },
+  gridSubtitle: {
+    fontSize: 11,
+  },
+  actionArrow: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiCard: {
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  aiContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aiIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#6D376D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  aiTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  aiDesc: {
+    fontSize: 12,
+  },
+  settingsContainer: {
+    borderRadius: 20,
+    padding: 6,
+    borderWidth: 1,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+  },
+  settingIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  miniIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   sliderContainer: {
     position: 'relative',
-    height: 60,
-    width: 300,
-    alignSelf: 'center',
-    marginBottom: spacing.lg,
+    height: 56,
+    width: '100%',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 30, // Extra margin at bottom
   },
   sliderTrack: {
     position: 'absolute',
@@ -665,48 +600,34 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 30,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
   sliderText: {
-    ...getTypographyStyle('base', 'semibold'),
-    color: baseColors.neutral[0],
+    fontSize: 15,
+    fontWeight: '600',
     letterSpacing: 0.5,
   },
   sliderButton: {
     position: 'absolute',
     left: 4,
     top: 4,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: baseColors.neutral[0],
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  sliderButtonInner: {
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: baseColors.error[600],
     justifyContent: 'center',
     alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  tapLogoutButton: {
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+  sliderButtonInner: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  tapLogoutText: {
-    ...getTypographyStyle('xs', 'medium'),
   },
 });

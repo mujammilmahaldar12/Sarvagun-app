@@ -39,7 +39,7 @@ class HRService {
    * - Employee/Intern: Own leaves only
    */
   async getLeaves(params?: LeaveFilters): Promise<LeaveResponse> {
-    const response = await api.get<LeaveResponse>('/hr/leaves/', { params });
+    const response = await api.get<LeaveResponse>('/leave_management/leaves/', { params });
     return response;
   }
 

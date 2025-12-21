@@ -13,12 +13,14 @@ import {
     Image,
     Switch,
     RefreshControl,
+    Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/store/authStore';
 import hrService from '@/services/hr.service';
+import api from '@/services/api';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 
 interface StaffDetails {
@@ -45,6 +47,15 @@ interface StaffDetails {
     teams?: { id: number; name: string }[];
 }
 
+const ROLE_OPTIONS = [
+    { value: 'admin', label: 'Administrator', color: '#DC2626' },
+    { value: 'hr', label: 'HR Manager', color: '#2563EB' },
+    { value: 'manager', label: 'Manager', color: '#059669' },
+    { value: 'team_lead', label: 'Team Lead', color: '#7C3AED' },
+    { value: 'employee', label: 'Employee', color: '#6366F1' },
+    { value: 'intern', label: 'Intern', color: '#D97706' },
+];
+
 export default function StaffDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,8 +65,11 @@ export default function StaffDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [isTogglingActive, setIsTogglingActive] = useState(false);
+    const [showRolePicker, setShowRolePicker] = useState(false);
+    const [isChangingRole, setIsChangingRole] = useState(false);
 
     const canEdit = user?.category === 'admin' || user?.category === 'hr';
+    const isAdmin = user?.category === 'admin'; // Only admin can change roles
 
     useEffect(() => {
         loadStaffDetails();
@@ -115,6 +129,34 @@ export default function StaffDetailScreen() {
                 }
             ]
         );
+    };
+
+    const handleRoleChange = async (newRole: string) => {
+        if (!staff || !isAdmin) return;
+
+        setIsChangingRole(true);
+        setShowRolePicker(false);
+
+        try {
+            const response = await api.post(`/hr/users/${id}/assign_role/`, {
+                role: newRole
+            });
+
+            // Update local state
+            setStaff({ ...staff, category: newRole });
+            Alert.alert(
+                'Success',
+                `Role changed to ${ROLE_OPTIONS.find(r => r.value === newRole)?.label || newRole}`
+            );
+        } catch (error: any) {
+            console.error('Failed to change role:', error);
+            Alert.alert(
+                'Error',
+                error?.response?.data?.error || 'Failed to change role'
+            );
+        } finally {
+            setIsChangingRole(false);
+        }
     };
 
     const handleEdit = () => {
@@ -231,6 +273,21 @@ export default function StaffDetailScreen() {
                                 disabled={isTogglingActive}
                             />
                         </View>
+
+                        {/* Role Assignment - Admin Only */}
+                        {isAdmin && staff.id !== user?.id && (
+                            <TouchableOpacity
+                                style={styles.rolePickerButton}
+                                onPress={() => setShowRolePicker(true)}
+                                disabled={isChangingRole}
+                            >
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.actionLabel}>User Role</Text>
+                                    <Text style={styles.roleValue}>{getCategoryLabel(staff.category)}</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 )}
 
@@ -281,6 +338,54 @@ export default function StaffDetailScreen() {
                     </View>
                 )}
             </ScrollView>
+
+            {/* Role Picker Modal */}
+            <Modal
+                visible={showRolePicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowRolePicker(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowRolePicker(false)}
+                >
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Select Role</Text>
+                        <Text style={styles.modalSubtitle}>Change user's access level</Text>
+
+                        {ROLE_OPTIONS.map((role) => (
+                            <TouchableOpacity
+                                key={role.value}
+                                style={[
+                                    styles.roleOption,
+                                    staff.category === role.value && styles.roleOptionSelected
+                                ]}
+                                onPress={() => handleRoleChange(role.value)}
+                            >
+                                <View style={[styles.roleColorDot, { backgroundColor: role.color }]} />
+                                <Text style={[
+                                    styles.roleOptionText,
+                                    staff.category === role.value && { fontWeight: '600' }
+                                ]}>
+                                    {role.label}
+                                </Text>
+                                {staff.category === role.value && (
+                                    <Ionicons name="checkmark" size={20} color="#10B981" />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+
+                        <TouchableOpacity
+                            style={styles.modalCancelButton}
+                            onPress={() => setShowRolePicker(false)}
+                        >
+                            <Text style={styles.modalCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 }
@@ -372,4 +477,57 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     extendButtonText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+    // Role picker styles
+    rolePickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        marginTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+    },
+    roleValue: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        paddingBottom: 40,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '600', color: '#1F2937', textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 },
+    roleOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 8,
+        backgroundColor: '#F9FAFB',
+    },
+    roleOptionSelected: {
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#10B981',
+    },
+    roleColorDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        marginRight: 12,
+    },
+    roleOptionText: { flex: 1, fontSize: 16, color: '#1F2937' },
+    modalCancelButton: {
+        marginTop: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    modalCancelText: { fontSize: 16, color: '#6B7280', fontWeight: '500' },
 });

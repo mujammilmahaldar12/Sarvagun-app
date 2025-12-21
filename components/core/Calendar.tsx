@@ -56,8 +56,12 @@ export const Calendar: React.FC<CalendarProps> = ({
   };
 
   const isDateDisabled = (date: Date) => {
-    if (minDate && date < minDate) return true;
-    if (maxDate && date > maxDate) return true;
+    // Normalize dates to compare only year/month/day (ignore time)
+    const normalizeDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dateNorm = normalizeDate(date);
+
+    if (minDate && dateNorm < normalizeDate(minDate)) return true;
+    if (maxDate && dateNorm > normalizeDate(maxDate)) return true;
     return false;
   };
 
@@ -71,7 +75,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   const renderDays = () => {
     const days = [];
-    
+
     // Empty cells for days before month starts
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(
@@ -122,11 +126,11 @@ export const Calendar: React.FC<CalendarProps> = ({
               style={{
                 fontSize: typography.sizes.sm,
                 fontWeight: selected || isToday ? typography.weights.bold : typography.weights.regular,
-                color: selected 
+                color: selected
                   ? colors.textInverse || '#FFFFFF'
-                  : isToday 
-                  ? colors.primary 
-                  : colors.text,
+                  : isToday
+                    ? colors.primary
+                    : colors.text,
                 textAlign: 'center',
               }}
             >
@@ -141,15 +145,15 @@ export const Calendar: React.FC<CalendarProps> = ({
   };
 
   return (
-    <View style={{ 
-      backgroundColor: colors.surface, 
-      borderRadius: borderRadius.lg, 
+    <View style={{
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.lg,
       padding: spacing[3],
       width: '100%',
     }}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable 
+        <Pressable
           onPress={previousMonth}
           style={{
             padding: spacing[2],
@@ -159,16 +163,16 @@ export const Calendar: React.FC<CalendarProps> = ({
         >
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        <Text style={{ 
-          fontSize: typography.sizes.lg, 
-          fontWeight: typography.weights.bold, 
+        <Text style={{
+          fontSize: typography.sizes.lg,
+          fontWeight: typography.weights.bold,
           color: colors.text,
           textAlign: 'center',
           flex: 1,
         }}>
           {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </Text>
-        <Pressable 
+        <Pressable
           onPress={nextMonth}
           style={{
             padding: spacing[2],

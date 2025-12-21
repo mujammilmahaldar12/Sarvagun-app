@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useTheme } from '@/hooks/useTheme';
 import { useLeads } from '@/store/eventsStore';
 import { useAuthStore } from '@/store/authStore';
-import { usePermissions } from '@/store/permissionStore';
+import { useModule } from '@/hooks/useModule';
 import { designSystem } from '@/constants/designSystem';
 import type { Lead } from '@/types/events';
 
@@ -74,11 +74,10 @@ const LeadsList: React.FC<LeadsListProps> = ({
   }, [leads, loading, error]);
 
   // Permission checks using professional permission system
-  const { canManageLeads, canConvertLeads, canCreateLeads } = usePermissions();
+  const { canManage, can: canLead } = useModule('events.leads');
 
   // Legacy permission mapping for transition
-  const canManage = canManageLeads;
-  const canApprove = canConvertLeads; // Use convert permission for lead conversion
+  const canApprove = canManage || canLead('convert'); // Use convert permission for lead conversion
 
   // Process and filter leads data
   const processedLeads: LeadRowData[] = useMemo(() => {
@@ -132,7 +131,7 @@ const LeadsList: React.FC<LeadsListProps> = ({
       createdDate: lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-IN') : 'N/A',
       createdBy: lead.user_name || 'N/A',
     }));
-  }, [leads, selectedStatus, searchQuery, canManageLeads, user?.id]);
+  }, [leads, selectedStatus, searchQuery, canManage, user?.id]);
 
   // Handle lead actions
   const handleLeadDetails = (leadId: number) => {

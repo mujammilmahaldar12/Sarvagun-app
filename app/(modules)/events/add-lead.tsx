@@ -68,7 +68,10 @@ export default function AddLeadScreen() {
     contactPerson: '',
     phone: '',
     email: '',
-    address: '',
+    // Structured address fields (combined into 'address' on submit)
+    addressStreet: '',
+    addressLandmark: '',
+    addressPincode: '',
     categoryId: 0,
     organisationId: 0,
 
@@ -298,12 +301,19 @@ export default function AddLeadScreen() {
       if (clientMode === 'select') {
         payload.client_id = formData.clientId;
       } else {
+        // Combine structured address into single string (delimiter: |||)
+        const combinedAddress = [
+          formData.addressStreet,
+          formData.addressLandmark,
+          formData.addressPincode
+        ].filter(Boolean).join('|||');
+
         // Prepare client data for creation
         payload.client = {
           name: formData.companyName,
           number: formData.phone,
           email: formData.email,
-          address: formData.address,
+          address: combinedAddress,
           client_category: formData.categoryId ? [formData.categoryId] : [],
           organisation: formData.organisationId > 0 ? [formData.organisationId] : [],
         };
@@ -417,7 +427,7 @@ export default function AddLeadScreen() {
               <Pressable
                 onPress={() => {
                   setClientMode('select');
-                  setFormData({ ...formData, clientId: 0, companyName: '', contactPerson: '', phone: '', email: '', address: '', categoryId: 0, organisationId: 0 });
+                  setFormData({ ...formData, clientId: 0, companyName: '', contactPerson: '', phone: '', email: '', addressStreet: '', addressLandmark: '', addressPincode: '', categoryId: 0, organisationId: 0 });
                 }}
                 style={[
                   styles.modeButton,
@@ -551,14 +561,34 @@ export default function AddLeadScreen() {
                 autoCapitalize="none"
               />
 
-              <Input
-                label="Address"
-                value={formData.address}
-                onChangeText={(text: string) => updateField('address', text)}
-                placeholder="Enter address"
-                multiline
-                leftIcon="location-outline"
-              />
+              {/* Structured Address Fields */}
+              <View style={{ gap: spacing.sm }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 4 }}>
+                  Address
+                </Text>
+                <Input
+                  label=""
+                  value={formData.addressStreet}
+                  onChangeText={(text: string) => updateField('addressStreet', text)}
+                  placeholder="Street / Area"
+                  leftIcon="location-outline"
+                />
+                <Input
+                  label=""
+                  value={formData.addressLandmark}
+                  onChangeText={(text: string) => updateField('addressLandmark', text)}
+                  placeholder="Landmark (optional)"
+                  leftIcon="flag-outline"
+                />
+                <Input
+                  label=""
+                  value={formData.addressPincode}
+                  onChangeText={(text: string) => updateField('addressPincode', text)}
+                  placeholder="Pincode"
+                  keyboardType="numeric"
+                  leftIcon="navigate-outline"
+                />
+              </View>
             </FormSection>
           )}
 

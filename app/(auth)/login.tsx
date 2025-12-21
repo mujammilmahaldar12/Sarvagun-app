@@ -35,6 +35,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const router = useRouter();
   const { login } = useAuthStore();
@@ -48,12 +49,24 @@ export default function LoginScreen() {
     slideUp.value = withTiming(0, { duration: 600 });
   }, []);
 
+  // Clear error when user starts typing
+  const handleUsernameChange = (text: string) => {
+    setUsername(text);
+    if (loginError) setLoginError(null);
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (loginError) setLoginError(null);
+  };
+
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert("Required", "Please enter both username and password");
+      setLoginError("Please enter both username and password");
       return;
     }
 
+    setLoginError(null);
     setIsLoading(true);
     try {
       const success = await login(username.trim(), password);
@@ -62,8 +75,24 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       console.error("Login error:", error);
-      const message = error?.message || "Invalid credentials. Please try again.";
-      Alert.alert("Login Failed", message);
+      // Extract meaningful error message
+      let message = "Wrong password. Please try again.";
+      if (error?.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error?.response?.data?.error) {
+        message = error.response.data.error;
+      } else if (error?.message) {
+        // Check for common error patterns
+        const errMsg = error.message.toLowerCase();
+        if (errMsg.includes("invalid") || errMsg.includes("credential") || errMsg.includes("password") || errMsg.includes("401")) {
+          message = "Wrong username or password. Please try again.";
+        } else if (errMsg.includes("network") || errMsg.includes("connection")) {
+          message = "Network error. Please check your connection.";
+        } else {
+          message = error.message;
+        }
+      }
+      setLoginError(message);
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +156,7 @@ export default function LoginScreen() {
                       placeholder="Enter your username"
                       placeholderTextColor="#6B7280"
                       value={username}
-                      onChangeText={setUsername}
+                      onChangeText={handleUsernameChange}
                       onFocus={() => setUsernameFocused(true)}
                       onBlur={() => setUsernameFocused(false)}
                       autoCapitalize="none"
@@ -153,7 +182,7 @@ export default function LoginScreen() {
                       placeholder="Enter your password"
                       placeholderTextColor="#6B7280"
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={handlePasswordChange}
                       onFocus={() => setPasswordFocused(true)}
                       onBlur={() => setPasswordFocused(false)}
                       secureTextEntry={!showPassword}
@@ -168,6 +197,14 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
+
+                {/* Error Message */}
+                {loginError && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={18} color="#FFFFFF" />
+                    <Text style={styles.errorText}>{loginError}</Text>
+                  </View>
+                )}
 
                 {/* Forgot Password */}
                 <TouchableOpacity style={styles.forgotPassword}>
@@ -405,5 +442,21 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    marginTop: 4,
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 });

@@ -1,5 +1,5 @@
 ﻿import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, Image, RefreshControl, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, Image, RefreshControl, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp, FadeIn, SlideInRight } from 'react-native-reanimated';
@@ -14,6 +14,9 @@ import { getShadowStyle, getTypographyStyle, getCardStyle } from '@/utils/styleH
 import { useCurrentUser, useLeaveBalance, useRecentActivities, useRefreshDashboard, useActiveProjectsCount, useLeaderboard, useBackendActivities } from '@/hooks/useDashboardQueries';
 import { formatDistanceToNow } from 'date-fns';
 import { useAttendancePercentage } from '@/hooks/useHRQueries';
+import { useTaskStatistics } from '@/hooks/useProjectQueries';
+import { useEvents } from '@/hooks/useEventsQueries';
+import { useModule } from '@/hooks/useModule';
 
 // Medal colors for leaderboard
 const MEDAL_COLORS = {
@@ -91,8 +94,14 @@ export default function HomeScreen() {
   const { user: authUser } = useAuthStore();
   const { theme, isDark } = useTheme();
 
-  // Dashboard data fetching
+  // Permission Checks
+  const { can: canViewHR } = useModule('hr.employees');
+  const { can: canViewEvents } = useModule('events.events');
+  const { can: canViewFinance } = useModule('finance.dashboard');
+  const { can: canViewProjects } = useModule('projects.projects');
+  const { can: canViewLeave } = useModule('hr.leaves');
 
+  // Dashboard data fetching
   // Fetch real data from backend with real-time updates
   const user = useAuthStore((state) => state.user);
   const { data: leaveBalance, isLoading: leaveLoading, refetch: refetchLeave } = useLeaveBalance();
@@ -100,7 +109,10 @@ export default function HomeScreen() {
   const { data: activeProjectsCount, refetch: refetchProjects } = useActiveProjectsCount();
   const { data: leaderboardData = [], isLoading: leaderboardLoading } = useLeaderboard(5, 'thisMonth', 'individual');
   const { mutate: refreshDashboard, isPending: isRefreshing } = useRefreshDashboard();
-  const { data: attendanceData, isLoading: attendanceLoading } = useAttendancePercentage();
+
+  // Real Data: Task Stats and Events
+  const { data: taskStats, refetch: refetchTasks } = useTaskStatistics();
+  const { data: eventsData, refetch: refetchEvents } = useEvents({ page_size: 5, status: 'upcoming' });
 
   const [notificationCount] = useState(0);
 
@@ -121,7 +133,9 @@ export default function HomeScreen() {
     refetchLeave();
     refetchProjects();
     refetchActivities();
-  }, [refreshDashboard, refetchLeave, refetchProjects, refetchActivities]);
+    refetchTasks();
+    refetchEvents();
+  }, [refreshDashboard, refetchLeave, refetchProjects, refetchActivities, refetchTasks, refetchEvents]);
 
   // Loading state
   const isLoading = userLoading;
@@ -160,8 +174,7 @@ export default function HomeScreen() {
     return 0;
   }, [leaderboardData, displayUser]);
 
-  // Real attendance percentage from backend API
-  const attendancePercentage = attendanceData?.percentage || 0;
+
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -249,7 +262,7 @@ export default function HomeScreen() {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Statistics</Text>
         </Animated.View>
 
-        {/* KPI Cards - Horizontal Scroll */}
+        {/* KPI Cards - Horizontal Scroll - Filtered by permissions */}
         <Animated.View
           entering={FadeInUp.delay(200).duration(600).springify()}
           style={styles.sectionNoPadding}
@@ -262,50 +275,68 @@ export default function HomeScreen() {
             snapToInterval={SCREEN_WIDTH * 0.70 + spacing.md}
             snapToAlignment="start"
           >
-            <GlassKPICard
-              title="Attendance"
-              value={attendanceLoading ? '--' : `${Math.round(attendancePercentage)}%`}
-              icon="calendar-outline"
-              gradientColors={['#4F46E5', '#2563EB']}
-              trend={attendancePercentage >= 90 ? "up" : attendancePercentage >= 75 ? "neutral" : "down"}
-              trendValue={attendanceData?.present_days ? `${attendanceData.present_days}/${attendanceData.total_days}` : undefined}
-              subtitle={attendanceData?.period === 'last_30_days' ? 'Last 30 days' : 'Last 7 days'}
-              onPress={() => router.push('/(modules)/hr' as any)}
-              style={styles.kpiCardHorizontal}
-            />
+            {canViewProjects('view') && (
+              <GlassKPICard
+                title="Pending Tasks"
+                value={taskStats?.in_progress_tasks?.toString() || '0'}
+                icon="checkbox-outline"
+                gradientColors={['#EF4444', '#B91C1C']} // Red/Orange for urgency
+                trend={(taskStats?.overdue_tasks ?? 0) > 0 ? "down" : "neutral"}
+                trendValue={(taskStats?.overdue_tasks ?? 0) > 0 ? `${taskStats?.overdue_tasks} Overdue` : undefined}
+                subtitle="Tasks to complete"
+                onPress={() => router.push('/(modules)/projects' as any)}
+                style={styles.kpiCardHorizontal}
+              />
+            )}
 
+            {/* Upcoming Events - Priority 2 (Information) */}
+            {canViewEvents('view') && (
+              <GlassKPICard
+                title="Upcoming Events"
+                value={eventsData?.results?.length?.toString() || '0'}
+                icon="calendar-outline"
+                gradientColors={['#8B5CF6', '#6D28D9']} // Purple for events
+                trend="neutral"
+                subtitle="Next 7 days"
+                onPress={() => router.push('/(modules)/events' as any)}
+                style={styles.kpiCardHorizontal}
+              />
+            )}
+
+            {/* Leave Balance - Priority 3 (Personal) */}
+            {canViewLeave('view') && (
+              <GlassKPICard
+                title="Leave Balance"
+                value={leaveDays}
+                icon="time-outline"
+                gradientColors={['#F59E0B', '#B45309']}
+                trend="neutral"
+                subtitle="Days remaining"
+                onPress={() => router.push('/(modules)/leave' as any)}
+                style={styles.kpiCardHorizontal}
+              />
+            )}
+
+            {/* Productivity - Priority 4 (Gamification/Long-term) */}
             <GlassKPICard
-              title="Productivity Score"
+              title="Productivity"
               value={myProductivityScore > 0 ? myProductivityScore.toString() : '0'}
               icon="trending-up-outline"
               gradientColors={['#10B981', '#047857']}
               trend={myProductivityScore > 0 ? "up" : "neutral"}
               trendValue={myProductivityScore > 0 ? `${Math.floor(myProductivityScore / 10)} pts` : undefined}
-              subtitle="Project score"
-              onPress={() => router.push('/(dashboard)/leaderboard' as any)}
-              style={styles.kpiCardHorizontal}
-            />
-
-            <GlassKPICard
-              title="Leave Balance"
-              value={leaveDays}
-              icon="time-outline"
-              gradientColors={['#F59E0B', '#B45309']}
-              trend="neutral"
-              subtitle="Days remaining"
-              onPress={() => router.push('/(modules)/leave' as any)}
-              style={styles.kpiCardHorizontal}
-            />
-
-            <GlassKPICard
-              title="Active Projects"
-              value={activeProjects}
-              icon="briefcase-outline"
-              gradientColors={['#8B5CF6', '#6D28D9']}
-              trend="up"
-              trendValue="+1"
-              subtitle="In progress"
-              onPress={() => router.push('/(modules)/projects' as any)}
+              subtitle="Score (Tap for info)"
+              onPress={() => {
+                // Show info about score calculation
+                Alert.alert(
+                  "Productivity Score",
+                  "Your score increases when you complete tasks (10 pts) and projects (50 pts).\n\nKeep completing work to climb the leaderboard!",
+                  [
+                    { text: "View Leaderboard", onPress: () => router.push('/(dashboard)/leaderboard' as any) },
+                    { text: "OK", style: "cancel" }
+                  ]
+                );
+              }}
               style={styles.kpiCardHorizontal}
             />
           </ScrollView>
@@ -330,7 +361,14 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.modulesHorizontalContainer}
           >
-            {MODULES.slice(0, 4).map((module, index) => (
+            {MODULES.filter(m => {
+              if (m.id === 'hr') return canViewHR('view');
+              if (m.id === 'events') return canViewEvents('view');
+              if (m.id === 'finance') return canViewFinance('view');
+              if (m.id === 'projects') return canViewProjects('view');
+              if (m.id === 'leave') return canViewLeave('view');
+              return true;
+            }).slice(0, 4).map((module, index) => (
               <Animated.View
                 key={module.id}
                 entering={FadeIn.delay(400 + index * 50).duration(600).springify()}

@@ -44,7 +44,7 @@ import {
     useRateTask,
 } from '@/hooks/useProjectQueries';
 import { useAuthStore } from '@/store/authStore';
-import { useCanRateTasks } from '@/hooks/usePermissions';
+import { useModule } from '@/hooks/useModule';
 
 // New components
 import { SwipeableTaskRow } from './components/_SwipeableTaskRow';
@@ -180,18 +180,28 @@ export default function ProjectsScreen() {
     const rateTaskMutation = useRateTask();
 
     // Permissions - Use backend-verified permission check
-    const { data: ratePermission, isLoading: isCheckingPermission } = useCanRateTasks();
-    const canRateTasks = ratePermission?.allowed || false;
+    const { canManage: canManageProjects, canAdmin: canAdminProjects, can: canViewProjects } = useModule('projects.projects');
+    const { canManage: canManageTasks, can: canRate } = useModule('projects.tasks');
 
-    // Debug logging for rating permissions
-    console.log('🔍 Rating Permission Debug:', {
-        userCategory: user?.category,
-        userId: user?.id,
+    if (!canViewProjects('view')) {
+        return (
+            <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="lock-closed-outline" size={64} color={theme.textSecondary} />
+                <Text style={{ marginTop: 16, fontSize: 18, color: theme.textSecondary }}>Access Denied</Text>
+            </View>
+        );
+    }
+
+    // Explicit 'rate' permission check
+    const canRateTasks = canRate('rate');
+
+    // Debug logging for permissions
+    console.log('🔍 Permission Debug:', {
+        canManageProjects,
+        canAdminProjects,
+        canManageTasks,
         canRateTasks,
-        permissionReason: ratePermission?.reason,
-        isCheckingPermission,
-        isTeamLead,
-        teamMemberId
+        isTeamLead
     });
 
     // Auto-select first project (newest = highest ID)
@@ -502,10 +512,14 @@ export default function ProjectsScreen() {
 
     // Handle edit section
     const handleEditSection = useCallback((sectionId: number, currentName: string) => {
+        if (!canManageProjects) {
+            Alert.alert('Permission Denied', 'You do not have permission to edit sections.');
+            return;
+        }
         setEditingSectionId(sectionId);
         setEditSectionName(currentName);
         setShowEditSection(true);
-    }, []);
+    }, [canManageProjects]);
 
     // Handle update section
     const handleUpdateSection = useCallback(() => {
@@ -534,6 +548,11 @@ export default function ProjectsScreen() {
 
     // Handle delete section - Show confirmation dialog
     const handleDeleteSection = useCallback((sectionId: number) => {
+        if (!canManageProjects) {
+            Alert.alert('Permission Denied', 'You do not have permission to delete sections.');
+            return;
+        }
+
         console.log('🗑️ handleDeleteSection called with sectionId:', sectionId);
         const section = sectionsList.find(s => s.id === sectionId);
         if (!section) {
@@ -543,7 +562,7 @@ export default function ProjectsScreen() {
 
         setSectionToDelete({ id: sectionId, name: section.section_name });
         setShowDeleteSectionConfirm(true);
-    }, [sectionsList]);
+    }, [sectionsList, canManageProjects]);
 
     // Confirm delete section  
     const confirmDeleteSection = useCallback(() => {
@@ -711,7 +730,7 @@ export default function ProjectsScreen() {
                             const createUrl = isTeamLead && teamMemberId
                                 ? `/projects/create-project?teamMemberId=${teamMemberId}&teamMemberName=${encodeURIComponent(teamMemberName)}&isTeamLead=true`
                                 : '/projects/create-project';
-                            router.push(createUrl);
+                            router.push(createUrl as any);
                         }}
                         style={[styles.createButton, { backgroundColor: theme.primary }]}
                     >
@@ -755,33 +774,38 @@ export default function ProjectsScreen() {
                             <View style={styles.projectActions}>
                                 {selectedProject && (
                                     <>
-                                        <TouchableOpacity
-                                            onPress={(e) => { e.stopPropagation(); handleEditProject(); }}
-                                            style={[styles.iconButton, { backgroundColor: theme.primary + '20' }]}
-                                        >
-                                            <Ionicons name="pencil" size={14} color={theme.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={(e) => { e.stopPropagation(); handleDeleteProject(); }}
-                                            style={[styles.iconButton, { backgroundColor: theme.error + '20' }]}
-                                        >
-                                            <Ionicons name="trash-outline" size={14} color={theme.error} />
-                                        </TouchableOpacity>
+                                        {canManageProjects && (
+                                            <TouchableOpacity
+                                                onPress={(e) => { e.stopPropagation(); handleEditProject(); }}
+                                                style={[styles.iconButton, { backgroundColor: theme.primary + '20' }]}
+                                            >
+                                                <Ionicons name="pencil" size={14} color={theme.primary} />
+                                            </TouchableOpacity>
+                                        )}
+                                        {canAdminProjects && (
+                                            <TouchableOpacity
+                                                onPress={(e) => { e.stopPropagation(); handleDeleteProject(); }}
+                                                style={[styles.iconButton, { backgroundColor: theme.error + '20' }]}
+                                            >
+                                                <Ionicons name="trash-outline" size={14} color={theme.error} />
+                                            </TouchableOpacity>
+                                        )}
                                     </>
                                 )}
-                                {/* Add Project Button */}
-                                <TouchableOpacity
-                                    onPress={(e) => {
-                                        e.stopPropagation();
-                                        const createUrl = isTeamLead && teamMemberId
-                                            ? `/projects/create-project?teamMemberId=${teamMemberId}&teamMemberName=${encodeURIComponent(teamMemberName)}&isTeamLead=true`
-                                            : '/projects/create-project';
-                                        router.push(createUrl as any);
-                                    }}
-                                    style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
-                                >
-                                    <Ionicons name="add" size={16} color="#fff" />
-                                </TouchableOpacity>
+                                {canManageProjects && (
+                                    <TouchableOpacity
+                                        onPress={(e) => {
+                                            e.stopPropagation();
+                                            const createUrl = isTeamLead && teamMemberId
+                                                ? `/projects/create-project?teamMemberId=${teamMemberId}&teamMemberName=${encodeURIComponent(teamMemberName)}&isTeamLead=true`
+                                                : '/projects/create-project';
+                                            router.push(createUrl as any);
+                                        }}
+                                        style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
+                                    >
+                                        <Ionicons name="add" size={16} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
                                 <Ionicons
                                     name={showProjectDropdown ? 'chevron-up' : 'chevron-down'}
                                     size={18}

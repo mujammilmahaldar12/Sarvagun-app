@@ -149,8 +149,8 @@ export default function GoalDetailScreen() {
       'Mark this milestone as complete?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Confirm', 
+        {
+          text: 'Confirm',
           onPress: () => {
             // Handle milestone toggle
             console.log('Toggle milestone:', milestoneId);
@@ -171,8 +171,8 @@ export default function GoalDetailScreen() {
       'Are you sure you want to delete this goal? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
             router.back();
@@ -206,7 +206,7 @@ export default function GoalDetailScreen() {
             <Badge
               label={getStatusLabel(status)}
               color={getStatusColor(status)}
-              variant="solid"
+              variant="filled"
             />
           </View>
           <AnimatedPressable
@@ -265,14 +265,14 @@ export default function GoalDetailScreen() {
               </Text>
             </View>
             <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${progress}%`, 
-                    backgroundColor: getStatusColor(status) 
+                  styles.progressFill,
+                  {
+                    width: `${progress}%`,
+                    backgroundColor: getStatusColor(status)
                   }
-                ]} 
+                ]}
               />
             </View>
           </View>
@@ -326,23 +326,23 @@ export default function GoalDetailScreen() {
                 onPress={() => handleToggleMilestone(milestone.id)}
                 style={[
                   styles.milestoneCard,
-                  { 
+                  {
                     backgroundColor: milestone.completed ? theme.primary + '08' : 'transparent',
                     borderColor: milestone.completed ? theme.primary + '30' : theme.border,
                   }
                 ]}
                 hapticType="light"
               >
-                <Ionicons 
-                  name={milestone.completed ? 'checkmark-circle' : 'ellipse-outline'} 
-                  size={24} 
-                  color={milestone.completed ? '#10B981' : theme.textSecondary} 
+                <Ionicons
+                  name={milestone.completed ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={24}
+                  color={milestone.completed ? '#10B981' : theme.textSecondary}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text 
+                  <Text
                     style={[
-                      styles.milestoneTitle, 
-                      { 
+                      styles.milestoneTitle,
+                      {
                         color: milestone.completed ? theme.textSecondary : theme.text,
                         textDecorationLine: milestone.completed ? 'line-through' : 'none',
                       }
@@ -384,16 +384,16 @@ export default function GoalDetailScreen() {
               entering={FadeInUp.delay(index * 50).duration(300)}
               style={styles.activityItem}
             >
-              <View 
+              <View
                 style={[
-                  styles.activityIcon, 
+                  styles.activityIcon,
                   { backgroundColor: theme.primary + '15' }
                 ]}
               >
-                <Ionicons 
-                  name={getActivityIcon(activity.type) as any} 
-                  size={16} 
-                  color={theme.primary} 
+                <Ionicons
+                  name={getActivityIcon(activity.type) as any}
+                  size={16}
+                  color={theme.primary}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -420,13 +420,13 @@ export default function GoalDetailScreen() {
           <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
             Break down your goal into achievable steps
           </Text>
-          
+
           <TextInput
             placeholder="Milestone title"
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
           />
-          
+
           <TextInput
             placeholder="Description"
             placeholderTextColor={theme.textSecondary}

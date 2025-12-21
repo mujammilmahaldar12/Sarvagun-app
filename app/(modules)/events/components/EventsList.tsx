@@ -13,7 +13,7 @@ import { EmptyState, LoadingState } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useEvents } from '@/store/eventsStore';
 import { useAuthStore } from '@/store/authStore';
-import { usePermissions } from '@/store/permissionStore';
+import { useModule } from '@/hooks/useModule';
 import { designSystem } from '@/constants/designSystem';
 import type { AppEvent } from '@/types/events';
 
@@ -44,7 +44,7 @@ const EventsList: React.FC<EventsListProps> = ({
   const { theme, spacing } = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const { canEditEvents, canManageEvents } = usePermissions();
+  const { canManage, can: canEvent } = useModule('events.events');
 
   const {
     events,
@@ -57,8 +57,7 @@ const EventsList: React.FC<EventsListProps> = ({
 
   // Legacy permission checks for transition period
   // TODO: Remove after full migration to permission system
-  const canManage = canManageEvents;
-  const canEdit = canEditEvents;
+  const canEdit = canManage || canEvent('edit');
 
   // Process and filter events data
   const processedEvents: EventRowData[] = useMemo(() => {
@@ -269,7 +268,7 @@ const EventsList: React.FC<EventsListProps> = ({
             size="sm"
           />
 
-          {canEditEvents && (
+          {canEdit && (
             <Button
               title=""
               leftIcon="create-outline"

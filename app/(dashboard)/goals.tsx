@@ -53,7 +53,7 @@ export default function GoalsScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  
+
   const [selectedCategory, setSelectedCategory] = useState<GoalCategory | 'all'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -137,8 +137,8 @@ export default function GoalsScreen() {
 
   const goals = apiGoals.length > 0 ? apiGoals : mockGoals;
 
-  const filteredGoals = selectedCategory === 'all' 
-    ? goals 
+  const filteredGoals = selectedCategory === 'all'
+    ? goals
     : goals.filter(g => g.category === selectedCategory);
 
   const categories = [
@@ -204,8 +204,8 @@ export default function GoalsScreen() {
         </View>
 
         {/* Category Filter */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryContainer}
         >
@@ -221,10 +221,10 @@ export default function GoalsScreen() {
                 },
               ]}
             >
-              <Ionicons 
-                name={category.icon as any} 
-                size={16} 
-                color={selectedCategory === category.value ? '#FFFFFF' : theme.textSecondary} 
+              <Ionicons
+                name={category.icon as any}
+                size={16}
+                color={selectedCategory === category.value ? '#FFFFFF' : theme.textSecondary}
               />
               <Text
                 style={[
@@ -304,7 +304,7 @@ export default function GoalsScreen() {
                     <Badge
                       label={getStatusLabel(goal.status)}
                       color={getStatusColor(goal.status)}
-                      variant="solid"
+                      variant="filled"
                     />
                   </View>
 
@@ -319,14 +319,14 @@ export default function GoalsScreen() {
                       </Text>
                     </View>
                     <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
-                      <View 
+                      <View
                         style={[
-                          styles.progressFill, 
-                          { 
-                            width: `${goal.progress}%`, 
-                            backgroundColor: getStatusColor(goal.status) 
+                          styles.progressFill,
+                          {
+                            width: `${goal.progress}%`,
+                            backgroundColor: getStatusColor(goal.status)
                           }
-                        ]} 
+                        ]}
                       />
                     </View>
                   </View>
@@ -338,15 +338,15 @@ export default function GoalsScreen() {
                     </Text>
                     {goal.milestones.map((milestone) => (
                       <View key={milestone.id} style={styles.milestoneItem}>
-                        <Ionicons 
-                          name={milestone.completed ? 'checkmark-circle' : 'ellipse-outline'} 
-                          size={18} 
-                          color={milestone.completed ? '#10B981' : theme.textSecondary} 
+                        <Ionicons
+                          name={milestone.completed ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={18}
+                          color={milestone.completed ? '#10B981' : theme.textSecondary}
                         />
-                        <Text 
+                        <Text
                           style={[
-                            styles.milestoneText, 
-                            { 
+                            styles.milestoneText,
+                            {
                               color: milestone.completed ? theme.textSecondary : theme.text,
                               textDecorationLine: milestone.completed ? 'line-through' : 'none'
                             }
@@ -362,7 +362,7 @@ export default function GoalsScreen() {
                   <View style={styles.goalFooter}>
                     <View style={styles.tags}>
                       {goal.tags.map((tag) => (
-                        <View 
+                        <View
                           key={tag}
                           style={[styles.tag, { backgroundColor: theme.primary + '15' }]}
                         >
@@ -394,13 +394,13 @@ export default function GoalsScreen() {
           <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
             Define your objective and key results
           </Text>
-          
+
           <TextInput
             placeholder="Goal title"
             placeholderTextColor={theme.textSecondary}
             style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
           />
-          
+
           <TextInput
             placeholder="Description"
             placeholderTextColor={theme.textSecondary}

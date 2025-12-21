@@ -23,7 +23,7 @@ import { useAuthStore } from '@/store/authStore';
 import { AnimatedPressable, GlassCard, PerformanceChart } from '@/components';
 import { spacing, borderRadius, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
-import { 
+import {
   useAttendancePercentage,
   useLeaveBalance,
   useTeamMembers,
@@ -35,7 +35,7 @@ export default function HRAnalyticsScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch HR data
@@ -62,13 +62,13 @@ export default function HRAnalyticsScreen() {
 
   // Attendance trend data
   const attendanceTrendData = [
-    { date: 'Mon', value: 100 },
-    { date: 'Tue', value: 100 },
-    { date: 'Wed', value: 100 },
-    { date: 'Thu', value: 0 },
-    { date: 'Fri', value: 100 },
-    { date: 'Sat', value: 100 },
-    { date: 'Sun', value: 100 },
+    { label: 'Mon', value: 100 },
+    { label: 'Tue', value: 100 },
+    { label: 'Wed', value: 100 },
+    { label: 'Thu', value: 0 },
+    { label: 'Fri', value: 100 },
+    { label: 'Sat', value: 100 },
+    { label: 'Sun', value: 100 },
   ];
 
   // Leave distribution
@@ -188,7 +188,7 @@ export default function HRAnalyticsScreen() {
           <Text style={[styles.sectionSubtitle, { color: theme.textSecondary, marginBottom: spacing.md }]}>
             Used vs Available
           </Text>
-          
+
           {leaveDistribution.map((leave, index) => (
             <Animated.View
               key={leave.type}
@@ -205,14 +205,14 @@ export default function HRAnalyticsScreen() {
                 </Text>
               </View>
               <View style={[styles.leaveBar, { backgroundColor: theme.border }]}>
-                <View 
+                <View
                   style={[
-                    styles.leaveBarFill, 
-                    { 
+                    styles.leaveBarFill,
+                    {
                       width: `${(leave.used / leave.total) * 100}%`,
-                      backgroundColor: leave.color 
+                      backgroundColor: leave.color
                     }
-                  ]} 
+                  ]}
                 />
               </View>
             </Animated.View>
@@ -227,7 +227,7 @@ export default function HRAnalyticsScreen() {
           <Text style={[styles.sectionSubtitle, { color: theme.textSecondary, marginBottom: spacing.md }]}>
             Current status of team members
           </Text>
-          
+
           {teamAttendance.map((item, index) => (
             <Animated.View
               key={item.name}
@@ -244,14 +244,14 @@ export default function HRAnalyticsScreen() {
                 </Text>
               </View>
               <View style={[styles.teamBar, { backgroundColor: theme.border }]}>
-                <View 
+                <View
                   style={[
-                    styles.teamBarFill, 
-                    { 
+                    styles.teamBarFill,
+                    {
                       width: `${(item.count / teamSize) * 100}%`,
-                      backgroundColor: item.color 
+                      backgroundColor: item.color
                     }
-                  ]} 
+                  ]}
                 />
               </View>
             </Animated.View>

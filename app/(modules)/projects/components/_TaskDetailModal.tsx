@@ -45,6 +45,8 @@ interface TaskDetailModalProps {
     isTeamLeadView?: boolean; // True when viewing team member tasks
 }
 
+import { useModule } from '@/hooks/useModule';
+
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     visible,
     task,
@@ -61,6 +63,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     isTeamLeadView = false,
 }) => {
     const { theme } = useTheme();
+    const { canManage } = useModule('projects.tasks');
     const [isEditing, setIsEditing] = React.useState(false);
 
     // Edit State
@@ -147,7 +150,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <Text style={[styles.headerTitle, { color: theme.text }]}>Task Details</Text>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {!isEditing && !isTeamLeadView && (
+                            {!isEditing && !isTeamLeadView && canManage && (
                                 <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.headerActionButton}>
                                     <Ionicons name="pencil" size={20} color={theme.text} />
                                 </TouchableOpacity>
@@ -453,7 +456,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                 </TouchableOpacity>
                             )}
 
-                            {!isCompleted ? (
+                            {canManage && !isCompleted && (
                                 <TouchableOpacity
                                     style={[styles.actionButton, { backgroundColor: theme.success + '20' }]}
                                     onPress={() => onComplete(task.id)}
@@ -461,7 +464,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     <Ionicons name="checkmark-circle" size={20} color={theme.success} />
                                     <Text style={[styles.actionButtonText, { color: theme.success }]}>Complete</Text>
                                 </TouchableOpacity>
-                            ) : (
+                            )}
+
+                            {canManage && isCompleted && (
                                 <TouchableOpacity
                                     style={[styles.actionButton, { backgroundColor: theme.primary + '20' }]}
                                     onPress={() => onUncomplete(task.id)}
@@ -471,13 +476,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                 </TouchableOpacity>
                             )}
 
-                            <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: theme.error + '20' }]}
-                                onPress={() => onDelete(task.id)}
-                            >
-                                <Ionicons name="trash" size={20} color={theme.error} />
-                                <Text style={[styles.actionButtonText, { color: theme.error }]}>Delete</Text>
-                            </TouchableOpacity>
+                            {canManage && (
+                                <TouchableOpacity
+                                    style={[styles.actionButton, { backgroundColor: theme.error + '20' }]}
+                                    onPress={() => onDelete(task.id)}
+                                >
+                                    <Ionicons name="trash" size={20} color={theme.error} />
+                                    <Text style={[styles.actionButtonText, { color: theme.error }]}>Delete</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
 

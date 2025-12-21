@@ -14,7 +14,7 @@ import ModuleHeader from '@/components/layout/ModuleHeader';
 import { FilterBar, KPICard } from '@/components';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import NotificationBell from '@/components/layout/NotificationBell';
+import { useModule } from '@/hooks/useModule';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSales, useExpenses } from '@/hooks/useFinanceQueries';
 import { formatCurrency } from '@/utils/formatters';
@@ -40,6 +40,23 @@ export default function FinanceManagementScreen() {
   const { user, isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+
+  // Permissions
+  // Permissions
+  const { can: canViewFinance } = useModule('finance.dashboard');
+  const { canManage: canManageSales } = useModule('finance.sales');
+  const { canManage: canManageExpenses } = useModule('finance.expenses');
+  const { canManage: canManageInvoices } = useModule('finance.invoices');
+  const { canManage: canManageVendors } = useModule('finance.vendors');
+
+  if (!canViewFinance('view')) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="lock-closed-outline" size={64} color={theme.textSecondary} />
+        <Text style={{ marginTop: 16, fontSize: 18, color: theme.textSecondary }}>Access Denied</Text>
+      </View>
+    );
+  }
 
   // UI State - Default to Sales tab
   const [activeTab, setActiveTab] = useState<TabType>('sales');
@@ -336,27 +353,38 @@ export default function FinanceManagementScreen() {
         title="Finance Management"
         rightActions={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
-              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
+            <TouchableOpacity
+              onPress={() => setShowFilters(!showFilters)}
+              style={{
+                padding: 6,
+                backgroundColor: theme.primary + '10',
+                borderRadius: 8,
+              }}
+            >
+              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={20} color={theme.primary} />
             </TouchableOpacity>
-            <NotificationBell size={22} color={theme.text} />
-            {['sales', 'expenses', 'invoices', 'vendors'].includes(activeTab) && (
-              <TouchableOpacity
-                onPress={() => {
-                  if (activeTab === 'sales') router.push('/(modules)/finance/add-sale');
-                  if (activeTab === 'expenses') router.push('/(modules)/finance/add-expense');
-                  if (activeTab === 'invoices') router.push('/(modules)/finance/add-invoice');
-                  if (activeTab === 'vendors') router.push('/(modules)/finance/add-vendor');
-                }}
-                style={{
-                  padding: 4,
-                  backgroundColor: theme.primary + '15',
-                  borderRadius: 8,
-                }}
-              >
-                <Ionicons name="add" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            )}
+            {(
+              (activeTab === 'sales' && canManageSales) ||
+              (activeTab === 'expenses' && canManageExpenses) ||
+              (activeTab === 'invoices' && canManageInvoices) ||
+              (activeTab === 'vendors' && canManageVendors)
+            ) && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (activeTab === 'sales') router.push('/(modules)/finance/add-sale');
+                    if (activeTab === 'expenses') router.push('/(modules)/finance/add-expense');
+                    if (activeTab === 'invoices') router.push('/(modules)/finance/add-invoice');
+                    if (activeTab === 'vendors') router.push('/(modules)/finance/add-vendor');
+                  }}
+                  style={{
+                    padding: 4,
+                    backgroundColor: theme.primary + '15',
+                    borderRadius: 8,
+                  }}
+                >
+                  <Ionicons name="add" size={24} color={theme.primary} />
+                </TouchableOpacity>
+              )}
           </View>
         }
       />

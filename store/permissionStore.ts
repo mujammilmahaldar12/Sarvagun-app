@@ -6,61 +6,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // Permission types
-export type Permission =
-  // Events permissions
-  | 'events:view'
-  | 'events:create'
-  | 'events:edit'
-  | 'events:delete'
-  | 'events:manage'
+// Permission types - Now dynamic strings from backend
+export type Permission = string;
 
-  // Leads permissions  
-  | 'leads:view'
-  | 'leads:create'
-  | 'leads:edit'
-  | 'leads:delete'
-  | 'leads:convert'
-  | 'leads:manage'
-
-  // Clients permissions
-  | 'clients:view'
-  | 'clients:create'
-  | 'clients:edit'
-  | 'clients:delete'
-  | 'clients:manage'
-
-  // Venues permissions
-  | 'venues:view'
-  | 'venues:create'
-  | 'venues:edit'
-  | 'venues:delete'
-  | 'venues:manage'
-
-  // Leave Management permissions
-  | 'leave:view'        // View leaves
-  | 'leave:view_own'    // View only own leaves
-  | 'leave:view_team'   // View team leaves
-  | 'leave:view_all'    // View all leaves (HR/Admin)
-  | 'leave:create'      // Apply for leave
-  | 'leave:edit'        // Edit own leave requests
-  | 'leave:delete'      // Delete/cancel leave
-  | 'leave:approve'     // Approve/reject leaves
-  | 'leave:manage'      // Full leave management
-
-  // HR permissions
-  | 'hr:view'
-  | 'hr:manage'
-  | 'hr:employees'
-  | 'hr:reimbursement'
-
-  // Admin permissions
-  | 'admin:users'
-  | 'admin:settings'
-  | 'admin:reports'
-  | 'admin:analytics'
-  | 'admin:full';
-
-// Role definitions with associated permissions
+// Role definitions
 export type Role =
   | 'super_admin'
   | 'admin'
@@ -71,75 +20,9 @@ export type Role =
   | 'viewer'
   | 'client';
 
-// Permission matrix: which permissions each role has
-const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  super_admin: [
-    // All permissions
-    'events:view', 'events:create', 'events:edit', 'events:delete', 'events:manage',
-    'leads:view', 'leads:create', 'leads:edit', 'leads:delete', 'leads:convert', 'leads:manage',
-    'clients:view', 'clients:create', 'clients:edit', 'clients:delete', 'clients:manage',
-    'venues:view', 'venues:create', 'venues:edit', 'venues:delete', 'venues:manage',
-    'leave:view', 'leave:view_all', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:delete', 'leave:approve', 'leave:manage',
-    'hr:view', 'hr:manage', 'hr:employees', 'hr:reimbursement',
-    'admin:users', 'admin:settings', 'admin:reports', 'admin:analytics', 'admin:full',
-  ],
+// NOTE: Hardcoded ROLE_PERMISSIONS removed. 
+// Permissions are now fetched dynamically from the backend API.
 
-  admin: [
-    'events:view', 'events:create', 'events:edit', 'events:delete', 'events:manage',
-    'leads:view', 'leads:create', 'leads:edit', 'leads:delete', 'leads:convert', 'leads:manage',
-    'clients:view', 'clients:create', 'clients:edit', 'clients:delete', 'clients:manage',
-    'venues:view', 'venues:create', 'venues:edit', 'venues:delete', 'venues:manage',
-    'leave:view', 'leave:view_all', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:delete', 'leave:approve', 'leave:manage',
-    'hr:view', 'hr:manage', 'hr:employees', 'hr:reimbursement',
-    'admin:reports', 'admin:analytics',
-  ],
-
-  manager: [
-    'events:view', 'events:create', 'events:edit', 'events:manage',
-    'leads:view', 'leads:create', 'leads:edit', 'leads:convert', 'leads:manage',
-    'clients:view', 'clients:create', 'clients:edit', 'clients:manage',
-    'venues:view', 'venues:create', 'venues:edit', 'venues:manage',
-    'leave:view', 'leave:view_team', 'leave:view_all', 'leave:create', 'leave:edit', 'leave:approve',
-    'hr:view',
-    'admin:reports',
-  ],
-
-  coordinator: [
-    'events:view', 'events:create', 'events:edit',
-    'leads:view', 'leads:create', 'leads:edit', 'leads:convert',
-    'clients:view', 'clients:create', 'clients:edit',
-    'venues:view', 'venues:create', 'venues:edit',
-    'leave:view', 'leave:view_own', 'leave:view_team', 'leave:create', 'leave:edit', 'leave:approve',
-  ],
-
-  intern: [
-    'events:view',
-    'leads:view', 'leads:create', 'leads:edit', 'leads:convert',
-    'clients:view', 'clients:create',
-    'venues:view',
-    'leave:view', 'leave:view_own', 'leave:create',
-  ],
-
-  employee: [
-    'events:view',
-    'leads:view', 'leads:create', 'leads:convert',
-    'clients:view',
-    'venues:view',
-    'leave:view', 'leave:view_own', 'leave:create',
-  ],
-
-  viewer: [
-    'events:view',
-    'leads:view',
-    'clients:view',
-    'venues:view',
-    'leave:view', 'leave:view_own',
-  ],
-
-  client: [
-    'events:view', // Only their own events
-  ],
-};
 
 // Company-specific role mappings
 const COMPANY_ROLE_HIERARCHY: Record<string, Role[]> = {
@@ -155,7 +38,8 @@ interface PermissionState {
   company: string | null;
 
   // Actions
-  setPermissions: (permissions: Permission[]) => void;
+  setPermissions: (permissions: string[]) => void;
+  fetchPermissions: () => Promise<void>;
   setRole: (role: Role) => void;
   setCompany: (company: string) => void;
   clearPermissions: () => void;
@@ -188,9 +72,33 @@ export const usePermissionStore = create<PermissionState>()(
 
       setPermissions: (permissions) => set({ permissions }),
 
+      fetchPermissions: async () => {
+        try {
+          // Import api here to avoid circular dependency
+          const api = require('@/services/api').default;
+          // Or use fetch directly if needed, but api service handles auth headers
+
+          const response = await api.get('/core/my-permissions/');
+          // Note: api service already unwraps response.data, so 'response' IS the data
+          const data = response?.data || response;
+
+          set({
+            permissions: data?.permissions || [],
+            role: data?.category as Role || 'employee',
+            // company: data.company  (Access company from user object if needed)
+          });
+
+          console.log('✅ Permissions fetched from backend:', data?.permissions?.length);
+        } catch (error) {
+          console.error('❌ Failed to fetch permissions:', error);
+          // Fallback to empty or safe default
+          set({ permissions: [] });
+        }
+      },
+
       setRole: (role) => {
-        const permissions = ROLE_PERMISSIONS[role] || [];
-        set({ role, permissions });
+        // Just set the role, permissions are fetched separately
+        set({ role });
       },
 
       setCompany: (company) => set({ company }),
@@ -202,18 +110,25 @@ export const usePermissionStore = create<PermissionState>()(
       }),
 
       // Permission checks
+      // ADMIN BYPASS: admins and super_admins have ALL permissions
       hasPermission: (permission) => {
-        const { permissions } = get();
+        const { permissions, role } = get();
+        // Admin bypass - admins can do everything
+        if (role === 'admin' || role === 'super_admin') return true;
         return permissions.includes(permission);
       },
 
       hasAnyPermission: (permissions) => {
-        const { permissions: userPerms } = get();
+        const { permissions: userPerms, role } = get();
+        // Admin bypass
+        if (role === 'admin' || role === 'super_admin') return true;
         return permissions.some(perm => userPerms.includes(perm));
       },
 
       hasAllPermissions: (permissions) => {
-        const { permissions: userPerms } = get();
+        const { permissions: userPerms, role } = get();
+        // Admin bypass
+        if (role === 'admin' || role === 'super_admin') return true;
         return permissions.every(perm => userPerms.includes(perm));
       },
 
@@ -327,11 +242,11 @@ export const usePermissions = () => {
 
 // Utility functions for role management
 export const permissionUtils = {
-  // Initialize permissions from user data
-  initializeFromUser: (user: { role?: string; company?: string; permissions?: Permission[] }) => {
+  // Initialize permissions from user data (now cleaner)
+  initializeFromUser: (user: { role?: string; company?: string; permissions?: string[] }) => {
     const { setRole, setCompany, setPermissions } = usePermissionStore.getState();
 
-    if (user.role && isValidRole(user.role)) {
+    if (user.role) {
       setRole(user.role as Role);
     }
 
@@ -339,7 +254,7 @@ export const permissionUtils = {
       setCompany(user.company);
     }
 
-    // Custom permissions override role-based permissions
+    // Permissions come directly from API now
     if (user.permissions?.length) {
       setPermissions(user.permissions);
     }
@@ -360,32 +275,13 @@ export const permissionUtils = {
     return COMPANY_ROLE_HIERARCHY[company] || ['viewer'];
   },
 
-  // Get all permissions for a role
+  // Get all permissions for a role (Legacy: returns empty now)
   getRolePermissions: (role: Role): Permission[] => {
-    return ROLE_PERMISSIONS[role] || [];
+    return [];
   },
 };
 
 // Helper function to validate roles
 function isValidRole(role: string): role is Role {
-  return Object.keys(ROLE_PERMISSIONS).includes(role);
+  return true; // Simplified valid check
 }
-
-// Connect permissions with auth store
-// This function should be called from authStore after user is loaded
-export const syncPermissionsWithAuth = () => {
-  // Import here to avoid circular dependency
-  const { useAuthStore } = require('./authStore');
-  const authStore = useAuthStore.getState();
-  const user = authStore.user;
-
-  if (user) {
-    permissionUtils.initializeFromUser({
-      role: user.role || user.category, // Map category to role if role is missing
-      company: user.company,
-      permissions: user.permissions,
-    });
-  } else {
-    usePermissionStore.getState().clearPermissions();
-  }
-};

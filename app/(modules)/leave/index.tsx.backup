@@ -14,7 +14,6 @@ import { FilterBar, EmptyState, Badge } from '@/components';
 import { CompactLeaveBalance } from '@/components/hr';
 import { useTheme } from '@/hooks/useTheme';
 import { useMyLeaves, useLeaveBalance, useLeaveStatistics, useTeamLeaves, useCalendarLeaves } from '@/hooks/useHRQueries';
-import { useModule } from '@/hooks/useModule';
 import { useAuthStore } from '@/store/authStore';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameDay, getMonth, getYear, parseISO, isValid } from 'date-fns';
 import { getStatusColor, getOpacityColor, borderRadius, spacing, shadows } from '@/constants/designSystem';
@@ -46,8 +45,10 @@ export default function LeaveManagementScreen() {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Permission checks
-  const { canApprove } = useModule('hr.leaves');
+  // Permission checks - using category as per Events module
+  // Check for various role strings: hr, admin, manager, team_lead
+  const userCategory = (user?.category || '').toLowerCase();
+  const canApprove = ['hr', 'admin', 'manager', 'team_lead', 'team lead', 'management'].includes(userCategory);
 
   // API Hooks
   const { data: leavesData, isLoading: leavesLoading, refetch: refetchLeaves } = useMyLeaves();
@@ -178,7 +179,7 @@ export default function LeaveManagementScreen() {
         key={leave.id}
         onPress={() => router.push(`/(modules)/leave/${leave.id}` as any)}
         activeOpacity={0.7}
-        style={[styles.leaveCard, { backgroundColor: theme.surface }]}
+        style={[styles.leaveCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
       >
         <View style={styles.cardRow}>
           {/* Icon */}
@@ -213,7 +214,7 @@ export default function LeaveManagementScreen() {
       <TouchableOpacity
         key={`team-${index}`}
         activeOpacity={0.7}
-        style={[styles.leaveCard, { backgroundColor: theme.surface }]}
+        style={[styles.leaveCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
       >
         <View style={styles.cardRow}>
           <View style={[styles.iconContainer, { backgroundColor: getOpacityColor(statusColorObj.bg, 0.2) }]}>
@@ -250,7 +251,7 @@ export default function LeaveManagementScreen() {
           { label: 'Approved', count: approvedCount, color: '#10b981', icon: 'checkmark-circle' },
           { label: 'Rejected', count: rejectedCount, color: '#ef4444', icon: 'close-circle' },
         ].map((stat) => (
-          <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface }]}>
+          <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Ionicons name={stat.icon as any} size={22} color={stat.color} />
             <Text style={[styles.statCount, { color: theme.text }]}>{stat.count}</Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
@@ -317,7 +318,7 @@ export default function LeaveManagementScreen() {
   const renderCalendar = () => (
     <View style={styles.tabContent}>
       {/* Calendar Grid */}
-      <View style={[styles.calendarCard, { backgroundColor: theme.surface }]}>
+      <View style={[styles.calendarCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         {/* Month Navigation */}
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={goToPreviousMonth} style={styles.calendarNavBtn}>
@@ -366,8 +367,8 @@ export default function LeaveManagementScreen() {
                     styles.calendarDayInner,
                     {
                       backgroundColor: isSelected ? getOpacityColor(theme.primary, 0.15) : 'transparent',
-                      borderColor: isSelected ? theme.primary : isCurrentDay ? theme.primary : 'transparent',
-                      borderWidth: isSelected || isCurrentDay ? 2 : 0,
+                      borderColor: isSelected ? theme.primary : isCurrentDay ? theme.primary : theme.border,
+                      borderWidth: isSelected || isCurrentDay ? 2 : 1,
                     },
                   ]}
                 >
@@ -446,7 +447,7 @@ export default function LeaveManagementScreen() {
       )}
 
       {/* Legend */}
-      <View style={[styles.legendCard, { backgroundColor: theme.surface }]}>
+      <View style={[styles.legendCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
         <View style={styles.legendItems}>
           <View style={styles.legendItem}>
@@ -511,39 +512,32 @@ export default function LeaveManagementScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        {/* Tabs - Modern Pill Style */}
-        <View style={styles.tabsContainer}>
+        {/* Tabs - inside content area */}
+        <View style={[styles.tabsContainer, { borderBottomColor: theme.border }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.tabs}>
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    onPress={() => handleTabChange(tab.key)}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.tab,
-                      isActive && {
-                        backgroundColor: theme.surface,
-                        ...styles.tabActive
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={tab.icon as any}
-                      size={18}
-                      color={isActive ? theme.primary : theme.textSecondary}
-                    />
-                    <Text style={[
-                      styles.tabText,
-                      { color: isActive ? theme.primary : theme.textSecondary }
-                    ]}>
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {tabs.map((tab) => (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => handleTabChange(tab.key)}
+                  style={[
+                    styles.tab,
+                    activeTab === tab.key && [styles.tabActive, { borderBottomColor: theme.primary }],
+                  ]}
+                >
+                  <Ionicons
+                    name={tab.icon as any}
+                    size={18}
+                    color={activeTab === tab.key ? theme.primary : theme.textSecondary}
+                  />
+                  <Text style={[
+                    styles.tabText,
+                    { color: activeTab === tab.key ? theme.primary : theme.text }
+                  ]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </ScrollView>
         </View>
@@ -590,42 +584,34 @@ const styles = StyleSheet.create({
   applyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20, // Pill shape
-    ...shadows.sm,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   applyButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700', // Bolder
+    fontWeight: '600',
   },
-  // Modern Segmented Tabs
   tabsContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
   },
   tabs: {
     flexDirection: 'row',
-    gap: 8,
+    paddingHorizontal: 16,
   },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 20, // Pill shape
-    borderWidth: 1,
-    borderColor: 'transparent',
-    backgroundColor: 'transparent',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   tabActive: {
-    // Active state handled dynamically
-    borderWidth: 0,
-    ...shadows.sm,
+    borderBottomWidth: 2,
   },
   tabText: {
     fontSize: 14,
@@ -633,66 +619,57 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
-    paddingTop: 8,
   },
   tabContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+    padding: 16,
   },
   balanceSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12, // Increased gap
+    gap: 8,
     marginBottom: 24,
   },
   statCard: {
-    width: '48%', // Slightly less than half
+    width: '48%',
     padding: 16,
-    borderRadius: 16,
-    // Modern shadow instead of border
-    ...shadows.sm,
-    alignItems: 'flex-start', // Left align for professional look
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
   },
   statCount: {
-    fontSize: 32, // Larger numbers
-    fontWeight: '800', // Heavy bold
-    marginTop: 12,
-    letterSpacing: -1,
+    fontSize: 28,
+    fontWeight: '700',
+    marginTop: 8,
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 12,
     marginTop: 4,
   },
   sectionTitle: {
-    fontSize: 20, // Larger title
-    fontWeight: '700',
-    marginBottom: 16,
-    letterSpacing: -0.5,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
   },
   cardList: {
-    gap: 12, // More breathing room
+    gap: 8,
   },
-  // Modern Clean Card
   leaveCard: {
-    padding: 16,
-    borderRadius: 16,
-    // No border, shadow depth
-    ...shadows.sm,
-    backgroundColor: '#FFFFFF', // Will be overridden by theme
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16, // More spacing
+    gap: 12,
   },
   iconContainer: {
-    width: 48, // Larger touch target
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -700,37 +677,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   employeeName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 2,
   },
   leaveType: {
-    fontSize: 16,
-    fontWeight: '700', // Bolder
-    letterSpacing: -0.3,
+    fontSize: 15,
+    fontWeight: '600',
   },
   dateRange: {
-    fontSize: 13,
-    marginTop: 4,
-    fontWeight: '500',
+    fontSize: 12,
+    marginTop: 2,
   },
   calendarCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    // Clean surface
-    ...shadows.md,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
   },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   calendarNavBtn: {
     padding: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.03)',
   },
   calendarMonthTitle: {
     fontSize: 18,
@@ -738,7 +710,7 @@ const styles = StyleSheet.create({
   },
   calendarDayLabels: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   calendarDayLabel: {
     flex: 1,
@@ -747,7 +719,6 @@ const styles = StyleSheet.create({
   calendarDayLabelText: {
     fontSize: 12,
     fontWeight: '600',
-    opacity: 0.6,
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -756,11 +727,11 @@ const styles = StyleSheet.create({
   calendarDayCell: {
     width: '14.28%',
     aspectRatio: 1,
-    padding: 4,
+    padding: 2,
   },
   calendarDayInner: {
     flex: 1,
-    borderRadius: 12, // Softer squares
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -769,42 +740,40 @@ const styles = StyleSheet.create({
   },
   leaveIndicators: {
     flexDirection: 'row',
-    gap: 3,
-    marginTop: 4,
+    gap: 2,
+    marginTop: 2,
   },
   leaveIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   selectedDateSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   noLeavesCard: {
-    padding: 32,
-    borderRadius: 16,
+    padding: 24,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
-    gap: 12,
-    ...shadows.sm,
+    gap: 8,
   },
   noLeavesText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
   },
   legendCard: {
-    padding: 20,
-    borderRadius: 16,
-    ...shadows.sm,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   legendTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
   },
   legendItems: {
     flexDirection: 'row',
     gap: 24,
-    flexWrap: 'wrap',
   },
   legendItem: {
     flexDirection: 'row',
@@ -812,19 +781,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   legendText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
   },
   approvalButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
 });

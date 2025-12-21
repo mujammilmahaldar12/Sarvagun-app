@@ -75,8 +75,12 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
   };
 
   const isDateDisabled = (date: Date) => {
-    if (minDate && date < minDate) return true;
-    if (maxDate && date > maxDate) return true;
+    // Normalize dates to compare only year/month/day (ignore time)
+    const normalizeDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dateNorm = normalizeDate(date);
+
+    if (minDate && dateNorm < normalizeDate(minDate)) return true;
+    if (maxDate && dateNorm > normalizeDate(maxDate)) return true;
     return false;
   };
 
@@ -91,7 +95,7 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
   const toggleDate = (date: Date) => {
     const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
     const isSelected = isDateSelected(dateLocal);
-    
+
     if (isSelected) {
       setTempDates(tempDates.filter(d => {
         const selectedLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -126,7 +130,7 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
 
   const renderDays = () => {
     const days = [];
-    
+
     // Empty cells for days before month starts
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
@@ -174,13 +178,13 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
               style={{
                 fontSize: typography.sizes.sm,
                 fontWeight: selected || isToday ? typography.weights.bold : typography.weights.regular,
-                color: selected 
+                color: selected
                   ? colors.textInverse || '#FFFFFF'
                   : disabled
-                  ? colors.textSecondary
-                  : isToday 
-                  ? colors.primary 
-                  : colors.text,
+                    ? colors.textSecondary
+                    : isToday
+                      ? colors.primary
+                      : colors.text,
                 textAlign: 'center',
               }}
             >
@@ -229,7 +233,7 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
         <Pressable
           onPress={() => !disabled && setIsOpen(true)}
           disabled={disabled}
-          style={{ 
+          style={{
             flex: 1,
             flexDirection: 'row',
             alignItems: 'center',
@@ -257,9 +261,9 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
 
       {/* Selected Dates Preview */}
       {selectedDates.length > 0 && (
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={{ marginTop: spacing[2] }}
           contentContainerStyle={{ paddingRight: spacing[2] }}
         >
@@ -332,8 +336,8 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
           >
             {/* Header with Selected Count */}
             <View style={{ marginBottom: spacing[3], alignItems: 'center' }}>
-              <Text style={{ 
-                fontSize: typography.sizes.lg, 
+              <Text style={{
+                fontSize: typography.sizes.lg,
                 fontWeight: typography.weights.bold,
                 color: colors.text,
                 marginBottom: spacing[1],
@@ -347,7 +351,7 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
 
             {/* Calendar Header */}
             <View style={styles.header}>
-              <Pressable 
+              <Pressable
                 onPress={previousMonth}
                 style={({ pressed }) => ({
                   padding: spacing[2],
@@ -358,16 +362,16 @@ export const MultiDatePicker: React.FC<MultiDatePickerProps> = ({
               >
                 <Ionicons name="chevron-back" size={22} color={colors.text} />
               </Pressable>
-              <Text style={{ 
-                fontSize: typography.sizes.base, 
-                fontWeight: typography.weights.bold, 
+              <Text style={{
+                fontSize: typography.sizes.base,
+                fontWeight: typography.weights.bold,
                 color: colors.text,
                 textAlign: 'center',
                 flex: 1,
               }}>
                 {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
               </Text>
-              <Pressable 
+              <Pressable
                 onPress={nextMonth}
                 style={({ pressed }) => ({
                   padding: spacing[2],

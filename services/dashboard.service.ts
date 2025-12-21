@@ -217,7 +217,7 @@ class DashboardService {
     try {
       console.log('📡 Fetching activities from backend API...');
       // Try dedicated endpoint first
-      const response = await api.get<RecentActivity[]>('/dashboard/activities/recent/', {
+      const response = await api.get<RecentActivity[]>('/core/activities/recent/', {
         params: { limit }
       });
 
@@ -251,31 +251,9 @@ class DashboardService {
   async getRecentActivitiesRealtime(limit: number = 10): Promise<RecentActivity[]> {
     try {
       console.log('📡 Fetching real-time activities (aggregation method)...');
-      const activities: RecentActivity[] = [];
+      let activities: RecentActivity[] = [];
 
-      // Fetch recent leave requests
-      try {
-        const leavesResponse = await api.get<any[]>('/hr/leaves/');
-        let leaves = Array.isArray(leavesResponse) ? leavesResponse :
-          (leavesResponse as any)?.data ? (leavesResponse as any).data : [];
-
-        leaves.slice(0, 3).forEach((leave: any) => {
-          // Ensure timestamp is ISO format or valid date string
-          const timestamp = leave.created_at || leave.from_date || new Date().toISOString();
-          activities.push({
-            id: leave.id,
-            type: 'leave',
-            title: `${leave.leave_type || 'Leave'} Request`,
-            description: `${leave.status || 'Pending'} - ${leave.from_date || ''} to ${leave.to_date || ''}`,
-            timestamp: timestamp,
-            related_id: leave.id,
-          });
-        });
-      } catch (e) {
-        console.log('No leaves data');
-      }
-
-      // Fetch recent project updates
+      // 1. Fetch recent projects (Robust)
       try {
         const projectsResponse = await api.get<any[]>('/project_management/projects/my_projects/');
         let projects = Array.isArray(projectsResponse) ? projectsResponse :
@@ -286,43 +264,86 @@ class DashboardService {
           activities.push({
             id: project.id,
             type: 'project',
-            title: project.name || 'Unnamed Project',
-            description: `Status: ${project.status || 'Active'} - Progress: ${project.progress || 0}%`,
+            title: project.name || 'Project Update',
+            description: `Status: ${project.status || 'Active'}`,
             timestamp: timestamp,
             related_id: project.id,
+            icon: 'briefcase',
+            color: '#8B5CF6'
           });
         });
       } catch (e) {
-        console.log('No projects data');
+        console.log('No projects data', e);
       }
 
-      // Fetch recent events
+      // 2. Fetch recent events (Robust wrapper)
       try {
-        const eventsResponse = await api.get<any[]>('/events/events/');
-        let events = Array.isArray(eventsResponse) ? eventsResponse :
-          (eventsResponse as any)?.data ? (eventsResponse as any).data : [];
+        // Try getting events with pagination handling
+        const eventsResponse = await api.get<any>('/events/events/');
+        let events = [];
 
-        events.slice(0, 2).forEach((event: any) => {
-          const timestamp = event.created_at || event.date || new Date().toISOString();
+        if (Array.isArray(eventsResponse)) {
+          events = eventsResponse;
+        } else if (eventsResponse?.results && Array.isArray(eventsResponse.results)) {
+          events = eventsResponse.results;
+        } else if (eventsResponse?.data && Array.isArray(eventsResponse.data)) {
+          events = eventsResponse.data;
+        }
+
+        console.log(`✅ Found ${events.length} events for activity feed`);
+
+        events.slice(0, 3).forEach((event: any) => {
+          const timestamp = event.start_date || event.date || event.created_at || new Date().toISOString();
           activities.push({
             id: event.id,
             type: 'event',
-            title: event.title || event.name || 'Event',
-            description: `${event.event_type || 'Event'} - ${event.date || 'Upcoming'}`,
+            title: event.title || 'New Event',
+            description: `${event.event_type || 'Event'} at ${event.venue || 'TBD'}`,
             timestamp: timestamp,
             related_id: event.id,
+            icon: 'calendar',
+            color: '#EC4899'
           });
         });
       } catch (e) {
-        console.log('No events data');
+        console.log('No events data for activity feed', e);
       }
 
-      // Sort by timestamp and limit
+      // 3. Fetch recent leaves
+      try {
+        const leavesResponse = await api.get<any>('/leave_management/leaves/');
+        let leaves = [];
+        if (Array.isArray(leavesResponse)) {
+          leaves = leavesResponse;
+        } else if (leavesResponse?.results && Array.isArray(leavesResponse.results)) {
+          leaves = leavesResponse.results;
+        }
+
+        console.log(`✅ Found ${leaves.length} leaves for activity feed`);
+
+        leaves.slice(0, 3).forEach((leave: any) => {
+          const timestamp = leave.created_at || leave.from_date || new Date().toISOString();
+          activities.push({
+            id: leave.id,
+            type: 'leave',
+            title: `${leave.leave_type || 'Leave'} Request`,
+            description: `${leave.status} • ${leave.days_count || 1} day(s)`,
+            timestamp: timestamp,
+            related_id: leave.id,
+            icon: 'time',
+            color: '#F59E0B'
+          });
+        });
+      } catch (e) {
+        console.log('No leaves data for activity feed');
+      }
+
+      // Sort by timestamp desc
       const sortedActivities = activities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, limit);
 
-      console.log('✅ Real-time activities:', sortedActivities.length);
+      console.log('✅ Final aggregated activities:', sortedActivities.length);
       return sortedActivities;
     } catch (error) {
       console.log('❌ Activities error:', error);

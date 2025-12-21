@@ -10,10 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus } from '@/hooks/useHRQueries';
-import { usePermissions } from '@/store/permissionStore';
+import { useModule } from '@/hooks/useModule';
 import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
-import NotificationBell from '@/components/layout/NotificationBell';
 import type { Reimbursement } from '@/types/hr';
 
 type TabType = 'staff' | 'myrequests' | 'approvals';
@@ -22,7 +21,23 @@ export default function HRScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { user } = useAuthStore();
-  const permissions = usePermissions();
+
+  // Permissions
+  const { canManage: canManageStaff, can: canHR } = useModule('hr.employees');
+  const { canApprove: canApproveLeaves } = useModule('hr.leaves');
+
+  if (!canHR('view')) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="lock-closed-outline" size={64} color={theme.textSecondary} />
+        <Text style={{ marginTop: 16, fontSize: 18, color: theme.textSecondary }}>Access Denied</Text>
+      </View>
+    );
+  }
+
+  // Custom 'hire' permission check if needed, or imply from manage
+  const canAccessHireActions = canManageStaff;
+  const canApprove = canApproveLeaves || canHR('approve');
 
   const [activeTab, setActiveTab] = useState<TabType>('staff');
   const [showFilters, setShowFilters] = useState(false);
@@ -33,14 +48,11 @@ export default function HRScreen() {
   const [confirmDialog, setConfirmDialog] = useState<{
     visible: boolean;
     title: string;
-    message: string;
-    onConfirm: () => void;
+    message?: string;
     confirmText: string;
     type: 'approve' | 'reject' | null;
+    onConfirm?: () => void;
   }>({ visible: false, title: '', message: '', onConfirm: () => { }, confirmText: '', type: null });
-  // Helper for button visibility
-  const userRole = (user?.category || user?.role || '').toLowerCase();
-  const canAccessHireActions = ['admin', 'hr', 'manager'].includes(userRole) || user?.is_team_leader;
 
   // Debug logs
   useEffect(() => {
@@ -50,7 +62,7 @@ export default function HRScreen() {
       category: user?.category,
       role: user?.role,
       is_team_leader: user?.is_team_leader,
-      computedRole: userRole,
+      computedRole: user?.role,
       canAccessHireActions,
       activeTab,
     });
@@ -64,11 +76,6 @@ export default function HRScreen() {
   const { data: reimbursementsData, isLoading: reimbursementsLoading, refetch: refetchReimbursements } = useReimbursements();
   const { data: reimbursementStats } = useReimbursementStatistics();
   const updateReimbursementStatus = useUpdateReimbursementStatus();
-
-  // Permissions
-  const canManage = permissions.hasPermission('hr:manage');
-  // TODO: Add proper permission check for approval workflow
-  const canApprove = permissions.hasPermission('leave:approve') || user?.category === 'hr' || user?.category === 'admin' || user?.category === 'manager';
 
   // Debounce search
   useEffect(() => {
@@ -282,7 +289,7 @@ export default function HRScreen() {
       key={item.id}
       onPress={() => handleRowPress(item)}
       activeOpacity={0.7}
-      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      style={[styles.card, { backgroundColor: theme.surface }]}
     >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
@@ -427,11 +434,10 @@ export default function HRScreen() {
         rightActions={
           <View style={styles.headerActions}>
 
-            <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
-              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
+            <TouchableOpacity onPress={() => setShowFilters(!showFilters)} style={[styles.iconBtn, { backgroundColor: theme.primary + '10' }]}>
+              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={20} color={theme.primary} />
             </TouchableOpacity>
-            <NotificationBell size={22} color={theme.text} />
-            {(activeTab === 'myrequests' || (activeTab === 'staff' && canManage)) && (
+            {(activeTab === 'myrequests' || (activeTab === 'staff' && canManageStaff)) && (
               <TouchableOpacity onPress={handleAddNew} style={[styles.addBtn, { backgroundColor: theme.primary + '15' }]}>
                 <Ionicons name="add" size={24} color={theme.primary} />
               </TouchableOpacity>
@@ -525,11 +531,28 @@ const styles = StyleSheet.create({
   tabsContainer: { borderBottomWidth: 1 },
   tabs: { flexDirection: 'row', paddingHorizontal: 16 },
   tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  card: { padding: 16, borderRadius: 12, borderWidth: 1 },
+  card: {
+    padding: 16,
+    borderRadius: 16,
+    // Remove border, use shadow for modern look
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 8 },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
   actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   iconBtn: { padding: 6, borderRadius: 8 },
   hireActionsBar: {
@@ -606,6 +629,39 @@ const styles = StyleSheet.create({
   },
   dialogButtonText: {
     fontSize: 15,
+    fontWeight: '600',
+  },
+  // Modern Pill-style Segment Control
+  segmentContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  segmentBackground: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+  },
+  segmentTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  segmentTabActive: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  segmentLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  segmentLabelActive: {
     fontWeight: '600',
   },
 });

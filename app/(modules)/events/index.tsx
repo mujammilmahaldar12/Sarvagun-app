@@ -16,6 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useEventsStore } from '@/store/eventsStore';
 import { getTypographyStyle } from '@/utils/styleHelpers';
+import { useModule } from '@/hooks/useModule';
 
 // Import modular components
 import EventsAnalytics from './components/EventsAnalytics';
@@ -48,7 +49,18 @@ export default function EventManagementScreen() {
   const [isAtTop, setIsAtTop] = useState(true);
 
   // Permission checks
-  const canManage = user?.category === 'hr' || user?.category === 'admin';
+  const { canManage, can: canView } = useModule('events.events');
+
+  if (!isAuthenticated) return null;
+
+  if (!canView('view')) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="lock-closed-outline" size={64} color={theme.textSecondary} />
+        <Text style={{ marginTop: 16, fontSize: 18, color: theme.textSecondary }}>Access Denied</Text>
+      </View>
+    );
+  }
 
   // Track if initial data has been loaded
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -405,12 +417,12 @@ export default function EventManagementScreen() {
             <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
               <Ionicons name={showFilters ? "filter" : "filter-outline"} size={22} color={theme.text} />
             </TouchableOpacity>
-            {['leads', 'clients', 'venues'].includes(activeTab) && (
+            {['leads', 'clients', 'venues'].includes(activeTab) && canManage && (
               <TouchableOpacity
                 onPress={() => {
-                  if (activeTab === 'leads') router.push('/(modules)/events/add-lead');
-                  if (activeTab === 'clients') router.push('/events/add-client');
-                  if (activeTab === 'venues') router.push('/events/add-venue');
+                  if (activeTab === 'leads') router.push('/(modules)/events/add-lead' as any);
+                  if (activeTab === 'clients') router.push('/events/add-client' as any);
+                  if (activeTab === 'venues') router.push('/events/add-venue' as any);
                 }}
                 style={{
                   padding: 4,
@@ -429,7 +441,7 @@ export default function EventManagementScreen() {
       <View style={styles.content}>
         {renderTabContent()}
       </View>
-    </Animated.View>
+    </Animated.View >
   );
 }
 

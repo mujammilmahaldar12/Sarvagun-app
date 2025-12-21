@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Platform, StatusBar, StyleSheet, TextInput, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Platform, StatusBar, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/hooks/useTheme';
-import { Chip, AnimatedPressable, GlassCard } from '@/components';
+import { AnimatedPressable } from '@/components';
 import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
@@ -93,18 +91,39 @@ const MODULES: Module[] = [
 
 const CATEGORIES = ['All', 'Management', 'Operations', 'Finance'];
 
+import { useModule } from '@/hooks/useModule';
+
 export default function ModulesScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const filteredModules = MODULES.filter((module) => {
-    const matchesSearch = module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      module.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+  // Permission Checks
+  const { can: canViewHR } = useModule('hr.employees');
+  const { can: canViewEvents } = useModule('events.events');
+  const { can: canViewFinance } = useModule('finance.dashboard');
+  const { can: canViewProjects } = useModule('projects.projects');
+  const { can: canViewLeave } = useModule('hr.leaves');
+
+  // Team lead dashboard access check - reusing projects or hr permission?
+  // Usually team leads have 'projects.tasks.rate' or similar.
+  // We'll use a broad check or assume if they can manage projects they might be leads.
+  // Actually, 'team' module is specific. Let's rely on 'projects.projects' manage for now or just show it 
+  // if they have 'projects.tasks.rate'.
+  // Ideally we'd have 'team.dashboard.view', but let's use user.role/category for badge? 
+  // For visibility: 'projects.projects'
+
+  const filteredModules = MODULES.filter(m => {
+    if (m.id === 'hr') return canViewHR('view');
+    if (m.id === 'events') return canViewEvents('view');
+    if (m.id === 'finance') return canViewFinance('view');
+    if (m.id === 'projects') return canViewProjects('view');
+    if (m.id === 'leave') return canViewLeave('view');
+    if (m.id === 'team') return canViewProjects('view'); // Showing Team Dashboard if can view projects
+    if (m.id === 'whatsnew') return true; // Always visible
+    return true;
   });
 
+  // Modern "Bento" Grid Design
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar
@@ -113,122 +132,73 @@ export default function ModulesScreen() {
         translucent
       />
 
-      {/* Minimal Header with Inline Search */}
-      <Animated.View
-        entering={FadeInDown.duration(600).springify()}
-        style={[styles.header, { backgroundColor: theme.surface }]}
-      >
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Modules</Text>
-
-          <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
-            <Ionicons name="search" size={20} color={theme.textSecondary} />
-            <TextInput
-              placeholder="Search modules..."
-              placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={[styles.searchInput, { color: theme.text }]}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <AnimatedPressable onPress={() => setSearchQuery('')} hapticType="light">
-                <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
-              </AnimatedPressable>
-            )}
-          </View>
-        </View>
-      </Animated.View>
+      {/* Modern Header Section */}
+      <View style={styles.headerContainer}>
+        <Animated.View
+          entering={FadeInDown.duration(600).springify()}
+        >
+          <Text style={[styles.greeting, { color: theme.textSecondary }]}>Welcome back,</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
+        </Animated.View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        style={{ flex: 1 }}
       >
-        {/* Modules Grid - Quick Actions Style */}
-        <View style={styles.modulesSection}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-            {filteredModules.length} {filteredModules.length === 1 ? 'MODULE' : 'MODULES'} AVAILABLE
-          </Text>
-
-          <View style={styles.modulesGrid}>
-            {filteredModules.map((module, index) => (
-              <Animated.View
-                key={module.id}
-                entering={FadeInUp.delay(100 + index * 50).duration(500).springify()}
+        {/* Modules Grid */}
+        <View style={styles.gridContainer}>
+          {filteredModules.map((module, index) => (
+            <Animated.View
+              key={module.id}
+              entering={FadeInUp.delay(200 + index * 50).duration(500).springify()}
+              style={{ width: '48%', marginBottom: 16 }}
+            >
+              <AnimatedPressable
+                onPress={() => router.push(module.route as any)}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: theme.surface,
+                    shadowColor: theme.shadow,
+                  }
+                ]}
               >
-                <AnimatedPressable
-                  onPress={() => router.push(module.route as any)}
-                  hapticType="medium"
-                  springConfig="gentle"
-                  animateOnMount={true}
-                  style={[
-                    styles.moduleCard,
-                    getCardStyle(theme.surface, 'md', 'xl'),
-                    { width: CARD_WIDTH },
-                  ]}
-                >
-                  {/* Gradient Background */}
-                  <View style={styles.cardGradient}>
-                    <LinearGradient
-                      colors={[`${module.color}08`, `${module.color}00`]}
-                      style={styles.gradientOverlay}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    />
+                {/* Top Section: Icon & Arrow */}
+                <View style={styles.cardTop}>
+                  <View style={[styles.iconBox, { backgroundColor: module.color + '15' }]}>
+                    <Ionicons name={module.icon} size={24} color={module.color} />
                   </View>
-
-                  {/* Icon Container */}
-                  <View style={[styles.iconContainer, { backgroundColor: `${module.color}15` }]}>
-                    <Ionicons name={module.icon} size={iconSizes.xl + 6} color={module.color} />
-                  </View>
-
-                  {/* Module Details */}
-                  <View style={styles.moduleDetails}>
-                    <Text style={[styles.moduleName, { color: theme.text }]} numberOfLines={2}>
-                      {module.name}
-                    </Text>
-                    <Text style={[styles.moduleDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-                      {module.description}
-                    </Text>
-                  </View>
-
-                  {/* Category/Badge Tag */}
                   {module.badge ? (
-                    <View style={[styles.categoryTag, { backgroundColor: `${module.color}20` }]}>
-                      <Text style={[styles.categoryTagText, { color: module.color }]}>
-                        {module.badge}
-                      </Text>
+                    <View style={[styles.badge, { backgroundColor: module.color + '20' }]}>
+                      <Text style={[styles.badgeText, { color: module.color }]}>{module.badge}</Text>
                     </View>
                   ) : (
-                    <View style={[styles.categoryTag, { backgroundColor: theme.background }]}>
-                      <Text style={[styles.categoryTagText, { color: theme.textSecondary }]}>
-                        {module.category}
-                      </Text>
-                    </View>
+                    <Ionicons name="arrow-forward-circle-outline" size={24} color={theme.textSecondary + '40'} />
                   )}
+                </View>
 
-                  {/* Arrow Icon */}
-                  <View style={styles.arrowIcon}>
-                    <Ionicons name="arrow-forward" size={iconSizes.sm} color={module.color} />
-                  </View>
-                </AnimatedPressable>
-              </Animated.View>
-            ))}
-          </View>
-
-          {filteredModules.length === 0 && (
-            <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={iconSizes['2xl']} color={theme.textSecondary} />
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                No modules found
-              </Text>
-              <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-                Try adjusting your search or filters
-              </Text>
-            </View>
-          )}
+                {/* Bottom Section: Text */}
+                <View style={styles.cardContent}>
+                  <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
+                    {module.name}
+                  </Text>
+                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]} numberOfLines={2}>
+                    {module.description}
+                  </Text>
+                </View>
+              </AnimatedPressable>
+            </Animated.View>
+          ))}
         </View>
+
+        {filteredModules.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="telescope-outline" size={48} color={theme.textSecondary + '40'} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No modules found</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -238,129 +208,82 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + spacing.lg : spacing['2xl'],
-    paddingBottom: spacing.base,
-    paddingHorizontal: spacing.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+  headerContainer: {
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 60,
+    paddingHorizontal: 24,
+    paddingBottom: 10,
   },
-  headerContent: {
-    gap: spacing.md,
+  greeting: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
   },
-  headerTitle: {
-    ...getTypographyStyle('xl', 'bold'),
-    letterSpacing: 0.5,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.full,
-    height: 46,
-  },
-  searchInput: {
-    flex: 1,
-    ...getTypographyStyle('base', 'regular'),
-    padding: 0,
-    paddingVertical: 0,
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -1,
   },
   scrollContent: {
-    paddingTop: spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
+    paddingHorizontal: 24,
+    paddingBottom: 100,
   },
-  sectionTitle: {
-    ...getTypographyStyle('xs', 'bold'),
-    letterSpacing: 0.5,
-    marginBottom: spacing.base,
-  },
-  modulesSection: {
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
-  },
-  modulesGrid: {
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    justifyContent: 'space-between',
   },
-  moduleCard: {
-    minHeight: 200,
-    padding: spacing.lg,
-    position: 'relative',
-    overflow: 'hidden',
-    justifyContent: 'flex-start',
+  card: {
+    borderRadius: 24,
+    padding: 16,
+    minHeight: 160,
+    justifyContent: 'space-between',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
   },
-  cardGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  gradientOverlay: {
-    flex: 1,
-  },
-  iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: borderRadius.xl,
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.base,
   },
-  moduleDetails: {
-    flex: 1,
-    paddingRight: spacing['2xl'] + spacing.sm, // Prevent overlap with categoryTag
-    paddingBottom: spacing.lg, // Prevent overlap with arrowIcon
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  moduleName: {
-    ...getTypographyStyle('base', 'bold'),
-    marginBottom: spacing.xs,
-    lineHeight: 20,
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
-  moduleDescription: {
-    ...getTypographyStyle('xs', 'regular'),
-    lineHeight: 18,
-    marginTop: spacing.xs,
+  cardContent: {
+    gap: 6,
   },
-  categoryTag: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
-  categoryTagText: {
-    ...getTypographyStyle('xs', 'medium'),
-  },
-  arrowIcon: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
+  cardDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+    opacity: 0.7,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['5xl'],
+    marginTop: 60,
+    gap: 12,
   },
   emptyText: {
-    ...getTypographyStyle('xl', 'semibold'),
-    marginTop: spacing.base,
-  },
-  emptySubtext: {
-    ...getTypographyStyle('sm', 'regular'),
-    marginTop: spacing.xs,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

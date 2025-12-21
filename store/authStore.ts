@@ -1,7 +1,6 @@
 ﻿import { create } from "zustand";
 import { authService } from "../services/auth.service";
 import { getToken, isFirstTimeUser, markOnboardingComplete } from "../utils/storage";
-import { syncPermissionsWithAuth } from "./permissionStore";
 import { useThemeStore } from "./themeStore";
 import { cacheUtils } from "../lib/queryClient";
 import type { User } from "@/types/user";
@@ -61,9 +60,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         console.log('🎨 Theme initialized:', response.user.theme_preference);
       }
 
-      // Sync permissions with auth state
-      syncPermissionsWithAuth();
-      console.log('🔒 Permissions synced');
+      // Sync permissions from backend
+      try {
+        const { fetchPermissions } = require('./permissionStore').usePermissionStore.getState();
+        await fetchPermissions();
+        console.log('🔒 Permissions synced from backend');
+      } catch (permError) {
+        console.log('⚠️ Failed to sync permissions:', permError);
+      }
 
       console.log('🎉 Login process complete');
       return true;
@@ -116,13 +120,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     // STEP 5: Clear permissions
     try {
-      syncPermissionsWithAuth();
-      console.log('✅ Permissions cleared');
-    } catch (e) {
-      console.log('⚠️ Permissions clear error:', e);
-    }
+      // STEP 5: Clear permissions
+      try {
+        const { clearPermissions } = require('./permissionStore').usePermissionStore.getState();
+        clearPermissions();
+        console.log('✅ Permissions cleared');
+      } catch (e) {
+        console.log('⚠️ Permissions clear error:', e);
+        const { clearPermissions } = require('./permissionStore').usePermissionStore.getState();
+        clearPermissions();
+        console.log('✅ Permissions cleared');
+      }
 
-    console.log('✅ Logout complete');
+      console.log('✅ Logout complete');
+    } catch (error) {
+      console.log('⚠️ Logout error:', error);
+    }
   },
 
   loadUser: async () => {
@@ -198,7 +211,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
               }
 
               // Sync permissions after loading user
-              syncPermissionsWithAuth();
+              const { fetchPermissions } = require('./permissionStore').usePermissionStore.getState();
+              fetchPermissions().catch(console.error);
               console.log('🔒 Permissions synced for restored session');
               return;
             } catch (refreshError) {
@@ -242,7 +256,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         }
 
         // Sync permissions after loading user
-        syncPermissionsWithAuth();
+        const { fetchPermissions } = require('./permissionStore').usePermissionStore.getState();
+        fetchPermissions().catch(console.error);
         console.log('🔒 Permissions synced for restored session');
       } else {
         console.log('❌ No valid session found - missing:', {
@@ -260,7 +275,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   setUser: (user) => {
     set({ user });
     // Sync permissions when user is updated
-    syncPermissionsWithAuth();
+    const { fetchPermissions } = require('./permissionStore').usePermissionStore.getState();
+    fetchPermissions().catch(console.error);
   },
 
   completeOnboarding: async () => {

@@ -161,13 +161,13 @@ export default function AnalyticsScreen() {
 
   // Mock data for overview charts
   const overviewData = [
-    { date: 'Mon', value: 85 },
-    { date: 'Tue', value: 92 },
-    { date: 'Wed', value: 78 },
-    { date: 'Thu', value: 88 },
-    { date: 'Fri', value: 95 },
-    { date: 'Sat', value: 82 },
-    { date: 'Sun', value: 90 },
+    { label: 'Mon', value: 85 },
+    { label: 'Tue', value: 92 },
+    { label: 'Wed', value: 78 },
+    { label: 'Thu', value: 88 },
+    { label: 'Fri', value: 95 },
+    { label: 'Sat', value: 82 },
+    { label: 'Sun', value: 90 },
   ];
 
   const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
