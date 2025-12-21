@@ -24,7 +24,7 @@ import type {
 
 export const financeQueryKeys = {
   all: ['finance'] as const,
-  
+
   // Sales
   sales: {
     all: ['finance', 'sales'] as const,
@@ -35,7 +35,7 @@ export const financeQueryKeys = {
     payments: (saleId: number) => [...financeQueryKeys.sales.all, 'payments', saleId] as const,
     analytics: () => [...financeQueryKeys.sales.all, 'analytics'] as const,
   },
-  
+
   // Expenses
   expenses: {
     all: ['finance', 'expenses'] as const,
@@ -45,7 +45,7 @@ export const financeQueryKeys = {
     detail: (id: number) => [...financeQueryKeys.expenses.details(), id] as const,
     analytics: () => [...financeQueryKeys.expenses.all, 'analytics'] as const,
   },
-  
+
   // Invoices
   invoices: {
     all: ['finance', 'invoices'] as const,
@@ -54,7 +54,7 @@ export const financeQueryKeys = {
     details: () => [...financeQueryKeys.invoices.all, 'detail'] as const,
     detail: (id: number) => [...financeQueryKeys.invoices.details(), id] as const,
   },
-  
+
   // Vendors
   vendors: {
     all: ['finance', 'vendors'] as const,
@@ -63,7 +63,7 @@ export const financeQueryKeys = {
     details: () => [...financeQueryKeys.vendors.all, 'detail'] as const,
     detail: (id: number) => [...financeQueryKeys.vendors.details(), id] as const,
   },
-  
+
   // Reimbursements
   reimbursements: {
     all: ['finance', 'reimbursements'] as const,
@@ -72,7 +72,7 @@ export const financeQueryKeys = {
     details: () => [...financeQueryKeys.reimbursements.all, 'detail'] as const,
     detail: (id: number) => [...financeQueryKeys.reimbursements.details(), id] as const,
   },
-  
+
   // Statistics
   statistics: ['finance', 'statistics'] as const,
 };
@@ -110,7 +110,7 @@ export const financeCacheUtils = {
  */
 export const useSales = (filters: SalesFilters = {}) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   return useQuery({
     queryKey: financeQueryKeys.sales.list(filters),
     queryFn: () => financeService.getSales(filters),
@@ -188,7 +188,7 @@ export const useCreateSale = () => {
  */
 export const useUpdateSale = () => {
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
       financeService.updateSale(id, data),
     onSuccess: (updatedSale) => {
       queryClient.setQueryData(
@@ -219,8 +219,8 @@ export const useAddSalePayment = () => {
   return useMutation({
     mutationFn: financeService.addSalePayment,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ 
-        queryKey: financeQueryKeys.sales.payments(variables.sale) 
+      queryClient.invalidateQueries({
+        queryKey: financeQueryKeys.sales.payments(variables.sale)
       });
       financeCacheUtils.invalidateSales();
     },
@@ -232,15 +232,15 @@ export const useAddSalePayment = () => {
 /**
  * Fetch all expenses with optional filtering
  */
-export const useExpenses = (filters: ExpensesFilters = {}) => {
+export const useExpenses = (filters: ExpensesFilters = {}, options?: { enabled?: boolean }) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   return useQuery({
     queryKey: financeQueryKeys.expenses.list(filters),
     queryFn: () => financeService.getExpenses(filters),
     placeholderData: (previousData) => previousData,
     staleTime: 2 * 60 * 1000,
-    enabled: isAuthenticated,
+    enabled: options?.enabled !== undefined ? options.enabled && isAuthenticated : isAuthenticated,
   });
 };
 
@@ -289,7 +289,7 @@ export const useCreateExpense = () => {
  */
 export const useUpdateExpense = () => {
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
       financeService.updateExpense(id, data),
     onSuccess: (updatedExpense) => {
       queryClient.setQueryData(
@@ -362,7 +362,7 @@ export const useDeleteExpensePhoto = () => {
  */
 export const useInvoices = (filters: InvoicesFilters = {}) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   return useQuery({
     queryKey: financeQueryKeys.invoices.list(filters),
     queryFn: () => financeService.getInvoices(filters),
@@ -405,7 +405,7 @@ export const useCreateInvoice = () => {
  */
 export const useUpdateInvoice = () => {
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
       financeService.updateInvoice(id, data),
     onSuccess: (updatedInvoice) => {
       queryClient.setQueryData(
@@ -436,7 +436,7 @@ export const useDeleteInvoice = () => {
  */
 export const useVendors = (filters: VendorsFilters = {}) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   return useQuery({
     queryKey: financeQueryKeys.vendors.list(filters),
     queryFn: () => financeService.getVendors(filters),
@@ -479,7 +479,7 @@ export const useCreateVendor = () => {
  */
 export const useUpdateVendor = () => {
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => 
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
       financeService.updateVendor(id, data),
     onSuccess: (updatedVendor) => {
       queryClient.setQueryData(
@@ -510,7 +510,7 @@ export const useDeleteVendor = () => {
  */
 export const useReimbursements = (filters: ReimbursementsFilters = {}) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   return useQuery({
     queryKey: financeQueryKeys.reimbursements.list(filters),
     queryFn: () => financeService.getReimbursements(filters),

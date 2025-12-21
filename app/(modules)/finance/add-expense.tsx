@@ -94,10 +94,12 @@ export default function AddExpenseScreen() {
   );
 
   const eventOptions = useMemo(() =>
-    (events as any[]).map((e: any) => ({
-      label: `${e.name}${e.client?.name ? ` - ${e.client.name}` : ''}`,
-      value: String(e.id)
-    })),
+    (events as any[]).map((e: any) => {
+      const clientName = e.client?.name || 'Unknown Client';
+      const venueName = e.venue?.name || 'Unknown Venue';
+      const label = `${clientName} - ${venueName}`;
+      return { label, value: String(e.id) };
+    }),
     [events]
   );
 
@@ -170,8 +172,8 @@ export default function AddExpenseScreen() {
       // but for now we assume backend handles base64 or separate upload
 
       const payload: any = {
-        event: Number(formData.event),
-        vendor: Number(formData.vendor),
+        event_id: Number(formData.event),  // Backend expects event_id for write
+        vendor_id: Number(formData.vendor), // Backend expects vendor_id for write
         expense_date: formData.expense_date,
         date: formData.expense_date, // Sync fields
         particulars: formData.particulars,
@@ -185,12 +187,24 @@ export default function AddExpenseScreen() {
         bill_evidence: formData.bill_evidence,
       };
 
+      // Find selected event details for logging
+      const selectedEvent = events.find((e: any) => String(e.id) === formData.event);
+      console.log('💰 EXPENSE CREATION:', {
+        eventId: payload.event,
+        eventLabel: selectedEvent ? `${selectedEvent.client?.name || 'Unknown'} - ${selectedEvent.venue?.name || 'Unknown'}` : 'NOT FOUND',
+        formDataEvent: formData.event,
+        vendor: payload.vendor,
+        amount: payload.amount,
+      });
+
       if (isEditMode) {
         await updateExpenseMutation.mutateAsync({ id: expenseId, data: payload });
-        Alert.alert('Success', 'Expense updated successfully', [{ text: 'OK', onPress: () => router.back() }]);
+        console.log('Expense updated successfully');
+        router.back();
       } else {
         await createExpenseMutation.mutateAsync(payload);
-        Alert.alert('Success', 'Expense created successfully', [{ text: 'OK', onPress: () => router.back() }]);
+        console.log('✅ Expense created successfully for event:', payload.event);
+        router.back();
       }
     } catch (error: any) {
       console.error('Save Error:', error);

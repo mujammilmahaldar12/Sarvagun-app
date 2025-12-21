@@ -3,7 +3,7 @@
  * Updated with 3 tabs: Staff | My Requests | Pending Approvals
  */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, ActivityIndicator, TextInput } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,6 +53,7 @@ export default function HRScreen() {
     type: 'approve' | 'reject' | null;
     onConfirm?: () => void;
   }>({ visible: false, title: '', message: '', onConfirm: () => { }, confirmText: '', type: null });
+  const [showHireMenu, setShowHireMenu] = useState(false);
 
   // Debug logs
   useEffect(() => {
@@ -70,10 +71,22 @@ export default function HRScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  // API Hooks
+  // API Hooks - Pass filter to server for server-side filtering
   const { data: usersData, refetch: refetchUsers } = useAllUsers({ search: debouncedSearch || undefined });
   const { data: searchResults } = useSearchEmployees(debouncedSearch, {}, debouncedSearch.length > 1);
-  const { data: reimbursementsData, isLoading: reimbursementsLoading, refetch: refetchReimbursements } = useReimbursements();
+
+  // Server-side filtering: Pass status to API
+  const reimbursementFilters = useMemo(() => {
+    const f: any = {};
+    if (activeTab === 'approvals' && !filters.status) {
+      f.status = 'pending'; // Default to pending for approval tab
+    } else if (filters.status) {
+      f.status = filters.status;
+    }
+    return f;
+  }, [activeTab, filters.status]);
+
+  const { data: reimbursementsData, isLoading: reimbursementsLoading, refetch: refetchReimbursements } = useReimbursements(reimbursementFilters);
   const { data: reimbursementStats } = useReimbursementStatistics();
   const updateReimbursementStatus = useUpdateReimbursementStatus();
 
@@ -130,7 +143,7 @@ export default function HRScreen() {
       id: item.id,
       employee: item.requested_by_name || `User ${item.requested_by}`,
       employeeId: item.requested_by,
-      type: item.expense_details?.particulars || 'Expense',
+      type: (item as any).expense?.particulars || (item as any).expense_details?.particulars || 'Expense',
       amount: Number(item.reimbursement_amount) || 0,
       date: item.submitted_at ? new Date(item.submitted_at).toISOString().split('T')[0] : 'N/A',
       status: (item.latest_status?.status || item.status || 'pending').toLowerCase(),
@@ -143,18 +156,10 @@ export default function HRScreen() {
     return reimbursementData.filter((r: any) => r.employeeId === user?.id);
   }, [reimbursementData, user?.id]);
 
-  // Pending Approvals - show all pending (for approvers)
-  const pendingApprovals = useMemo(() => {
-    if (activeTab === 'approvals') {
-      // Show only pending by default, unless filter is set
-      if (!filters.status) {
-        return reimbursementData.filter((r: any) => r.status === 'pending');
-      }
-    }
-    return reimbursementData;
-  }, [reimbursementData, activeTab, filters.status]);
+  // Server already filtered - no client filtering needed for approvals
+  const pendingApprovals = reimbursementData;
 
-  // Apply filters
+  // Apply status filter (only if set)
   const filteredStaffData = useMemo(() => {
     if (!filters.status) return staffData;
     return staffData.filter((s: any) => s.status.toLowerCase() === filters.status);
@@ -166,24 +171,21 @@ export default function HRScreen() {
     return data.filter((r: any) => r.status === filters.status);
   }, [activeTab, pendingApprovals, myRequests, filters.status]);
 
-  // Staff columns
+  // Staff columns - compact
   const staffColumns: TableColumn[] = [
     { key: 'name', title: 'Name', sortable: true },
     { key: 'designation', title: 'Role' },
     { key: 'department', title: 'Dept' },
-    { key: 'status', title: 'Status', render: (v: string) => <Badge label={v} status={v.toLowerCase() as any} size="sm" /> },
     {
       key: 'actions',
       title: '',
+      width: 40,
       render: (_: any, row: any) => (
         <TouchableOpacity
-          onPress={() => {
-            console.log('View staff:', row.id);
-            router.push({ pathname: '/hr/staff-detail/[id]', params: { id: row.id.toString() } } as any);
-          }}
-          style={{ padding: 8 }}
+          onPress={() => router.push({ pathname: '/hr/staff-detail/[id]', params: { id: row.id.toString() } } as any)}
+          style={{ padding: 4 }}
         >
-          <Ionicons name="eye-outline" size={20} color={theme.primary} />
+          <Ionicons name="eye-outline" size={18} color={theme.primary} />
         </TouchableOpacity>
       )
     },
@@ -254,8 +256,7 @@ export default function HRScreen() {
       console.log('📡 Calling mutateAsync with:', { id, status: 'approved' });
       await updateReimbursementStatus.mutateAsync({ id, status: 'approved', reason: 'Approved' });
       console.log('✅ Approve successful');
-      Alert.alert('Success', 'Reimbursement approved');
-      refetchReimbursements();
+      // Query will auto-refetch due to mutation, no manual refetch needed
     } catch (error) {
       console.error('❌ Approve failed:', error);
       Alert.alert('Error', 'Failed to approve reimbursement');
@@ -273,8 +274,7 @@ export default function HRScreen() {
       console.log('📡 Calling mutateAsync with:', { id, status: 'rejected' });
       await updateReimbursementStatus.mutateAsync({ id, status: 'rejected', reason: 'Rejected' });
       console.log('✅ Reject successful');
-      Alert.alert('Success', 'Reimbursement rejected');
-      refetchReimbursements();
+      // Query will auto-refetch due to mutation, no manual refetch needed
     } catch (error) {
       console.error('❌ Reject failed:', error);
       Alert.alert('Error', 'Failed to reject reimbursement');
@@ -283,7 +283,7 @@ export default function HRScreen() {
     }
   };
 
-  // Render Reimbursement Card
+  // Render Reimbursement Card - Compact Design
   const renderReimbursementCard = (item: any, showActions: boolean = false) => (
     <TouchableOpacity
       key={item.id}
@@ -291,44 +291,28 @@ export default function HRScreen() {
       activeOpacity={0.7}
       style={[styles.card, { backgroundColor: theme.surface }]}
     >
+      {/* Compact Header */}
       <View style={styles.cardHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }}>{item.employee}</Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>{item.type}</Text>
+        <View style={{ flex: 1, marginRight: 8 }}>
+          <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{item.employee}</Text>
+          <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{item.type}</Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Badge label={item.status.charAt(0).toUpperCase() + item.status.slice(1)} status={item.status as any} size="sm" />
-          {item.hasBill && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              <Ionicons name="document-attach" size={12} color={theme.primary} />
-              <Text style={{ color: theme.primary, fontSize: 10, marginLeft: 2 }}>Bill</Text>
-            </View>
-          )}
-        </View>
+        <Badge label={item.status.charAt(0).toUpperCase() + item.status.slice(1)} status={item.status as any} size="sm" />
       </View>
+
+      {/* Compact Info Row */}
       <View style={styles.cardRow}>
-        <Text style={{ color: theme.primary, fontSize: 18, fontWeight: '700' }}>₹{item.amount.toLocaleString()}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
-          <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{item.date}</Text>
+        <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '700' }}>₹{item.amount.toLocaleString()}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
+          <Text style={{ color: theme.textSecondary, fontSize: 11 }}>{item.date}</Text>
+          {item.hasBill && <Ionicons name="document-attach" size={12} color={theme.primary} style={{ marginLeft: 4 }} />}
         </View>
       </View>
+
+      {/* Compact Action Buttons */}
       {showActions && item.status === 'pending' && (
         <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#10b981' }]}
-            onPress={(e) => { e.stopPropagation(); handleApprove(item.id, item.employee); }}
-            disabled={processingId === item.id}
-          >
-            {processingId === item.id ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={16} color="#fff" />
-                <Text style={styles.actionBtnText}>Approve</Text>
-              </>
-            )}
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
             onPress={(e) => { e.stopPropagation(); handleReject(item.id, item.employee); }}
@@ -338,8 +322,22 @@ export default function HRScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Ionicons name="close" size={16} color="#fff" />
+                <Ionicons name="close" size={14} color="#fff" />
                 <Text style={styles.actionBtnText}>Reject</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#10b981' }]}
+            onPress={(e) => { e.stopPropagation(); handleApprove(item.id, item.employee); }}
+            disabled={processingId === item.id}
+          >
+            {processingId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={14} color="#fff" />
+                <Text style={styles.actionBtnText}>Approve</Text>
               </>
             )}
           </TouchableOpacity>
@@ -353,33 +351,72 @@ export default function HRScreen() {
     if (activeTab === 'staff') {
       return (
         <View style={{ flex: 1 }}>
-          {/* Hire Actions Bar - visible for HR/Admin/Manager/Team Lead */}
-          {canAccessHireActions && (
-            <View style={styles.hireActionsBar}>
-              <TouchableOpacity
-                style={styles.hireActionBtn}
-                onPress={() => router.push('/(modules)/hr/pending-hires' as any)}
-              >
-                <Ionicons name="hourglass-outline" size={18} color="#8B5CF6" />
-                <Text style={styles.hireActionText}>Pending Hires</Text>
+          {/* Search Row with Funnel Button */}
+          <View style={{ flexDirection: 'row', padding: 12, gap: 8, alignItems: 'center' }}>
+            <View style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: theme.surface,
+              borderRadius: 24,
+              paddingHorizontal: 16,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}>
+              <Ionicons name="search" size={18} color={theme.textSecondary} />
+              <TextInput
+                placeholder="Search staff..."
+                placeholderTextColor={theme.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={{ flex: 1, paddingVertical: 10, marginLeft: 8, color: theme.text, fontSize: 14 }}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowHireMenu(!showHireMenu)}
+              style={{
+                backgroundColor: showHireMenu ? theme.primary : theme.surface,
+                borderRadius: 10,
+                padding: 10,
+                borderWidth: 1,
+                borderColor: showHireMenu ? theme.primary : theme.border,
+              }}
+            >
+              <Ionicons name="funnel" size={18} color={showHireMenu ? "#fff" : theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Inline Dropdown - Light, No Absolute */}
+          {showHireMenu && (
+            <View style={{ marginHorizontal: 12, marginBottom: 8, backgroundColor: theme.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.border }}>
+              <TouchableOpacity onPress={() => { setShowHireMenu(false); setShowFilters(!showFilters); }} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
+                <Ionicons name="options-outline" size={18} color={theme.primary} />
+                <Text style={{ color: theme.text, fontSize: 14 }}>Filters</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.hireActionBtn, styles.inviteBtn]}
-                onPress={() => router.push('/(modules)/hr/invite-hire' as any)}
-              >
-                <Ionicons name="person-add" size={18} color="#fff" />
-                <Text style={[styles.hireActionText, { color: '#fff' }]}>Invite Hire</Text>
-              </TouchableOpacity>
+              {canAccessHireActions && (
+                <>
+                  <View style={{ height: 1, backgroundColor: theme.border }} />
+                  <TouchableOpacity onPress={() => { setShowHireMenu(false); router.push('/(modules)/hr/pending-hires' as any); }} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
+                    <Ionicons name="hourglass-outline" size={18} color="#8B5CF6" />
+                    <Text style={{ color: theme.text, fontSize: 14 }}>Pending Hires</Text>
+                  </TouchableOpacity>
+                  <View style={{ height: 1, backgroundColor: theme.border }} />
+                  <TouchableOpacity onPress={() => { setShowHireMenu(false); router.push('/(modules)/hr/invite-hire' as any); }} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
+                    <Ionicons name="person-add" size={18} color="#10B981" />
+                    <Text style={{ color: theme.text, fontSize: 14 }}>Invite Hire</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
+
+          {/* Staff Table */}
           <Table
             data={filteredStaffData}
             columns={staffColumns}
             keyExtractor={(item: any) => item.id.toString()}
             onRowPress={handleRowPress}
-            searchable={true}
-            searchPlaceholder="Search staff..."
-            onSearch={setSearchQuery}
+            searchable={false}
           />
         </View>
       );
@@ -394,12 +431,12 @@ export default function HRScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />}
       >
-        {/* KPI Cards */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16, marginHorizontal: -16, paddingHorizontal: 16 }}>
+        {/* KPI Cards - Compact */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ paddingLeft: 16, paddingRight: 16 }}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <KPICard title="Pending" value={reimbursementStats?.pending || 0} icon="time" color="#f59e0b" />
-            <KPICard title="Approved" value={reimbursementStats?.approved || 0} icon="checkmark-circle" color="#10b981" />
-            <KPICard title="Total" value={`₹${(reimbursementStats?.total_amount || 0).toLocaleString()}`} icon="cash" color="#3b82f6" />
+            <KPICard title="Pending" value={reimbursementStats?.pending || 0} icon="time" color="#f59e0b" compact={true} />
+            <KPICard title="Approved" value={reimbursementStats?.approved || 0} icon="checkmark-circle" color="#10b981" compact={true} />
+            <KPICard title="Total" value={`₹${(reimbursementStats?.total_amount || 0).toLocaleString()}`} icon="cash" color="#3b82f6" compact={true} />
           </View>
         </ScrollView>
 
@@ -428,38 +465,19 @@ export default function HRScreen() {
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
+      {/* Header with Add button for My Requests */}
       <ModuleHeader
         title="HR Management"
+        showNotifications={false}
         rightActions={
-          <View style={styles.headerActions}>
-
-            <TouchableOpacity onPress={() => setShowFilters(!showFilters)} style={[styles.iconBtn, { backgroundColor: theme.primary + '10' }]}>
-              <Ionicons name={showFilters ? "filter" : "filter-outline"} size={20} color={theme.primary} />
+          activeTab === 'myrequests' ? (
+            <TouchableOpacity
+              onPress={handleAddNew}
+              style={{ backgroundColor: theme.primary + '15', borderRadius: 8, padding: 6 }}
+            >
+              <Ionicons name="add" size={18} color={theme.primary} />
             </TouchableOpacity>
-            {(activeTab === 'myrequests' || (activeTab === 'staff' && canManageStaff)) && (
-              <TouchableOpacity onPress={handleAddNew} style={[styles.addBtn, { backgroundColor: theme.primary + '15' }]}>
-                <Ionicons name="add" size={24} color={theme.primary} />
-              </TouchableOpacity>
-            )}
-            {/* Hire Actions - only for HR/Admin/Manager */}
-            {canAccessHireActions && activeTab === 'staff' && (
-              <>
-                <TouchableOpacity
-                  onPress={() => router.push('/(modules)/hr/pending-hires' as any)}
-                  style={[styles.iconBtn, { backgroundColor: theme.primary + '15' }]}
-                >
-                  <Ionicons name="hourglass-outline" size={22} color={theme.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => router.push('/(modules)/hr/invite-hire' as any)}
-                  style={[styles.addBtn, { backgroundColor: '#10B981' }]}
-                >
-                  <Ionicons name="person-add" size={22} color="#fff" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+          ) : undefined
         }
       />
 
@@ -532,28 +550,42 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', paddingHorizontal: 16 },
   tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   card: {
-    padding: 16,
-    borderRadius: 16,
-    // Remove border, use shadow for modern look
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 1, // Ensures consistent spacing in list
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  actionBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   iconBtn: { padding: 6, borderRadius: 8 },
   hireActionsBar: {
     flexDirection: 'row',

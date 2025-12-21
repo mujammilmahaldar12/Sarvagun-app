@@ -4,7 +4,7 @@ import { useAuthStore } from "../../store/authStore";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__
-  ? "http://10.97.251.157:8000/api"  // Your PC's current local IP
+  ? "http://10.97.251.100:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance
@@ -22,7 +22,11 @@ api.interceptors.request.use(
     const token = await getToken('access');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log(`📡 API: ${config.method?.toUpperCase()} ${config.url} [AUTHENTICATED]`);
+      const fullUrl = config.url + (config.params ? `?${new URLSearchParams(config.params).toString()}` : '');
+      console.log(`📡 API: ${config.method?.toUpperCase()} ${fullUrl} [AUTHENTICATED]`);
+      if (config.params) {
+        console.log(`📊 Query Params:`, JSON.stringify(config.params));
+      }
     } else {
       console.log(`📡 API: ${config.method?.toUpperCase()} ${config.url} [NO TOKEN]`);
     }

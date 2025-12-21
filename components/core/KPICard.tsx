@@ -104,14 +104,14 @@ export const KPICard: React.FC<KPICardProps> = ({
         onPressOut={handlePressOut}
         disabled={disabled || loading}
       >
-        {/* Colored left border accent */}
-        <View style={[styles.borderAccent, { backgroundColor: color }]} />
+        {/* Colored left border accent - only show on non-compact */}
+        {!compact && <View style={[styles.borderAccent, { backgroundColor: color }]} />}
 
-        <View style={styles.cardContent}>
+        <View style={[compact ? styles.compactCardContent : styles.cardContent]}>
           {/* Icon Section */}
           {icon && (
-            <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-              <Ionicons name={icon} size={28} color={color} />
+            <View style={[compact ? styles.compactIconContainer : styles.iconContainer, { backgroundColor: color + '15' }]}>
+              <Ionicons name={icon} size={compact ? 20 : 28} color={color} />
             </View>
           )}
 
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   compactContainer: {
-    minHeight: 120,
+    minHeight: 90, // Reduced from 120px for better density
   },
   borderAccent: {
     position: 'absolute',
@@ -202,10 +202,21 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm,
   },
+  compactCardContent: {
+    padding: 12, // Proper padding all around
+    gap: 6,
+  },
   iconContainer: {
     width: 56,
     height: 56,
     borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compactIconContainer: {
+    width: 40, // Smaller icon container for compact
+    height: 40,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },

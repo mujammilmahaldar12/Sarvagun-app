@@ -30,6 +30,7 @@ export default function HRDetailScreen() {
   const [activeTab, setActiveTab] = useState<DetailTab>('info');
   const [itemType, setItemType] = useState<ItemType>('staff');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
   // API hooks
@@ -54,7 +55,7 @@ export default function HRDetailScreen() {
 
   // Check user role for permissions
   const canManage = permissions.hasPermission('hr:manage');
-  const canApprove = permissions.hasPermission('leave:approve'); // Assuming similar permission for reimbursement or just 'hr:manage'
+  const canApprove = permissions.hasPermission('leave:approve');
 
   // Tabs for detail view
   const detailTabs: Tab[] = [
@@ -81,46 +82,32 @@ export default function HRDetailScreen() {
   };
 
   const handleApprove = () => {
-    const title = type === 'leave' ? 'Approve Leave' : 'Approve Reimbursement';
+    console.log('🟢 handleApprove called, type:', type);
 
-    let employeeName = 'this employee';
-    if (type === 'leave' && itemData) {
-      employeeName = (itemData as LeaveRequest).employee_name || 'this employee';
-    } else if (type === 'reimbursement' && itemData) {
-      employeeName = (itemData as Reimbursement).requested_by_name || 'this employee';
+    // Execute directly without confirmation
+    if (type === 'leave') {
+      updateLeaveStatus(
+        { id: parseInt(id as string), data: { status: 'approved' } },
+        {
+          onSuccess: () => {
+            console.log('✅ Leave approved');
+            router.back();
+          },
+          onError: (err: any) => console.error('Error:', err.message)
+        }
+      );
+    } else if (type === 'reimbursement') {
+      updateReimbursementStatus(
+        { id: parseInt(id as string), status: 'approved', reason: 'Approved' },
+        {
+          onSuccess: () => {
+            console.log('✅ Reimbursement approved');
+            router.back();
+          },
+          onError: (err: any) => console.error('Error:', err.message)
+        }
+      );
     }
-
-    const message = `Are you sure you want to approve this request for ${employeeName}?`;
-
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Approve',
-        onPress: () => {
-          if (type === 'leave') {
-            updateLeaveStatus(
-              { id: parseInt(id as string), data: { status: 'approved' } },
-              {
-                onSuccess: () => {
-                  Alert.alert('Success', 'Leave approved', [{ text: 'OK', onPress: () => router.back() }]);
-                },
-                onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
-              }
-            );
-          } else if (type === 'reimbursement') {
-            updateReimbursementStatus(
-              { id: parseInt(id as string), status: 'approved' },
-              {
-                onSuccess: () => {
-                  Alert.alert('Success', 'Reimbursement approved', [{ text: 'OK', onPress: () => router.back() }]);
-                },
-                onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
-              }
-            );
-          }
-        },
-      },
-    ]);
   };
 
   const handleReject = () => {
@@ -152,7 +139,8 @@ export default function HRDetailScreen() {
         {
           onSuccess: () => {
             setShowRejectModal(false);
-            Alert.alert('Success', 'Rejected successfully', [{ text: 'OK', onPress: () => router.back() }]);
+            console.log('✅ Reimbursement rejected successfully');
+            router.back();
           },
           onError: (err: any) => Alert.alert('Error', err.message || 'Failed')
         }
@@ -161,27 +149,27 @@ export default function HRDetailScreen() {
   };
 
   const handleDelete = () => {
-    const title = type === 'leave' ? 'Cancel Leave' : 'Delete Request';
-    const msg = 'Are you sure you want to delete this request?';
+    console.log('🔴 handleDelete called, type:', type);
+    setShowDeleteModal(true);
+  };
 
-    Alert.alert(title, msg, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, Delete',
-        style: 'destructive',
-        onPress: () => {
-          if (type === 'leave') {
-            deleteLeave(parseInt(id as string), {
-              onSuccess: () => Alert.alert('Success', 'Deleted', [{ text: 'OK', onPress: () => router.back() }])
-            });
-          } else if (type === 'reimbursement') {
-            deleteReimbursement(parseInt(id as string), {
-              onSuccess: () => Alert.alert('Success', 'Deleted', [{ text: 'OK', onPress: () => router.back() }])
-            });
-          }
-        },
-      },
-    ]);
+  const confirmDelete = () => {
+    setShowDeleteModal(false);
+    if (type === 'leave') {
+      deleteLeave(parseInt(id as string), {
+        onSuccess: () => {
+          console.log('✅ Leave deleted');
+          router.back();
+        }
+      });
+    } else if (type === 'reimbursement') {
+      deleteReimbursement(parseInt(id as string), {
+        onSuccess: () => {
+          console.log('✅ Reimbursement deleted');
+          router.back();
+        }
+      });
+    }
   };
 
   const renderInfoTab = () => {
@@ -238,30 +226,70 @@ export default function HRDetailScreen() {
 
       return (
         <ScrollView style={{ padding: 16 }}>
-          {/* Amount Header */}
-          <View style={{ alignItems: 'center', marginBottom: 24 }}>
-            <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 4 }}>Reimbursement Amount</Text>
-            <Text style={{ color: theme.primary, fontSize: 32, fontWeight: '700' }}>₹{Number(reimbursement.reimbursement_amount || 0).toLocaleString()}</Text>
+          {/* Compact Amount Card */}
+          <View style={{
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingVertical: 16,
+            paddingHorizontal: 20,
+            backgroundColor: theme.surface,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 2,
+          }}>
+            <Text style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 4 }}>Reimbursement Amount</Text>
+            <Text style={{ color: theme.primary, fontSize: 24, fontWeight: '700' }}>₹{Number(reimbursement.reimbursement_amount || 0).toLocaleString()}</Text>
             <View style={{ marginTop: 8 }}>
               <StatusBadge status={reimbursement.status || 'pending'} />
             </View>
           </View>
 
-          <View style={{ backgroundColor: theme.surface, padding: 20, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: theme.border }}>
+          {/* Info Card with Proper Padding */}
+          <View style={{
+            backgroundColor: theme.surface,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderRadius: 12,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 2,
+          }}>
             <SummaryRow label="Type" value={expenseObj.particulars || 'N/A'} theme={theme} />
             <SummaryRow label="Expense Date" value={formatDate(expenseObj.expense_date || expenseObj.date || '')} theme={theme} />
             <SummaryRow label="Applied On" value={formatDate(reimbursement.submitted_at)} theme={theme} isLast />
           </View>
 
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ ...getTypographyStyle('base', 'semibold'), color: theme.text, marginBottom: 12 }}>Details</Text>
+          {/* Details Card */}
+          <View style={{
+            backgroundColor: theme.surface,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 2,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text, marginBottom: 12 }}>Details</Text>
             <InfoRow label="Request ID" value={`#${reimbursement.id}`} theme={theme} />
             <InfoRow label="Employee" value={reimbursement.requested_by_name || (reimbursement as any).employee_name} theme={theme} />
             <InfoRow label="Description" value={reimbursement.details} theme={theme} />
-
             <InfoRow label="Payment Mode" value={expenseObj.mode_of_payment} theme={theme} />
             <InfoRow label="Payment Status" value={expenseObj.payment_status} theme={theme} />
-            <InfoRow label="Original Expense" value={`₹${Number(expenseObj.amount || 0).toLocaleString()}`} theme={theme} />
+            <InfoRow label="Original Expense" value={`₹${Number(expenseObj.amount || 0).toLocaleString()}`} theme={theme} isLast />
           </View>
         </ScrollView>
       );
@@ -411,15 +439,15 @@ export default function HRDetailScreen() {
   };
 
   // Logic to show/hide action buttons
-  const isPending = itemData?.status?.toLowerCase() === 'pending';
+  const isItemPending = itemData?.status?.toLowerCase() === 'pending';
   // Allow delete if it's my own request and pending
-  const canDelete = isPending && (
+  const canDelete = isItemPending && (
     (type === 'leave' && (itemData as any).employee === user?.id) ||
     (type === 'reimbursement' && ((itemData as any).requested_by === user?.id || (itemData as any).employee === user?.id))
   );
 
   // Allow approve/reject if have permission and it's pending (and not my own ideally, but for demo OK)
-  const canAction = isPending && (canManage || canApprove);
+  const canAction = isItemPending && (canManage || canApprove);
 
   if (loading) {
     return (
@@ -490,6 +518,20 @@ export default function HRDetailScreen() {
           </View>
         </View>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: '#00000080', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: theme.surface, padding: 20, borderRadius: 12 }}>
+            <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>Delete Request</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 20 }}>Are you sure you want to delete this request? This action cannot be undone.</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Button label="Cancel" variant="outline" onPress={() => setShowDeleteModal(false)} style={{ flex: 1 }} />
+              <Button label="Delete" variant="danger" onPress={confirmDelete} style={{ flex: 1 }} />
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -508,18 +550,19 @@ function StatusBadge({ status }: { status: string }) {
 
 function SummaryRow({ label, value, theme, isLast }: any) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: isLast ? 0 : 1, borderBottomColor: theme.border }}>
-      <Text style={{ color: theme.textSecondary }}>{label}</Text>
-      <Text style={{ color: theme.text, fontWeight: '600' }}>{value}</Text>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: isLast ? 0 : 1, borderBottomColor: theme.border }}>
+      <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: theme.text, fontWeight: '600', fontSize: 13 }}>{value}</Text>
     </View>
   );
 }
 
-function InfoRow({ label, value, theme }: any) {
+
+function InfoRow({ label, value, theme, isLast }: any) {
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: theme.textSecondary, fontSize: 13, marginBottom: 4 }}>{label}</Text>
-      <Text style={{ color: theme.text, fontSize: 16 }}>{value || 'N/A'}</Text>
+    <View style={{ marginBottom: isLast ? 0 : 12 }}>
+      <Text style={{ color: theme.textSecondary, fontSize: 11, marginBottom: 3 }}>{label}</Text>
+      <Text style={{ color: theme.text, fontSize: 14 }}>{value || 'N/A'}</Text>
     </View>
   );
 }

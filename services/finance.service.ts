@@ -36,7 +36,7 @@ import type {
  */
 class FinanceService {
   // ==================== SALES ====================
-  
+
   /**
    * Get all sales with optional filtering and pagination
    */
@@ -119,7 +119,7 @@ class FinanceService {
   }
 
   // ==================== SALES PAYMENTS ====================
-  
+
   /**
    * Get all payments for a sale
    */
@@ -172,12 +172,13 @@ class FinanceService {
   }
 
   // ==================== EXPENSES ====================
-  
+
   /**
    * Get all expenses with optional filtering and pagination
    */
   async getExpenses(params?: ExpensesFilters) {
     try {
+      console.log('💸 getExpenses called with params:', JSON.stringify(params));
       const response = await apiClient.get<{ results: Expense[]; count: number; next: string | null; previous: string | null }>('/finance_management/expenses/', { params });
       // Handle both paginated and array responses for backward compatibility
       if (response && 'results' in response) {
@@ -255,7 +256,7 @@ class FinanceService {
   }
 
   // ==================== EXPENSE PHOTOS ====================
-  
+
   /**
    * Upload photo for expense
    */
@@ -293,7 +294,7 @@ class FinanceService {
   }
 
   // ==================== INVOICES ====================
-  
+
   /**
    * Get all invoices with optional filtering
    */
@@ -359,7 +360,7 @@ class FinanceService {
   }
 
   // ==================== INVOICE ITEMS ====================
-  
+
   /**
    * Add item to invoice
    */
@@ -399,7 +400,7 @@ class FinanceService {
   }
 
   // ==================== VENDORS ====================
-  
+
   /**
    * Get all vendors with optional filtering
    */
@@ -465,7 +466,7 @@ class FinanceService {
   }
 
   // ==================== REIMBURSEMENTS ====================
-  
+
   /**
    * Get all reimbursement requests with optional filtering
    */
@@ -502,7 +503,7 @@ class FinanceService {
       formData.append('reimbursement_amount', data.reimbursement_amount.toString());
       formData.append('details', data.details);
       formData.append('bill_evidence', data.bill_evidence);
-      
+
       if (data.supporting_documents) {
         formData.append('supporting_documents', data.supporting_documents);
       }
@@ -594,7 +595,7 @@ class FinanceService {
   }
 
   // ==================== ANALYTICS & STATISTICS ====================
-  
+
   /**
    * Get overall finance statistics
    */

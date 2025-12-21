@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Platform, StatusBar, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Platform, StatusBar, StyleSheet, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -7,8 +7,7 @@ import { AnimatedPressable } from '@/components';
 import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.md) / 2;
+// Removed static dimensions - now using useWindowDimensions for responsive layout
 
 interface Module {
   id: string;
@@ -96,6 +95,14 @@ import { useModule } from '@/hooks/useModule';
 export default function ModulesScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Responsive grid: 2 columns in portrait, 3-4 in landscape
+  const isLandscape = screenWidth > 600;
+  const numColumns = isLandscape ? (screenWidth > 900 ? 4 : 3) : 2;
+  const cardWidthPercent = isLandscape
+    ? (numColumns === 4 ? '23%' : '31%')
+    : '48%';
 
   // Permission Checks
   const { can: canViewHR } = useModule('hr.employees');
@@ -153,7 +160,7 @@ export default function ModulesScreen() {
             <Animated.View
               key={module.id}
               entering={FadeInUp.delay(200 + index * 50).duration(500).springify()}
-              style={{ width: '48%', marginBottom: 16 }}
+              style={{ width: cardWidthPercent, marginBottom: 16 }}
             >
               <AnimatedPressable
                 onPress={() => router.push(module.route as any)}

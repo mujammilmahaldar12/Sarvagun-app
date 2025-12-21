@@ -170,26 +170,12 @@ export default function SalesDetailScreen() {
         title="Sale Details"
         showBack
         rightActions={
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Pressable
-              onPress={handleEdit}
-              style={{
-                padding: spacing.sm,
-                backgroundColor: theme.primary + '20',
-                borderRadius: 8,
-              }}
-            >
-              <Ionicons name="create-outline" size={20} color={theme.primary} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable onPress={handleEdit} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
+              <Ionicons name="create-outline" size={18} color={theme.primary} />
             </Pressable>
-            <Pressable
-              onPress={handleDelete}
-              style={{
-                padding: spacing.sm,
-                backgroundColor: theme.error + '20',
-                borderRadius: 8,
-              }}
-            >
-              <Ionicons name="trash-outline" size={20} color={theme.error} />
+            <Pressable onPress={handleDelete} style={{ padding: 8, backgroundColor: theme.error + '20', borderRadius: 8 }}>
+              <Ionicons name="trash-outline" size={18} color={theme.error} />
             </Pressable>
           </View>
         }
@@ -199,67 +185,58 @@ export default function SalesDetailScreen() {
         style={{ flex: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
       >
-        {/* KPI Cards */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginTop: spacing.sm, marginBottom: spacing.md }}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 32, gap: 12 }}
-        >
-          <View style={{ minWidth: 140 }}>
-            <KPICard
-              title="Total Amount"
-              value={formatCurrency(sale.amount)}
-              icon="cash"
-              color={theme.primary}
-            />
+        {/* Compact Summary Card */}
+        <View style={{ margin: 16, padding: 14, backgroundColor: theme.surface, borderRadius: 12, gap: 10 }}>
+          {/* Client & Event Info */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: theme.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="person" size={20} color={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text }}>
+                {typeof sale.event === 'object' ? sale.event.client?.name : 'Sale'}
+              </Text>
+              <Text style={{ fontSize: 11, color: theme.textSecondary }}>
+                {typeof sale.event === 'object' ? sale.event.venue?.name : 'Event'} • {formatDate(sale.date)}
+              </Text>
+            </View>
+            <View style={{
+              paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+              backgroundColor: sale.payment_status === 'completed' ? '#10B98115' : sale.payment_status === 'pending' ? '#F59E0B15' : '#EF444415'
+            }}>
+              <Text style={{
+                fontSize: 10, fontWeight: '700',
+                color: sale.payment_status === 'completed' ? '#10B981' : sale.payment_status === 'pending' ? '#F59E0B' : '#EF4444'
+              }}>
+                {sale.payment_status?.toUpperCase()}
+              </Text>
+            </View>
           </View>
-          <View style={{ minWidth: 140 }}>
-            <KPICard
-              title="Discount"
-              value={formatCurrency(sale.discount || 0)}
-              icon="pricetag"
-              color={theme.warning}
-            />
+
+          {/* Amount Grid */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1, padding: 10, backgroundColor: theme.background, borderRadius: 8 }}>
+              <Text style={{ fontSize: 10, color: theme.textSecondary }}>Net Amount</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: theme.primary }}>{formatCurrency(netAmount)}</Text>
+            </View>
+            <View style={{ flex: 1, padding: 10, backgroundColor: theme.background, borderRadius: 8 }}>
+              <Text style={{ fontSize: 10, color: theme.textSecondary }}>Received</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#10B981' }}>{formatCurrency(totalReceived)}</Text>
+            </View>
+            <View style={{ flex: 1, padding: 10, backgroundColor: theme.background, borderRadius: 8 }}>
+              <Text style={{ fontSize: 10, color: theme.textSecondary }}>Balance</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: balanceDue > 0 ? '#EF4444' : '#10B981' }}>{formatCurrency(balanceDue)}</Text>
+            </View>
           </View>
-          <View style={{ minWidth: 140 }}>
-            <KPICard
-              title="Net Amount"
-              value={formatCurrency(netAmount)}
-              icon="calculator"
-              color={theme.info}
-            />
-          </View>
-          <View style={{ minWidth: 140 }}>
-            <KPICard
-              title="Received"
-              value={formatCurrency(totalReceived)}
-              icon="checkmark-circle"
-              color={theme.success}
-            />
-          </View>
-          <View style={{ minWidth: 140 }}>
-            <KPICard
-              title="Balance Due"
-              value={formatCurrency(balanceDue)}
-              icon="alert-circle"
-              color={balanceDue > 0 ? theme.error : theme.success}
-            />
-          </View>
-        </ScrollView>
+        </View>
 
         {/* Tabs */}
-        <View style={{
-          paddingHorizontal: 16,
-          marginBottom: spacing.md,
-          paddingTop: spacing.sm,
-          borderTopWidth: 1,
-          borderTopColor: theme.border + '50'
-        }}>
+        <View style={{ paddingHorizontal: 16 }}>
           <TabBar tabs={tabs} activeTab={activeTab} onTabChange={(key) => setActiveTab(key as TabType)} />
         </View>
 
-        <View style={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 12, gap: 16 }}>
+        {/* Tab Content */}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 12, gap: 8 }}>
           {activeTab === 'details' && <DetailsTab sale={sale} event={event} theme={theme} />}
           {activeTab === 'payments' && <PaymentsTab payments={sale.payments || []} theme={theme} />}
           {activeTab === 'expenses' && <ExpensesTab eventId={event?.id} saleAmount={netAmount} theme={theme} />}
@@ -277,102 +254,49 @@ interface DetailsTabProps {
 }
 
 const DetailsTab: React.FC<DetailsTabProps> = ({ sale, event, theme }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmt = (amt: number) => `₹${amt.toLocaleString('en-IN')}`;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const Row = ({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) => (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border + '30' }}>
+      <Text style={{ fontSize: 12, color: theme.textSecondary }}>{label}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '600', color: valueColor || theme.text }}>{value}</Text>
+    </View>
+  );
 
   return (
     <Animated.View entering={FadeIn} style={{ gap: 12 }}>
-      {/* Event Info Card */}
+      {/* Event Info */}
       {event && (
-        <DetailSection title="Event Details" icon="calendar" delay={0}>
-          <DetailRow icon="text-outline" label="Event Name" value={event.name} />
-          {event.client && (
-            <DetailRow
-              icon="person-outline"
-              label="Client"
-              value={typeof event.client === 'object' ? event.client.name : 'N/A'}
-            />
-          )}
-          {event.venue && (
-            <DetailRow
-              icon="location-outline"
-              label="Venue"
-              value={typeof event.venue === 'object' ? event.venue.name : 'N/A'}
-            />
-          )}
-          {event.event_date && (
-            <DetailRow
-              icon="time-outline"
-              label="Event Date"
-              value={formatDate(event.event_date)}
-              isLast
-            />
-          )}
-        </DetailSection>
+        <View style={{ padding: 12, backgroundColor: theme.surface, borderRadius: 10 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8 }}>EVENT</Text>
+          <Row label="Client" value={event.client?.name || 'N/A'} />
+          <Row label="Venue" value={event.venue?.name || 'N/A'} />
+          <Row label="Event Date" value={event.event_date ? formatDate(event.event_date) : 'N/A'} />
+        </View>
       )}
 
-      {/* Sale Info Card */}
-      <DetailSection title="Sale Information" icon="cash" delay={100}>
-        <DetailRow icon="cash-outline" label="Amount" value={formatCurrency(sale.amount)} />
-        <DetailRow icon="pricetag-outline" label="Discount" value={formatCurrency(sale.discount || 0)} />
-        <DetailRow
-          icon="calculator-outline"
-          label="Net Amount"
-          value={formatCurrency(sale.amount - (sale.discount || 0))}
-          valueStyle={{ fontWeight: '700', color: theme.primary }}
-        />
-        <DetailRow icon="calendar-outline" label="Sale Date" value={formatDate(sale.date)} isLast />
-      </DetailSection>
+      {/* Sale Info */}
+      <View style={{ padding: 12, backgroundColor: theme.surface, borderRadius: 10 }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8 }}>SALE</Text>
+        <Row label="Amount" value={fmt(sale.amount)} />
+        <Row label="Discount" value={fmt(sale.discount || 0)} />
+        <Row label="Net Amount" value={fmt(sale.amount - (sale.discount || 0))} valueColor={theme.primary} />
+        <Row label="Sale Date" value={formatDate(sale.date)} />
+      </View>
 
-      {/* Payment Info */}
-      <DetailSection title="Payment Details" icon="wallet" delay={200}>
-        <DetailRow
-          icon="checkmark-circle-outline"
-          label="Payment Status"
-          value={sale.payment_status?.toUpperCase()}
-          valueStyle={{
-            color: sale.payment_status === 'completed' ? theme.success :
-              sale.payment_status === 'pending' ? theme.warning : theme.error,
-            fontWeight: '700'
-          }}
+      {/* Payment Summary */}
+      <View style={{ padding: 12, backgroundColor: theme.surface, borderRadius: 10 }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8 }}>PAYMENT</Text>
+        <Row
+          label="Status"
+          value={sale.payment_status?.toUpperCase() || 'N/A'}
+          valueColor={sale.payment_status === 'completed' ? '#10B981' : sale.payment_status === 'pending' ? '#F59E0B' : '#EF4444'}
         />
-        <DetailRow
-          icon="cash-outline"
-          label="Total Received"
-          value={formatCurrency(sale.total_received || 0)}
-          valueStyle={{ color: theme.success, fontWeight: '600' }}
-        />
-        <DetailRow
-          icon="alert-circle-outline"
-          label="Balance Due"
-          value={formatCurrency(sale.balance_due || 0)}
-          valueStyle={{
-            color: (sale.balance_due || 0) > 0 ? theme.error : theme.success,
-            fontWeight: '600'
-          }}
-        />
-        {sale.created_by_name && (
-          <DetailRow
-            icon="person-circle-outline"
-            label="Created By"
-            value={sale.created_by_name}
-            isLast
-          />
-        )}
-      </DetailSection>
+        <Row label="Received" value={fmt(sale.total_received || 0)} valueColor="#10B981" />
+        <Row label="Balance Due" value={fmt(sale.balance_due || 0)} valueColor={(sale.balance_due || 0) > 0 ? '#EF4444' : '#10B981'} />
+        {sale.created_by_name && <Row label="Created By" value={sale.created_by_name} />}
+      </View>
     </Animated.View>
   );
 };
@@ -384,86 +308,34 @@ interface PaymentsTabProps {
 }
 
 const PaymentsTab: React.FC<PaymentsTabProps> = ({ payments, theme }) => {
-  if (!payments || payments.length === 0) {
+  const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+  if (!payments?.length) {
     return (
-      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
-        <Ionicons name="card-outline" size={64} color={theme.textSecondary} opacity={0.3} />
-        <Text style={[getTypographyStyle('xl', 'medium'), { marginTop: spacing.md, color: theme.textSecondary }]}>
-          No Payments Yet
-        </Text>
-        <Text style={[getTypographyStyle('base', 'regular'), { marginTop: spacing.xs, color: theme.textSecondary }]}>
-          Payment installments will appear here
-        </Text>
+      <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+        <Ionicons name="wallet-outline" size={40} color={theme.textSecondary} style={{ opacity: 0.4 }} />
+        <Text style={{ color: theme.textSecondary, marginTop: 10 }}>No payments yet</Text>
       </View>
     );
   }
 
-  const columns = [
-    {
-      key: 'payment_amount',
-      title: 'Amount',
-      width: 100,
-      render: (value: number) => (
-        <Text style={[getTypographyStyle('sm', 'bold'), { color: theme.primary }]}>
-          {new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0,
-          }).format(value)}
-        </Text>
-      ),
-    },
-    {
-      key: 'payment_date',
-      title: 'Date',
-      width: 100,
-      render: (value: string) => (
-        <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.text }]}>
-          {new Date(value).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        </Text>
-      ),
-    },
-    {
-      key: 'mode_of_payment',
-      title: 'Mode',
-      width: 100,
-      render: (value: string) => {
-        const labels: Record<string, string> = {
-          cash: 'Cash',
-          cheque: 'Cheque',
-          upi: 'UPI',
-          bank_transfer: 'Bank Transfer',
-        };
-        return (
-          <Text style={[getTypographyStyle('sm', 'medium'), { color: theme.text }]}>
-            {labels[value] || value}
-          </Text>
-        );
-      },
-    },
-    {
-      key: 'notes',
-      title: 'Notes',
-      width: 150,
-      render: (value: string) => (
-        <Text style={[getTypographyStyle('sm', 'regular'), { color: theme.textSecondary }]} numberOfLines={1}>
-          {value || '-'}
-        </Text>
-      ),
-    },
-  ];
-
   return (
-    <Animated.View entering={FadeIn} style={{ flex: 1 }}>
-      <Table
-        data={payments}
-        columns={columns}
-        keyExtractor={(item, index) => String(item.id || index)}
-      />
+    <Animated.View entering={FadeIn} style={{ gap: 8 }}>
+      {payments.map((p, i) => (
+        <View key={p.id || i} style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          padding: 12, backgroundColor: theme.surface, borderRadius: 10,
+          borderLeftWidth: 3, borderLeftColor: '#10B981'
+        }}>
+          <View>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#10B981' }}>{formatCurrency(p.payment_amount || 0)}</Text>
+            <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+              {p.mode_of_payment?.replace('_', ' ')} • {formatDate(p.payment_date)}
+            </Text>
+          </View>
+        </View>
+      ))}
     </Animated.View>
   );
 };
@@ -476,7 +348,6 @@ interface ExpensesTabProps {
 }
 
 const ExpensesTab: React.FC<ExpensesTabProps> = ({ eventId, saleAmount, theme }) => {
-  // Fetch expenses for this event
   const { data: expensesData, isLoading } = useQuery({
     queryKey: ['eventExpenses', eventId],
     queryFn: async () => {
@@ -488,38 +359,18 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ eventId, saleAmount, theme })
   });
 
   const expenses = expensesData || [];
+  const formatCurrency = (amt: number) => `₹${amt.toLocaleString('en-IN')}`;
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  // Calculate totals
-  const totalExpenses = expenses.reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0);
+  const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
   const profitLoss = saleAmount - totalExpenses;
   const isProfitable = profitLoss >= 0;
 
   if (!eventId) {
     return (
-      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 }}>
-        <Ionicons name="alert-circle-outline" size={64} color={theme.textSecondary} opacity={0.3} />
-        <Text style={[getTypographyStyle('xl', 'semibold'), { marginTop: spacing.md, color: theme.textSecondary }]}>
-          No Event Linked
-        </Text>
-        <Text style={[getTypographyStyle('base', 'regular'), { marginTop: spacing.xs, color: theme.textSecondary, textAlign: 'center' }]}>
-          This sale is not linked to an event
-        </Text>
+      <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+        <Ionicons name="alert-circle-outline" size={40} color={theme.textSecondary} style={{ opacity: 0.4 }} />
+        <Text style={{ color: theme.textSecondary, marginTop: 10 }}>No event linked</Text>
       </View>
     );
   }
@@ -529,65 +380,51 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ eventId, saleAmount, theme })
   }
 
   return (
-    <Animated.View entering={FadeIn} style={{ gap: 12 }}>
-      {/* Profit/Loss Summary */}
-      <DetailSection title="Profit/Loss Summary" icon="analytics" delay={0}>
-        <DetailRow
-          icon="trending-up"
-          label="Sale Amount"
-          value={formatCurrency(saleAmount)}
-          valueStyle={{ color: theme.success, fontWeight: '700' }}
-        />
-        <DetailRow
-          icon="trending-down"
-          label="Total Expenses"
-          value={formatCurrency(totalExpenses)}
-          valueStyle={{ color: theme.error, fontWeight: '700' }}
-        />
-        <View style={{ height: 1, backgroundColor: theme.border, marginVertical: 8 }} />
-        <DetailRow
-          icon={isProfitable ? 'checkmark-circle' : 'warning'}
-          label={isProfitable ? 'Profit' : 'Loss'}
-          value={formatCurrency(Math.abs(profitLoss))}
-          valueStyle={{
-            color: isProfitable ? theme.success : theme.error,
-            fontWeight: '700',
-            fontSize: 18
-          }}
-          isLast
-        />
-      </DetailSection>
-
-      {/* Expenses List */}
-      {expenses.length > 0 ? (
-        expenses.map((expense: any, index: number) => (
-          <DetailSection
-            key={expense.id || index}
-            title={expense.particulars || 'Expense'}
-            icon="receipt-outline"
-            delay={100 * (index + 1)}
-          >
-            <DetailRow
-              icon="cash-outline"
-              label="Amount"
-              value={formatCurrency(expense.amount || 0)}
-              valueStyle={{ color: theme.error, fontWeight: '600' }}
-            />
-            <DetailRow icon="calendar-outline" label="Date" value={formatDate(expense.expense_date || expense.date)} />
-            <DetailRow icon="person-outline" label="Paid To" value={expense.paid_to} />
-            <DetailRow icon="card-outline" label="Payment Mode" value={expense.mode_of_payment} />
-            {expense.details && (
-              <DetailRow icon="document-text-outline" label="Details" value={expense.details} isLast />
-            )}
-          </DetailSection>
-        ))
-      ) : (
-        <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl }}>
-          <Ionicons name="receipt-outline" size={48} color={theme.textSecondary} opacity={0.3} />
-          <Text style={[getTypographyStyle('base', 'medium'), { marginTop: spacing.md, color: theme.textSecondary }]}>
-            No expenses recorded for this event
+    <Animated.View entering={FadeIn} style={{ gap: 8 }}>
+      {/* Compact Summary */}
+      <View style={{
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        padding: 12, backgroundColor: theme.surface, borderRadius: 10,
+        borderLeftWidth: 3, borderLeftColor: isProfitable ? '#10B981' : '#EF4444'
+      }}>
+        <View>
+          <Text style={{ fontSize: 11, color: theme.textSecondary }}>{isProfitable ? 'Profit' : 'Loss'}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: isProfitable ? '#10B981' : '#EF4444' }}>
+            {formatCurrency(Math.abs(profitLoss))}
           </Text>
         </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 11, color: theme.textSecondary }}>
+            Sale: <Text style={{ color: '#10B981' }}>{formatCurrency(saleAmount)}</Text>
+          </Text>
+          <Text style={{ fontSize: 11, color: theme.textSecondary }}>
+            Expense: <Text style={{ color: '#EF4444' }}>{formatCurrency(totalExpenses)}</Text>
+          </Text>
+        </View>
+      </View>
+
+      {/* Expense List */}
+      {expenses.length === 0 ? (
+        <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+          <Ionicons name="receipt-outline" size={40} color={theme.textSecondary} style={{ opacity: 0.4 }} />
+          <Text style={{ color: theme.textSecondary, marginTop: 10 }}>No expenses yet</Text>
+        </View>
+      ) : (
+        expenses.map((e: any, i: number) => (
+          <View key={e.id || i} style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            padding: 12, backgroundColor: theme.surface, borderRadius: 10,
+            borderLeftWidth: 3, borderLeftColor: '#EF4444'
+          }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>{e.particulars || 'Expense'}</Text>
+              <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                {e.paid_to || 'N/A'} • {formatDate(e.expense_date || e.date)}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>{formatCurrency(e.amount || 0)}</Text>
+          </View>
+        ))
       )}
     </Animated.View>
   );

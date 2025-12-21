@@ -118,7 +118,30 @@ export default function AddVendorScreen() {
 
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save vendor');
+      // Extract validation errors from backend response
+      let errorMessage = 'Failed to save vendor';
+
+      if (error.response && error.response.data) {
+        const errors = error.response.data;
+
+        // If there are field-specific errors, format them nicely
+        if (typeof errors === 'object') {
+          const errorMessages = Object.entries(errors)
+            .map(([field, messages]) => {
+              const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ');
+              const message = Array.isArray(messages) ? messages[0] : messages;
+              return `${fieldName}: ${message}`;
+            })
+            .join('\n');
+          errorMessage = errorMessages || errorMessage;
+        } else if (typeof errors === 'string') {
+          errorMessage = errors;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

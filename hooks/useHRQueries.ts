@@ -526,7 +526,8 @@ export const useReimbursements = (filters?: any) => {
   return useQuery({
     queryKey: reimbursementQueryKeys.list(filters),
     queryFn: () => hrService.getReimbursements(filters),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: 0, // Always refetch for instant updates
+    gcTime: 2 * 60 * 1000, // Keep in cache for 2 minutes
   });
 };
 
@@ -577,7 +578,14 @@ export const useUpdateReimbursementStatus = () => {
     mutationFn: ({ id, status, reason }: { id: number; status: string; reason?: string }) =>
       hrService.updateReimbursementStatus(id, status, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reimbursementQueryKeys.all });
+      // Invalidate and refetch immediately
+      queryClient.invalidateQueries({
+        queryKey: reimbursementQueryKeys.all,
+        refetchType: 'active' // Force refetch of active queries
+      });
+      queryClient.invalidateQueries({
+        queryKey: reimbursementQueryKeys.statistics()
+      });
     },
   });
 };

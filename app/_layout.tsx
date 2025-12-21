@@ -302,6 +302,10 @@ function PushNotificationInitializer() {
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
+  const { theme, isDark } = useTheme();
+
+  // Background color for smooth rotation transitions
+  const rootBgColor = isDark ? '#0F0E10' : '#F5F3F7';
 
   useEffect(() => {
     async function prepare() {
@@ -344,15 +348,19 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: rootBgColor }}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: rootBgColor }}>
         <QueryProvider>
           <PushNotificationProvider>
             <PushNotificationInitializer />
             <ErrorBoundary>
-              <View style={styles.container}>
+              <View style={[styles.container, { backgroundColor: rootBgColor }]}>
                 <NetworkStatusBanner />
-                <Stack screenOptions={{ headerShown: false }}>
+                <Stack screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: rootBgColor },
+                  animation: 'none' // Disable animation during rotation
+                }}>
                   <Stack.Screen name="index" />
                   <Stack.Screen name="(auth)" />
                   <Stack.Screen name="(dashboard)" />

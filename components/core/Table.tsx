@@ -3,7 +3,7 @@
  * Enhanced table with Excel-like features
  */
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, FlatList, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, FlatList, Alert, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '@/store/themeStore';
@@ -93,6 +93,25 @@ export const Table = <T extends any>({
   ListHeaderComponent,
 }: TableProps<T>) => {
   const { colors } = useThemeStore();
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Calculate responsive column widths: expand to fill screen in landscape
+  const isLandscape = screenWidth > 600;
+  // Account for: row paddingHorizontal (8*2=16) + cell paddingHorizontal per column (8*2*numCols)
+  const rowPadding = spacing[2] * 2; // 16px for row
+  const totalFixedWidth = columns.reduce((sum, col) => sum + (col.width || 120), 0) + (selectable ? 40 : 0);
+  const availableWidth = screenWidth - rowPadding;
+  const shouldStretch = isLandscape && totalFixedWidth < availableWidth;
+
+  // Use the full available width minus just the row padding
+  const stretchFactor = shouldStretch ? availableWidth / totalFixedWidth : 1;
+
+  const getColumnWidth = (column: TableColumn, isLastColumn: boolean = false) => {
+    const baseWidth = column.width || 120;
+    if (!shouldStretch) return baseWidth;
+    // Use Math.round for most columns, but give any extra pixels to the last column
+    return Math.round(baseWidth * stretchFactor);
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -280,7 +299,7 @@ export const Table = <T extends any>({
             key={column.key}
             onPress={() => onRowPress?.(item, index)}
             style={{
-              width: column.width || 120,
+              width: getColumnWidth(column),
               flexShrink: 0,
               flexGrow: 0,
               paddingHorizontal: spacing[2],
@@ -416,7 +435,7 @@ export const Table = <T extends any>({
                 key={column.key}
                 onPress={() => handleSort(column.key)}
                 style={{
-                  width: column.width || 120,
+                  width: getColumnWidth(column),
                   flexShrink: 0,
                   flexGrow: 0,
                   paddingHorizontal: spacing[2],

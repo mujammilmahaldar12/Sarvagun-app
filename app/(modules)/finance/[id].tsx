@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useSale, useSalePayments, useDeleteSale } from '@/hooks/useFinanceQueries';
+import { useSale, useSalePayments, useDeleteSale, useExpenses } from '@/hooks/useFinanceQueries';
 import { useTheme } from '@/hooks/useTheme';
 import { designSystem } from '@/constants/designSystem';
 import { getTypographyStyle } from '@/utils/styleHelpers';
@@ -25,6 +25,33 @@ export default function SaleDetailScreen() {
   const { data: sale, isLoading, error, refetch } = useSale(Number(id));
   const { data: payments = [], isLoading: paymentsLoading } = useSalePayments(Number(id));
   const deleteSale = useDeleteSale();
+
+  // Fetch expenses for the event
+  // Extract event ID - it could be a number or an object with id
+  const eventId = typeof sale?.event === 'object' && sale?.event !== null
+    ? sale.event.id
+    : sale?.event;
+
+  console.log('🔍 Sales Detail - Event ID:', eventId, 'from sale.event:', sale?.event);
+
+  // Only fetch expenses if we have a valid event ID
+  const { data: expensesData, isLoading: expensesLoading } = useExpenses(
+    { event: eventId as number },
+    { enabled: !!eventId && !!sale } // Only run query when we have event ID and sale data
+  );
+
+  // Handle both paginated and array responses
+  const expenses = Array.isArray(expensesData)
+    ? expensesData
+    : (expensesData?.results || []);
+
+  console.log('💰 Sales Detail - Expenses Data:', {
+    eventId,
+    hasEventId: !!eventId,
+    expensesData: expensesData ? 'received' : 'null',
+    expensesCount: expenses.length,
+    isLoading: expensesLoading
+  });
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -60,7 +87,7 @@ export default function SaleDetailScreen() {
   };
 
   if (isLoading) {
-    return <LoadingState message="Loading sale details..." />;
+    return <LoadingState />;
   }
 
   if (error || !sale) {
@@ -70,7 +97,7 @@ export default function SaleDetailScreen() {
         <EmptyState
           icon="alert-circle-outline"
           title="Sale Not Found"
-          message="The sale you're looking for doesn't exist or has been deleted."
+          description="The sale you're looking for doesn't exist or has been deleted."
         />
       </View>
     );
@@ -190,15 +217,15 @@ export default function SaleDetailScreen() {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 6,
-              backgroundColor: 
+              backgroundColor:
                 sale.payment_status === 'completed' ? '#DBEAFE' :
-                sale.payment_status === 'pending' ? '#FEF3C7' : '#E0E7FF',
+                  sale.payment_status === 'pending' ? '#FEF3C7' : '#E0E7FF',
             }}>
               <Text style={{
                 ...getTypographyStyle('xs', 'semibold'),
                 color:
                   sale.payment_status === 'completed' ? '#1E40AF' :
-                  sale.payment_status === 'pending' ? '#92400E' : '#3730A3',
+                    sale.payment_status === 'pending' ? '#92400E' : '#3730A3',
               }}>
                 {sale.payment_status?.toUpperCase() || 'PENDING'}
               </Text>
@@ -317,92 +344,251 @@ export default function SaleDetailScreen() {
         {/* Payment History */}
         <View
           style={{
-            padding: 20,
             backgroundColor: theme.surface,
-            borderRadius: 12,
+            borderRadius: 16,
+            overflow: 'hidden',
             ...designSystem.shadows.md,
           }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
-              Payment History
-            </Text>
-            <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-              {payments.length} {payments.length === 1 ? 'Payment' : 'Payments'}
-            </Text>
-          </View>
-
-          {paymentsLoading ? (
-            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
-          ) : payments.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-              <Ionicons name="wallet-outline" size={40} color={theme.textSecondary} />
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 8 }}>
-                No payments recorded yet
+          {/* Header */}
+          <View style={{
+            backgroundColor: theme.primary + '15',
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{
+                width: 36, height: 36, borderRadius: 10,
+                backgroundColor: theme.primary + '25',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Ionicons name="wallet" size={18} color={theme.primary} />
+              </View>
+              <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                Payments
               </Text>
             </View>
-          ) : (
-            <View style={{ gap: 12 }}>
-              {payments.map((payment, index) => (
-                <View
-                  key={payment.id || index}
-                  style={{
-                    padding: 14,
-                    backgroundColor: theme.background,
-                    borderRadius: 8,
-                    borderLeftWidth: 4,
-                    borderLeftColor: theme.primary,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
-                        ₹{(payment.payment_amount || 0).toLocaleString('en-IN')}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <Ionicons
-                          name={getModeIcon(payment.mode_of_payment)}
-                          size={14}
-                          color={theme.textSecondary}
-                        />
-                        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                          {payment.mode_of_payment?.replace('_', ' ').toUpperCase()} • {new Date(payment.payment_date).toLocaleDateString('en-IN')}
+            <View style={{
+              backgroundColor: theme.primary,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 12
+            }}>
+              <Text style={{ ...getTypographyStyle('xs', 'bold'), color: '#FFFFFF' }}>
+                {payments.length}
+              </Text>
+            </View>
+          </View>
+
+          {/* Content */}
+          <View style={{ padding: 16 }}>
+            {paymentsLoading ? (
+              <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
+            ) : payments.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <View style={{
+                  width: 60, height: 60, borderRadius: 30,
+                  backgroundColor: theme.background,
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 12
+                }}>
+                  <Ionicons name="wallet-outline" size={28} color={theme.textSecondary} />
+                </View>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                  No payments recorded yet
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {payments.map((payment: any, index: number) => (
+                  <View
+                    key={payment.id || index}
+                    style={{
+                      padding: 14,
+                      backgroundColor: theme.background,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ ...getTypographyStyle('lg', 'bold'), color: '#10B981' }}>
+                          ₹{(payment.payment_amount || 0).toLocaleString('en-IN')}
                         </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                          <View style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 4,
+                            backgroundColor: theme.primary + '15',
+                            paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6
+                          }}>
+                            <Ionicons name={getModeIcon(payment.mode_of_payment)} size={12} color={theme.primary} />
+                            <Text style={{ ...getTypographyStyle('xs', 'semibold'), color: theme.primary }}>
+                              {payment.mode_of_payment?.replace('_', ' ').toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                            {new Date(payment.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </Text>
+                        </View>
                       </View>
-                      {payment.notes && (
-                        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 6 }}>
-                          {payment.notes}
-                        </Text>
-                      )}
                     </View>
-                    {payment.payment_status && (
-                      <View
-                        style={{
-                          paddingHorizontal: 10,
-                          paddingVertical: 4,
-                          borderRadius: 6,
-                          backgroundColor: getStatusColor(payment.payment_status) + '20',
-                        }}
-                      >
-                        <Text
-                          style={{
-                            ...getTypographyStyle('xs', 'semibold'),
-                            color: getStatusColor(payment.payment_status),
-                          }}
-                        >
-                          {payment.payment_status.toUpperCase()}
-                        </Text>
-                      </View>
+                    {payment.notes && (
+                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: 8, fontStyle: 'italic' }}>
+                        "{payment.notes}"
+                      </Text>
                     )}
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Event Expenses */}
+        <View
+          style={{
+            backgroundColor: theme.surface,
+            borderRadius: 16,
+            overflow: 'hidden',
+            ...designSystem.shadows.md,
+          }}
+        >
+          {/* Header */}
+          <View style={{
+            backgroundColor: '#EF444415',
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{
+                width: 36, height: 36, borderRadius: 10,
+                backgroundColor: '#EF444425',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Ionicons name="receipt" size={18} color="#EF4444" />
+              </View>
+              <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                Expenses
+              </Text>
             </View>
-          )}
+            <View style={{
+              backgroundColor: '#EF4444',
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 12
+            }}>
+              <Text style={{ ...getTypographyStyle('xs', 'bold'), color: '#FFFFFF' }}>
+                {expenses.length}
+              </Text>
+            </View>
+          </View>
+
+          {/* Content */}
+          <View style={{ padding: 16 }}>
+            {expensesLoading ? (
+              <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
+            ) : !eventId ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <View style={{
+                  width: 60, height: 60, borderRadius: 30,
+                  backgroundColor: theme.background,
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 12
+                }}>
+                  <Ionicons name="information-circle-outline" size={28} color={theme.textSecondary} />
+                </View>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                  No event associated with this sale
+                </Text>
+              </View>
+            ) : expenses.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <View style={{
+                  width: 60, height: 60, borderRadius: 30,
+                  backgroundColor: theme.background,
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 12
+                }}>
+                  <Ionicons name="receipt-outline" size={28} color={theme.textSecondary} />
+                </View>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                  No expenses recorded for this event
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {expenses.map((expense: any, index: number) => (
+                  <Pressable
+                    key={expense.id || index}
+                    onPress={() => router.push(`/(modules)/finance/expense-detail/${expense.id}`)}
+                    style={({ pressed }) => ({
+                      padding: 14,
+                      backgroundColor: pressed ? theme.background + 'AA' : theme.background,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                    })}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ ...getTypographyStyle('sm', 'bold'), color: theme.text }}>
+                          {expense.particulars}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                          <View style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 4,
+                            backgroundColor: theme.textSecondary + '15',
+                            paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6
+                          }}>
+                            <Ionicons name="business-outline" size={12} color={theme.textSecondary} />
+                            <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
+                              {expense.vendor?.name || 'No Vendor'}
+                            </Text>
+                          </View>
+                          <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                            {new Date(expense.expense_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ ...getTypographyStyle('base', 'bold'), color: '#EF4444' }}>
+                          ₹{(expense.amount || 0).toLocaleString('en-IN')}
+                        </Text>
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 6,
+                            backgroundColor:
+                              expense.payment_status === 'paid' ? '#10B981' :
+                                expense.payment_status === 'partial_paid' ? '#F59E0B' : '#EF4444',
+                            marginTop: 4,
+                          }}
+                        >
+                          <Text style={{ ...getTypographyStyle('xs', 'bold'), color: '#FFFFFF' }}>
+                            {expense.payment_status === 'paid' ? 'PAID' :
+                              expense.payment_status === 'partial_paid' ? 'PARTIAL' : 'UNPAID'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Notes Section */}
-        {sale.notes && (
+        {(sale as any).notes && (
           <View
             style={{
               padding: 16,
@@ -415,7 +601,7 @@ export default function SaleDetailScreen() {
               Notes
             </Text>
             <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, lineHeight: 20 }}>
-              {sale.notes}
+              {(sale as any).notes}
             </Text>
           </View>
         )}

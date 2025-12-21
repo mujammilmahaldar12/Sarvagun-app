@@ -213,31 +213,35 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
       <Modal
         visible={isOpen}
         transparent
-        animationType="none"
+        animationType="fade"
         onRequestClose={handleCancel}
+        statusBarTranslucent
       >
-        <Animated.View
-          entering={FadeIn}
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: theme.overlay || 'rgba(0,0,0,0.5)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: spacing[4],
-            },
-          ]}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: theme.overlay || 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
         >
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleCancel} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={handleCancel}
+          />
 
-          <Animated.View
-            entering={SlideInDown.springify()}
+          <View
             style={{
               backgroundColor: theme.surface || '#FFFFFF',
               borderRadius: borderRadius.xl,
               padding: spacing[4],
-              width: '100%',
-              maxWidth: 400,
+              marginHorizontal: 20,
+              width: 340,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              elevation: 10,
             }}
           >
             <Calendar
@@ -263,8 +267,8 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
                 style={{ flex: 1 }}
               />
             </View>
-          </Animated.View>
-        </Animated.View>
+          </View>
+        </View>
       </Modal>
     </View>
   );

@@ -182,7 +182,7 @@ export default function AddReimbursementScreen() {
 
       // Step 2: Create Reimbursement Request
       const reimbursementPayload = {
-        expense: expenseId,
+        expense_id: expenseId,  // Backend expects expense_id for write operations
         reimbursement_amount: parseFloat(formData.reimbursement_amount),
         details: formData.details,
         bill_evidence: formData.bill_evidence,
