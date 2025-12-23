@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
-import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus, useLeaves, useMyLeaves, useUpdateLeaveStatus } from '@/hooks/useHRQueries';
+import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus } from '@/hooks/useHRQueries';
 import { useModule } from '@/hooks/useModule';
 import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB, ActionSheet } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
@@ -93,12 +93,7 @@ export default function HRScreen() {
   const { data: reimbursementStats } = useReimbursementStatistics();
   const updateReimbursementStatus = useUpdateReimbursementStatus();
 
-  // Leave Hooks
-  const { data: allLeaves, isLoading: allLeavesLoading, refetch: refetchAllLeaves } = useLeaves(activeTab === 'approvals' ? { status: 'pending' } : undefined);
-  const { data: myLeaves, isLoading: myLeavesLoading, refetch: refetchMyLeaves } = useMyLeaves();
-  const updateLeaveStatus = useUpdateLeaveStatus();
-
-  const isLoading = reimbursementsLoading || (activeTab === 'approvals' ? allLeavesLoading : myLeavesLoading);
+  const isLoading = reimbursementsLoading;
 
   // Debounce search
   useEffect(() => {
@@ -112,6 +107,7 @@ export default function HRScreen() {
     { key: 'myrequests', label: 'My Requests', icon: 'receipt-outline' },
     ...(canApprove ? [{ key: 'approvals', label: 'Approvals', icon: 'checkmark-circle-outline' }] : []),
     ...(canAccessHireActions ? [{ key: 'extensions', label: 'Extensions', icon: 'time-outline' }] : []),
+    ...(canAccessHireActions ? [{ key: 'certificates', label: 'Certificates', icon: 'ribbon-outline' }] : []),
   ];
 
   // Filter configuration
@@ -163,43 +159,15 @@ export default function HRScreen() {
     }));
   }, [reimbursementsData]);
 
-  // Transform Leaves Data
-  const leaveDataTransform = (response: any) => {
-    // Handle both direct array and paginated response
-    const leaves = Array.isArray(response) ? response : (response?.results || []);
-    if (!leaves) return [];
-
-    return leaves.map((l: any) => ({
-      id: l.id,
-      requestType: 'leave',
-      employee: l.employee_name || `User ${l.employee}`,
-      employeeId: l.employee, // or correct field
-      type: l.leave_type || 'Leave', // Leave Type e.g., Annual Leave
-      date: `${l.from_date} to ${l.to_date}`, // Date Range
-      status: (l.status || 'pending').toLowerCase(),
-      description: l.reason || '',
-      days: l.days_count || 0 // Assuming days info available or calculated
-    }));
-  };
-
-  const allLeavesData = useMemo(() => leaveDataTransform(allLeaves || []), [allLeaves]);
-  const myLeavesData = useMemo(() => leaveDataTransform(myLeaves || []), [myLeaves]);
-
-  // My Requests - Combine Reimbursements and Leaves
+  // My Requests - Reimbursements only
   const myRequests = useMemo(() => {
-    const myReimbursements = reimbursementData.filter((r: any) => r.employeeId === user?.id);
-    // Combine and sort by date descending (assuming id for now as proxy or add timestamp)
-    return [...myReimbursements, ...myLeavesData].sort((a, b) => b.id - a.id);
-  }, [reimbursementData, myLeavesData, user?.id]);
+    return reimbursementData.filter((r: any) => r.employeeId === user?.id).sort((a, b) => b.id - a.id);
+  }, [reimbursementData, user?.id]);
 
-  // Pending Approvals - Combine
+  // Pending Approvals - Reimbursements only  
   const pendingApprovals = useMemo(() => {
-    // Server side filtered reimbursementData
-    // Filter leaves if not already filtered by query
-    const pendingLeaves = allLeavesData.filter(l => l.status === 'pending');
-    // Since reimbursementData is already filtered by status if activeTab is approvals
-    return [...reimbursementData, ...pendingLeaves].sort((a, b) => b.id - a.id);
-  }, [reimbursementData, allLeavesData]);
+    return reimbursementData.sort((a, b) => b.id - a.id);
+  }, [reimbursementData]);
 
   // Apply status filter (only if set)
   const filteredStaffData = useMemo(() => {
@@ -240,6 +208,11 @@ export default function HRScreen() {
       router.push('/(modules)/hr/extensions' as any);
       return;
     }
+    if (key === 'certificates') {
+      // Navigate to dedicated certificates page
+      router.push('/(modules)/hr/certificates' as any);
+      return;
+    }
     setActiveTab(key as TabType);
     setFilters({});
     setShowFilters(false);
@@ -262,12 +235,10 @@ export default function HRScreen() {
     setRefreshing(true);
     await Promise.all([
       refetchUsers(),
-      refetchReimbursements(),
-      refetchAllLeaves(),
-      refetchMyLeaves()
+      refetchReimbursements()
     ]);
     setRefreshing(false);
-  }, [refetchUsers, refetchReimbursements, refetchAllLeaves, refetchMyLeaves]);
+  }, [refetchUsers, refetchReimbursements]);
 
   // Approve/Reject handlers with confirmation dialog
   const handleApprove = (item: any) => {
@@ -323,11 +294,7 @@ export default function HRScreen() {
     setProcessingId(item.id);
 
     try {
-      if (item.requestType === 'leave') {
-        await updateLeaveStatus.mutateAsync({ id: item.id, data: { status: 'rejected' } });
-      } else {
-        await updateReimbursementStatus.mutateAsync({ id: item.id, status: 'rejected', reason: 'Rejected' });
-      }
+      await updateReimbursementStatus.mutateAsync({ id: item.id, status: 'rejected', reason: 'Rejected' });
       console.log('✅ Reject successful');
     } catch (error) {
       console.error('❌ Reject failed:', error);
@@ -336,6 +303,8 @@ export default function HRScreen() {
       setProcessingId(null);
     }
   };
+
+  // Leave functionality removed - handled in Leave Management module
 
   // Render Reimbursement Card - Compact Design
   const renderReimbursementCard = (item: any, showActions: boolean = false) => (
@@ -405,7 +374,7 @@ export default function HRScreen() {
     </TouchableOpacity>
   );
 
-  const renderLeaveCard = (item: any, showActions: boolean = false) => (
+  const renderLeaveCard = (item: any, showActions: boolean = false, showUserActions: boolean = false) => (
     <TouchableOpacity
       key={item.id}
       // onPress={() => handleRowPress(item)} 
@@ -435,6 +404,7 @@ export default function HRScreen() {
         <Text style={{ color: theme.textSecondary, fontSize: 12, fontStyle: 'italic' }} numberOfLines={1}>"{item.description}"</Text>
       </View>
 
+      {/* Admin/Approver Actions (Approve/Reject) */}
       {showActions && item.status === 'pending' && (
         <View style={styles.cardActions}>
           <TouchableOpacity
@@ -467,6 +437,48 @@ export default function HRScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* User Actions (Edit/Cancel) for My Requests */}
+      {(() => {
+        const shouldShowUserActions = showUserActions && item.status === 'pending';
+        if (shouldShowUserActions) {
+          console.log('🔘 Rendering user action buttons for leave:', item.id, 'Status:', item.status);
+        }
+        return shouldShowUserActions ? (
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#f59e0b' }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                console.log('✏️ Edit button pressed!');
+                handleEditLeave(item);
+              }}
+              disabled={processingId === item.id}
+            >
+              <Ionicons name="pencil" size={14} color="#fff" />
+              <Text style={styles.actionBtnText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                console.log('🗑️ Cancel button pressed!');
+                handleCancelLeave(item);
+              }}
+              disabled={processingId === item.id}
+            >
+              {processingId === item.id ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="trash" size={14} color="#fff" />
+                  <Text style={styles.actionBtnText}>Cancel</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null;
+      })()}
     </TouchableOpacity>
   );
 
@@ -582,10 +594,7 @@ export default function HRScreen() {
           />
         ) : (
           <View style={{ gap: 12 }}>
-            {data.map((item: any) => {
-              if (item.requestType === 'leave') return renderLeaveCard(item, isApprovalsTab);
-              return renderReimbursementCard(item, isApprovalsTab);
-            })}
+            {data.map((item: any) => renderReimbursementCard(item, isApprovalsTab))}
           </View>
         )}
       </ScrollView>

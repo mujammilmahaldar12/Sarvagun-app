@@ -222,15 +222,27 @@ class HRService {
    * Update an existing leave request (before approval)
    */
   async updateLeave(id: number, data: UpdateLeaveRequest): Promise<LeaveRequest> {
+    console.log('🔄 Updating leave request:', id, data);
+
     const payload: any = { ...data };
 
+    // Map leave type name to ID if it's a string
+    if (typeof data.leave_type === 'string') {
+      console.log('📝 Mapping leave type string to ID:', data.leave_type);
+      const leaveTypeId = await this.getLeaveTypeId(data.leave_type);
+      if (!leaveTypeId) {
+        throw new Error(`Leave type "${data.leave_type}" not found. Please contact administrator.`);
+      }
+      payload.leave_type = leaveTypeId;
+      console.log('✅ Mapped leave type to ID:', leaveTypeId);
+    }
+
     if (data.specific_dates && data.specific_dates.length > 0) {
+      console.log('📅 Processing specific dates for update:', data.specific_dates);
       const leaveDates: any[] = [];
       data.specific_dates.forEach(dateStr => {
         leaveDates.push({
           date: dateStr,
-          // Use data.shift_type or default if not present (assuming update payload has it or merging)
-          // Ideally fetch existing to merge, but simpler: use params if provided
           starttime: (data.shift_type === 'second_half') ? '14:00:00' : '09:00:00',
           endtime: (data.shift_type === 'first_half') ? '13:00:00' : '18:00:00',
           is_holiday: false,
@@ -238,17 +250,34 @@ class HRService {
         });
       });
       payload.leave_dates = leaveDates;
+      console.log('📦 Generated leave_dates:', leaveDates.length, 'dates');
     }
 
-    const response = await api.patch<LeaveRequest>(`/leave_management/enhanced-leaves/${id}/`, payload);
-    return response;
+    console.log('📤 Sending update payload:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await api.patch<LeaveRequest>(`/leave_management/enhanced-leaves/${id}/`, payload);
+      console.log('✅ Leave updated successfully:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Leave update failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
   }
 
   /**
    * Delete/Cancel a leave request
    */
   async deleteLeave(id: number): Promise<void> {
-    await api.post(`/leave_management/enhanced-leaves/${id}/cancel/`);
+    console.log('🗑️ HR Service: Canceling leave:', id);
+    // Backend uses POST to /cancel/ for soft delete (sets is_active=False)
+    await api.post(`/leave_management/enhanced-leaves/${id}/cancel/`, {});
+    console.log('✅ HR Service: Leave canceled successfully');
   }
 
   /**
@@ -1237,6 +1266,24 @@ class HRService {
       return response;
     } catch (error: any) {
       console.log('❌ Verify certificate error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download certificate file
+   * Returns the download URL that can be opened in browser/WebView
+   */
+  async downloadCertification(certId: string | number): Promise<string> {
+    try {
+      console.log('📥 Downloading certification:', certId);
+      // Get the download URL from backend
+      // Backend will handle permissions (user can download own, admin/HR can download any)
+      const downloadUrl = `/hr/certifications/${certId}/download/`;
+      console.log('✅ Certificate download URL generated:', downloadUrl);
+      return downloadUrl;
+    } catch (error: any) {
+      console.log('❌ Download certification error:', error);
       throw error;
     }
   }

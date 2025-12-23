@@ -18,6 +18,11 @@ interface DatePickerProps {
   value?: Date | null;
   onChange?: (date: Date | null) => void;
   onDateChange?: (date: Date | null) => void;
+  // Multiple mode props
+  mode?: 'single' | 'multiple';
+  dates?: Date[];
+  onDatesChange?: (dates: Date[]) => void;
+
   placeholder?: string;
   minDate?: Date;
   maxDate?: Date;
@@ -32,6 +37,9 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
   value,
   onChange,
   onDateChange,
+  mode = 'single',
+  dates = [],
+  onDatesChange,
   placeholder = 'Select date',
   minDate,
   maxDate,
@@ -44,6 +52,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(value || null);
+  const [selectedDates, setSelectedDates] = useState<Date[]>(dates || []);
 
   const formatDate = (date: Date): string => {
     if (format === 'short') {
@@ -64,28 +73,65 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
     }
   };
 
+  const getDisplayText = () => {
+    if (mode === 'single') {
+      return value ? formatDate(value) : placeholder;
+    } else {
+      if (!dates || dates.length === 0) return placeholder;
+      if (dates.length === 1) return formatDate(dates[0]);
+      return `${dates.length} dates selected`;
+    }
+  };
+
   const handleSelect = (date: Date) => {
     setSelectedDate(date);
-    if (inline) {
+    if (inline && mode === 'single') {
       onChange?.(date);
       onDateChange?.(date);
     }
   };
 
+  const handleSelectDates = (newDates: Date[]) => {
+    setSelectedDates(newDates);
+    if (inline) {
+      onDatesChange?.(newDates);
+    }
+  }
+
   const handleConfirm = () => {
-    if (selectedDate) {
-      onChange?.(selectedDate);
-      onDateChange?.(selectedDate);
+    if (mode === 'single') {
+      if (selectedDate) {
+        onChange?.(selectedDate);
+        onDateChange?.(selectedDate);
+        setIsOpen(false);
+      }
+    } else {
+      // Multiple
+      onDatesChange?.(selectedDates);
       setIsOpen(false);
     }
   };
 
   const handleCancel = () => {
-    setSelectedDate(value || null);
+    if (mode === 'single') {
+      setSelectedDate(value || null);
+    } else {
+      setSelectedDates(dates || []);
+    }
     setIsOpen(false);
   };
 
+  // Sync internal state when props change
+  React.useEffect(() => {
+    if (value) setSelectedDate(value);
+  }, [value]);
+
+  React.useEffect(() => {
+    if (dates) setSelectedDates(dates);
+  }, [dates]);
+
   if (inline) {
+    // Inline not fully optimized for multiple yet in this snippet, sticking to standard flow
     return (
       <View style={{ marginBottom: spacing[4] }}>
         {label && (
@@ -113,6 +159,9 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
             onSelectDate={handleSelect}
             minDate={minDate}
             maxDate={maxDate}
+            selectionMode={mode}
+            selectedDates={selectedDates}
+            onSelectDates={handleSelectDates}
           />
         </View>
         {error && (
@@ -178,12 +227,12 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
           style={{
             flex: 1,
             fontSize: typography.sizes.base,
-            color: value ? (theme.text || '#111827') : (theme.textSecondary || '#6B7280'),
+            color: (mode === 'single' ? value : dates.length > 0) ? (theme.text || '#111827') : (theme.textSecondary || '#6B7280'),
           }}
           numberOfLines={1}
           ellipsizeMode="tail"
         >
-          {value ? formatDate(value) : placeholder}
+          {getDisplayText()}
         </Text>
 
         {/* Chevron */}
@@ -249,6 +298,9 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
               onSelectDate={handleSelect}
               minDate={minDate}
               maxDate={maxDate}
+              selectionMode={mode}
+              selectedDates={selectedDates}
+              onSelectDates={handleSelectDates}
             />
 
             {/* Action Buttons */}
@@ -263,7 +315,7 @@ export const DatePicker: React.FC<DatePickerProps & { inline?: boolean }> = ({
                 title="Confirm"
                 variant="primary"
                 onPress={handleConfirm}
-                disabled={!selectedDate}
+                disabled={mode === 'single' ? !selectedDate : false} // Allow explicit confirm empty? maybe
                 style={{ flex: 1 }}
               />
             </View>

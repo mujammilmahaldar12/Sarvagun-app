@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Animated as RNAnimated, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, FadeInUp, Layout, SlideInRight } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useCreateLeave, useLeaveBalance } from '@/hooks/useHRQueries';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
-import { LeaveBalanceCard } from '@/components/hr';
-import ModuleHeader from '@/components/layout/ModuleHeader';
-import AppButton from '@/components/ui/AppButton';
-import { getTypographyStyle } from '@/utils/styleHelpers';
 import { DatePicker } from '@/components/core/DatePicker';
 import type { LeaveType, ShiftType } from '@/types/hr';
 
@@ -21,17 +19,32 @@ const LEAVE_TYPES: LeaveType[] = [
   'Optional Leave',
 ];
 
-const SHIFT_TYPES: { value: ShiftType; label: string }[] = [
-  { value: 'full_shift', label: 'Full Day' },
-  { value: 'first_half', label: 'First Half (AM)' },
-  { value: 'second_half', label: 'Second Half (PM)' },
+const LEAVE_ICONS: Record<LeaveType, keyof typeof Ionicons.glyphMap> = {
+  'Annual Leave': 'sunny',
+  'Sick Leave': 'medkit',
+  'Casual Leave': 'cafe',
+  'Study Leave': 'school',
+  'Optional Leave': 'calendar',
+};
+
+const LEAVE_COLORS: Record<LeaveType, [string, string]> = {
+  'Annual Leave': ['#F59E0B', '#D97706'],
+  'Sick Leave': ['#EF4444', '#B91C1C'],
+  'Casual Leave': ['#10B981', '#059669'],
+  'Study Leave': ['#8B5CF6', '#7C3AED'],
+  'Optional Leave': ['#6366F1', '#4F46E5'],
+};
+
+const SHIFT_TYPES: { value: ShiftType; label: string; icon: string }[] = [
+  { value: 'full_shift', label: 'Full Day', icon: 'sunny' },
+  { value: 'first_half', label: '1st Half', icon: 'partly-sunny' },
+  { value: 'second_half', label: '2nd Half', icon: 'moon' },
 ];
 
 export default function ApplyLeaveScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
-  const [documents, setDocuments] = useState<string[]>([]);
 
   // API hooks
   const { mutate: createLeave, isPending: isSubmitting } = useCreateLeave();
@@ -39,371 +52,445 @@ export default function ApplyLeaveScreen() {
   const { trackLeaveRequest } = useActivityTracker();
 
   // Form state
-  // Using Date objects for easier manipulation with DatePicker
+  // New: Selection Mode State
+  const [selectionMode, setSelectionMode] = useState<'range' | 'multi'>('range');
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+
   const [leaveType, setLeaveType] = useState<LeaveType | ''>('');
   const [shiftType, setShiftType] = useState<ShiftType>('full_shift');
   const [reason, setReason] = useState('');
 
-  const pickDocument = async () => {
-    Alert.alert('Document Picker', 'Document picker functionality coming soon');
-  };
-
-  const removeDocument = (index: number) => {
-    setDocuments(documents.filter((_, i) => i !== index));
-  };
-
+  // Derived state
   const calculateDays = () => {
-    if (!fromDate || !toDate) return 0;
-    const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return diffDays > 0 ? diffDays : 0;
+    if (selectionMode === 'range') {
+      if (!fromDate || !toDate) return 0;
+      const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      return diffDays > 0 ? diffDays : 0;
+    } else {
+      // Multi mode: simply count unique selected dates
+      return selectedDates.length;
+    }
   };
 
-  // Check if user has sufficient leave balance
-  const getAvailableBalance = (type: LeaveType): number => {
-    if (!balance) return 0;
-
-    const typeKey = type.toLowerCase().replace(' ', '_');
-    const totalKey = `${typeKey}_total` as keyof typeof balance;
-    const usedKey = `${typeKey}_used` as keyof typeof balance;
-    const plannedKey = `${typeKey}_planned` as keyof typeof balance;
-
-    const total = (balance[totalKey] as number) || 0;
-    const used = (balance[usedKey] as number) || 0;
-    const planned = (balance[plannedKey] as number) || 0;
-
-    return total - used - planned;
-  };
+  const days = calculateDays();
+  const balanceCount = leaveType && balance ?
+    ((balance[`${leaveType.toLowerCase().replace(' ', '_')}_total` as keyof typeof balance] as number) || 0) -
+    ((balance[`${leaveType.toLowerCase().replace(' ', '_')}_used` as keyof typeof balance] as number) || 0) : 0;
 
   const handleSubmit = async () => {
-    // Validation
-    if (!leaveType || !fromDate || !toDate || !reason.trim()) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+    if (!leaveType || !reason.trim()) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields to proceed.');
       return;
     }
 
-    const days = calculateDays();
-    if (toDate < fromDate) {
-      Alert.alert('Invalid Dates', 'To date must be after from date');
-      return;
-    }
+    let payloadFromDate: string = '';
+    let payloadToDate: string = '';
+    let specificDates: string[] = [];
 
-    // Check balance
-    const availableBalance = getAvailableBalance(leaveType);
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
-    // Allow unpaid leave even if balance is 0? For now, enforcing balance check
-    // Unless it's sick leave which might be allowed pending approval
-    if (days > availableBalance && leaveType === 'Annual Leave') {
-      Alert.alert(
-        'Insufficient Balance',
-        `You only have ${availableBalance} days available for ${leaveType}. Requested: ${days} days.`
-      );
-      return;
+    if (selectionMode === 'range') {
+      if (!fromDate || !toDate) {
+        Alert.alert('Missing Dates', 'Please select a date range.');
+        return;
+      }
+      if (toDate < fromDate) {
+        Alert.alert('Invalid Dates', 'The "To Date" cannot be before the "From Date".');
+        return;
+      }
+      payloadFromDate = formatDate(fromDate);
+      payloadToDate = formatDate(toDate);
+    } else {
+      if (selectedDates.length === 0) {
+        Alert.alert('Missing Dates', 'Please select at least one date.');
+        return;
+      }
+      // Sort dates to determine min/max for the basic fields
+      const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+      payloadFromDate = formatDate(sortedDates[0]);
+      payloadToDate = formatDate(sortedDates[sortedDates.length - 1]);
+      specificDates = sortedDates.map(formatDate);
     }
 
     try {
-      // Format dates as YYYY-MM-DD for API
-      const formatDate = (d: Date) => d.toISOString().split('T')[0];
-      const fromDateStr = formatDate(fromDate);
-      const toDateStr = formatDate(toDate);
+      createLeave({
+        leave_type: leaveType,
+        from_date: payloadFromDate,
+        to_date: payloadToDate,
+        shift_type: shiftType,
+        reason: reason.trim(),
+        documents: [],
+        specific_dates: selectionMode === 'multi' ? specificDates : undefined,
+      }, {
+        onSuccess: async (data) => {
+          try {
+            await trackLeaveRequest(leaveType as string, payloadFromDate, payloadToDate, (data as any)?.id);
+          } catch (e) { console.log(e) }
 
-      createLeave(
-        {
-          leave_type: leaveType,
-          from_date: fromDateStr,
-          to_date: toDateStr,
-          shift_type: shiftType,
-          reason: reason.trim(),
-          documents: [],
-        },
-        {
-          onSuccess: async (data) => {
-            // Track activity in local storage (non-blocking)
-            try {
-              await trackLeaveRequest(
-                leaveType as string,
-                fromDateStr,
-                toDateStr,
-                (data as any)?.id
-              );
-            } catch (e) {
-              console.log('Error tracking leave request locally:', e);
+          Alert.alert('Request Sent', 'Your leave request has been submitted successfully!', [
+            {
+              text: 'Great!',
+              onPress: () => {
+                // Navigate back to HR module to see the request
+                router.push('/(modules)/hr' as any);
+              }
             }
-
-            Alert.alert(
-              'Success',
-              'Your leave application has been submitted successfully.',
-              [{ text: 'OK', onPress: () => router.back() }]
-            );
-          },
-          onError: (error: any) => {
-            Alert.alert('Error', error.message || 'Failed to submit application.');
-          },
-        }
-      );
-    } catch (error) {
-      console.error('Error submitting leave:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+          ]);
+        },
+        onError: (err: any) => Alert.alert('Error', err.message || 'Failed to submit.')
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Something went wrong.');
     }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
-      <ModuleHeader title="Apply Leave" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* Custom Header Background - REDUCED SIZE */}
+      <View style={{ height: 100, overflow: 'hidden' }}>
+        <LinearGradient
+          colors={isDark ? ['#341B34', '#472447'] : ['#6D376D', '#5A2D5A']}
+          style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 16, paddingHorizontal: 20 }}
+        >
+          <Animated.View entering={FadeInDown.delay(100).springify()}>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff' }}>Apply Leave</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>
+              Plan your time off
+            </Text>
+          </Animated.View>
+        </LinearGradient>
+      </View>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100, gap: 24 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Top Card: User Info & Balance Summary */}
-          <View style={{ marginBottom: 20 }}>
-            {!balanceLoading && balance ? (
-              <LeaveBalanceCard compact />
-            ) : (
-              // Simple user card if balance loading
-              <View style={{
-                backgroundColor: theme.surface,
-                padding: 16,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: theme.border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12
-              }}>
-                <View style={{
-                  width: 40, height: 40, borderRadius: 20,
-                  backgroundColor: theme.primary + '20',
-                  justifyContent: 'center', alignItems: 'center'
-                }}>
-                  <Text style={{ fontSize: 18 }}>👤</Text>
-                </View>
+
+          {/* Balance Card - Premium Look */}
+          <Animated.View entering={FadeInDown.delay(200).springify()}>
+            <LinearGradient
+              colors={leaveType ? LEAVE_COLORS[leaveType] : ['#6D376D', '#8B5CF6']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 24, padding: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View>
-                  <Text style={{ ...getTypographyStyle('base'), fontWeight: '600', color: theme.text }}>
-                    {user?.full_name || 'Employee'}
+                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600', letterSpacing: 1 }}>AVAILABLE BALANCE</Text>
+                  <Text style={{ color: '#fff', fontSize: 36, fontWeight: '800', marginTop: 8 }}>
+                    {balanceLoading ? '...' : balanceCount}
+                    <Text style={{ fontSize: 18, fontWeight: '500' }}> days</Text>
                   </Text>
-                  <Text style={{ ...getTypographyStyle('xs'), color: theme.textSecondary }}>
-                    Applying for leave
-                  </Text>
+                </View>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12 }}>
+                  <Ionicons name="wallet-outline" size={24} color="#fff" />
                 </View>
               </View>
-            )}
-          </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20, backgroundColor: 'rgba(0,0,0,0.1)', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                <Ionicons name="information-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '500' }}>
+                  {leaveType ? `For ${leaveType}` : 'Select a leave type'}
+                </Text>
+              </View>
+            </LinearGradient>
+          </Animated.View>
 
-          {/* Main Form Card */}
-          <View style={{
-            backgroundColor: theme.surface,
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: theme.border,
-            gap: 20
-          }}>
-
-            {/* Leave Type */}
-            <View>
-              <Text style={{ ...getTypographyStyle('sm'), fontWeight: '600', color: theme.text, marginBottom: 8 }}>
-                Leave Type <Text style={{ color: '#ef4444' }}>*</Text>
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {LEAVE_TYPES.map((type) => {
+          {/* Leave Type Selection - FIXED CLIPPING */}
+          <Animated.View entering={FadeInDown.delay(300).springify()}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 }}>Leave Type</Text>
+            {/* Extra vertical padding to prevent shadow clipping */}
+            <View style={{ marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 12 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingRight: 40 }}>
+                {LEAVE_TYPES.map((type, index) => {
                   const isSelected = leaveType === type;
                   return (
                     <Pressable
                       key={type}
                       onPress={() => setLeaveType(type)}
-                      style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 10,
-                        borderRadius: 24,
-                        borderWidth: 1,
-                        borderColor: isSelected ? theme.primary : theme.border,
-                        backgroundColor: isSelected ? theme.primary + '15' : 'transparent',
-                      }}
+                      style={{ transform: [{ scale: isSelected ? 1.05 : 1 }] }}
                     >
-                      <Text style={{
-                        fontSize: 13,
-                        fontWeight: isSelected ? '600' : '400',
-                        color: isSelected ? theme.primary : theme.textSecondary
-                      }}>
-                        {type}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {leaveType && (
-                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6, marginLeft: 4 }}>
-                  Balance: <Text style={{ fontWeight: '600', color: theme.primary }}>{getAvailableBalance(leaveType)} days</Text> available
-                </Text>
-              )}
-            </View>
-
-            {/* Dates Row */}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <DatePicker
-                  label="From Date *"
-                  value={fromDate}
-                  onChange={setFromDate}
-                  placeholder="Start date"
-                  minDate={new Date()}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <DatePicker
-                  label="To Date *"
-                  value={toDate}
-                  onChange={setToDate}
-                  placeholder="End date"
-                  minDate={fromDate || new Date()}
-                />
-              </View>
-            </View>
-
-            {/* Duration Summary */}
-            {fromDate && toDate && (
-              <View style={{
-                marginTop: -10,
-                backgroundColor: theme.background,
-                padding: 12,
-                borderRadius: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Total Duration</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="time-outline" size={16} color={theme.primary} />
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
-                    {calculateDays()} Days
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Shift Type */}
-            <View>
-              <Text style={{ ...getTypographyStyle('sm'), fontWeight: '600', color: theme.text, marginBottom: 8 }}>
-                Session
-              </Text>
-              <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.border, flexDirection: 'row' }}>
-                {SHIFT_TYPES.map((shift, index) => {
-                  const isSelected = shiftType === shift.value;
-                  return (
-                    <Pressable
-                      key={shift.value}
-                      onPress={() => setShiftType(shift.value)}
-                      style={{
-                        flex: 1,
-                        paddingVertical: 12,
-                        alignItems: 'center',
-                        backgroundColor: isSelected ? theme.surface : theme.background, // inverted logic for tab-like feel? No, let's do standard
-                        borderRightWidth: index !== SHIFT_TYPES.length - 1 ? 1 : 0,
-                        borderRightColor: theme.border
-                      }}
-                    >
-                      {isSelected && (
-                        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, backgroundColor: theme.primary }} />
-                      )}
-                      <Text style={{
-                        fontSize: 13,
-                        fontWeight: isSelected ? '600' : '400',
-                        color: isSelected ? theme.primary : theme.textSecondary
-                      }}>
-                        {index === 0 ? 'Full Day' : index === 1 ? '1st Half' : '2nd Half'}
-                      </Text>
+                      <Animated.View
+                        layout={Layout.springify()}
+                        style={{
+                          width: 110, height: 110,
+                          borderRadius: 20,
+                          backgroundColor: isSelected ? (isDark ? '#472447' : '#F8F4F9') : theme.surface,
+                          borderWidth: 2,
+                          borderColor: isSelected ? LEAVE_COLORS[type][0] : 'transparent',
+                          justifyContent: 'center', alignItems: 'center',
+                          shadowColor: isSelected ? LEAVE_COLORS[type][0] : "#000",
+                          shadowOffset: { width: 0, height: isSelected ? 8 : 4 },
+                          shadowOpacity: isSelected ? 0.3 : 0.05,
+                          shadowRadius: isSelected ? 12 : 8,
+                          elevation: isSelected ? 8 : 3
+                        }}
+                      >
+                        <View style={{
+                          width: 44, height: 44, borderRadius: 22,
+                          backgroundColor: isSelected ? LEAVE_COLORS[type][0] : theme.background,
+                          justifyContent: 'center', alignItems: 'center', marginBottom: 10
+                        }}>
+                          <Ionicons name={LEAVE_ICONS[type]} size={24} color={isSelected ? '#fff' : theme.textSecondary} />
+                        </View>
+                        <Text style={{
+                          fontSize: 12, fontWeight: isSelected ? '700' : '500',
+                          color: isSelected ? (isDark ? '#fff' : '#6D376D') : theme.textSecondary,
+                          textAlign: 'center'
+                        }}>
+                          {type.split(' ')[0]}
+                        </Text>
+                      </Animated.View>
                     </Pressable>
                   )
                 })}
-              </View>
+              </ScrollView>
             </View>
+          </Animated.View>
 
-            {/* Reason Input */}
-            <View>
-              <Text style={{ ...getTypographyStyle('sm'), fontWeight: '600', color: theme.text, marginBottom: 8 }}>
-                Reason <Text style={{ color: '#ef4444' }}>*</Text>
-              </Text>
-              <TextInput
-                style={{
-                  backgroundColor: theme.background,
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 15,
-                  color: theme.text,
-                  minHeight: 100,
-                  textAlignVertical: 'top'
-                }}
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Enter detailed reason for leave..."
-                placeholderTextColor={theme.textSecondary}
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            {/* Document Upload */}
-            <Pressable
-              onPress={pickDocument}
-              style={{
-                borderWidth: 1,
-                borderColor: theme.border,
-                borderStyle: 'dashed',
-                borderRadius: 12,
-                padding: 16,
-                alignItems: 'center',
-                backgroundColor: theme.background
-              }}
-            >
+          {/* Duration Section with Multi-Select Toggle */}
+          <Animated.View entering={FadeInDown.delay(400).springify()}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>Duration</Text>
               <View style={{
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: theme.primary + '15',
-                justifyContent: 'center', alignItems: 'center',
-                marginBottom: 8
+                flexDirection: 'row',
+                backgroundColor: theme.surface,
+                padding: 4,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.border
               }}>
-                <Ionicons name="cloud-upload-outline" size={20} color={theme.primary} />
+                {(['range', 'multi'] as const).map(mode => (
+                  <Pressable
+                    key={mode}
+                    onPress={() => {
+                      setSelectionMode(mode);
+                      setFromDate(null);
+                      setToDate(null);
+                      setSelectedDates([]);
+                    }}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      backgroundColor: selectionMode === mode ? (isDark ? '#472447' : '#F8F4F9') : 'transparent',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: selectionMode === mode ? theme.primary : theme.textSecondary
+                    }}>
+                      {mode === 'range' ? 'Range' : 'Multi-Date'}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: theme.text }}>
-                Attach Documents
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                Optional (Max 5MB)
-              </Text>
-            </Pressable>
+            </View>
 
-          </View>
+            {selectionMode === 'range' ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <DatePicker
+                    label="From"
+                    value={fromDate}
+                    onChange={setFromDate}
+                    minDate={new Date()}
+                    placeholder="Start"
+                  />
+                </View>
+                <View style={{ marginTop: 24, justifyContent: 'center' }}>
+                  <Ionicons name="arrow-forward" size={20} color={theme.textSecondary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <DatePicker
+                    label="To"
+                    value={toDate}
+                    onChange={setToDate}
+                    minDate={fromDate || new Date()}
+                    placeholder="End"
+                  />
+                </View>
+              </View>
+            ) : (
+              <View>
+                <DatePicker
+                  label="Select Specific Dates"
+                  mode="multiple"
+                  dates={selectedDates}
+                  onDatesChange={setSelectedDates}
+                  minDate={new Date()}
+                  placeholder="Tap to select dates..."
+                />
+
+                {/* Visual feedback for the calculated range */}
+                {selectedDates.length > 0 && (
+                  <View style={{
+                    marginTop: 12,
+                    padding: 12,
+                    backgroundColor: theme.surface,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: theme.border
+                  }}>
+                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 6, fontWeight: '600' }}>
+                      Effective Range (Auto-calculated for submission)
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 9, color: theme.textSecondary, marginBottom: 2 }}>START DATE</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+                          {[...selectedDates].sort((a, b) => a.getTime() - b.getTime())[0]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Text>
+                      </View>
+                      <Ionicons name="arrow-forward" size={16} color={theme.primary} style={{ marginHorizontal: 8 }} />
+                      <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 9, color: theme.textSecondary, marginBottom: 2 }}>END DATE</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+                          {[...selectedDates].sort((a, b) => a.getTime() - b.getTime())[selectedDates.length - 1]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Days Indicator */}
+            {days > 0 && (
+              <Animated.View
+                entering={FadeInUp.springify()}
+                style={{
+                  marginTop: 16,
+                  backgroundColor: isDark ? '#472447' : '#F8F4F9',
+                  padding: 16,
+                  borderRadius: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#5A2D5A' : '#E0CCE5'
+                }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#5A2D5A' : '#E0CCE5', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Text style={{ fontSize: 18 }}>🗓️</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 14, color: theme.textSecondary, fontWeight: '500' }}>Total Duration</Text>
+                  <Text style={{ fontSize: 18, color: theme.text, fontWeight: '800' }}>{days} Days</Text>
+                </View>
+              </Animated.View>
+            )}
+          </Animated.View>
+
+          {/* Shift Selection */}
+          <Animated.View entering={FadeInDown.delay(500).springify()}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 }}>Session</Text>
+            <View style={{ flexDirection: 'row', backgroundColor: theme.surface, padding: 4, borderRadius: 16 }}>
+              {SHIFT_TYPES.map((shift) => {
+                const isSelected = shiftType === shift.value;
+                return (
+                  <Pressable
+                    key={shift.value}
+                    onPress={() => setShiftType(shift.value)}
+                    style={{ flex: 1 }}
+                  >
+                    <Animated.View style={{
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isSelected ? theme.background : 'transparent',
+                      borderRadius: 12,
+                      shadowColor: "#000",
+                      shadowOpacity: isSelected ? 0.1 : 0,
+                      shadowRadius: 4,
+                      elevation: isSelected ? 2 : 0,
+                      flexDirection: 'row',
+                      gap: 6
+                    }}>
+                      <Ionicons name={shift.icon as any} size={16} color={isSelected ? theme.primary : theme.textSecondary} />
+                      <Text style={{ fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? theme.text : theme.textSecondary }}>
+                        {shift.label}
+                      </Text>
+                    </Animated.View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </Animated.View>
+
+          {/* Reason */}
+          <Animated.View entering={FadeInDown.delay(600).springify()}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 }}>Reason</Text>
+            <TextInput
+              style={{
+                backgroundColor: theme.surface,
+                borderRadius: 20,
+                padding: 16,
+                height: 120,
+                textAlignVertical: 'top',
+                fontSize: 16,
+                color: theme.text,
+                borderWidth: 1,
+                borderColor: 'transparent'
+              }}
+              placeholder="Why are you taking leave?"
+              placeholderTextColor={theme.textSecondary}
+              value={reason}
+              onChangeText={setReason}
+              multiline
+            />
+          </Animated.View>
+
         </ScrollView>
-
-        {/* Bottom Action Button */}
-        <View style={{
-          padding: 16,
-          backgroundColor: theme.surface,
-          borderTopWidth: 1,
-          borderTopColor: theme.border,
-          paddingBottom: Platform.OS === 'ios' ? 32 : 16
-        }}>
-          <AppButton
-            title={isSubmitting ? 'Sumitting Request...' : 'Submit Leave Request'}
-            onPress={handleSubmit}
-            disabled={isSubmitting || !calculateDays()}
-            loading={isSubmitting}
-            fullWidth
-            size="lg"
-            variant="primary"
-          />
-        </View>
       </KeyboardAvoidingView>
+
+      {/* Submit Button FAB */}
+      <Animated.View
+        entering={SlideInRight.delay(800).springify()}
+        style={{
+          position: 'absolute', bottom: 30, left: 20, right: 20,
+          shadowColor: theme.primary,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.4,
+          shadowRadius: 16,
+          elevation: 10
+        }}
+      >
+        <Pressable
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+        >
+          <LinearGradient
+            colors={['#6D376D', '#5A2D5A']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={{
+              paddingVertical: 18,
+              borderRadius: 24,
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 12
+            }}
+          >
+            {isSubmitting ? (
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Sending Request...</Text>
+            ) : (
+              <>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Submit Request</Text>
+                <Ionicons name="arrow-forward" size={24} color="#fff" />
+              </>
+            )}
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
+
     </View>
   );
 }

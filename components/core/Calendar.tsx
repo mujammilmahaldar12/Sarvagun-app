@@ -10,12 +10,17 @@ import { designSystem } from '@/constants/designSystem';
 
 const { spacing, typography, borderRadius } = designSystem;
 
+// ... (imports remain same)
+
 interface CalendarProps {
   selectedDate?: Date | null;
   onSelectDate?: (date: Date) => void;
   minDate?: Date;
   maxDate?: Date;
   markedDates?: Record<string, { marked?: boolean; selected?: boolean; color?: string }>;
+  selectionMode?: 'single' | 'multiple';
+  selectedDates?: Date[];
+  onSelectDates?: (dates: Date[]) => void;
 }
 
 export const Calendar: React.FC<CalendarProps> = ({
@@ -24,10 +29,14 @@ export const Calendar: React.FC<CalendarProps> = ({
   minDate,
   maxDate,
   markedDates = {},
+  selectionMode = 'single',
+  selectedDates = [],
+  onSelectDates,
 }) => {
   const { colors } = useThemeStore();
-  const [currentMonth, setCurrentMonth] = useState(selectedDate || new Date());
+  const [currentMonth, setCurrentMonth] = useState(selectedDate || (selectedDates.length > 0 ? selectedDates[0] : new Date()));
 
+  // ... (daysInMonth, firstDayOfMonth calculation remains same)
   const daysInMonth = new Date(
     currentMonth.getFullYear(),
     currentMonth.getMonth() + 1,
@@ -40,6 +49,7 @@ export const Calendar: React.FC<CalendarProps> = ({
     1
   ).getDay();
 
+  // ... (monthNames, dayNames, previousMonth, nextMonth, isDateDisabled remain same)
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -55,8 +65,8 @@ export const Calendar: React.FC<CalendarProps> = ({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
   };
 
+
   const isDateDisabled = (date: Date) => {
-    // Normalize dates to compare only year/month/day (ignore time)
     const normalizeDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const dateNorm = normalizeDate(date);
 
@@ -66,17 +76,45 @@ export const Calendar: React.FC<CalendarProps> = ({
   };
 
   const isDateSelected = (date: Date) => {
-    if (!selectedDate) return false;
-    // Compare dates in local timezone to avoid timezone issues
-    const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const selectedLocal = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-    return dateLocal.getTime() === selectedLocal.getTime();
+    if (selectionMode === 'single') {
+      if (!selectedDate) return false;
+      const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const selectedLocal = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      return dateLocal.getTime() === selectedLocal.getTime();
+    } else {
+      // Multiple mode
+      const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      return selectedDates.some(d => {
+        const dLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        return dLocal === dateLocal;
+      });
+    }
+  };
+
+  const handleDatePress = (date: Date) => {
+    if (selectionMode === 'single') {
+      if (onSelectDate) onSelectDate(date);
+    } else {
+      // Toggle date in multiple mode
+      if (!onSelectDates) return;
+
+      const dateTimestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      const exists = selectedDates.some(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === dateTimestamp);
+
+      let newDates: Date[];
+      if (exists) {
+        newDates = selectedDates.filter(d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() !== dateTimestamp);
+      } else {
+        newDates = [...selectedDates, date];
+      }
+      onSelectDates(newDates);
+    }
   };
 
   const renderDays = () => {
     const days = [];
 
-    // Empty cells for days before month starts
+    // Empty cells
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(
         <View key={`empty-${i}`} style={styles.dayCell} />
@@ -97,14 +135,7 @@ export const Calendar: React.FC<CalendarProps> = ({
       days.push(
         <Pressable
           key={day}
-          onPress={() => {
-            if (!disabled && onSelectDate) {
-              // Create date in local timezone to avoid timezone issues
-              const localDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0);
-              console.log('Calendar: Clicking day', day, 'created date:', localDate);
-              onSelectDate(localDate);
-            }
-          }}
+          onPress={() => !disabled && handleDatePress(date)}
           disabled={disabled}
           style={styles.dayCell}
         >

@@ -263,7 +263,7 @@ export default function SearchScreen() {
                           entering={FadeInUp.delay(200 + index * 50).duration(400)}
                         >
                           <AnimatedPressable
-                            onPress={() => router.push(`/(dashboard)/profile?id=${person.id}`)}
+                            onPress={() => router.push(`/(dashboard)/my-profile?userId=${person.id}` as any)}
                             hapticType="light"
                           >
                             <GlassCard

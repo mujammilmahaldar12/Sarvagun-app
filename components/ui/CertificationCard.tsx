@@ -1,14 +1,14 @@
 // CertificationCard.tsx - Display Professional Certifications with Validity Status
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../core/Card';
 import { Badge } from '../core/Badge';
 import type { Certification } from '../../types/user';
 import { useTheme } from '../../hooks/useTheme';
-import { 
-  isCertificationExpired, 
-  isCertificationExpiringSoon 
+import {
+  isCertificationExpired,
+  isCertificationExpiringSoon
 } from '../../utils/profileMockData';
 import { useHapticFeedback } from '../../hooks/useHapticFeedback';
 
@@ -21,12 +21,20 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
   const { theme } = useTheme();
   const { triggerHaptic } = useHapticFeedback();
 
+  // Get API base URL
+  const getApiBaseUrl = () => {
+    if (__DEV__) {
+      return 'http://10.97.251.100:8000';
+    }
+    return 'https://api.manager.blingsquare.in';
+  };
+
   // Format date for display
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      year: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric'
     });
   };
 
@@ -56,11 +64,11 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
 
   const isExpired = certification.expiry_date && isCertificationExpired(certification.expiry_date);
 
-  const validityColor = isExpired ? '#ef4444' : 
+  const validityColor = isExpired ? '#ef4444' :
     isCertificationExpiringSoon(certification.expiry_date || '') ? '#f59e0b' : '#10b981';
 
   return (
-    <Pressable 
+    <Pressable
       onPress={handlePress}
       disabled={!onPress}
       style={({ pressed }) => [
@@ -69,145 +77,169 @@ export function CertificationCard({ certification, onPress }: CertificationCardP
       ]}
     >
       <View style={[styles.cardWrapper, { borderColor: `${validityColor}30` }]}>
-      <Card style={isExpired ? styles.expiredCard : styles.card}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: theme.primary + '15' }]}>
-            <Ionicons 
-              name={certification.certificate_type === 'company_issued' ? 'shield-checkmark-outline' : 'ribbon-outline'} 
-              size={24} 
-              color={isExpired ? theme.textSecondary : theme.primary} 
-            />
-          </View>
-          <View style={styles.headerContent}>
-            <View style={styles.titleRow}>
-              <Text 
-                style={[
-                  styles.title, 
-                  { color: isExpired ? theme.textSecondary : theme.text }
-                ]}
-                numberOfLines={2}
-              >
-                {certification.title}
+        <Card style={isExpired ? styles.expiredCard : styles.card}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={[styles.iconContainer, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons
+                name={certification.certificate_type === 'company_issued' ? 'shield-checkmark-outline' : 'ribbon-outline'}
+                size={24}
+                color={isExpired ? theme.textSecondary : theme.primary}
+              />
+            </View>
+            <View style={styles.headerContent}>
+              <View style={styles.titleRow}>
+                <Text
+                  style={[
+                    styles.title,
+                    { color: isExpired ? theme.textSecondary : theme.text }
+                  ]}
+                  numberOfLines={2}
+                >
+                  {certification.title}
+                </Text>
+                {certification.certificate_type === 'company_issued' && (
+                  <View style={[styles.typeBadge, { backgroundColor: '#6D376D' + '20' }]}>
+                    <Text style={[styles.typeBadgeText, { color: '#6D376D' }]}>
+                      Company
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.issuer, { color: theme.textSecondary }]}>
+                {certification.issued_by}
               </Text>
-              {certification.certificate_type === 'company_issued' && (
-                <View style={[styles.typeBadge, { backgroundColor: '#6D376D' + '20' }]}>
-                  <Text style={[styles.typeBadgeText, { color: '#6D376D' }]}>
-                    Company
+            </View>
+          </View>
+
+          {/* Description */}
+          {certification.description && (
+            <Text
+              style={[styles.description, { color: theme.textSecondary }]}
+              numberOfLines={2}
+            >
+              {certification.description}
+            </Text>
+          )}
+
+          {/* Meta Info */}
+          <View style={styles.meta}>
+            <View style={styles.dates}>
+              <View style={styles.dateItem}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={14}
+                  color={theme.textSecondary}
+                />
+                <Text style={[styles.dateText, { color: theme.textSecondary }]}>
+                  Issued {formatDate(certification.issue_date)}
+                </Text>
+              </View>
+
+              {certification.expiry_date && (
+                <View style={styles.dateItem}>
+                  <Ionicons
+                    name={isExpired ? "close-circle-outline" : "time-outline"}
+                    size={14}
+                    color={isExpired ? '#ef4444' : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.dateText,
+                      { color: isExpired ? '#ef4444' : theme.textSecondary }
+                    ]}
+                  >
+                    {isExpired ? 'Expired' : 'Expires'} {formatDate(certification.expiry_date)}
                   </Text>
                 </View>
               )}
             </View>
-            <Text style={[styles.issuer, { color: theme.textSecondary }]}>
-              {certification.issued_by}
-            </Text>
+
+            {getValidityBadge()}
           </View>
-        </View>
 
-        {/* Description */}
-        {certification.description && (
-          <Text 
-            style={[styles.description, { color: theme.textSecondary }]}
-            numberOfLines={2}
-          >
-            {certification.description}
-          </Text>
-        )}
-
-        {/* Meta Info */}
-        <View style={styles.meta}>
-          <View style={styles.dates}>
-            <View style={styles.dateItem}>
-              <Ionicons 
-                name="calendar-outline" 
-                size={14} 
-                color={theme.textSecondary} 
-              />
-              <Text style={[styles.dateText, { color: theme.textSecondary }]}>
-                Issued {formatDate(certification.issue_date)}
+          {/* Credential ID or Verification Code */}
+          {certification.certificate_type === 'external' && certification.credential_id && (
+            <View style={[styles.credentialContainer, { backgroundColor: theme.surfaceElevated }]}>
+              <Text style={[styles.credentialLabel, { color: theme.textSecondary }]}>
+                Credential ID:
+              </Text>
+              <Text
+                style={[styles.credentialId, { color: theme.text }]}
+                selectable
+              >
+                {certification.credential_id}
               </Text>
             </View>
-            
-            {certification.expiry_date && (
-              <View style={styles.dateItem}>
-                <Ionicons 
-                  name={isExpired ? "close-circle-outline" : "time-outline"} 
-                  size={14} 
-                  color={isExpired ? '#ef4444' : theme.textSecondary} 
-                />
-                <Text 
-                  style={[
-                    styles.dateText, 
-                    { color: isExpired ? '#ef4444' : theme.textSecondary }
-                  ]}
-                >
-                  {isExpired ? 'Expired' : 'Expires'} {formatDate(certification.expiry_date)}
-                </Text>
-              </View>
-            )}
-          </View>
+          )}
 
-          {getValidityBadge()}
-        </View>
+          {certification.certificate_type === 'company_issued' && certification.verification_code && (
+            <View style={[styles.credentialContainer, { backgroundColor: '#6D376D' + '10' }]}>
+              <Ionicons name="shield-checkmark" size={16} color="#6D376D" />
+              <Text style={[styles.credentialLabel, { color: '#6D376D' }]}>
+                Verification:
+              </Text>
+              <Text
+                style={[styles.credentialId, { color: '#6D376D', fontWeight: '600' }]}
+                selectable
+              >
+                {certification.verification_code}
+              </Text>
+            </View>
+          )}
 
-        {/* Credential ID or Verification Code */}
-        {certification.certificate_type === 'external' && certification.credential_id && (
-          <View style={[styles.credentialContainer, { backgroundColor: theme.surfaceElevated }]}>
-            <Text style={[styles.credentialLabel, { color: theme.textSecondary }]}>
-              Credential ID:
-            </Text>
-            <Text 
-              style={[styles.credentialId, { color: theme.text }]}
-              selectable
+          {/* Download Button - Available for all certificates with files */}
+          {(certification.certificate_file || certification.generated_certificate_url) && (
+            <Pressable
+              style={[styles.viewCertButton, { backgroundColor: theme.primary }]}
+              onPress={async () => {
+                triggerHaptic('light');
+                try {
+                  const baseUrl = getApiBaseUrl();
+                  const downloadUrl = `${baseUrl}/api/hr/certifications/${certification.id}/download/`;
+                  console.log('📥 Opening download URL:', downloadUrl);
+
+                  const supported = await Linking.canOpenURL(downloadUrl);
+                  if (supported) {
+                    await Linking.openURL(downloadUrl);
+                  } else {
+                    Alert.alert('Error', 'Cannot open download link');
+                  }
+                } catch (error) {
+                  console.error('❌ Download error:', error);
+                  Alert.alert('Download Failed', 'Unable to download certificate. Please try again.');
+                }
+              }}
             >
-              {certification.credential_id}
-            </Text>
-          </View>
-        )}
+              <Ionicons name="download-outline" size={18} color="#FFF" />
+              <Text style={styles.viewCertButtonText}>Download Certificate</Text>
+            </Pressable>
+          )}
 
-        {certification.certificate_type === 'company_issued' && certification.verification_code && (
-          <View style={[styles.credentialContainer, { backgroundColor: '#6D376D' + '10' }]}>
-            <Ionicons name="shield-checkmark" size={16} color="#6D376D" />
-            <Text style={[styles.credentialLabel, { color: '#6D376D' }]}>
-              Verification:
-            </Text>
-            <Text 
-              style={[styles.credentialId, { color: '#6D376D', fontWeight: '600' }]}
-              selectable
+          {/* Credential URL for External - Opens external verification */}
+          {certification.certificate_type === 'external' && certification.credential_url && (
+            <Pressable
+              style={[styles.viewCertButton, { backgroundColor: theme.primary + '15', borderWidth: 1, borderColor: theme.primary, marginTop: 8 }]}
+              onPress={async () => {
+                triggerHaptic('light');
+                try {
+                  const supported = await Linking.canOpenURL(certification.credential_url!);
+                  if (supported) {
+                    await Linking.openURL(certification.credential_url!);
+                  } else {
+                    Alert.alert('Error', 'Cannot open verification link');
+                  }
+                } catch (error) {
+                  console.error('❌ Open URL error:', error);
+                  Alert.alert('Error', 'Unable to open verification link');
+                }
+              }}
             >
-              {certification.verification_code}
-            </Text>
-          </View>
-        )}
-
-        {/* View Certificate Button for Company-Issued */}
-        {certification.certificate_type === 'company_issued' && certification.generated_certificate_url && (
-          <Pressable 
-            style={[styles.viewCertButton, { backgroundColor: theme.primary }]}
-            onPress={() => {
-              // TODO: Open certificate viewer modal or download
-              console.log('View certificate:', certification.generated_certificate_url);
-            }}
-          >
-            <Ionicons name="document-text-outline" size={18} color="#FFF" />
-            <Text style={styles.viewCertButtonText}>View Certificate</Text>
-          </Pressable>
-        )}
-
-        {/* Credential URL for External */}
-        {certification.certificate_type === 'external' && certification.credential_url && (
-          <Pressable 
-            style={[styles.viewCertButton, { backgroundColor: theme.primary + '15', borderWidth: 1, borderColor: theme.primary }]}
-            onPress={() => {
-              // TODO: Open URL
-              console.log('Open URL:', certification.credential_url);
-            }}
-          >
-            <Ionicons name="link-outline" size={18} color={theme.primary} />
-            <Text style={[styles.viewCertButtonText, { color: theme.primary }]}>Verify Credential</Text>
-          </Pressable>
-        )}
-      </Card>
+              <Ionicons name="link-outline" size={18} color={theme.primary} />
+              <Text style={[styles.viewCertButtonText, { color: theme.primary }]}>Verify Credential</Text>
+            </Pressable>
+          )}
+        </Card>
       </View>
     </Pressable>
   );
@@ -248,10 +280,27 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   title: {
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 20,
+    flex: 1,
+  },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   issuer: {
     fontSize: 14,

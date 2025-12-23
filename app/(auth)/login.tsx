@@ -126,7 +126,7 @@ export default function LoginScreen() {
               <View style={styles.logoSection}>
                 <View style={styles.logoWrapper}>
                   <Image
-                    source={require("@/assets/images/sarvagun_logo.jpg")}
+                    source={require("../../assets/images/sarvagun_logo.jpg")}
                     style={styles.logo}
                     resizeMode="contain"
                   />

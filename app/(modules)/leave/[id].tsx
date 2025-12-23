@@ -218,7 +218,10 @@ export default function LeaveDetailScreen() {
             {leaveData.status === 'pending' && (
               <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl }}>
                 <TouchableOpacity
-                  onPress={() => Alert.alert('Coming Soon', 'Edit functionality will be available soon')}
+                  onPress={() => {
+                    console.log('✏️ Navigating to edit page for leave:', leaveId);
+                    router.push(`/(modules)/leave/edit/${leaveId}` as any);
+                  }}
                   style={{
                     flex: 1,
                     backgroundColor: theme.surface,
@@ -247,10 +250,17 @@ export default function LeaveDetailScreen() {
                           style: 'destructive',
                           onPress: async () => {
                             try {
+                              console.log('🗑️ Deleting leave request:', leaveId);
                               await deleteMutation.mutateAsync(leaveId);
-                              Alert.alert('Success', 'Leave request cancelled');
-                              router.back();
+                              console.log('✅ Leave deleted successfully');
+                              Alert.alert('Success', 'Leave request cancelled successfully', [
+                                {
+                                  text: 'OK',
+                                  onPress: () => router.push('/(modules)/leave' as any)
+                                }
+                              ]);
                             } catch (error) {
+                              console.error('❌ Failed to delete leave:', error);
                               Alert.alert('Error', 'Failed to cancel leave request');
                             }
                           },

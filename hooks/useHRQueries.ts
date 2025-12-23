@@ -1039,6 +1039,16 @@ export const useDeleteCertification = () => {
 };
 
 /**
+ * Get download URL for a certification
+ * Returns the backend download URL that can be opened in browser/WebView
+ */
+export const useDownloadCertification = () => {
+  return {
+    getDownloadUrl: (certId: number) => hrService.downloadCertification(certId),
+  };
+};
+
+/**
  * Upload resume for AI extraction
  */
 export const useUploadResume = () => {
