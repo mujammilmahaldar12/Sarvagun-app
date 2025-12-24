@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Platform, StatusBar, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { AnimatedPressable } from '@/components';
 import { spacing, borderRadius, iconSizes, moduleColors } from '@/constants/designSystem';
 import { getTypographyStyle, getShadowStyle, getCardStyle } from '@/utils/styleHelpers';
+import { useModule } from '@/hooks/useModule';
 
 interface QuickAction {
   id: string;
@@ -16,6 +17,10 @@ interface QuickAction {
   route: string;
   color: string;
   category: string;
+  // Permission configuration
+  permissionModule?: string; // e.g., 'events.leads'
+  permissionAction?: string; // e.g., 'manage'
+  alwaysShow?: boolean; // For actions everyone can access (e.g., Apply Leave)
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -27,6 +32,8 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/projects/create',
     color: moduleColors.projects.main,
     category: 'Projects',
+    permissionModule: 'projects.projects',
+    permissionAction: 'manage',
   },
   {
     id: 'add-lead',
@@ -36,6 +43,8 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/events/add-lead',
     color: moduleColors.events.main,
     category: 'Events',
+    permissionModule: 'events.leads',
+    permissionAction: 'manage',
   },
   {
     id: 'apply-leave',
@@ -45,6 +54,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/leave/apply',
     color: moduleColors.leave.main,
     category: 'HR',
+    alwaysShow: true, // Everyone can apply for leave
   },
   {
     id: 'add-employee',
@@ -54,6 +64,8 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/hr/add-employee',
     color: moduleColors.hr.main,
     category: 'HR',
+    permissionModule: 'hr.employees',
+    permissionAction: 'manage',
   },
   {
     id: 'add-client',
@@ -63,6 +75,8 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/events/add-client',
     color: moduleColors.clients.main,
     category: 'Events',
+    permissionModule: 'events.clients',
+    permissionAction: 'manage',
   },
   {
     id: 'add-venue',
@@ -72,6 +86,8 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/events/add-venue',
     color: moduleColors.events.main,
     category: 'Events',
+    permissionModule: 'events.venues',
+    permissionAction: 'manage',
   },
   {
     id: 'add-reimbursement',
@@ -81,6 +97,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/hr/add-reimbursement',
     color: moduleColors.finance.main,
     category: 'HR',
+    alwaysShow: true, // Everyone can submit reimbursements
   },
   {
     id: 'add-event',
@@ -90,6 +107,8 @@ const QUICK_ACTIONS: QuickAction[] = [
     route: '/(modules)/events',
     color: moduleColors.events.main,
     category: 'Events',
+    permissionModule: 'events.events',
+    permissionAction: 'view',
   },
 ];
 
@@ -101,11 +120,49 @@ export default function QuickAddScreen() {
   const { theme, isDark } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  const categories = ['All', ...Array.from(new Set(QUICK_ACTIONS.map(a => a.category)))];
+  // Permission checks for each module
+  const { can: canProjects } = useModule('projects.projects');
+  const { can: canLeads } = useModule('events.leads');
+  const { can: canEmployees } = useModule('hr.employees');
+  const { can: canClients } = useModule('events.clients');
+  const { can: canVenues } = useModule('events.venues');
+  const { can: canEvents } = useModule('events.events');
+
+  // Filter actions based on permissions
+  const permittedActions = useMemo(() => {
+    return QUICK_ACTIONS.filter(action => {
+      // Always show actions marked as alwaysShow
+      if (action.alwaysShow) return true;
+
+      // Check permission based on module and action
+      if (action.permissionModule && action.permissionAction) {
+        switch (action.permissionModule) {
+          case 'projects.projects':
+            return canProjects(action.permissionAction);
+          case 'events.leads':
+            return canLeads(action.permissionAction);
+          case 'hr.employees':
+            return canEmployees(action.permissionAction);
+          case 'events.clients':
+            return canClients(action.permissionAction);
+          case 'events.venues':
+            return canVenues(action.permissionAction);
+          case 'events.events':
+            return canEvents(action.permissionAction);
+          default:
+            return false;
+        }
+      }
+
+      return false;
+    });
+  }, [canProjects, canLeads, canEmployees, canClients, canVenues, canEvents]);
+
+  const categories = ['All', ...Array.from(new Set(permittedActions.map(a => a.category)))];
 
   const filteredActions = selectedCategory === 'All'
-    ? QUICK_ACTIONS
-    : QUICK_ACTIONS.filter(a => a.category === selectedCategory);
+    ? permittedActions
+    : permittedActions.filter(a => a.category === selectedCategory);
 
   const handleActionPress = (action: QuickAction) => {
     router.push(action.route as any);
