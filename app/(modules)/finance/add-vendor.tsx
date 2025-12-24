@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import ModuleHeader from '@/components/layout/ModuleHeader';
@@ -181,114 +181,120 @@ export default function AddVendorScreen() {
         showNotifications={false}
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }}>
-        {/* Basic Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Basic Information" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }} keyboardShouldPersistTaps="handled">
+          {/* Basic Information */}
+          <View style={{ gap: 16 }}>
+            <SectionHeader title="Basic Information" />
 
-          <Input
-            label="Vendor Name"
-            value={formData.name}
-            onChangeText={(text: string) => updateField('name', text)}
-            placeholder="Enter vendor name"
-            required
-            leftIcon="business-outline"
-          />
+            <Input
+              label="Vendor Name"
+              value={formData.name}
+              onChangeText={(text: string) => updateField('name', text)}
+              placeholder="Enter vendor name"
+              required
+              leftIcon="business-outline"
+            />
 
-          <Input
-            label="Organization Name"
-            value={formData.organization_name}
-            onChangeText={(text: string) => updateField('organization_name', text)}
-            placeholder="Enter organization name"
-            leftIcon="briefcase-outline"
-            required
-          />
+            <Input
+              label="Organization Name"
+              value={formData.organization_name}
+              onChangeText={(text: string) => updateField('organization_name', text)}
+              placeholder="Enter organization name"
+              leftIcon="briefcase-outline"
+              required
+            />
 
-          <Input
-            label="Contact Number"
-            value={formData.contact_number}
-            onChangeText={(text: string) => updateField('contact_number', text)}
-            placeholder="Enter contact number"
-            keyboardType="phone-pad"
-            required
-            leftIcon="call-outline"
-          />
+            <Input
+              label="Contact Number"
+              value={formData.contact_number}
+              onChangeText={(text: string) => updateField('contact_number', text)}
+              placeholder="Enter contact number"
+              keyboardType="phone-pad"
+              required
+              leftIcon="call-outline"
+            />
 
-          <Input
-            label="Email"
-            value={formData.email}
-            onChangeText={(text: string) => updateField('email', text)}
-            placeholder="vendor@example.com"
-            keyboardType="email-address"
-            required
-            leftIcon="mail-outline"
-          />
+            <Input
+              label="Email"
+              value={formData.email}
+              onChangeText={(text: string) => updateField('email', text)}
+              placeholder="vendor@example.com"
+              keyboardType="email-address"
+              required
+              leftIcon="mail-outline"
+            />
 
-          <Input
-            label="Address"
-            value={formData.address}
-            onChangeText={(text: string) => updateField('address', text)}
-            placeholder="Enter vendor address"
-            multiline
-            leftIcon="location-outline"
-          />
-        </View>
+            <Input
+              label="Address"
+              value={formData.address}
+              onChangeText={(text: string) => updateField('address', text)}
+              placeholder="Enter vendor address"
+              multiline
+              leftIcon="location-outline"
+            />
+          </View>
 
-        {/* Category */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Category" />
-          <Select
-            label="Category"
-            value={formData.category}
-            onChange={(value: string) => updateField('category', value)}
-            options={VENDOR_CATEGORIES}
-            placeholder="Select category"
-            required
-          />
-        </View>
+          {/* Category */}
+          <View style={{ gap: 16 }}>
+            <SectionHeader title="Category" />
+            <Select
+              label="Category"
+              value={formData.category}
+              onChange={(value: string) => updateField('category', value)}
+              options={VENDOR_CATEGORIES}
+              placeholder="Select category"
+              required
+            />
+          </View>
 
-        {/* Tax Information */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader
-            title="Tax Information"
-            subtitle="GST details for invoicing"
-          />
+          {/* Tax Information */}
+          <View style={{ gap: 16 }}>
+            <SectionHeader
+              title="Tax Information"
+              subtitle="GST details for invoicing"
+            />
 
-          <Input
-            label="GST Number"
-            value={formData.gstin}
-            onChangeText={(text: string) => updateField('gstin', text.toUpperCase())}
-            placeholder="22AAAAA0000A1Z5"
-            leftIcon="receipt-outline"
-          />
-        </View>
+            <Input
+              label="GST Number"
+              value={formData.gstin}
+              onChangeText={(text: string) => updateField('gstin', text.toUpperCase())}
+              placeholder="22AAAAA0000A1Z5"
+              leftIcon="receipt-outline"
+            />
+          </View>
 
-        {/* Additional Notes */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Comments (Optional)" />
+          {/* Additional Notes */}
+          <View style={{ gap: 16 }}>
+            <SectionHeader title="Comments (Optional)" />
 
-          <Input
-            label="Comments"
-            value={formData.comments}
-            onChangeText={(text: string) => updateField('comments', text)}
-            placeholder="Add any additional comments about the vendor"
-            multiline
-            leftIcon="chatbox-outline"
-          />
-        </View>
+            <Input
+              label="Comments"
+              value={formData.comments}
+              onChangeText={(text: string) => updateField('comments', text)}
+              placeholder="Add any additional comments about the vendor"
+              multiline
+              leftIcon="chatbox-outline"
+            />
+          </View>
 
-        {/* Submit Button */}
-        <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <Button
-            title={isEditMode ? 'Update Vendor' : 'Create Vendor'}
-            onPress={handleSubmit}
-            loading={loading}
-            fullWidth
-            size="lg"
-            leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
-          />
-        </View>
-      </ScrollView>
+          {/* Submit Button */}
+          <View style={{ marginTop: 8, marginBottom: 20 }}>
+            <Button
+              title={isEditMode ? 'Update Vendor' : 'Create Vendor'}
+              onPress={handleSubmit}
+              loading={loading}
+              fullWidth
+              size="lg"
+              leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

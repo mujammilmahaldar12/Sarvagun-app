@@ -403,6 +403,7 @@ export default function AddEventScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Client Info Card (Editable) */}
         <View style={clientCardStyles.card}>

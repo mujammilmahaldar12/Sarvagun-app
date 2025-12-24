@@ -3,7 +3,7 @@
  * Matches event management patterns
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, Pressable, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -418,198 +418,204 @@ export default function AddSaleScreen() {
         showNotifications={false}
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
-        {/* Event Selection */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Event Details" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+          {/* Event Selection */}
+          <View style={{ gap: 16 }}>
+            <SectionHeader title="Event Details" />
 
-          <Select
-            label="Event"
-            placeholder="Select an event"
-            value={formData.event}
-            onChange={(value) => updateField('event', value)}
-            options={eventOptions}
-            required
-            searchable
-            disabled={loadingEvents}
-          />
-        </View>
-
-        {/* Financial Details */}
-        <View style={{ gap: 16 }}>
-          <SectionHeader title="Financial Details" />
-
-          <Input
-            label="Amount"
-            value={formData.amount}
-            onChangeText={(text: string) => updateField('amount', text)}
-            placeholder="0"
-            keyboardType="numeric"
-            leftIcon="cash-outline"
-            required
-            onFocus={() => {
-              if (Number(formData.amount) === 0) updateField('amount', '');
-            }}
-            onBlur={() => {
-              if (formData.amount === '') updateField('amount', '0');
-            }}
-          />
-
-          <Input
-            label="Discount"
-            value={formData.discount}
-            onChangeText={(text: string) => updateField('discount', text)}
-            placeholder="0"
-            keyboardType="numeric"
-            leftIcon="pricetag-outline"
-            onFocus={() => {
-              if (Number(formData.discount) === 0) updateField('discount', '');
-            }}
-            onBlur={() => {
-              if (formData.discount === '') updateField('discount', '0');
-            }}
-          />
-
-          {/* Summary Card */}
-          <View style={{
-            padding: 16,
-            backgroundColor: theme.surface,
-            borderRadius: 12,
-            gap: 12,
-            ...designSystem.shadows.sm,
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                Gross Amount
-              </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                ₹{(Number(formData.amount) || 0).toLocaleString('en-IN')}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                Discount
-              </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
-                - ₹{(Number(formData.discount) || 0).toLocaleString('en-IN')}
-              </Text>
-            </View>
-            <View style={{ height: 1, backgroundColor: theme.border }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
-                Net Amount
-              </Text>
-              <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.primary }}>
-                ₹{netAmount.toLocaleString('en-IN')}
-              </Text>
-            </View>
+            <Select
+              label="Event"
+              placeholder="Select an event"
+              value={formData.event}
+              onChange={(value) => updateField('event', value)}
+              options={eventOptions}
+              required
+              searchable
+              disabled={loadingEvents}
+            />
           </View>
 
-          <Select
-            label="Payment Status"
-            value={formData.payment_status}
-            onChange={(value) => updateField('payment_status', value)}
-            options={PAYMENT_STATUS_OPTIONS}
-            required
-            disabled
-          />
-          <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: -8 }}>
-            * Auto-calculated based on payment installments
-          </Text>
-        </View>
+          {/* Financial Details */}
+          <View style={{ gap: 16 }}>
+            <SectionHeader title="Financial Details" />
 
-        {/* Payment Installments */}
-        <View style={{ gap: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <SectionHeader title="Payment Installments" subtitle="Add multiple payment installments" />
-          </View>
+            <Input
+              label="Amount"
+              value={formData.amount}
+              onChangeText={(text: string) => updateField('amount', text)}
+              placeholder="0"
+              keyboardType="numeric"
+              leftIcon="cash-outline"
+              required
+              onFocus={() => {
+                if (Number(formData.amount) === 0) updateField('amount', '');
+              }}
+              onBlur={() => {
+                if (formData.amount === '') updateField('amount', '0');
+              }}
+            />
 
-          <Button
-            title="Add Payment Installment"
-            onPress={handleAddInstallment}
-            variant="outline"
-            leftIcon="add-circle-outline"
-            fullWidth
-          />
+            <Input
+              label="Discount"
+              value={formData.discount}
+              onChangeText={(text: string) => updateField('discount', text)}
+              placeholder="0"
+              keyboardType="numeric"
+              leftIcon="pricetag-outline"
+              onFocus={() => {
+                if (Number(formData.discount) === 0) updateField('discount', '');
+              }}
+              onBlur={() => {
+                if (formData.discount === '') updateField('discount', '0');
+              }}
+            />
 
-          {installments.length > 0 && (
-            <View style={{ gap: 8 }}>
-              {installments.map((inst, index) => (
-                <View
-                  key={index}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 14,
-                    borderRadius: 8,
-                    backgroundColor: theme.surface,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                  }}
-                >
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                      ₹{Number(inst.payment_amount).toLocaleString('en-IN')}
-                    </Text>
-                    <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                      {new Date(inst.payment_date!).toLocaleDateString('en-IN')} • {inst.mode_of_payment}
-                    </Text>
-                    {inst.notes && (
-                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }} numberOfLines={1}>
-                        {inst.notes}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable onPress={() => handleEditInstallment(index)}>
-                      <Ionicons name="create-outline" size={20} color={theme.primary} />
-                    </Pressable>
-                    <Pressable onPress={() => handleRemoveInstallment(index)}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-
-              {/* Payment Summary */}
-              <View style={{
-                padding: 14,
-                backgroundColor: theme.primary + '10',
-                borderRadius: 8,
-                gap: 8,
-              }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
-                    Total Received
-                  </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'bold'), color: '#10B981' }}>
-                    ₹{totalReceived.toLocaleString('en-IN')}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
-                    Balance Due
-                  </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'bold'), color: balanceDue > 0 ? '#EF4444' : '#10B981' }}>
-                    ₹{balanceDue.toLocaleString('en-IN')}
-                  </Text>
-                </View>
+            {/* Summary Card */}
+            <View style={{
+              padding: 16,
+              backgroundColor: theme.surface,
+              borderRadius: 12,
+              gap: 12,
+              ...designSystem.shadows.sm,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                  Gross Amount
+                </Text>
+                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                  ₹{(Number(formData.amount) || 0).toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                  Discount
+                </Text>
+                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
+                  - ₹{(Number(formData.discount) || 0).toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={{ height: 1, backgroundColor: theme.border }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                  Net Amount
+                </Text>
+                <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.primary }}>
+                  ₹{netAmount.toLocaleString('en-IN')}
+                </Text>
               </View>
             </View>
-          )}
-        </View>
 
-        {/* Submit Button */}
-        <View style={{ marginTop: 8, marginBottom: 20 }}>
-          <Button
-            title={isEditMode ? 'Update Sale' : 'Create Sale'}
-            onPress={handleSubmit}
-            loading={loading}
-            leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
-          />
-        </View>
-      </ScrollView>
+            <Select
+              label="Payment Status"
+              value={formData.payment_status}
+              onChange={(value) => updateField('payment_status', value)}
+              options={PAYMENT_STATUS_OPTIONS}
+              required
+              disabled
+            />
+            <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary, marginTop: -8 }}>
+              * Auto-calculated based on payment installments
+            </Text>
+          </View>
+
+          {/* Payment Installments */}
+          <View style={{ gap: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SectionHeader title="Payment Installments" subtitle="Add multiple payment installments" />
+            </View>
+
+            <Button
+              title="Add Payment Installment"
+              onPress={handleAddInstallment}
+              variant="outline"
+              leftIcon="add-circle-outline"
+              fullWidth
+            />
+
+            {installments.length > 0 && (
+              <View style={{ gap: 8 }}>
+                {installments.map((inst, index) => (
+                  <View
+                    key={index}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: 14,
+                      borderRadius: 8,
+                      backgroundColor: theme.surface,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                        ₹{Number(inst.payment_amount).toLocaleString('en-IN')}
+                      </Text>
+                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                        {new Date(inst.payment_date!).toLocaleDateString('en-IN')} • {inst.mode_of_payment}
+                      </Text>
+                      {inst.notes && (
+                        <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }} numberOfLines={1}>
+                          {inst.notes}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable onPress={() => handleEditInstallment(index)}>
+                        <Ionicons name="create-outline" size={20} color={theme.primary} />
+                      </Pressable>
+                      <Pressable onPress={() => handleRemoveInstallment(index)}>
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+
+                {/* Payment Summary */}
+                <View style={{
+                  padding: 14,
+                  backgroundColor: theme.primary + '10',
+                  borderRadius: 8,
+                  gap: 8,
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
+                      Total Received
+                    </Text>
+                    <Text style={{ ...getTypographyStyle('sm', 'bold'), color: '#10B981' }}>
+                      ₹{totalReceived.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text }}>
+                      Balance Due
+                    </Text>
+                    <Text style={{ ...getTypographyStyle('sm', 'bold'), color: balanceDue > 0 ? '#EF4444' : '#10B981' }}>
+                      ₹{balanceDue.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Submit Button */}
+          <View style={{ marginTop: 8, marginBottom: 20 }}>
+            <Button
+              title={isEditMode ? 'Update Sale' : 'Create Sale'}
+              onPress={handleSubmit}
+              loading={loading}
+              leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Payment Installment Modal */}
       <Modal

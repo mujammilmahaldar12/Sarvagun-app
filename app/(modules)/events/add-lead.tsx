@@ -46,6 +46,8 @@ export default function AddLeadScreen() {
   const [newOrgName, setNewOrgName] = useState('');
   const [creatingOrg, setCreatingOrg] = useState(false);
 
+  // Track associated event ID for editing leads that have been converted
+  const [associatedEventId, setAssociatedEventId] = useState<number | null>(null);
 
   // Form mode: 'select' or 'create'
   const [clientMode, setClientMode] = useState<'select' | 'create'>('create');
@@ -122,6 +124,7 @@ export default function AddLeadScreen() {
       // Check if we have an event_id to fetch event details
       if (leadAny.event_id) {
         console.log('🎯 Event ID found:', leadAny.event_id, '- fetching event details...');
+        setAssociatedEventId(leadAny.event_id); // Track the event ID
         try {
           eventData = await eventsService.getEvent(leadAny.event_id);
           console.log('📦 Event data fetched:', JSON.stringify(eventData, null, 2));
@@ -327,6 +330,23 @@ export default function AddLeadScreen() {
         const result = await eventsService.updateLead(Number(leadId), payload);
         console.log('✅ Lead updated successfully:', result);
 
+        // If lead has an associated event, also update the event
+        if (associatedEventId) {
+          console.log('🔄 Also updating associated event:', associatedEventId);
+          try {
+            const eventPayload = {
+              company: formData.company,
+              type_of_event: formData.eventType,
+              start_date: formData.startDate ? formData.startDate.toISOString().split('T')[0] : undefined,
+              end_date: formData.endDate ? formData.endDate.toISOString().split('T')[0] : undefined,
+            };
+            await eventsService.updateEvent(associatedEventId, eventPayload);
+            console.log('✅ Associated event updated successfully');
+          } catch (eventError) {
+            console.warn('⚠️ Could not update associated event:', eventError);
+          }
+        }
+
         // Navigate back immediately
         safeGoBack();
       } else {
@@ -390,6 +410,7 @@ export default function AddLeadScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Client Selection Mode */}
           <FormSection title="Client Selection">
@@ -980,7 +1001,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     gap: spacing.md,
-    paddingBottom: spacing['4xl'],
+    paddingBottom: 120,
   },
   chipContainer: {
     flexDirection: 'row',

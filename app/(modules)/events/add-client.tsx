@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert, Pressable, Text } from 'react-native';
+import { View, ScrollView, Alert, Pressable, Text, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
@@ -139,145 +139,151 @@ export default function AddClientScreen() {
         showNotifications={false}
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.md }}>
-        <FormSection title="Client Information">
-          <FormField
-            label="Client Name *"
-            value={formData.name}
-            onChangeText={(text: string) => updateField('name', text)}
-            placeholder="Enter client/company name"
-            shape="pill"
-          />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+          <FormSection title="Client Information">
+            <FormField
+              label="Client Name *"
+              value={formData.name}
+              onChangeText={(text: string) => updateField('name', text)}
+              placeholder="Enter client/company name"
+              shape="pill"
+            />
 
-          <View style={{ gap: spacing.sm }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
-              Categories *
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {categories.map((category) => (
-                <Chip
-                  key={category.id}
-                  label={category.name}
-                  selected={formData.categoryIds.includes(category.id)}
-                  onPress={() => toggleCategory(category.id)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {requiresOrganisation() && (
-            <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
-                  Organisations *
-                </Text>
-                <Pressable
-                  onPress={() => setShowOrgInput(!showOrgInput)}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4
-                  })}
-                >
-                  <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.primary} />
-                  <Text style={{ fontSize: 13, color: theme.primary, fontWeight: '600' }}>
-                    {showOrgInput ? 'Cancel' : 'Add New'}
-                  </Text>
-                </Pressable>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+                Categories *
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                {categories.map((category) => (
+                  <Chip
+                    key={category.id}
+                    label={category.name}
+                    selected={formData.categoryIds.includes(category.id)}
+                    onPress={() => toggleCategory(category.id)}
+                  />
+                ))}
               </View>
+            </View>
 
-              {showOrgInput ? (
-                <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-                  <View style={{ flex: 1 }}>
-                    <FormField
-                      value={newOrgName}
-                      onChangeText={setNewOrgName}
-                      placeholder="Organisation name"
-                      shape="pill"
-                      containerStyle={{ marginBottom: 0 }}
-                    />
-                  </View>
+            {requiresOrganisation() && (
+              <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+                    Organisations *
+                  </Text>
                   <Pressable
-                    onPress={handleAddOrganisation}
+                    onPress={() => setShowOrgInput(!showOrgInput)}
                     style={({ pressed }) => ({
-                      backgroundColor: pressed ? baseColors.purple[600] : baseColors.purple[500],
-                      height: 48,
-                      width: 48,
-                      borderRadius: borderRadius.full,
-                      justifyContent: 'center',
+                      opacity: pressed ? 0.7 : 1,
+                      flexDirection: 'row',
                       alignItems: 'center',
+                      gap: 4
                     })}
                   >
-                    <Ionicons name="checkmark" size={24} color="#fff" />
+                    <Ionicons name={showOrgInput ? 'close' : 'add'} size={18} color={theme.primary} />
+                    <Text style={{ fontSize: 13, color: theme.primary, fontWeight: '600' }}>
+                      {showOrgInput ? 'Cancel' : 'Add New'}
+                    </Text>
                   </Pressable>
                 </View>
-              ) : (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                  {organisations.length > 0 ? (
-                    organisations.map((org) => (
-                      <Chip
-                        key={org.id}
-                        label={org.name}
-                        selected={formData.organisationIds.includes(org.id)}
-                        onPress={() => toggleOrganisation(org.id)}
+
+                {showOrgInput ? (
+                  <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <FormField
+                        value={newOrgName}
+                        onChangeText={setNewOrgName}
+                        placeholder="Organisation name"
+                        shape="pill"
+                        containerStyle={{ marginBottom: 0 }}
                       />
-                    ))
-                  ) : (
-                    <Text style={{ fontSize: 13, color: theme.textSecondary, fontStyle: 'italic' }}>
-                      No organisations found. Add one above.
-                    </Text>
-                  )}
-                </View>
-              )}
-            </View>
-          )}
-        </FormSection>
+                    </View>
+                    <Pressable
+                      onPress={handleAddOrganisation}
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed ? baseColors.purple[600] : baseColors.purple[500],
+                        height: 48,
+                        width: 48,
+                        borderRadius: borderRadius.full,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      })}
+                    >
+                      <Ionicons name="checkmark" size={24} color="#fff" />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                    {organisations.length > 0 ? (
+                      organisations.map((org) => (
+                        <Chip
+                          key={org.id}
+                          label={org.name}
+                          selected={formData.organisationIds.includes(org.id)}
+                          onPress={() => toggleOrganisation(org.id)}
+                        />
+                      ))
+                    ) : (
+                      <Text style={{ fontSize: 13, color: theme.textSecondary, fontStyle: 'italic' }}>
+                        No organisations found. Add one above.
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+          </FormSection>
 
-        <FormSection title="Contact Information">
-          <FormField
-            label="Contact Person *"
-            value={formData.contactPerson}
-            onChangeText={(text: string) => updateField('contactPerson', text)}
-            placeholder="Enter contact person name"
-            shape="pill"
-          />
-          <FormField
-            label="Phone *"
-            value={formData.phone}
-            onChangeText={(text: string) => updateField('phone', text)}
-            placeholder="Enter phone number"
-            keyboardType="phone-pad"
-            shape="pill"
-          />
-          <FormField
-            label="Email *"
-            value={formData.email}
-            onChangeText={(text: string) => updateField('email', text)}
-            placeholder="Enter email address"
-            keyboardType="email-address"
-            shape="pill"
-          />
-          <FormField
-            label="Address"
-            value={formData.address}
-            onChangeText={(text: string) => updateField('address', text)}
-            placeholder="Enter address"
-            multiline
-          />
-        </FormSection>
+          <FormSection title="Contact Information">
+            <FormField
+              label="Contact Person *"
+              value={formData.contactPerson}
+              onChangeText={(text: string) => updateField('contactPerson', text)}
+              placeholder="Enter contact person name"
+              shape="pill"
+            />
+            <FormField
+              label="Phone *"
+              value={formData.phone}
+              onChangeText={(text: string) => updateField('phone', text)}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+              shape="pill"
+            />
+            <FormField
+              label="Email *"
+              value={formData.email}
+              onChangeText={(text: string) => updateField('email', text)}
+              placeholder="Enter email address"
+              keyboardType="email-address"
+              shape="pill"
+            />
+            <FormField
+              label="Address"
+              value={formData.address}
+              onChangeText={(text: string) => updateField('address', text)}
+              placeholder="Enter address"
+              multiline
+            />
+          </FormSection>
 
-        <View style={{ marginTop: spacing.sm, marginBottom: spacing.xl }}>
-          <Button
-            title={loading ? 'Creating...' : 'Create Client'}
-            onPress={handleSubmit}
-            disabled={loading}
-            loading={loading}
-            fullWidth
-            shape="pill"
-          />
-        </View>
-      </ScrollView>
+          <View style={{ marginTop: spacing.sm, marginBottom: spacing.xl }}>
+            <Button
+              title={loading ? 'Creating...' : 'Create Client'}
+              onPress={handleSubmit}
+              disabled={loading}
+              loading={loading}
+              fullWidth
+              shape="pill"
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

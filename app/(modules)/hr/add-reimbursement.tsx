@@ -282,8 +282,8 @@ export default function AddReimbursementScreen() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title="Request Reimbursement" showNotifications={false} />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 120 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
           {/* Employee Info */}
           <Animated.View entering={FadeIn.duration(300)} style={{

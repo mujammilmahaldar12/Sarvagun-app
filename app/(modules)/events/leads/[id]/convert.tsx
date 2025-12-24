@@ -157,16 +157,26 @@ export default function ConvertLeadScreen() {
                 event_dates: [{ date: format(formData.startDate, 'yyyy-MM-dd') }],
             };
 
+            console.log('🔄 Converting lead with payload:', payload);
             await eventsService.convertLead(parseInt(id), payload);
+            console.log('✅ Lead converted successfully, navigating to events list...');
+
             showToast({ message: 'Lead converted to Event successfully!', type: 'success' });
-            router.replace('/(modules)/events'); // Go to events list
+
+            // Navigate to events list - use navigate with longer delay for state cleanup
+            console.log('🚀 Starting navigation to events tab...');
+            setTimeout(() => {
+                console.log('🚀 Executing navigation...');
+                // Use navigate instead of replace for more reliable navigation
+                router.navigate('/(modules)/events?tab=events' as any);
+            }, 300);
         } catch (error: any) {
-            console.error('Convert lead error:', error);
+            console.error('❌ Convert lead error:', error);
+            setSubmitting(false); // Only reset on error
             const msg = error.response?.data?.error || 'Failed to convert lead';
             Alert.alert('Error', typeof msg === 'string' ? msg : JSON.stringify(msg));
-        } finally {
-            setSubmitting(false);
         }
+        // Note: Don't reset submitting on success - we're navigating away
     };
 
     if (loading) {

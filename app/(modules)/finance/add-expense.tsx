@@ -3,7 +3,7 @@
  * Matches exact field list provided by user
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, Pressable, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable, Alert, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -229,151 +229,157 @@ export default function AddExpenseScreen() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ModuleHeader title={isEditMode ? 'Edit Expense' : 'Add Expense'} showBack showNotifications={false} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        <Select
-          label="Event *"
-          value={formData.event}
-          onChange={(val) => updateField('event', val)}
-          options={eventOptions}
-          placeholder="Select Event"
-          searchable
-          required
-        />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+          <Select
+            label="Event *"
+            value={formData.event}
+            onChange={(val) => updateField('event', val)}
+            options={eventOptions}
+            placeholder="Select Event"
+            searchable
+            required
+          />
 
-        <Select
-          label="Vendor *"
-          value={formData.vendor}
-          onChange={(val) => updateField('vendor', val)}
-          options={vendorOptions}
-          placeholder="Select Vendor"
-          searchable
-          required
-        />
+          <Select
+            label="Vendor *"
+            value={formData.vendor}
+            onChange={(val) => updateField('vendor', val)}
+            options={vendorOptions}
+            placeholder="Select Vendor"
+            searchable
+            required
+          />
 
-        <DatePicker
-          label="Expense Date *"
-          value={new Date(formData.expense_date)}
-          onChange={(date) => updateField('expense_date', date?.toISOString().split('T')[0])}
-        />
+          <DatePicker
+            label="Expense Date *"
+            value={new Date(formData.expense_date)}
+            onChange={(date) => updateField('expense_date', date?.toISOString().split('T')[0])}
+          />
 
-        <Input
-          label="Expense For *"
-          value={formData.particulars}
-          onChangeText={(text) => updateField('particulars', text)}
-          placeholder="e.g., Travel Expenses"
-          required
-        />
+          <Input
+            label="Expense For *"
+            value={formData.particulars}
+            onChangeText={(text) => updateField('particulars', text)}
+            placeholder="e.g., Travel Expenses"
+            required
+          />
 
-        <Input
-          label="Amount *"
-          value={formData.amount}
-          onChangeText={(text) => updateField('amount', text ? text.replace(/[^0-9.]/g, '') : '')}
-          placeholder="0.00"
-          keyboardType="numeric"
-          leftIcon="cash-outline"
-          required
-        />
+          <Input
+            label="Amount *"
+            value={formData.amount}
+            onChangeText={(text) => updateField('amount', text ? text.replace(/[^0-9.]/g, '') : '')}
+            placeholder="0.00"
+            keyboardType="numeric"
+            leftIcon="cash-outline"
+            required
+          />
 
-        <Select
-          label="Payment Status *"
-          value={formData.payment_status}
-          onChange={(val) => updateField('payment_status', val)}
-          options={PAYMENT_STATUS_OPTIONS}
-          required
-        />
+          <Select
+            label="Payment Status *"
+            value={formData.payment_status}
+            onChange={(val) => updateField('payment_status', val)}
+            options={PAYMENT_STATUS_OPTIONS}
+            required
+          />
 
-        <Select
-          label="Mode of Payment *"
-          value={formData.mode_of_payment}
-          onChange={(val) => updateField('mode_of_payment', val)}
-          options={PAYMENT_MODE_OPTIONS}
-          required
-        />
+          <Select
+            label="Mode of Payment *"
+            value={formData.mode_of_payment}
+            onChange={(val) => updateField('mode_of_payment', val)}
+            options={PAYMENT_MODE_OPTIONS}
+            required
+          />
 
-        <Input
-          label="Payment Made By *"
-          value={formData.payment_made_by}
-          onChangeText={(text) => updateField('payment_made_by', text)}
-          placeholder="e.g., John Doe"
-          required
-        />
+          <Input
+            label="Payment Made By *"
+            value={formData.payment_made_by}
+            onChangeText={(text) => updateField('payment_made_by', text)}
+            placeholder="e.g., John Doe"
+            required
+          />
 
-        <Input
-          label="Booked By *"
-          value={formData.booked_by}
-          onChangeText={(text) => updateField('booked_by', text)}
-          placeholder="Name of person who booked"
-          required
-        />
+          <Input
+            label="Booked By *"
+            value={formData.booked_by}
+            onChangeText={(text) => updateField('booked_by', text)}
+            placeholder="Name of person who booked"
+            required
+          />
 
-        <Input
-          label="Paid To *"
-          value={formData.paid_to}
-          onChangeText={(text) => updateField('paid_to', text)}
-          placeholder="Name of receiver"
-          required
-        />
+          <Input
+            label="Paid To *"
+            value={formData.paid_to}
+            onChangeText={(text) => updateField('paid_to', text)}
+            placeholder="Name of receiver"
+            required
+          />
 
-        <Input
-          label="Details *"
-          value={formData.details}
-          onChangeText={(text) => updateField('details', text)}
-          placeholder="Enter expense details"
-          multiline
-          required
-        />
+          <Input
+            label="Details *"
+            value={formData.details}
+            onChangeText={(text) => updateField('details', text)}
+            placeholder="Enter expense details"
+            multiline
+            required
+          />
 
-        <Select
-          label="Bill/Evidence *"
-          value={formData.bill_evidence}
-          onChange={(val) => updateField('bill_evidence', val)}
-          options={BILL_EVIDENCE_OPTIONS}
-          required
-        />
+          <Select
+            label="Bill/Evidence *"
+            value={formData.bill_evidence}
+            onChange={(val) => updateField('bill_evidence', val)}
+            options={BILL_EVIDENCE_OPTIONS}
+            required
+          />
 
-        {formData.bill_evidence === 'yes' && (
-          <View>
-            <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text, marginBottom: 8 }}>
-              Upload Evidence
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {photos.map((photo, index) => (
-                <View key={index} style={{ position: 'relative' }}>
-                  <Image source={{ uri: photo.uri }} style={{ width: 80, height: 80, borderRadius: 8 }} />
-                  <Pressable
-                    onPress={() => setPhotos(prev => prev.filter((_, i) => i !== index))}
-                    style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'white', borderRadius: 10 }}
-                  >
-                    <Ionicons name="close-circle" size={20} color={theme.error} />
-                  </Pressable>
-                </View>
-              ))}
-              <Pressable
-                onPress={handleImagePick}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderStyle: 'dashed',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Ionicons name="camera-outline" size={24} color={theme.textSecondary} />
-              </Pressable>
+          {formData.bill_evidence === 'yes' && (
+            <View>
+              <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.text, marginBottom: 8 }}>
+                Upload Evidence
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {photos.map((photo, index) => (
+                  <View key={index} style={{ position: 'relative' }}>
+                    <Image source={{ uri: photo.uri }} style={{ width: 80, height: 80, borderRadius: 8 }} />
+                    <Pressable
+                      onPress={() => setPhotos(prev => prev.filter((_, i) => i !== index))}
+                      style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'white', borderRadius: 10 }}
+                    >
+                      <Ionicons name="close-circle" size={20} color={theme.error} />
+                    </Pressable>
+                  </View>
+                ))}
+                <Pressable
+                  onPress={handleImagePick}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderStyle: 'dashed',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Ionicons name="camera-outline" size={24} color={theme.textSecondary} />
+                </Pressable>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        <Button
-          title={isEditMode ? 'Update Expense' : 'Create Expense'}
-          onPress={handleSubmit}
-          loading={loading}
-          style={{ marginTop: 24, marginBottom: 40 }}
-        />
-      </ScrollView>
+          <Button
+            title={isEditMode ? 'Update Expense' : 'Create Expense'}
+            onPress={handleSubmit}
+            loading={loading}
+            style={{ marginTop: 24, marginBottom: 40 }}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

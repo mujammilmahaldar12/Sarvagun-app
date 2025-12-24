@@ -19,6 +19,7 @@ import type { Venue } from '@/types/events';
 interface VenuesListProps {
   searchQuery?: string;
   refreshing?: boolean;
+  onRefresh?: () => void;
   headerComponent?: React.ReactNode;
 }
 
@@ -34,6 +35,7 @@ interface VenueRowData {
 const VenuesList: React.FC<VenuesListProps> = ({
   searchQuery = '',
   refreshing = false,
+  onRefresh,
   headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
@@ -270,6 +272,8 @@ const VenuesList: React.FC<VenuesListProps> = ({
         paginated={true}
         pageSize={20}
         ListHeaderComponent={headerComponent}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
       />
     </View>
   );

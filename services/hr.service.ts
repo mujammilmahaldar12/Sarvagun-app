@@ -487,7 +487,7 @@ class HRService {
    * Get leave statistics (dashboard metrics)
    */
   async getLeaveStatistics(): Promise<LeaveStatistics> {
-    const response = await api.get<LeaveStatistics>('/leave_management/statistics/');
+    const response = await api.get<LeaveStatistics>('/leave_management/enhanced-leaves/statistics/');
     return response;
   }
 

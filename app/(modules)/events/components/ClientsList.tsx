@@ -22,6 +22,7 @@ interface ClientsListProps {
   searchQuery?: string;
   selectedCategory?: number;
   refreshing?: boolean;
+  onRefresh?: () => void;
   headerComponent?: React.ReactNode;
 }
 
@@ -41,6 +42,7 @@ const ClientsList: React.FC<ClientsListProps> = ({
   searchQuery = '',
   selectedCategory,
   refreshing = false,
+  onRefresh,
   headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
@@ -364,6 +366,8 @@ const ClientsList: React.FC<ClientsListProps> = ({
         paginated={true}
         pageSize={20}
         ListHeaderComponent={headerComponent}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
       />
     </View>
   );

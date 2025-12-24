@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useAllUsers, useSearchEmployees, useReimbursements, useReimbursementStatistics, useUpdateReimbursementStatus } from '@/hooks/useHRQueries';
 import { useModule } from '@/hooks/useModule';
-import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB, ActionSheet } from '@/components';
+import { Table, type TableColumn, Badge, KPICard, FilterBar, EmptyState, Skeleton, FAB } from '@/components';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import type { Reimbursement } from '@/types/hr';
 
@@ -54,7 +54,7 @@ export default function HRScreen() {
     requestType?: 'leave' | 'reimbursement';
     onConfirm?: () => void;
   }>({ visible: false, title: '', message: '', onConfirm: () => { }, confirmText: '', type: null });
-  const [showAddActionSheet, setShowAddActionSheet] = useState(false);
+
 
   const [showHireMenu, setShowHireMenu] = useState(false);
 
@@ -227,7 +227,9 @@ export default function HRScreen() {
     if (activeTab === 'staff') {
       router.push('/(modules)/hr/add-employee' as any);
     } else {
-      setShowAddActionSheet(true); // Show options: Leave or Reimbursement
+      // My Requests tab - Only Reimbursement in HR module
+      // Leave management is in the Leave module
+      router.push('/(modules)/hr/add-reimbursement' as any);
     }
   };
 
@@ -274,11 +276,8 @@ export default function HRScreen() {
     setProcessingId(item.id);
 
     try {
-      if (item.requestType === 'leave') {
-        await updateLeaveStatus.mutateAsync({ id: item.id, data: { status: 'approved' } });
-      } else {
-        await updateReimbursementStatus.mutateAsync({ id: item.id, status: 'approved', reason: 'Approved' });
-      }
+      // HR module only handles reimbursements - Leave is in Leave module
+      await updateReimbursementStatus.mutateAsync({ id: item.id, status: 'approved', reason: 'Approved' });
       console.log('✅ Approve successful');
     } catch (error) {
       console.error('❌ Approve failed:', error);
@@ -374,113 +373,8 @@ export default function HRScreen() {
     </TouchableOpacity>
   );
 
-  const renderLeaveCard = (item: any, showActions: boolean = false, showUserActions: boolean = false) => (
-    <TouchableOpacity
-      key={item.id}
-      // onPress={() => handleRowPress(item)} 
-      activeOpacity={0.9} // Leaves don't have detail page yet?
-      style={[styles.card, { backgroundColor: theme.surface }]}
-    >
-      <View style={styles.cardHeader}>
-        <View style={{ flex: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ padding: 4, borderRadius: 6, backgroundColor: '#8B5CF615' }}>
-            <Ionicons name="calendar-outline" size={14} color="#8B5CF6" />
-          </View>
-          <View>
-            <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{item.employee}</Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{item.type}</Text>
-          </View>
-        </View>
-        <Badge label={item.status.charAt(0).toUpperCase() + item.status.slice(1)} status={item.status as any} size="sm" />
-      </View>
+  // renderLeaveCard removed - Leave management is in Leave module
 
-      <View style={styles.cardRow}>
-        <Text style={{ color: theme.text, fontSize: 14, fontWeight: '500' }}>
-          {item.date}
-          {item.days > 0 && <Text style={{ fontSize: 12, color: theme.textSecondary, fontWeight: '400' }}> ({item.days} days)</Text>}
-        </Text>
-      </View>
-      <View style={{ marginBottom: 4 }}>
-        <Text style={{ color: theme.textSecondary, fontSize: 12, fontStyle: 'italic' }} numberOfLines={1}>"{item.description}"</Text>
-      </View>
-
-      {/* Admin/Approver Actions (Approve/Reject) */}
-      {showActions && item.status === 'pending' && (
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
-            onPress={(e) => { e.stopPropagation(); handleReject(item); }}
-            disabled={processingId === item.id}
-          >
-            {processingId === item.id ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="close" size={14} color="#fff" />
-                <Text style={styles.actionBtnText}>Reject</Text>
-              </>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#10b981' }]}
-            onPress={(e) => { e.stopPropagation(); handleApprove(item); }}
-            disabled={processingId === item.id}
-          >
-            {processingId === item.id ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={14} color="#fff" />
-                <Text style={styles.actionBtnText}>Approve</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* User Actions (Edit/Cancel) for My Requests */}
-      {(() => {
-        const shouldShowUserActions = showUserActions && item.status === 'pending';
-        if (shouldShowUserActions) {
-          console.log('🔘 Rendering user action buttons for leave:', item.id, 'Status:', item.status);
-        }
-        return shouldShowUserActions ? (
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#f59e0b' }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                console.log('✏️ Edit button pressed!');
-                handleEditLeave(item);
-              }}
-              disabled={processingId === item.id}
-            >
-              <Ionicons name="pencil" size={14} color="#fff" />
-              <Text style={styles.actionBtnText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: processingId === item.id ? '#6b7280' : '#ef4444' }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                console.log('🗑️ Cancel button pressed!');
-                handleCancelLeave(item);
-              }}
-              disabled={processingId === item.id}
-            >
-              {processingId === item.id ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="trash" size={14} color="#fff" />
-                  <Text style={styles.actionBtnText}>Cancel</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        ) : null;
-      })()}
-    </TouchableOpacity>
-  );
 
   // Render content based on active tab
   const renderContent = () => {
@@ -675,24 +569,7 @@ export default function HRScreen() {
         </View>
       )}
 
-      {/* Add New Action Sheet */}
-      <ActionSheet
-        visible={showAddActionSheet}
-        onClose={() => setShowAddActionSheet(false)}
-        title="Create New Request"
-        actions={[
-          {
-            label: 'Apply for Leave',
-            icon: 'calendar-outline',
-            onPress: () => router.push('/(modules)/leave/apply' as any),
-          },
-          {
-            label: 'Request Reimbursement',
-            icon: 'cash-outline',
-            onPress: () => router.push('/(modules)/hr/add-reimbursement' as any),
-          },
-        ]}
-      />
+
 
     </Animated.View>
   );

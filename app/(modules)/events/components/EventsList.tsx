@@ -21,6 +21,7 @@ interface EventsListProps {
   searchQuery?: string;
   selectedStatus?: string;
   refreshing?: boolean;
+  onRefresh?: () => void;
   headerComponent?: React.ReactNode;
 }
 
@@ -39,6 +40,7 @@ const EventsList: React.FC<EventsListProps> = ({
   searchQuery = '',
   selectedStatus = 'all',
   refreshing = false,
+  onRefresh,
   headerComponent,
 }) => {
   const { theme, spacing } = useTheme();
@@ -339,6 +341,8 @@ const EventsList: React.FC<EventsListProps> = ({
         paginated={true}
         pageSize={20}
         ListHeaderComponent={headerComponent}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
       />
     </View>
   );

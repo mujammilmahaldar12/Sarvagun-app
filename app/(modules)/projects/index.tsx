@@ -16,7 +16,9 @@ import {
     ActivityIndicator,
     Modal,
     StyleSheet,
-    RefreshControl
+    RefreshControl,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -469,6 +471,12 @@ export default function ProjectsScreen() {
             }
         }, {
             onSuccess: () => {
+                // Update selectedProject state with new values to reflect changes immediately
+                setSelectedProject({
+                    ...selectedProject,
+                    project_name: editProjectName.trim(),
+                    description: editProjectDescription.trim()
+                });
                 setShowEditProject(false);
                 refetchProjects();
             }
@@ -1032,160 +1040,172 @@ export default function ProjectsScreen() {
 
                     {/* Add/Edit Task Modal */}
                     <Modal visible={showAddTask} transparent animationType="slide">
-                        <View style={styles.modalOverlay}>
-                            <View style={[styles.modalContent, { backgroundColor: theme.surface, maxHeight: '80%' }]}>
-                                <Text style={[styles.modalTitle, { color: theme.text }]}>
-                                    {editingTaskId ? 'Edit Task' : 'Add Task'}
-                                </Text>
-
-                                {/* Section Selector */}
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
-                                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Section *</Text>
-                                    <TouchableOpacity
-                                        onPress={() => setShowAddSection(true)}
-                                        style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
+                        <KeyboardAvoidingView
+                            style={{ flex: 1 }}
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            keyboardVerticalOffset={0}
+                        >
+                            <View style={styles.modalOverlay}>
+                                <View style={[styles.modalContent, { backgroundColor: theme.surface, maxHeight: '85%', minHeight: 400 }]}>
+                                    <ScrollView
+                                        showsVerticalScrollIndicator={false}
+                                        keyboardShouldPersistTaps="handled"
+                                        contentContainerStyle={{ flexGrow: 1 }}
                                     >
-                                        <Ionicons name="add" size={16} color="#fff" />
-                                    </TouchableOpacity>
-                                </View>
-                                {selectedSectionForTask ? (
-                                    <View style={[styles.selectedSectionDisplay, { backgroundColor: theme.primary + '15', borderColor: theme.primary, marginBottom: spacing.md }]}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                            <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
-                                            <Text style={{ color: theme.primary, fontSize: typography.sizes.sm, fontWeight: '600', flex: 1 }}>
-                                                {sectionsList.find(s => s.id === selectedSectionForTask)?.section_name}
-                                            </Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            onPress={() => setSelectedSectionForTask(null)}
-                                            style={{ padding: 4 }}
-                                        >
-                                            <Text style={{ color: theme.textSecondary, fontSize: typography.sizes.xs }}>Change</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
-                                    <View style={[styles.sectionPickerContainer, { borderColor: theme.border, marginBottom: spacing.md }]}>
-                                        {sectionsList.map((section) => (
+                                        <Text style={[styles.modalTitle, { color: theme.text }]}>
+                                            {editingTaskId ? 'Edit Task' : 'Add Task'}
+                                        </Text>
+
+                                        {/* Section Selector */}
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
+                                            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Section *</Text>
                                             <TouchableOpacity
-                                                key={section.id}
-                                                onPress={() => setSelectedSectionForTask(section.id)}
-                                                style={[
-                                                    styles.sectionChip,
-                                                    { backgroundColor: theme.background }
-                                                ]}
+                                                onPress={() => setShowAddSection(true)}
+                                                style={[styles.addSectionButtonInline, { backgroundColor: theme.primary }]}
                                             >
-                                                <Text style={{
-                                                    color: theme.text,
-                                                    fontSize: typography.sizes.xs,
-                                                    fontWeight: '600'
-                                                }}>
-                                                    {section.section_name}
+                                                <Ionicons name="add" size={16} color="#fff" />
+                                            </TouchableOpacity>
+                                        </View>
+                                        {selectedSectionForTask ? (
+                                            <View style={[styles.selectedSectionDisplay, { backgroundColor: theme.primary + '15', borderColor: theme.primary, marginBottom: spacing.md }]}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                                    <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+                                                    <Text style={{ color: theme.primary, fontSize: typography.sizes.sm, fontWeight: '600', flex: 1 }}>
+                                                        {sectionsList.find(s => s.id === selectedSectionForTask)?.section_name}
+                                                    </Text>
+                                                </View>
+                                                <TouchableOpacity
+                                                    onPress={() => setSelectedSectionForTask(null)}
+                                                    style={{ padding: 4 }}
+                                                >
+                                                    <Text style={{ color: theme.textSecondary, fontSize: typography.sizes.xs }}>Change</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        ) : (
+                                            <View style={[styles.sectionPickerContainer, { borderColor: theme.border, marginBottom: spacing.md }]}>
+                                                {sectionsList.map((section) => (
+                                                    <TouchableOpacity
+                                                        key={section.id}
+                                                        onPress={() => setSelectedSectionForTask(section.id)}
+                                                        style={[
+                                                            styles.sectionChip,
+                                                            { backgroundColor: theme.background }
+                                                        ]}
+                                                    >
+                                                        <Text style={{
+                                                            color: theme.text,
+                                                            fontSize: typography.sizes.xs,
+                                                            fontWeight: '600'
+                                                        }}>
+                                                            {section.section_name}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        )}
+
+                                        <TextInput
+                                            value={newTaskTitle}
+                                            onChangeText={setNewTaskTitle}
+                                            placeholder="Task title *"
+                                            placeholderTextColor={theme.textTertiary}
+                                            style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginBottom: spacing.md }]}
+                                        />
+
+                                        {/* Due Date */}
+                                        <TouchableOpacity
+                                            onPress={() => setShowDatePicker(true)}
+                                            style={[styles.input, styles.dateInput, { backgroundColor: theme.background, borderColor: theme.border, marginBottom: spacing.md }]}
+                                        >
+                                            <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
+                                            <Text style={{ color: newTaskDueDate ? theme.text : theme.textTertiary, marginLeft: 8 }}>
+                                                {newTaskDueDate || 'Select due date (optional)'}
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        {/* Priority Dropdown */}
+                                        <Text style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: spacing.xs }]}>Priority</Text>
+                                        <View style={{ zIndex: 10, marginBottom: spacing.md }}>
+                                            <TouchableOpacity
+                                                onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                                                style={[styles.dropdownButton, { borderColor: theme.border, backgroundColor: theme.background }]}
+                                            >
+                                                <Text style={{ color: newTaskPriority ? theme.text : theme.textTertiary }}>
+                                                    {newTaskPriority
+                                                        ? prioritiesList.find(p => p.id === newTaskPriority)?.level
+                                                        : 'Select Priority'}
+                                                </Text>
+                                                <Ionicons name={showPriorityDropdown ? "chevron-up" : "chevron-down"} size={20} color={theme.textSecondary} />
+                                            </TouchableOpacity>
+
+                                            {showPriorityDropdown && (
+                                                <View style={[styles.dropdownList, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.shadow }]}>
+                                                    {prioritiesList.map((priority) => (
+                                                        <TouchableOpacity
+                                                            key={priority.id}
+                                                            onPress={() => {
+                                                                setNewTaskPriority(priority.id);
+                                                                setShowPriorityDropdown(false);
+                                                            }}
+                                                            style={[styles.modalDropdownItem, { borderBottomColor: theme.border }]}
+                                                        >
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                                <View style={{
+                                                                    width: 8, height: 8, borderRadius: 4,
+                                                                    backgroundColor: priority.level === 'P1' ? '#EF4444' : priority.level === 'P2' ? '#F59E0B' : priority.level === 'P3' ? '#10B981' : '#3B82F6'
+                                                                }} />
+                                                                <Text style={{ color: theme.text }}>{priority.level}</Text>
+                                                            </View>
+                                                            {newTaskPriority === priority.id && (
+                                                                <Ionicons name="checkmark" size={16} color={theme.primary} />
+                                                            )}
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            )}
+                                        </View>
+
+                                        <TextInput
+                                            value={newTaskComments}
+                                            onChangeText={setNewTaskComments}
+                                            placeholder="Comments (optional)"
+                                            placeholderTextColor={theme.textTertiary}
+                                            multiline
+                                            numberOfLines={2}
+                                            style={[styles.input, styles.textArea, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                                        />
+
+                                        <View style={styles.modalActions}>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setShowAddTask(false);
+                                                    setNewTaskTitle('');
+                                                    setNewTaskDueDate('');
+                                                    setNewTaskPriority(null);
+                                                    setNewTaskComments('');
+                                                    setSelectedSectionForTask(null);
+                                                }}
+                                                style={[styles.modalButton, { backgroundColor: theme.border }]}
+                                            >
+                                                <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={handleCreateOrUpdateTask}
+                                                disabled={createTaskMutation.isPending || updateTaskMutation.isPending}
+                                                style={[styles.modalButton, { backgroundColor: theme.primary }]}
+                                            >
+                                                <Text style={styles.modalButtonTextWhite}>
+                                                    {editingTaskId
+                                                        ? (updateTaskMutation.isPending ? 'Updating...' : 'Update Task')
+                                                        : (createTaskMutation.isPending ? 'Creating...' : 'Create Task')
+                                                    }
                                                 </Text>
                                             </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                )}
-
-                                <TextInput
-                                    value={newTaskTitle}
-                                    onChangeText={setNewTaskTitle}
-                                    placeholder="Task title *"
-                                    placeholderTextColor={theme.textTertiary}
-                                    style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginBottom: spacing.md }]}
-                                />
-
-                                {/* Due Date */}
-                                <TouchableOpacity
-                                    onPress={() => setShowDatePicker(true)}
-                                    style={[styles.input, styles.dateInput, { backgroundColor: theme.background, borderColor: theme.border, marginBottom: spacing.md }]}
-                                >
-                                    <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
-                                    <Text style={{ color: newTaskDueDate ? theme.text : theme.textTertiary, marginLeft: 8 }}>
-                                        {newTaskDueDate || 'Select due date (optional)'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Priority Dropdown */}
-                                <Text style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: spacing.xs }]}>Priority</Text>
-                                <View style={{ zIndex: 10, marginBottom: spacing.md }}>
-                                    <TouchableOpacity
-                                        onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}
-                                        style={[styles.dropdownButton, { borderColor: theme.border, backgroundColor: theme.background }]}
-                                    >
-                                        <Text style={{ color: newTaskPriority ? theme.text : theme.textTertiary }}>
-                                            {newTaskPriority
-                                                ? prioritiesList.find(p => p.id === newTaskPriority)?.level
-                                                : 'Select Priority'}
-                                        </Text>
-                                        <Ionicons name={showPriorityDropdown ? "chevron-up" : "chevron-down"} size={20} color={theme.textSecondary} />
-                                    </TouchableOpacity>
-
-                                    {showPriorityDropdown && (
-                                        <View style={[styles.dropdownList, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.shadow }]}>
-                                            {prioritiesList.map((priority) => (
-                                                <TouchableOpacity
-                                                    key={priority.id}
-                                                    onPress={() => {
-                                                        setNewTaskPriority(priority.id);
-                                                        setShowPriorityDropdown(false);
-                                                    }}
-                                                    style={[styles.modalDropdownItem, { borderBottomColor: theme.border }]}
-                                                >
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                        <View style={{
-                                                            width: 8, height: 8, borderRadius: 4,
-                                                            backgroundColor: priority.level === 'P1' ? '#EF4444' : priority.level === 'P2' ? '#F59E0B' : priority.level === 'P3' ? '#10B981' : '#3B82F6'
-                                                        }} />
-                                                        <Text style={{ color: theme.text }}>{priority.level}</Text>
-                                                    </View>
-                                                    {newTaskPriority === priority.id && (
-                                                        <Ionicons name="checkmark" size={16} color={theme.primary} />
-                                                    )}
-                                                </TouchableOpacity>
-                                            ))}
                                         </View>
-                                    )}
-                                </View>
-
-                                <TextInput
-                                    value={newTaskComments}
-                                    onChangeText={setNewTaskComments}
-                                    placeholder="Comments (optional)"
-                                    placeholderTextColor={theme.textTertiary}
-                                    multiline
-                                    numberOfLines={2}
-                                    style={[styles.input, styles.textArea, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                                />
-
-                                <View style={styles.modalActions}>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setShowAddTask(false);
-                                            setNewTaskTitle('');
-                                            setNewTaskDueDate('');
-                                            setNewTaskPriority(null);
-                                            setNewTaskComments('');
-                                            setSelectedSectionForTask(null);
-                                        }}
-                                        style={[styles.modalButton, { backgroundColor: theme.border }]}
-                                    >
-                                        <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={handleCreateOrUpdateTask}
-                                        disabled={createTaskMutation.isPending || updateTaskMutation.isPending}
-                                        style={[styles.modalButton, { backgroundColor: theme.primary }]}
-                                    >
-                                        <Text style={styles.modalButtonTextWhite}>
-                                            {editingTaskId
-                                                ? (updateTaskMutation.isPending ? 'Updating...' : 'Update Task')
-                                                : (createTaskMutation.isPending ? 'Creating...' : 'Create Task')
-                                            }
-                                        </Text>
-                                    </TouchableOpacity>
+                                    </ScrollView>
                                 </View>
                             </View>
-                        </View>
+                        </KeyboardAvoidingView>
                     </Modal>
 
                     {/* Date Picker Modal */}

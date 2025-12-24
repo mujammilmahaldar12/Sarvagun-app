@@ -63,14 +63,25 @@ export default function EditLeaveScreen() {
     // Populate form when data loads
     useEffect(() => {
         if (leaveData) {
-            setLeaveType(leaveData.leave_type || leaveData.leave_type_name);
-            setShiftType(leaveData.shift_type || 'full_shift');
-            setReason(leaveData.reason || '');
+            const data = leaveData as any; // Cast to any to access extended backend fields
+            console.log('📝 Edit Leave: Loading data', data);
+            // Use leave_type_name (string) not leave_type (number ID)
+            const typeName = data.leave_type_name || data.leave_type;
+            setLeaveType(typeName as LeaveType);
+            setShiftType(data.shift_type || 'full_shift');
+            setReason(data.reason || '');
 
-            // Check if it's multi-date
-            if (leaveData.dates && leaveData.dates.length > 0) {
+            // Backend returns leave_dates array with date objects
+            const leaveDates = data.leave_dates || data.dates || [];
+            if (leaveDates.length > 0) {
                 setSelectionMode('multi');
-                setSelectedDates(leaveData.dates.map((d: string) => new Date(d)));
+                // Map dates - backend returns objects with 'date' property
+                const dates = leaveDates.map((d: any) => {
+                    const dateStr = typeof d === 'string' ? d : d.date;
+                    return new Date(dateStr);
+                });
+                setSelectedDates(dates);
+                console.log('📅 Loaded dates:', dates.length);
             } else if (leaveData.from_date && leaveData.to_date) {
                 setSelectionMode('range');
                 setFromDate(new Date(leaveData.from_date));
@@ -101,7 +112,14 @@ export default function EditLeaveScreen() {
         let payloadToDate: string = '';
         let specificDates: string[] = [];
 
-        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        // Use local date formatting to avoid timezone issues
+        // toISOString() converts to UTC which can shift dates back by hours
+        const formatDate = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
         if (selectionMode === 'range') {
             if (!fromDate || !toDate) {
@@ -141,7 +159,17 @@ export default function EditLeaveScreen() {
                 Alert.alert('Success', 'Leave request updated successfully!', [
                     {
                         text: 'OK',
-                        onPress: () => router.push(`/(modules)/leave/${leaveId}` as any)
+                        onPress: () => {
+                            console.log('✅ Alert confirmed, navigating to leave detail...');
+                            // Use setTimeout to ensure navigation happens after alert dismisses
+                            setTimeout(() => {
+                                router.back();
+                                // Then navigate to the detail page
+                                setTimeout(() => {
+                                    router.push(`/(modules)/leave/${leaveId}` as any);
+                                }, 100);
+                            }, 100);
+                        }
                     }
                 ]);
             },

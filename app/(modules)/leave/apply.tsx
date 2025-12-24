@@ -81,7 +81,11 @@ export default function ApplyLeaveScreen() {
     ((balance[`${leaveType.toLowerCase().replace(' ', '_')}_used` as keyof typeof balance] as number) || 0) : 0;
 
   const handleSubmit = async () => {
+    console.log('🚀 handleSubmit called - starting submission process');
+    console.log('📋 Form state:', { leaveType, reason: reason.trim(), selectionMode, fromDate, toDate, selectedDates });
+
     if (!leaveType || !reason.trim()) {
+      console.log('❌ Validation failed: Missing fields');
       Alert.alert('Missing Fields', 'Please fill in all required fields to proceed.');
       return;
     }
@@ -90,7 +94,14 @@ export default function ApplyLeaveScreen() {
     let payloadToDate: string = '';
     let specificDates: string[] = [];
 
-    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    // Use local date formatting to avoid timezone issues
+    // toISOString() converts to UTC which can shift dates back by hours
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
     if (selectionMode === 'range') {
       if (!fromDate || !toDate) {
@@ -134,8 +145,15 @@ export default function ApplyLeaveScreen() {
             {
               text: 'Great!',
               onPress: () => {
-                // Navigate back to HR module to see the request
-                router.push('/(modules)/hr' as any);
+                console.log('✅ Alert confirmed, navigating to leave list...');
+                // Use setTimeout to ensure navigation happens after alert dismisses
+                setTimeout(() => {
+                  router.back();
+                  // Double ensure by also pushing to the list
+                  setTimeout(() => {
+                    router.push('/(modules)/leave' as any);
+                  }, 100);
+                }, 100);
               }
             }
           ]);
@@ -167,11 +185,12 @@ export default function ApplyLeaveScreen() {
         </LinearGradient>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 20, paddingBottom: 100, gap: 24 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 24 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
 
           {/* Balance Card - Premium Look */}

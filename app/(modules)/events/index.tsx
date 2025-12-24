@@ -8,7 +8,7 @@ import { View, ScrollView, RefreshControl, BackHandler, Modal, Pressable, Text, 
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ModuleHeader from '@/components/layout/ModuleHeader';
 import { FilterBar } from '@/components';
@@ -36,12 +36,16 @@ interface Tab {
 export default function EventManagementScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { user, isAuthenticated } = useAuthStore();
   const eventsStore = useEventsStore();
   const insets = useSafeAreaInsets();
 
-  // UI State
-  const [activeTab, setActiveTab] = useState<TabType>('leads');
+  // UI State - use tab from URL or default to 'leads'
+  const initialTab = (tab && ['analytics', 'leads', 'events', 'clients', 'venues'].includes(tab))
+    ? tab as TabType
+    : 'leads';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<any>({});
   const [refreshing, setRefreshing] = useState(false);

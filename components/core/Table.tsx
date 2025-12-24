@@ -3,7 +3,7 @@
  * Enhanced table with Excel-like features
  */
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, FlatList, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, FlatList, Alert, useWindowDimensions, RefreshControl } from 'react-native';
 import Animated, { FadeIn, useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '@/store/themeStore';
@@ -51,9 +51,11 @@ export interface TableProps<T = any> {
   onExport?: (format: 'csv' | 'excel') => void;
   onSearch?: (query: string) => void;
   onScroll?: (event: any) => void;
+  onRefresh?: () => void;
 
   // States
   loading?: boolean;
+  refreshing?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
 
@@ -85,7 +87,9 @@ export const Table = <T extends any>({
   onExport,
   onSearch,
   onScroll,
+  onRefresh,
   loading = false,
+  refreshing = false,
   emptyMessage = 'No data available',
   searchPlaceholder = 'Search...',
   maxHeight = 600,
@@ -348,7 +352,16 @@ export const Table = <T extends any>({
     <ScrollView
       style={{ flex: 1 }}
       stickyHeaderIndices={[1]} // Make the search bar and header sticky (index 1 because index 0 is ListHeaderComponent)
-      refreshControl={refreshControl}
+      refreshControl={
+        refreshControl || (onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        ) : undefined)
+      }
       onScroll={onScroll}
       scrollEventThrottle={16}
     >

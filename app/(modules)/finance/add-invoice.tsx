@@ -319,131 +319,50 @@ export default function AddInvoiceScreen() {
         showNotifications={false}
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg }}>
-        {/* Invoice Details */}
-        <FormSection title="Invoice Details">
-          {/* Invoice Number is Auto-generated, so we only show it in edit mode or hide it */}
-          {isEditMode && invoice?.invoice_number && (
-            <View style={{ opacity: 0.7 }}>
-              <Input
-                label="Invoice Number"
-                value={invoice.invoice_number}
-                onChangeText={() => { }}
-                editable={false}
-                placeholder="Auto-generated"
-              />
-            </View>
-          )}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, gap: spacing.lg, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+          {/* Invoice Details */}
+          <FormSection title="Invoice Details">
+            {/* Invoice Number is Auto-generated, so we only show it in edit mode or hide it */}
+            {isEditMode && invoice?.invoice_number && (
+              <View style={{ opacity: 0.7 }}>
+                <Input
+                  label="Invoice Number"
+                  value={invoice.invoice_number}
+                  onChangeText={() => { }}
+                  editable={false}
+                  placeholder="Auto-generated"
+                />
+              </View>
+            )}
 
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <DatePicker
-                label="Invoice Date"
-                value={formData.date}
-                onChange={(date) => updateField('date', date)}
-                placeholder="Select invoice date"
-              />
-            </View>
-          </View>
-        </FormSection>
-
-        {/* Event Selection (Primary - select event first to auto-populate client) */}
-        <FormSection
-          title="Event Linking"
-          description="Select an event to auto-populate client details"
-        >
-          <Pressable
-            onPress={() => setShowEventModal(true)}
-            style={{ gap: spacing.xs }}
-          >
-            <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
-              Select Event
-            </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: spacing.sm,
-                borderWidth: 1,
-                borderColor: selectedEvent ? theme.primary : theme.border,
-                borderRadius: borderRadius.md,
-                backgroundColor: selectedEvent ? theme.primary + '10' : theme.surface,
-              }}
-            >
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <View style={{ flex: 1 }}>
-                <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedEvent?.name ? theme.text : theme.textSecondary }]}>
-                  {selectedEvent?.name || 'Tap to select event'}
-                </Text>
-                {selectedEvent && (
-                  <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: 2 }]}>
-                    {selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : ''}
-                    {typeof selectedEvent.client === 'object' && selectedEvent.client?.name
-                      ? ` • ${selectedEvent.client.name}`
-                      : ''}
-                  </Text>
-                )}
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                {selectedEvent && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedEvent(null);
-                      updateField('event', null);
-                      // Clear auto-populated client when event is removed
-                      setSelectedClient(null);
-                      updateField('client', null);
-                    }}
-                    style={{ padding: 4 }}
-                  >
-                    <Ionicons name="close-circle" size={20} color={theme.error || '#EF4444'} />
-                  </TouchableOpacity>
-                )}
-                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+                <DatePicker
+                  label="Invoice Date"
+                  value={formData.date}
+                  onChange={(date) => updateField('date', date)}
+                  placeholder="Select invoice date"
+                />
               </View>
             </View>
-          </Pressable>
-        </FormSection>
+          </FormSection>
 
-        {/* Client Information - Conditional based on event selection */}
-        <FormSection title="Client Information">
-          {selectedEvent && typeof selectedEvent.client === 'object' && selectedEvent.client ? (
-            // Read-only display when client is derived from event
-            <View style={{ gap: spacing.xs }}>
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                Client (from Event)
-              </Text>
-              <View
-                style={{
-                  padding: spacing.sm,
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: theme.surface,
-                  opacity: 0.8,
-                }}
-              >
-                <Text style={[getTypographyStyle('sm', 'medium'), { color: theme.text }]}>
-                  {selectedEvent.client.name}
-                </Text>
-                {(selectedEvent.client.email || selectedEvent.client.number) && (
-                  <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: 2 }]}>
-                    {selectedEvent.client.email || ''}{selectedEvent.client.email && selectedEvent.client.number ? ' • ' : ''}{selectedEvent.client.number || ''}
-                  </Text>
-                )}
-              </View>
-              <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, fontStyle: 'italic' }]}>
-                Client is automatically set from the selected event
-              </Text>
-            </View>
-          ) : (
-            // Client selector when no event is selected or event has no client
+          {/* Event Selection (Primary - select event first to auto-populate client) */}
+          <FormSection
+            title="Event Linking"
+            description="Select an event to auto-populate client details"
+          >
             <Pressable
-              onPress={() => setShowClientModal(true)}
+              onPress={() => setShowEventModal(true)}
               style={{ gap: spacing.xs }}
             >
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                Client Name <Text style={{ color: '#EF4444' }}>*</Text>
+              <Text style={[getTypographyStyle('sm', 'semibold'), { color: theme.text }]}>
+                Select Event
               </Text>
               <View
                 style={{
@@ -452,181 +371,268 @@ export default function AddInvoiceScreen() {
                   justifyContent: 'space-between',
                   padding: spacing.sm,
                   borderWidth: 1,
-                  borderColor: theme.border,
+                  borderColor: selectedEvent ? theme.primary : theme.border,
                   borderRadius: borderRadius.md,
-                  backgroundColor: theme.surface,
+                  backgroundColor: selectedEvent ? theme.primary + '10' : theme.surface,
                 }}
               >
-                <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedClient?.name ? theme.text : theme.textSecondary }]}>
-                  {selectedClient?.name || 'Select Client'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedEvent?.name ? theme.text : theme.textSecondary }]}>
+                    {selectedEvent?.name || 'Tap to select event'}
+                  </Text>
+                  {selectedEvent && (
+                    <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: 2 }]}>
+                      {selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : ''}
+                      {typeof selectedEvent.client === 'object' && selectedEvent.client?.name
+                        ? ` • ${selectedEvent.client.name}`
+                        : ''}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {selectedEvent && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedEvent(null);
+                        updateField('event', null);
+                        // Clear auto-populated client when event is removed
+                        setSelectedClient(null);
+                        updateField('client', null);
+                      }}
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons name="close-circle" size={20} color={theme.error || '#EF4444'} />
+                    </TouchableOpacity>
+                  )}
+                  <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
+                </View>
               </View>
-              {!selectedEvent && (
-                <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary }]}>
-                  Or select an event above to auto-populate client
-                </Text>
-              )}
             </Pressable>
-          )}
-        </FormSection>
+          </FormSection>
 
-        {/* Invoice Items */}
-        <FormSection title="Invoice Items" description="Add products or services">
-          <Button
-            title="Add Item"
-            onPress={handleAddItem}
-            variant="secondary"
-            fullWidth
-            leftIcon="add-circle-outline"
-          />
-
-          {items.length > 0 && (
-            <View style={{ gap: spacing.xs }}>
-              {items.map((item, index) => (
+          {/* Client Information - Conditional based on event selection */}
+          <FormSection title="Client Information">
+            {selectedEvent && typeof selectedEvent.client === 'object' && selectedEvent.client ? (
+              // Read-only display when client is derived from event
+              <View style={{ gap: spacing.xs }}>
+                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                  Client (from Event)
+                </Text>
                 <View
-                  key={index}
+                  style={{
+                    padding: spacing.sm,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: borderRadius.md,
+                    backgroundColor: theme.surface,
+                    opacity: 0.8,
+                  }}
+                >
+                  <Text style={[getTypographyStyle('sm', 'medium'), { color: theme.text }]}>
+                    {selectedEvent.client.name}
+                  </Text>
+                  {(selectedEvent.client.email || selectedEvent.client.number) && (
+                    <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, marginTop: 2 }]}>
+                      {selectedEvent.client.email || ''}{selectedEvent.client.email && selectedEvent.client.number ? ' • ' : ''}{selectedEvent.client.number || ''}
+                    </Text>
+                  )}
+                </View>
+                <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary, fontStyle: 'italic' }]}>
+                  Client is automatically set from the selected event
+                </Text>
+              </View>
+            ) : (
+              // Client selector when no event is selected or event has no client
+              <Pressable
+                onPress={() => setShowClientModal(true)}
+                style={{ gap: spacing.xs }}
+              >
+                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                  Client Name <Text style={{ color: '#EF4444' }}>*</Text>
+                </Text>
+                <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: spacing.sm,
-                    borderRadius: borderRadius.md,
-                    backgroundColor: theme.surface,
                     borderWidth: 1,
                     borderColor: theme.border,
+                    borderRadius: borderRadius.md,
+                    backgroundColor: theme.surface,
                   }}
                 >
-                  <View style={{ flex: 1, gap: spacing.xs }}>
-                    <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                      {item.particulars}
-                    </Text>
-                    <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
-                      Qty: {item.quantity} × ₹{Number(item.unit_price || 0).toLocaleString('en-IN')} = ₹{Number(item.amount).toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-                    <Pressable onPress={() => handleEditItem(index)}>
-                      <Ionicons name="create-outline" size={20} color={theme.primary} />
-                    </Pressable>
-                    <Pressable onPress={() => handleRemoveItem(index)}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </Pressable>
-                  </View>
+                  <Text style={[getTypographyStyle('sm', 'regular'), { color: selectedClient?.name ? theme.text : theme.textSecondary }]}>
+                    {selectedClient?.name || 'Select Client'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
                 </View>
-              ))}
-            </View>
-          )}
+                {!selectedEvent && (
+                  <Text style={[getTypographyStyle('xs', 'regular'), { color: theme.textSecondary }]}>
+                    Or select an event above to auto-populate client
+                  </Text>
+                )}
+              </Pressable>
+            )}
+          </FormSection>
 
-          {/* Calculation Summary */}
-          {items.length > 0 && (
-            <View style={{
-              padding: spacing.md,
-              backgroundColor: theme.surface,
-              borderRadius: borderRadius.lg,
-              gap: spacing.sm,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-            }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                  Subtotal
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                  ₹{subtotal.toLocaleString('en-IN')}
-                </Text>
+          {/* Invoice Items */}
+          <FormSection title="Invoice Items" description="Add products or services">
+            <Button
+              title="Add Item"
+              onPress={handleAddItem}
+              variant="secondary"
+              fullWidth
+              leftIcon="add-circle-outline"
+            />
+
+            {items.length > 0 && (
+              <View style={{ gap: spacing.xs }}>
+                {items.map((item, index) => (
+                  <View
+                    key={index}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: spacing.sm,
+                      borderRadius: borderRadius.md,
+                      backgroundColor: theme.surface,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: spacing.xs }}>
+                      <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                        {item.particulars}
+                      </Text>
+                      <Text style={{ ...getTypographyStyle('xs', 'regular'), color: theme.textSecondary }}>
+                        Qty: {item.quantity} × ₹{Number(item.unit_price || 0).toLocaleString('en-IN')} = ₹{Number(item.amount).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                      <Pressable onPress={() => handleEditItem(index)}>
+                        <Ionicons name="create-outline" size={20} color={theme.primary} />
+                      </Pressable>
+                      <Pressable onPress={() => handleRemoveItem(index)}>
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
               </View>
+            )}
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                  GST (CGST {formData.cgst}% + SGST {formData.sgst}%)
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-                  ₹{gstAmount.toLocaleString('en-IN')}
-                </Text>
-              </View>
+            {/* Calculation Summary */}
+            {items.length > 0 && (
+              <View style={{
+                padding: spacing.md,
+                backgroundColor: theme.surface,
+                borderRadius: borderRadius.lg,
+                gap: spacing.sm,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                    Subtotal
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                    ₹{subtotal.toLocaleString('en-IN')}
+                  </Text>
+                </View>
 
-              {Number(formData.discount) > 0 && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
-                    Discount
+                    GST (CGST {formData.cgst}% + SGST {formData.sgst}%)
                   </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
-                    - ₹{Number(formData.discount).toLocaleString('en-IN')}
+                  <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
+                    ₹{gstAmount.toLocaleString('en-IN')}
                   </Text>
                 </View>
-              )}
 
-              <View style={{ height: 1, backgroundColor: theme.border }} />
+                {Number(formData.discount) > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ ...getTypographyStyle('sm', 'medium'), color: theme.textSecondary }}>
+                      Discount
+                    </Text>
+                    <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: '#EF4444' }}>
+                      - ₹{Number(formData.discount).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                )}
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
-                  Total Amount
-                </Text>
-                <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.primary }}>
-                  ₹{totalAmount.toLocaleString('en-IN')}
-                </Text>
+                <View style={{ height: 1, backgroundColor: theme.border }} />
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ ...getTypographyStyle('base', 'bold'), color: theme.text }}>
+                    Total Amount
+                  </Text>
+                  <Text style={{ ...getTypographyStyle('xl', 'bold'), color: theme.primary }}>
+                    ₹{totalAmount.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="CGST %"
+                  value={formData.cgst}
+                  onChangeText={(text: string) => updateField('cgst', text)}
+                  placeholder="9"
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="SGST %"
+                  value={formData.sgst}
+                  onChangeText={(text: string) => updateField('sgst', text)}
+                  placeholder="9"
+                  keyboardType="numeric"
+                />
               </View>
             </View>
-          )}
+          </FormSection>
 
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <Input
-                label="CGST %"
-                value={formData.cgst}
-                onChangeText={(text: string) => updateField('cgst', text)}
-                placeholder="9"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input
-                label="SGST %"
-                value={formData.sgst}
-                onChangeText={(text: string) => updateField('sgst', text)}
-                placeholder="9"
-                keyboardType="numeric"
-              />
-            </View>
+          {/* Additional Details */}
+          <FormSection title="Additional Details (Optional)">
+            <Input
+              label="Discount"
+              value={String(formData.discount)}
+              onChangeText={(text: string) => updateField('discount', Number(text) || 0)}
+              placeholder="0"
+              keyboardType="numeric"
+            />
+
+            <Input
+              label="Notes"
+              value={formData.notes}
+              onChangeText={(text: string) => updateField('notes', text)}
+              placeholder="Add any additional notes..."
+              multiline
+              numberOfLines={3}
+            />
+          </FormSection>
+
+          {/* Submit Button */}
+          <View style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
+            <Button
+              title={isEditMode ? 'Update Invoice' : 'Create Invoice'}
+              onPress={handleSubmit}
+              loading={loading}
+              fullWidth
+              size="lg"
+              leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
+            />
           </View>
-        </FormSection>
-
-        {/* Additional Details */}
-        <FormSection title="Additional Details (Optional)">
-          <Input
-            label="Discount"
-            value={String(formData.discount)}
-            onChangeText={(text: string) => updateField('discount', Number(text) || 0)}
-            placeholder="0"
-            keyboardType="numeric"
-          />
-
-          <Input
-            label="Notes"
-            value={formData.notes}
-            onChangeText={(text: string) => updateField('notes', text)}
-            placeholder="Add any additional notes..."
-            multiline
-            numberOfLines={3}
-          />
-        </FormSection>
-
-        {/* Submit Button */}
-        <View style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
-          <Button
-            title={isEditMode ? 'Update Invoice' : 'Create Invoice'}
-            onPress={handleSubmit}
-            loading={loading}
-            fullWidth
-            size="lg"
-            leftIcon={isEditMode ? 'checkmark-circle' : 'add-circle'}
-          />
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Event Selection Modal */}
       <Modal

@@ -16,7 +16,10 @@ export default function AddVenueScreen() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    address: '',
+    // Structured address fields (combined into 'address' on submit)
+    addressStreet: '',
+    addressLandmark: '',
+    addressPincode: '',
     capacity: '',
     contactPerson: '',
     contactPhone: '',
@@ -32,8 +35,8 @@ export default function AddVenueScreen() {
     if (!formData.name.trim()) {
       return Alert.alert('Error', 'Please enter venue name');
     }
-    if (!formData.address.trim()) {
-      return Alert.alert('Error', 'Please enter venue address');
+    if (!formData.addressStreet.trim()) {
+      return Alert.alert('Error', 'Please enter venue address (Street/Area)');
     }
 
     // Prevent double submission
@@ -45,9 +48,16 @@ export default function AddVenueScreen() {
     Keyboard.dismiss();
 
     try {
+      // Combine structured address into single string (delimiter: |||)
+      const combinedAddress = [
+        formData.addressStreet,
+        formData.addressLandmark,
+        formData.addressPincode
+      ].filter(Boolean).join('|||');
+
       const result = await eventsService.createVenue({
         name: formData.name.trim(),
-        address: formData.address.trim(),
+        address: combinedAddress,
         // Backend requires capacity - send 0 if empty, otherwise parse the number
         capacity: formData.capacity && formData.capacity.trim()
           ? Number(formData.capacity)
@@ -95,11 +105,26 @@ export default function AddVenueScreen() {
               shape="pill"
             />
             <FormField
-              label="Address *"
-              value={formData.address}
-              onChangeText={(text: string) => updateField('address', text)}
-              placeholder="Enter venue address"
-              multiline
+              label="Street / Area *"
+              value={formData.addressStreet}
+              onChangeText={(text: string) => updateField('addressStreet', text)}
+              placeholder="Enter street, area or locality"
+              shape="pill"
+            />
+            <FormField
+              label="Landmark / City"
+              value={formData.addressLandmark}
+              onChangeText={(text: string) => updateField('addressLandmark', text)}
+              placeholder="Enter landmark or city"
+              shape="pill"
+            />
+            <FormField
+              label="Pincode"
+              value={formData.addressPincode}
+              onChangeText={(text: string) => updateField('addressPincode', text)}
+              placeholder="Enter pincode"
+              keyboardType="numeric"
+              shape="pill"
             />
             <FormField
               label="Capacity"
@@ -151,3 +176,4 @@ export default function AddVenueScreen() {
     </View>
   );
 }
+

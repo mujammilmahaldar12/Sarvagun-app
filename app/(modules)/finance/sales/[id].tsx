@@ -386,8 +386,13 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ eventId, saleAmount, theme })
     queryKey: ['eventExpenses', eventId],
     queryFn: async () => {
       if (!eventId) return [];
+      console.log('💸 Fetching expenses for event:', eventId);
       const response = await financeService.getExpenses({ event: eventId });
-      return Array.isArray(response) ? response : (response as any)?.results || [];
+      console.log('💸 Expenses response:', JSON.stringify(response));
+      // Handle paginated response - getExpenses returns { results: [...], count, ... }
+      const expenses = (response as any)?.results || [];
+      console.log('💸 Extracted expenses:', expenses.length);
+      return expenses;
     },
     enabled: !!eventId,
   });
