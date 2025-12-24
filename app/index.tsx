@@ -1,5 +1,9 @@
+/**
+ * Index Screen - Simple Router
+ * Handles auth check and navigation after splash is done
+ */
 import { useEffect, useState } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 import CelebrationAnimation from "@/components/ui/CelebrationAnimation";
@@ -9,7 +13,7 @@ import { ONBOARDING_STEPS } from "@/constants/onboardingSteps";
 export default function Index() {
   const { isAuthenticated, isLoading, showOnboarding, loadUser, completeOnboarding } = useAuthStore();
   const router = useRouter();
-  
+
   const [showCelebration, setShowCelebration] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
@@ -20,9 +24,8 @@ export default function Index() {
   useEffect(() => {
     if (!isLoading) {
       console.log('🔄 Index routing:', { isAuthenticated, showOnboarding });
-      
+
       if (isAuthenticated) {
-        // Check if onboarding should be shown
         if (showOnboarding) {
           setShowCelebration(true);
         } else {
@@ -48,8 +51,6 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#6D376D" />
-      
       {/* Celebration Animation for First-Time Users */}
       <CelebrationAnimation
         visible={showCelebration}
@@ -58,7 +59,7 @@ export default function Index() {
         subtitle="Get ready for an amazing experience"
         duration={3500}
       />
-      
+
       {/* Onboarding Tour */}
       <OnboardingTour
         visible={showTour}
@@ -75,6 +76,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#1A0B2E",
   },
 });

@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Animated as RNAnimated, Easing } from 'react-native';
+import React, { useState } from 'react';
+import { View, ScrollView, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown, FadeInUp, Layout, SlideInRight } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useCreateLeave, useLeaveBalance } from '@/hooks/useHRQueries';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 import { DatePicker } from '@/components/core/DatePicker';
+import { SuccessDialog } from '@/components/core/SuccessDialog';
+import ModuleHeader from '@/components/layout/ModuleHeader';
+import { shadows, spacing, borderRadius } from '@/constants/designSystem';
 import type { LeaveType, ShiftType } from '@/types/hr';
 
 const LEAVE_TYPES: LeaveType[] = [
@@ -27,15 +29,15 @@ const LEAVE_ICONS: Record<LeaveType, keyof typeof Ionicons.glyphMap> = {
   'Optional Leave': 'calendar',
 };
 
-const LEAVE_COLORS: Record<LeaveType, [string, string]> = {
-  'Annual Leave': ['#F59E0B', '#D97706'],
-  'Sick Leave': ['#EF4444', '#B91C1C'],
-  'Casual Leave': ['#10B981', '#059669'],
-  'Study Leave': ['#8B5CF6', '#7C3AED'],
-  'Optional Leave': ['#6366F1', '#4F46E5'],
+const LEAVE_COLORS: Record<LeaveType, string> = {
+  'Annual Leave': '#F59E0B',
+  'Sick Leave': '#EF4444',
+  'Casual Leave': '#10B981',
+  'Study Leave': '#8B5CF6',
+  'Optional Leave': '#6366F1',
 };
 
-const SHIFT_TYPES: { value: ShiftType; label: string; icon: string }[] = [
+const SHIFT_TYPES: { value: ShiftType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { value: 'full_shift', label: 'Full Day', icon: 'sunny' },
   { value: 'first_half', label: '1st Half', icon: 'partly-sunny' },
   { value: 'second_half', label: '2nd Half', icon: 'moon' },
@@ -52,15 +54,14 @@ export default function ApplyLeaveScreen() {
   const { trackLeaveRequest } = useActivityTracker();
 
   // Form state
-  // New: Selection Mode State
   const [selectionMode, setSelectionMode] = useState<'range' | 'multi'>('range');
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-
   const [leaveType, setLeaveType] = useState<LeaveType | ''>('');
   const [shiftType, setShiftType] = useState<ShiftType>('full_shift');
   const [reason, setReason] = useState('');
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   // Derived state
   const calculateDays = () => {
@@ -70,7 +71,6 @@ export default function ApplyLeaveScreen() {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       return diffDays > 0 ? diffDays : 0;
     } else {
-      // Multi mode: simply count unique selected dates
       return selectedDates.length;
     }
   };
@@ -81,12 +81,8 @@ export default function ApplyLeaveScreen() {
     ((balance[`${leaveType.toLowerCase().replace(' ', '_')}_used` as keyof typeof balance] as number) || 0) : 0;
 
   const handleSubmit = async () => {
-    console.log('🚀 handleSubmit called - starting submission process');
-    console.log('📋 Form state:', { leaveType, reason: reason.trim(), selectionMode, fromDate, toDate, selectedDates });
-
     if (!leaveType || !reason.trim()) {
-      console.log('❌ Validation failed: Missing fields');
-      Alert.alert('Missing Fields', 'Please fill in all required fields to proceed.');
+      Alert.alert('Missing Fields', 'Please fill in all required fields.');
       return;
     }
 
@@ -94,8 +90,6 @@ export default function ApplyLeaveScreen() {
     let payloadToDate: string = '';
     let specificDates: string[] = [];
 
-    // Use local date formatting to avoid timezone issues
-    // toISOString() converts to UTC which can shift dates back by hours
     const formatDate = (d: Date) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -109,7 +103,7 @@ export default function ApplyLeaveScreen() {
         return;
       }
       if (toDate < fromDate) {
-        Alert.alert('Invalid Dates', 'The "To Date" cannot be before the "From Date".');
+        Alert.alert('Invalid Dates', 'End date cannot be before start date.');
         return;
       }
       payloadFromDate = formatDate(fromDate);
@@ -119,7 +113,6 @@ export default function ApplyLeaveScreen() {
         Alert.alert('Missing Dates', 'Please select at least one date.');
         return;
       }
-      // Sort dates to determine min/max for the basic fields
       const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
       payloadFromDate = formatDate(sortedDates[0]);
       payloadToDate = formatDate(sortedDates[sortedDates.length - 1]);
@@ -140,23 +133,7 @@ export default function ApplyLeaveScreen() {
           try {
             await trackLeaveRequest(leaveType as string, payloadFromDate, payloadToDate, (data as any)?.id);
           } catch (e) { console.log(e) }
-
-          Alert.alert('Request Sent', 'Your leave request has been submitted successfully!', [
-            {
-              text: 'Great!',
-              onPress: () => {
-                console.log('✅ Alert confirmed, navigating to leave list...');
-                // Use setTimeout to ensure navigation happens after alert dismisses
-                setTimeout(() => {
-                  router.back();
-                  // Double ensure by also pushing to the list
-                  setTimeout(() => {
-                    router.push('/(modules)/leave' as any);
-                  }, 100);
-                }, 100);
-              }
-            }
-          ]);
+          setShowSuccessDialog(true);
         },
         onError: (err: any) => Alert.alert('Error', err.message || 'Failed to submit.')
       });
@@ -166,125 +143,81 @@ export default function ApplyLeaveScreen() {
     }
   };
 
-  return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+  const styles = createStyles(theme, isDark);
 
-      {/* Custom Header Background - REDUCED SIZE */}
-      <View style={{ height: 100, overflow: 'hidden' }}>
-        <LinearGradient
-          colors={isDark ? ['#341B34', '#472447'] : ['#6D376D', '#5A2D5A']}
-          style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 16, paddingHorizontal: 20 }}
-        >
-          <Animated.View entering={FadeInDown.delay(100).springify()}>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff' }}>Apply Leave</Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>
-              Plan your time off
-            </Text>
-          </Animated.View>
-        </LinearGradient>
-      </View>
+  return (
+    <View style={styles.container}>
+      <ModuleHeader title="Apply Leave" showNotifications={false} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 24 }}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-
-          {/* Balance Card - Premium Look */}
-          <Animated.View entering={FadeInDown.delay(200).springify()}>
-            <LinearGradient
-              colors={leaveType ? LEAVE_COLORS[leaveType] : ['#6D376D', '#8B5CF6']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ borderRadius: 24, padding: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View>
-                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600', letterSpacing: 1 }}>AVAILABLE BALANCE</Text>
-                  <Text style={{ color: '#fff', fontSize: 36, fontWeight: '800', marginTop: 8 }}>
-                    {balanceLoading ? '...' : balanceCount}
-                    <Text style={{ fontSize: 18, fontWeight: '500' }}> days</Text>
-                  </Text>
-                </View>
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 12 }}>
-                  <Ionicons name="wallet-outline" size={24} color="#fff" />
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20, backgroundColor: 'rgba(0,0,0,0.1)', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                <Ionicons name="information-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '500' }}>
-                  {leaveType ? `For ${leaveType}` : 'Select a leave type'}
+          {/* Balance Card */}
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.balanceCard}>
+            <View style={styles.balanceHeader}>
+              <View>
+                <Text style={styles.balanceLabel}>Available Balance</Text>
+                <Text style={styles.balanceValue}>
+                  {balanceLoading ? '...' : balanceCount}
+                  <Text style={styles.balanceDays}> days</Text>
                 </Text>
               </View>
-            </LinearGradient>
-          </Animated.View>
-
-          {/* Leave Type Selection - FIXED CLIPPING */}
-          <Animated.View entering={FadeInDown.delay(300).springify()}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 }}>Leave Type</Text>
-            {/* Extra vertical padding to prevent shadow clipping */}
-            <View style={{ marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 12 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingRight: 40 }}>
-                {LEAVE_TYPES.map((type, index) => {
-                  const isSelected = leaveType === type;
-                  return (
-                    <Pressable
-                      key={type}
-                      onPress={() => setLeaveType(type)}
-                      style={{ transform: [{ scale: isSelected ? 1.05 : 1 }] }}
-                    >
-                      <Animated.View
-                        layout={Layout.springify()}
-                        style={{
-                          width: 110, height: 110,
-                          borderRadius: 20,
-                          backgroundColor: isSelected ? (isDark ? '#472447' : '#F8F4F9') : theme.surface,
-                          borderWidth: 2,
-                          borderColor: isSelected ? LEAVE_COLORS[type][0] : 'transparent',
-                          justifyContent: 'center', alignItems: 'center',
-                          shadowColor: isSelected ? LEAVE_COLORS[type][0] : "#000",
-                          shadowOffset: { width: 0, height: isSelected ? 8 : 4 },
-                          shadowOpacity: isSelected ? 0.3 : 0.05,
-                          shadowRadius: isSelected ? 12 : 8,
-                          elevation: isSelected ? 8 : 3
-                        }}
-                      >
-                        <View style={{
-                          width: 44, height: 44, borderRadius: 22,
-                          backgroundColor: isSelected ? LEAVE_COLORS[type][0] : theme.background,
-                          justifyContent: 'center', alignItems: 'center', marginBottom: 10
-                        }}>
-                          <Ionicons name={LEAVE_ICONS[type]} size={24} color={isSelected ? '#fff' : theme.textSecondary} />
-                        </View>
-                        <Text style={{
-                          fontSize: 12, fontWeight: isSelected ? '700' : '500',
-                          color: isSelected ? (isDark ? '#fff' : '#6D376D') : theme.textSecondary,
-                          textAlign: 'center'
-                        }}>
-                          {type.split(' ')[0]}
-                        </Text>
-                      </Animated.View>
-                    </Pressable>
-                  )
-                })}
-              </ScrollView>
+              <View style={[styles.balanceIcon, { backgroundColor: leaveType ? LEAVE_COLORS[leaveType] + '20' : theme.primary + '20' }]}>
+                <Ionicons name="wallet-outline" size={24} color={leaveType ? LEAVE_COLORS[leaveType] : theme.primary} />
+              </View>
+            </View>
+            <View style={styles.balanceInfo}>
+              <Ionicons name="information-circle-outline" size={16} color={theme.textSecondary} />
+              <Text style={styles.balanceInfoText}>
+                {leaveType ? `For ${leaveType}` : 'Select a leave type below'}
+              </Text>
             </View>
           </Animated.View>
 
-          {/* Duration Section with Multi-Select Toggle */}
-          <Animated.View entering={FadeInDown.delay(400).springify()}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>Duration</Text>
-              <View style={{
-                flexDirection: 'row',
-                backgroundColor: theme.surface,
-                padding: 4,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme.border
-              }}>
+          {/* Leave Type Selection */}
+          <Animated.View entering={FadeInDown.delay(200).springify()}>
+            <Text style={styles.sectionTitle}>Leave Type</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.leaveTypeScroll}
+            >
+              {LEAVE_TYPES.map((type) => {
+                const isSelected = leaveType === type;
+                const color = LEAVE_COLORS[type];
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => setLeaveType(type)}
+                    style={[
+                      styles.leaveTypeChip,
+                      isSelected && { backgroundColor: color + '15', borderColor: color }
+                    ]}
+                  >
+                    <View style={[styles.leaveTypeIcon, { backgroundColor: isSelected ? color : theme.background }]}>
+                      <Ionicons name={LEAVE_ICONS[type]} size={18} color={isSelected ? '#fff' : theme.textSecondary} />
+                    </View>
+                    <Text style={[
+                      styles.leaveTypeText,
+                      isSelected && { color: color, fontWeight: '700' }
+                    ]}>
+                      {type.split(' ')[0]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+
+          {/* Duration Section */}
+          <Animated.View entering={FadeInDown.delay(300).springify()}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Duration</Text>
+              <View style={styles.modeToggle}>
                 {(['range', 'multi'] as const).map(mode => (
                   <Pressable
                     key={mode}
@@ -294,18 +227,15 @@ export default function ApplyLeaveScreen() {
                       setToDate(null);
                       setSelectedDates([]);
                     }}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 8,
-                      backgroundColor: selectionMode === mode ? (isDark ? '#472447' : '#F8F4F9') : 'transparent',
-                    }}
+                    style={[
+                      styles.modeButton,
+                      selectionMode === mode && styles.modeButtonActive
+                    ]}
                   >
-                    <Text style={{
-                      fontSize: 12,
-                      fontWeight: '600',
-                      color: selectionMode === mode ? theme.primary : theme.textSecondary
-                    }}>
+                    <Text style={[
+                      styles.modeButtonText,
+                      selectionMode === mode && { color: theme.primary }
+                    ]}>
                       {mode === 'range' ? 'Range' : 'Multi-Date'}
                     </Text>
                   </Pressable>
@@ -314,7 +244,7 @@ export default function ApplyLeaveScreen() {
             </View>
 
             {selectionMode === 'range' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <View style={styles.dateRow}>
                 <View style={{ flex: 1 }}>
                   <DatePicker
                     label="From"
@@ -324,7 +254,7 @@ export default function ApplyLeaveScreen() {
                     placeholder="Start"
                   />
                 </View>
-                <View style={{ marginTop: 24, justifyContent: 'center' }}>
+                <View style={styles.dateArrow}>
                   <Ionicons name="arrow-forward" size={20} color={theme.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -338,178 +268,325 @@ export default function ApplyLeaveScreen() {
                 </View>
               </View>
             ) : (
-              <View>
-                <DatePicker
-                  label="Select Specific Dates"
-                  mode="multiple"
-                  dates={selectedDates}
-                  onDatesChange={setSelectedDates}
-                  minDate={new Date()}
-                  placeholder="Tap to select dates..."
-                />
-
-                {/* Visual feedback for the calculated range */}
-                {selectedDates.length > 0 && (
-                  <View style={{
-                    marginTop: 12,
-                    padding: 12,
-                    backgroundColor: theme.surface,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: theme.border
-                  }}>
-                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 6, fontWeight: '600' }}>
-                      Effective Range (Auto-calculated for submission)
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 9, color: theme.textSecondary, marginBottom: 2 }}>START DATE</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
-                          {[...selectedDates].sort((a, b) => a.getTime() - b.getTime())[0]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Text>
-                      </View>
-                      <Ionicons name="arrow-forward" size={16} color={theme.primary} style={{ marginHorizontal: 8 }} />
-                      <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                        <Text style={{ fontSize: 9, color: theme.textSecondary, marginBottom: 2 }}>END DATE</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
-                          {[...selectedDates].sort((a, b) => a.getTime() - b.getTime())[selectedDates.length - 1]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </View>
+              <DatePicker
+                label="Select Specific Dates"
+                mode="multiple"
+                dates={selectedDates}
+                onDatesChange={setSelectedDates}
+                minDate={new Date()}
+                placeholder="Tap to select dates..."
+              />
             )}
 
             {/* Days Indicator */}
             {days > 0 && (
-              <Animated.View
-                entering={FadeInUp.springify()}
-                style={{
-                  marginTop: 16,
-                  backgroundColor: isDark ? '#472447' : '#F8F4F9',
-                  padding: 16,
-                  borderRadius: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: isDark ? '#5A2D5A' : '#E0CCE5'
-                }}
-              >
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#5A2D5A' : '#E0CCE5', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+              <View style={styles.daysCard}>
+                <View style={styles.daysIcon}>
                   <Text style={{ fontSize: 18 }}>🗓️</Text>
                 </View>
                 <View>
-                  <Text style={{ fontSize: 14, color: theme.textSecondary, fontWeight: '500' }}>Total Duration</Text>
-                  <Text style={{ fontSize: 18, color: theme.text, fontWeight: '800' }}>{days} Days</Text>
+                  <Text style={styles.daysLabel}>Total Duration</Text>
+                  <Text style={styles.daysValue}>{days} Days</Text>
                 </View>
-              </Animated.View>
+              </View>
             )}
           </Animated.View>
 
-          {/* Shift Selection */}
-          <Animated.View entering={FadeInDown.delay(500).springify()}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 }}>Session</Text>
-            <View style={{ flexDirection: 'row', backgroundColor: theme.surface, padding: 4, borderRadius: 16 }}>
+          {/* Session Selection */}
+          <Animated.View entering={FadeInDown.delay(400).springify()}>
+            <Text style={styles.sectionTitle}>Session</Text>
+            <View style={styles.sessionContainer}>
               {SHIFT_TYPES.map((shift) => {
                 const isSelected = shiftType === shift.value;
                 return (
                   <Pressable
                     key={shift.value}
                     onPress={() => setShiftType(shift.value)}
-                    style={{ flex: 1 }}
+                    style={[styles.sessionButton, isSelected && styles.sessionButtonActive]}
                   >
-                    <Animated.View style={{
-                      paddingVertical: 12,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isSelected ? theme.background : 'transparent',
-                      borderRadius: 12,
-                      shadowColor: "#000",
-                      shadowOpacity: isSelected ? 0.1 : 0,
-                      shadowRadius: 4,
-                      elevation: isSelected ? 2 : 0,
-                      flexDirection: 'row',
-                      gap: 6
-                    }}>
-                      <Ionicons name={shift.icon as any} size={16} color={isSelected ? theme.primary : theme.textSecondary} />
-                      <Text style={{ fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? theme.text : theme.textSecondary }}>
-                        {shift.label}
-                      </Text>
-                    </Animated.View>
+                    <Ionicons name={shift.icon} size={16} color={isSelected ? theme.primary : theme.textSecondary} />
+                    <Text style={[styles.sessionText, isSelected && styles.sessionTextActive]}>
+                      {shift.label}
+                    </Text>
                   </Pressable>
-                )
+                );
               })}
             </View>
           </Animated.View>
 
           {/* Reason */}
-          <Animated.View entering={FadeInDown.delay(600).springify()}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 12 }}>Reason</Text>
+          <Animated.View entering={FadeInDown.delay(500).springify()}>
+            <Text style={styles.sectionTitle}>Reason</Text>
             <TextInput
-              style={{
-                backgroundColor: theme.surface,
-                borderRadius: 20,
-                padding: 16,
-                height: 120,
-                textAlignVertical: 'top',
-                fontSize: 16,
-                color: theme.text,
-                borderWidth: 1,
-                borderColor: 'transparent'
-              }}
+              style={styles.reasonInput}
               placeholder="Why are you taking leave?"
               placeholderTextColor={theme.textSecondary}
               value={reason}
               onChangeText={setReason}
               multiline
+              numberOfLines={4}
             />
           </Animated.View>
-
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Submit Button FAB */}
-      <Animated.View
-        entering={SlideInRight.delay(800).springify()}
-        style={{
-          position: 'absolute', bottom: 30, left: 20, right: 20,
-          shadowColor: theme.primary,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.4,
-          shadowRadius: 16,
-          elevation: 10
-        }}
-      >
+      {/* Submit Button */}
+      <View style={[styles.submitContainer, { backgroundColor: theme.background }]}>
         <Pressable
           onPress={handleSubmit}
-          disabled={isSubmitting}
-          style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+          disabled={isSubmitting || !leaveType || !reason.trim() || days === 0}
+          style={({ pressed }) => [
+            styles.submitButton,
+            {
+              backgroundColor: '#6D376D',
+              opacity: (isSubmitting || !leaveType || !reason.trim() || days === 0) ? 0.5 : (pressed ? 0.9 : 1)
+            }
+          ]}
         >
-          <LinearGradient
-            colors={['#6D376D', '#5A2D5A']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={{
-              paddingVertical: 18,
-              borderRadius: 24,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 12
-            }}
-          >
-            {isSubmitting ? (
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Sending Request...</Text>
-            ) : (
-              <>
-                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Submit Request</Text>
-                <Ionicons name="arrow-forward" size={24} color="#fff" />
-              </>
-            )}
-          </LinearGradient>
+          <Text style={styles.submitText}>
+            {isSubmitting ? 'Submitting...' : 'Submit Request'}
+          </Text>
+          {!isSubmitting && <Ionicons name="arrow-forward" size={20} color="#fff" />}
         </Pressable>
-      </Animated.View>
+      </View>
 
+      {/* Success Dialog */}
+      <SuccessDialog
+        visible={showSuccessDialog}
+        title="Request Sent"
+        message="Your leave request has been submitted successfully!"
+        buttonText="Great!"
+        onConfirm={() => {
+          setShowSuccessDialog(false);
+          router.back();
+          setTimeout(() => {
+            router.push('/(modules)/leave' as any);
+          }, 100);
+        }}
+      />
     </View>
   );
 }
+
+const createStyles = (theme: any, isDark: boolean) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  scrollContent: {
+    padding: spacing.base,
+    paddingBottom: 120,
+    gap: spacing.xl,
+  },
+  // Balance Card
+  balanceCard: {
+    backgroundColor: theme.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    ...shadows.md,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  balanceLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  balanceValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: theme.text,
+    marginTop: 4,
+  },
+  balanceDays: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  balanceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  balanceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    gap: 6,
+  },
+  balanceInfoText: {
+    fontSize: 13,
+    color: theme.textSecondary,
+  },
+  // Section Title
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.text,
+    marginBottom: spacing.md,
+    letterSpacing: -0.3,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  // Leave Type
+  leaveTypeScroll: {
+    gap: 12,
+    paddingRight: 20,
+  },
+  leaveTypeChip: {
+    backgroundColor: theme.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    width: 90,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    ...shadows.sm,
+  },
+  leaveTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  leaveTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+  },
+  // Mode Toggle
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: theme.surface,
+    borderRadius: borderRadius.md,
+    padding: 4,
+    ...shadows.sm,
+  },
+  modeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+  },
+  modeButtonActive: {
+    backgroundColor: isDark ? '#2A242E' : '#F8F4F9',
+  },
+  modeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+  },
+  // Date Row
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dateArrow: {
+    marginTop: 24,
+  },
+  // Days Card
+  daysCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDark ? '#2A242E' : '#F8F4F9',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.md,
+    gap: 12,
+  },
+  daysIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: isDark ? '#3A343E' : '#E0CCE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  daysLabel: {
+    fontSize: 13,
+    color: theme.textSecondary,
+    fontWeight: '500',
+  },
+  daysValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.text,
+  },
+  // Session
+  sessionContainer: {
+    flexDirection: 'row',
+    backgroundColor: theme.surface,
+    borderRadius: borderRadius.lg,
+    padding: 4,
+    ...shadows.sm,
+  },
+  sessionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    gap: 6,
+  },
+  sessionButtonActive: {
+    backgroundColor: theme.background,
+    ...shadows.sm,
+  },
+  sessionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: theme.textSecondary,
+  },
+  sessionTextActive: {
+    fontWeight: '700',
+    color: theme.text,
+  },
+  // Reason
+  reasonInput: {
+    backgroundColor: theme.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    minHeight: 120,
+    textAlignVertical: 'top',
+    fontSize: 15,
+    color: theme.text,
+    ...shadows.sm,
+  },
+  // Submit
+  submitContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.base,
+    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.base,
+    backgroundColor: theme.background,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: borderRadius.xl,
+    gap: 8,
+    ...shadows.lg,
+  },
+  submitText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+});

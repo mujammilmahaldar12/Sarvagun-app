@@ -121,7 +121,7 @@ export default function AboutScreen() {
             <View style={styles.appIcon}>
               <Text style={styles.appIconText}>S</Text>
             </View>
-            <Text style={styles.appName}>Sarvagun ERP</Text>
+            <Text style={styles.appName}>Sarvagun</Text>
             <Text style={styles.appTagline}>
               Complete Business Management Solution
             </Text>
@@ -139,7 +139,7 @@ export default function AboutScreen() {
             </View>
             <Text style={[styles.missionTitle, { color: theme.text }]}>Our Mission</Text>
             <Text style={[styles.missionText, { color: theme.textSecondary }]}>
-              Sarvagun ERP is designed to streamline your business operations with an
+              Sarvagun is designed to streamline your business operations with an
               all-in-one platform. From HR management to project tracking, we provide
               powerful tools to help teams collaborate, communicate, and succeed together.
             </Text>
@@ -262,7 +262,7 @@ export default function AboutScreen() {
         {/* Copyright */}
         <View style={styles.footerSection}>
           <Text style={[styles.copyrightText, { color: theme.textSecondary }]}>
-            © 2025 Sarvagun ERP. All rights reserved.
+            © 2025 Sarvagun. All rights reserved.
           </Text>
           <Text style={[styles.madeWithText, { color: theme.textSecondary }]}>
             Made with ❤️ for productivity

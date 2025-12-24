@@ -9,23 +9,24 @@ import {
   Modal,
   Dimensions,
   RefreshControl,
+  StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { useExpense, useExpensePhotos, useUpdateExpense, useDeleteExpense, useDeleteExpensePhoto } from '@/hooks/useFinanceQueries';
-import { getTypographyStyle } from '@/constants/designSystem';
 import { AppButton, ModuleHeader } from '@/components';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useAuthStore } from '@/store/authStore';
+import { shadows, spacing, borderRadius, typography } from '@/constants/designSystem';
 
 const { width, height } = Dimensions.get('window');
 
 const ExpenseDetail = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -37,13 +38,13 @@ const ExpenseDetail = () => {
   // Queries
   const { data: expense, isLoading, refetch } = useExpense(Number(id));
   const { data: photos = [], refetch: refetchPhotos } = useExpensePhotos(Number(id));
-  
+
   // Mutations
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
   const deletePhoto = useDeleteExpensePhoto();
 
-  // Simple permission checks based on user category
+  // Permission checks
   const canManage = user?.category === 'hr' || user?.category === 'admin';
   const canEdit = canManage;
   const canDelete = canManage;
@@ -121,7 +122,6 @@ const ExpenseDetail = () => {
         data: {
           ...expense,
           payment_status: newStatus,
-          // Backend should automatically set approved_by and approved_at
         },
       });
 
@@ -133,29 +133,6 @@ const ExpenseDetail = () => {
       Alert.alert('Error', error.message || `Failed to ${approvalAction} expense`);
     }
   };
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginTop: 12 }}>
-          Loading expense details...
-        </Text>
-      </View>
-    );
-  }
-
-  if (!expense) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Ionicons name="alert-circle-outline" size={48} color={theme.textSecondary} />
-        <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text, marginTop: 12, textAlign: 'center' }}>
-          Expense not found
-        </Text>
-        <AppButton title="Go Back" onPress={() => router.back()} style={{ marginTop: 20 }} />
-      </View>
-    );
-  }
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -171,49 +148,41 @@ const ExpenseDetail = () => {
     }
   };
 
-  const getReimbursementStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'approved':
-      case 'paid':
-        return '#10B981';
-      case 'pending':
-      case 'requested':
-        return '#F59E0B';
-      case 'rejected':
-        return '#EF4444';
-      default:
-        return theme.textSecondary;
-    }
-  };
+  const styles = createStyles(theme, isDark);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>Loading expense details...</Text>
+      </View>
+    );
+  }
+
+  if (!expense) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={theme.textSecondary} />
+        <Text style={styles.errorText}>Expense not found</Text>
+        <AppButton title="Go Back" onPress={() => router.back()} style={{ marginTop: 20 }} />
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={styles.container}>
       <ModuleHeader
         title="Expense Details"
         showBackButton
         actions={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={styles.headerActions}>
             {canEdit && (
-              <Pressable
-                onPress={handleEdit}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? theme.primary + '20' : 'transparent',
-                })}
-              >
+              <Pressable onPress={handleEdit} style={styles.headerButton}>
                 <Ionicons name="pencil" size={20} color={theme.primary} />
               </Pressable>
             )}
             {canDelete && (
-              <Pressable
-                onPress={handleDelete}
-                style={({ pressed }) => ({
-                  padding: 8,
-                  borderRadius: 8,
-                  backgroundColor: pressed ? '#EF444420' : 'transparent',
-                })}
-              >
+              <Pressable onPress={handleDelete} style={styles.headerButtonDanger}>
                 <Ionicons name="trash" size={20} color="#EF4444" />
               </Pressable>
             )}
@@ -222,7 +191,7 @@ const ExpenseDetail = () => {
       />
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, gap: 16 }}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -233,24 +202,11 @@ const ExpenseDetail = () => {
         }
       >
         {/* Header Card */}
-        <View
-          style={{
-            backgroundColor: theme.surface,
-            borderRadius: 12,
-            padding: 16,
-            gap: 12,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}
-        >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={styles.card}>
+          <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
-              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                Expense ID
-              </Text>
-              <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.primary, marginTop: 2 }}>
-                #{expense.id}
-              </Text>
+              <Text style={styles.labelSmall}>Expense ID</Text>
+              <Text style={styles.expenseId}>#{expense.id}</Text>
             </View>
             <StatusBadge
               status={expense.payment_status}
@@ -258,35 +214,25 @@ const ExpenseDetail = () => {
             />
           </View>
 
-          <View style={{ height: 1, backgroundColor: theme.border }} />
+          <View style={styles.divider} />
 
-          <View style={{ gap: 12 }}>
+          <View style={styles.detailsSection}>
             <View>
-              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                Particulars
-              </Text>
-              <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text, marginTop: 4 }}>
-                {expense.particulars}
-              </Text>
+              <Text style={styles.labelSmall}>Particulars</Text>
+              <Text style={styles.particulars}>{expense.particulars}</Text>
             </View>
 
             {expense.details && (
-              <View>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Details
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 4 }}>
-                  {expense.details}
-                </Text>
+              <View style={{ marginTop: spacing.md }}>
+                <Text style={styles.labelSmall}>Details</Text>
+                <Text style={styles.detailText}>{expense.details}</Text>
               </View>
             )}
 
-            <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={styles.infoRow}>
               <View style={{ flex: 1 }}>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Expense Date
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 4 }}>
+                <Text style={styles.labelSmall}>Expense Date</Text>
+                <Text style={styles.infoValue}>
                   {new Date(expense.expense_date).toLocaleDateString('en-IN', {
                     day: '2-digit',
                     month: 'short',
@@ -295,87 +241,54 @@ const ExpenseDetail = () => {
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Created By
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 4 }}>
-                  {expense.created_by || 'N/A'}
-                </Text>
+                <Text style={styles.labelSmall}>Created By</Text>
+                <Text style={styles.infoValue}>{expense.created_by || 'N/A'}</Text>
               </View>
             </View>
           </View>
         </View>
 
         {/* Amount Card */}
-        <View
-          style={{
-            backgroundColor: theme.primary + '10',
-            borderRadius: 12,
-            padding: 16,
-            borderLeftWidth: 4,
-            borderLeftColor: theme.primary,
-          }}
-        >
-          <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.primary }}>
-            Total Amount
-          </Text>
-          <Text style={{ ...getTypographyStyle('2xl', 'bold'), color: theme.primary, marginTop: 4 }}>
-            ₹{Number(expense.amount).toLocaleString('en-IN')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
-            <View>
-              <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                Payment Mode
-              </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
-                {expense.mode_of_payment?.toUpperCase() || 'N/A'}
-              </Text>
-            </View>
+        <View style={[styles.card, styles.amountCard]}>
+          <View style={styles.amountIcon}>
+            <Ionicons name="wallet" size={24} color={theme.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.amountLabel}>Total Amount</Text>
+            <Text style={styles.amountValue}>
+              ₹{Number(expense.amount).toLocaleString('en-IN')}
+            </Text>
+          </View>
+          <View style={styles.paymentMode}>
+            <Text style={styles.paymentModeLabel}>Payment</Text>
+            <Text style={styles.paymentModeValue}>
+              {expense.mode_of_payment?.toUpperCase() || 'N/A'}
+            </Text>
           </View>
         </View>
 
         {/* Vendor Information */}
         {expense.vendor_details && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-              Vendor Information
-            </Text>
-            <View style={{ gap: 8 }}>
-              <View>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Vendor Name
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
-                  {expense.vendor_details.name}
-                </Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="business-outline" size={20} color={theme.primary} />
+              <Text style={styles.sectionTitle}>Vendor Information</Text>
+            </View>
+            <View style={styles.infoList}>
+              <View style={styles.infoItem}>
+                <Text style={styles.labelSmall}>Vendor Name</Text>
+                <Text style={styles.infoValue}>{expense.vendor_details.name}</Text>
               </View>
               {expense.vendor_details.contact_person && (
-                <View>
-                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                    Contact Person
-                  </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
-                    {expense.vendor_details.contact_person}
-                  </Text>
+                <View style={styles.infoItem}>
+                  <Text style={styles.labelSmall}>Contact Person</Text>
+                  <Text style={styles.infoValue}>{expense.vendor_details.contact_person}</Text>
                 </View>
               )}
               {expense.vendor_details.phone && (
-                <View>
-                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                    Phone
-                  </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
-                    {expense.vendor_details.phone}
-                  </Text>
+                <View style={styles.infoItem}>
+                  <Text style={styles.labelSmall}>Phone</Text>
+                  <Text style={styles.infoValue}>{expense.vendor_details.phone}</Text>
                 </View>
               )}
             </View>
@@ -384,36 +297,20 @@ const ExpenseDetail = () => {
 
         {/* Event Information */}
         {expense.event_details && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-              Linked Event
-            </Text>
-            <View style={{ gap: 8 }}>
-              <View>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Event Name
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
-                  {expense.event_details.name}
-                </Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+              <Text style={styles.sectionTitle}>Linked Event</Text>
+            </View>
+            <View style={styles.infoList}>
+              <View style={styles.infoItem}>
+                <Text style={styles.labelSmall}>Event Name</Text>
+                <Text style={styles.infoValue}>{expense.event_details.name}</Text>
               </View>
               {expense.event_details.client && (
-                <View>
-                  <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                    Client
-                  </Text>
-                  <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text, marginTop: 2 }}>
-                    {expense.event_details.client.name}
-                  </Text>
+                <View style={styles.infoItem}>
+                  <Text style={styles.labelSmall}>Client</Text>
+                  <Text style={styles.infoValue}>{expense.event_details.client.name}</Text>
                 </View>
               )}
             </View>
@@ -422,33 +319,19 @@ const ExpenseDetail = () => {
 
         {/* Bill Evidence */}
         {expense.bill_evidence && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-              Bill Evidence
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="receipt-outline" size={20} color={theme.primary} />
+              <Text style={styles.sectionTitle}>Bill Evidence</Text>
+            </View>
+            <View style={styles.billEvidence}>
               <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-                Bill evidence available
-              </Text>
+              <Text style={styles.billEvidenceText}>Bill evidence available</Text>
             </View>
             {expense.bill_no && (
-              <View>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Bill Number
-                </Text>
-                <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text, marginTop: 2 }}>
-                  {expense.bill_no}
-                </Text>
+              <View style={styles.infoItem}>
+                <Text style={styles.labelSmall}>Bill Number</Text>
+                <Text style={styles.infoValue}>{expense.bill_no}</Text>
               </View>
             )}
           </View>
@@ -456,56 +339,29 @@ const ExpenseDetail = () => {
 
         {/* Photos Section */}
         {photos.length > 0 && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-                Bill Photos ({photos.length})
-              </Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="images-outline" size={20} color={theme.primary} />
+              <Text style={styles.sectionTitle}>Bill Photos ({photos.length})</Text>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            <View style={styles.photosGrid}>
               {photos.map((photo, index) => (
                 <Pressable
                   key={photo.id}
                   onPress={() => setSelectedPhotoIndex(index)}
-                  style={{
-                    width: (width - 72) / 3,
-                    height: (width - 72) / 3,
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    backgroundColor: theme.background,
-                  }}
+                  style={styles.photoItem}
                 >
                   <Image
                     source={{ uri: photo.photo }}
-                    style={{ width: '100%', height: '100%' }}
+                    style={styles.photoImage}
                     contentFit="cover"
                   />
                   {canDelete && (
                     <Pressable
                       onPress={() => handleDeletePhoto(photo.id)}
-                      style={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                        borderRadius: 12,
-                        width: 24,
-                        height: 24,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}
+                      style={styles.photoDeleteBtn}
                     >
-                      <Ionicons name="close" size={16} color="#FFF" />
+                      <Ionicons name="close" size={14} color="#FFF" />
                     </Pressable>
                   )}
                 </Pressable>
@@ -514,36 +370,22 @@ const ExpenseDetail = () => {
           </View>
         )}
 
-        {/* Reimbursement Information */}
+        {/* Reimbursement */}
         {expense.reimbursement_requested && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-              Reimbursement
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
               <Ionicons name="cash-outline" size={20} color={theme.primary} />
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-                Reimbursement requested
-              </Text>
+              <Text style={styles.sectionTitle}>Reimbursement</Text>
+            </View>
+            <View style={styles.billEvidence}>
+              <Ionicons name="cash" size={20} color={theme.primary} />
+              <Text style={styles.billEvidenceText}>Reimbursement requested</Text>
             </View>
             {expense.reimbursement_status && (
-              <View>
-                <Text style={{ ...getTypographyStyle('xs', 'medium'), color: theme.textSecondary }}>
-                  Status
-                </Text>
+              <View style={{ marginTop: spacing.sm }}>
                 <StatusBadge
                   status={expense.reimbursement_status}
-                  color={getReimbursementStatusColor(expense.reimbursement_status)}
-                  style={{ marginTop: 4, alignSelf: 'flex-start' }}
+                  color={getStatusColor(expense.reimbursement_status)}
                 />
               </View>
             )}
@@ -552,20 +394,12 @@ const ExpenseDetail = () => {
 
         {/* Approval Actions */}
         {canApprove && expense.payment_status?.toLowerCase() === 'pending' && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-              Approval Actions
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="checkmark-done-circle-outline" size={20} color={theme.primary} />
+              <Text style={styles.sectionTitle}>Approval Actions</Text>
+            </View>
+            <View style={styles.actionButtons}>
               <AppButton
                 title="Approve"
                 onPress={() => handleApproval('approve')}
@@ -586,56 +420,32 @@ const ExpenseDetail = () => {
 
         {/* Notes */}
         {expense.notes && (
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 12,
-              padding: 16,
-              gap: 8,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <Text style={{ ...getTypographyStyle('sm', 'semibold'), color: theme.text }}>
-              Notes
-            </Text>
-            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
-              {expense.notes}
-            </Text>
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="document-text-outline" size={20} color={theme.primary} />
+              <Text style={styles.sectionTitle}>Notes</Text>
+            </View>
+            <Text style={styles.notesText}>{expense.notes}</Text>
           </View>
         )}
 
         {/* Metadata */}
-        <View
-          style={{
-            backgroundColor: theme.surface,
-            borderRadius: 12,
-            padding: 16,
-            gap: 12,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}
-        >
-          <Text style={{ ...getTypographyStyle('md', 'semibold'), color: theme.text }}>
-            Metadata
-          </Text>
-          <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
-                Created At
-              </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-                {new Date(expense.created_at).toLocaleString('en-IN')}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary }}>
-                Updated At
-              </Text>
-              <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.text }}>
-                {new Date(expense.updated_at).toLocaleString('en-IN')}
-              </Text>
-            </View>
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time-outline" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>Metadata</Text>
+          </View>
+          <View style={styles.metadataRow}>
+            <Text style={styles.metadataLabel}>Created At</Text>
+            <Text style={styles.metadataValue}>
+              {new Date(expense.created_at).toLocaleString('en-IN')}
+            </Text>
+          </View>
+          <View style={styles.metadataRow}>
+            <Text style={styles.metadataLabel}>Updated At</Text>
+            <Text style={styles.metadataValue}>
+              {new Date(expense.updated_at).toLocaleString('en-IN')}
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -647,38 +457,18 @@ const ExpenseDetail = () => {
         animationType="fade"
         onRequestClose={() => setSelectedPhotoIndex(null)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' }}>
-          <Pressable
-            onPress={() => setSelectedPhotoIndex(null)}
-            style={{
-              position: 'absolute',
-              top: 50,
-              right: 20,
-              zIndex: 10,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              borderRadius: 20,
-              width: 40,
-              height: 40,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
+        <View style={styles.photoModal}>
+          <Pressable onPress={() => setSelectedPhotoIndex(null)} style={styles.photoModalClose}>
             <Ionicons name="close" size={24} color="#FFF" />
           </Pressable>
-
           {selectedPhotoIndex !== null && photos[selectedPhotoIndex] && (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={styles.photoModalContent}>
               <Image
                 source={{ uri: photos[selectedPhotoIndex].photo }}
-                style={{ width, height: height * 0.8 }}
+                style={styles.photoModalImage}
                 contentFit="contain"
               />
-              <Text style={{
-                position: 'absolute',
-                bottom: 30,
-                ...getTypographyStyle('sm', 'regular'),
-                color: '#FFF',
-              }}>
+              <Text style={styles.photoModalCounter}>
                 {selectedPhotoIndex + 1} / {photos.length}
               </Text>
             </View>
@@ -693,27 +483,15 @@ const ExpenseDetail = () => {
         animationType="slide"
         onRequestClose={() => setShowApprovalModal(false)}
       >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          justifyContent: 'flex-end',
-        }}>
-          <View style={{
-            backgroundColor: theme.surface,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 20,
-            paddingBottom: 40,
-          }}>
-            <Text style={{ ...getTypographyStyle('lg', 'bold'), color: theme.text, marginBottom: 16 }}>
+        <View style={styles.approvalModalOverlay}>
+          <View style={[styles.approvalModal, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.approvalModalTitle, { color: theme.text }]}>
               {approvalAction === 'approve' ? 'Approve Expense' : 'Reject Expense'}
             </Text>
-            
-            <Text style={{ ...getTypographyStyle('sm', 'regular'), color: theme.textSecondary, marginBottom: 20 }}>
+            <Text style={[styles.approvalModalMessage, { color: theme.textSecondary }]}>
               Are you sure you want to {approvalAction} this expense?
             </Text>
-
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={styles.approvalModalButtons}>
               <AppButton
                 title="Cancel"
                 onPress={() => {
@@ -740,5 +518,284 @@ const ExpenseDetail = () => {
     </View>
   );
 };
+
+const createStyles = (theme: any, isDark: boolean) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: typography.sizes.sm,
+    color: theme.textSecondary,
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: theme.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '600',
+    color: theme.text,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: theme.primary + '15',
+  },
+  headerButtonDanger: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#EF444415',
+  },
+  scrollContent: {
+    padding: spacing.base,
+    gap: spacing.md,
+    paddingBottom: 40,
+  },
+  // Card
+  card: {
+    backgroundColor: theme.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
+  },
+  // Header Card
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  expenseId: {
+    fontSize: typography.sizes.xl,
+    fontWeight: '700',
+    color: theme.primary,
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.border,
+    marginVertical: spacing.md,
+  },
+  detailsSection: {
+    gap: spacing.sm,
+  },
+  labelSmall: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    marginBottom: 2,
+  },
+  particulars: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  detailText: {
+    fontSize: typography.sizes.sm,
+    color: theme.text,
+    marginTop: 4,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: spacing.base,
+    marginTop: spacing.md,
+  },
+  infoValue: {
+    fontSize: typography.sizes.sm,
+    color: theme.text,
+    marginTop: 2,
+  },
+  // Amount Card
+  amountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: isDark ? theme.primary + '20' : theme.primary + '10',
+  },
+  amountIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  amountLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: '600',
+    color: theme.primary,
+  },
+  amountValue: {
+    fontSize: typography.sizes['2xl'],
+    fontWeight: '800',
+    color: theme.primary,
+  },
+  paymentMode: {
+    alignItems: 'flex-end',
+  },
+  paymentModeLabel: {
+    fontSize: typography.sizes.xs,
+    color: theme.textSecondary,
+  },
+  paymentModeValue: {
+    fontSize: typography.sizes.sm,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: typography.sizes.base,
+    fontWeight: '700',
+    color: theme.text,
+  },
+  // Info List
+  infoList: {
+    gap: spacing.sm,
+  },
+  infoItem: {},
+  // Bill Evidence
+  billEvidence: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  billEvidenceText: {
+    fontSize: typography.sizes.sm,
+    color: theme.text,
+  },
+  // Photos
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  photoItem: {
+    width: (width - 72) / 3,
+    aspectRatio: 1,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: theme.background,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoDeleteBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Action Buttons
+  actionButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  // Notes
+  notesText: {
+    fontSize: typography.sizes.sm,
+    color: theme.textSecondary,
+    lineHeight: 22,
+  },
+  // Metadata
+  metadataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  metadataLabel: {
+    fontSize: typography.sizes.sm,
+    color: theme.textSecondary,
+  },
+  metadataValue: {
+    fontSize: typography.sizes.sm,
+    color: theme.text,
+  },
+  // Photo Modal
+  photoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalImage: {
+    width,
+    height: height * 0.8,
+  },
+  photoModalCounter: {
+    position: 'absolute',
+    bottom: 30,
+    fontSize: typography.sizes.sm,
+    color: '#FFF',
+  },
+  // Approval Modal
+  approvalModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  approvalModal: {
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.xl,
+    paddingBottom: 40,
+  },
+  approvalModalTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+  },
+  approvalModalMessage: {
+    fontSize: typography.sizes.sm,
+    marginBottom: spacing.xl,
+  },
+  approvalModalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+});
 
 export default ExpenseDetail;

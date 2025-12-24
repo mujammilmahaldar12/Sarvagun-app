@@ -107,8 +107,9 @@ export default function LoginScreen() {
     <>
       <StatusBar barStyle="light-content" backgroundColor="#1A0B2E" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <LinearGradient
           colors={['#1A0B2E', '#2D1545', '#3E1F5C']}
@@ -120,6 +121,7 @@ export default function LoginScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
             <Animated.View style={[styles.content, containerStyle]}>
               {/* Logo Section */}
@@ -128,12 +130,11 @@ export default function LoginScreen() {
                   <Image
                     source={require("../../assets/images/sarvagun_logo.jpg")}
                     style={styles.logo}
-                    resizeMode="contain"
                   />
                 </View>
                 <Text style={styles.welcomeText}>Welcome Back</Text>
                 <Text style={styles.subtitleText}>
-                  Sign in to continue to Sarvagun ERP
+                  Sign in to continue to Sarvagun
                 </Text>
               </View>
 
@@ -300,12 +301,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 110,
+    height: 110,
+    borderRadius: 28,
+    backgroundColor: 'transparent', // Removed white background
+    overflow: 'hidden',
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -314,21 +314,23 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 15,
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    resizeMode: 'stretch', // Force fill to eliminate any gaps
   },
   welcomeText: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 8,
-    letterSpacing: -0.5,
+    letterSpacing: 1,
   },
   subtitleText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#9CA3AF',
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   form: {
     gap: 16,

@@ -32,7 +32,7 @@ export default function SettingsScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
 
@@ -202,8 +202,8 @@ export default function SettingsScreen() {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: item.isDanger 
-              ? theme.error + '20' 
+            backgroundColor: item.isDanger
+              ? theme.error + '20'
               : theme.primary + '20',
             alignItems: 'center',
             justifyContent: 'center',
@@ -243,9 +243,9 @@ export default function SettingsScreen() {
           <Switch
             value={item.toggleValue}
             onValueChange={item.onToggle}
-            trackColor={{ 
-              false: theme.border, 
-              true: theme.primary 
+            trackColor={{
+              false: theme.border,
+              true: theme.primary
             }}
             thumbColor={theme.surface}
           />
@@ -383,7 +383,7 @@ export default function SettingsScreen() {
               textAlign: 'center',
             }}
           >
-            Sarvagun ERP v1.0.0
+            Sarvagun v1.0.0
           </Text>
           <Text
             style={{

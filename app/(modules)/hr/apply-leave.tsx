@@ -10,6 +10,7 @@ import ModuleHeader from '@/components/layout/ModuleHeader';
 import AppButton from '@/components/ui/AppButton';
 import { getTypographyStyle } from '@/utils/styleHelpers';
 import { DatePicker } from '@/components/core/DatePicker';
+import { SuccessDialog } from '@/components/core/SuccessDialog';
 import type { LeaveType, ShiftType } from '@/types/hr';
 
 const LEAVE_TYPES: LeaveType[] = [
@@ -43,6 +44,7 @@ export default function ApplyLeaveScreen() {
   const [leaveType, setLeaveType] = useState<LeaveType | ''>('');
   const [shiftType, setShiftType] = useState<ShiftType>('full_shift');
   const [reason, setReason] = useState('');
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const pickDocument = async () => {
     Alert.alert('Document Picker', 'Document picker functionality coming soon');
@@ -116,11 +118,8 @@ export default function ApplyLeaveScreen() {
         },
         {
           onSuccess: () => {
-            Alert.alert(
-              'Success',
-              'Your leave application has been submitted successfully.',
-              [{ text: 'OK', onPress: () => router.back() }]
-            );
+            // Show success dialog instead of Alert.alert (fixes Android callback issue)
+            setShowSuccessDialog(true);
           },
           onError: (error: any) => {
             Alert.alert('Error', error.message || 'Failed to submit application.');
@@ -387,6 +386,19 @@ export default function ApplyLeaveScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Success Dialog - replaces Alert.alert for reliable Android callbacks */}
+      <SuccessDialog
+        visible={showSuccessDialog}
+        title="Success"
+        message="Your leave application has been submitted successfully."
+        buttonText="OK"
+        onConfirm={() => {
+          setShowSuccessDialog(false);
+          router.back();
+        }}
+      />
     </View>
   );
 }
+

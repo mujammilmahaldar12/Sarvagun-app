@@ -228,10 +228,12 @@ export default function EventManagementScreen() {
   // Handle filter changes
   useEffect(() => {
     const statusValue = filters.status === 'all' ? undefined : filters.status;
+    const categoryValue = filters.category === 'all' ? undefined : filters.category;
+    const cityValue = filters.city === 'all' ? undefined : filters.city;
     const start_date = filters.dateRange?.start;
     const end_date = filters.dateRange?.end;
 
-    console.log('Applying filters:', { activeTab, statusValue, start_date, end_date });
+    console.log('Applying filters:', { activeTab, statusValue, categoryValue, cityValue, start_date, end_date });
 
     switch (activeTab) {
       case 'leads':
@@ -246,6 +248,16 @@ export default function EventManagementScreen() {
           status: statusValue,
           start_date,
           end_date
+        });
+        break;
+      case 'clients':
+        eventsStore.setFilter('clients', {
+          category: categoryValue,
+        });
+        break;
+      case 'venues':
+        eventsStore.setFilter('venues', {
+          city: cityValue,
         });
         break;
     }
@@ -279,6 +291,7 @@ export default function EventManagementScreen() {
           icon: 'funnel' as const,
           type: 'select' as const,
           options: [
+            { label: 'All', value: 'all', color: '#6b7280' },
             { label: 'Pending', value: 'pending', color: '#f59e0b' },
             { label: 'Converted', value: 'converted', color: '#10b981' },
             { label: 'Rejected', value: 'rejected', color: '#ef4444' },
@@ -299,6 +312,7 @@ export default function EventManagementScreen() {
           icon: 'funnel' as const,
           type: 'select' as const,
           options: [
+            { label: 'All', value: 'all', color: '#6b7280' },
             { label: 'Upcoming', value: 'upcoming', color: '#3b82f6' },
             { label: 'Ongoing', value: 'ongoing', color: '#10b981' },
             { label: 'Completed', value: 'completed', color: '#6b7280' },
@@ -310,6 +324,37 @@ export default function EventManagementScreen() {
           label: 'Date Range',
           icon: 'calendar-outline' as const,
           type: 'daterange' as const,
+        },
+      ];
+    } else if (activeTab === 'clients') {
+      return [
+        {
+          key: 'category',
+          label: 'Category',
+          icon: 'funnel' as const,
+          type: 'select' as const,
+          options: [
+            { label: 'All', value: 'all', color: '#6b7280' },
+            { label: 'B2C', value: 'b2c', color: '#8b5cf6' },
+            { label: 'B2B', value: 'b2b', color: '#3b82f6' },
+            { label: 'B2G', value: 'b2g', color: '#10b981' },
+          ],
+        },
+      ];
+    } else if (activeTab === 'venues') {
+      return [
+        {
+          key: 'city',
+          label: 'City',
+          icon: 'location' as const,
+          type: 'select' as const,
+          options: [
+            { label: 'All Cities', value: 'all', color: '#6b7280' },
+            { label: 'Mumbai', value: 'mumbai', color: '#3b82f6' },
+            { label: 'Delhi', value: 'delhi', color: '#10b981' },
+            { label: 'Bangalore', value: 'bangalore', color: '#8b5cf6' },
+            { label: 'Pune', value: 'pune', color: '#f59e0b' },
+          ],
         },
       ];
     }

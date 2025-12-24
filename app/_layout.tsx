@@ -1,7 +1,7 @@
 import "./disable-logs";
 import "./global.css";
 import { Stack } from "expo-router";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import { View, Text, StyleSheet, Animated, Easing } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -69,94 +69,162 @@ function ErrorFallback({ error }: { error: any }) {
   );
 }
 
-// Animated Splash Component - Modern Professional Design
+// Cinematic Splash - Brand Story Experience
 function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
-  const logoAnim = useRef(new Animated.Value(0)).current;
-  const contentAnim = useRef(new Animated.Value(0)).current;
-  const dot1Anim = useRef(new Animated.Value(0.3)).current;
-  const dot2Anim = useRef(new Animated.Value(0.3)).current;
-  const dot3Anim = useRef(new Animated.Value(0.3)).current;
+  const [stage, setStage] = useState(0);
+
+  // Animation Values - Using more fluid physics
+  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const textTranslateY = useRef(new Animated.Value(20)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textScale = useRef(new Animated.Value(0.95)).current; // Added for subtle breathing
+  const bgOpacity = useRef(new Animated.Value(0)).current;
+
+  // Story Sequence
+  const STORY = [
+    { text: "Simplifying HR", color: '#A78BFA' },      // Soft Purple
+    { text: "Mastering Events", color: '#60A5FA' },    // Soft Blue
+    { text: "Optimizing Finance", color: '#34D399' },  // Soft Green
+    { text: "Sarvagun", color: '#FFFFFF' }         // White (Final)
+  ];
 
   useEffect(() => {
-    // Logo entrance - smooth scale and fade
-    Animated.timing(logoAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+    // Stage 0: Logo Entrance - Slower, more elegant spring
+    Animated.parallel([
+      Animated.spring(logoScale, { toValue: 1, friction: 12, tension: 10, useNativeDriver: true }),
+      Animated.timing(logoOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+    ]).start();
 
-    // Content fade in with delay
-    Animated.timing(contentAnim, {
-      toValue: 1,
-      duration: 500,
-      delay: 300,
-      useNativeDriver: true,
-    }).start();
+    // Sequence Orchestration
+    const runSequence = async () => {
+      // Helper for buttery text transition
+      const showText = () => {
+        textTranslateY.setValue(15); // Smaller movement distance for elegance
+        textOpacity.setValue(0);
+        textScale.setValue(0.95);
 
-    // Pulsing dots animation
-    const animateDot = (dotAnim: Animated.Value, delay: number) => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dotAnim, {
+        Animated.parallel([
+          Animated.timing(textOpacity, {
             toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.cubic) // Smooth entry
+          }),
+          Animated.timing(textTranslateY, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.back(1.5)) // Subtle overshoot
+          }),
+          Animated.timing(textScale, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          })
+        ]).start();
+      };
+
+      const hideText = () => {
+        Animated.parallel([
+          Animated.timing(textOpacity, {
+            toValue: 0,
             duration: 400,
             useNativeDriver: true,
+            easing: Easing.in(Easing.cubic)
           }),
-          Animated.timing(dotAnim, {
-            toValue: 0.3,
+          Animated.timing(textTranslateY, {
+            toValue: -10,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: true
           }),
-        ])
-      ).start();
+          Animated.timing(textScale, {
+            toValue: 1.05, // Slight growth on exit
+            duration: 400,
+            useNativeDriver: true
+          })
+        ]).start();
+      };
+
+      // Stage 1: HR
+      setStage(0);
+      showText();
+      await new Promise(r => setTimeout(r, 1400)); // Slightly longer read time
+      hideText();
+      await new Promise(r => setTimeout(r, 200));  // Faster gap
+
+      // Stage 2: Events
+      setStage(1);
+      showText();
+      Animated.timing(bgOpacity, { toValue: 0.5, duration: 800, useNativeDriver: false }).start(); // Smooth color blend
+      await new Promise(r => setTimeout(r, 1400));
+      hideText();
+      await new Promise(r => setTimeout(r, 200));
+
+      // Stage 3: Finance
+      setStage(2);
+      showText();
+      Animated.timing(bgOpacity, { toValue: 1, duration: 800, useNativeDriver: false }).start();
+      await new Promise(r => setTimeout(r, 1400));
+      hideText();
+      await new Promise(r => setTimeout(r, 200));
+
+      // Stage 4: Finale
+      setStage(3);
+      Animated.timing(bgOpacity, { toValue: 0, duration: 1200, useNativeDriver: false }).start(); // Visual palate cleanser
+
+      // Grand Reveal
+      textTranslateY.setValue(30);
+      textOpacity.setValue(0);
+      textScale.setValue(0.9);
+
+      Animated.parallel([
+        Animated.spring(logoScale, { toValue: 1.15, friction: 12, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.spring(textTranslateY, { toValue: 0, friction: 8, useNativeDriver: true }),
+        Animated.spring(textScale, { toValue: 1, friction: 8, useNativeDriver: true }),
+      ]).start();
+
+      // Hold then Finish
+      await new Promise(r => setTimeout(r, 1800));
+
+      // Elegant Exit
+      Animated.parallel([
+        Animated.timing(logoOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ]).start(() => onFinish());
     };
 
-    animateDot(dot1Anim, 0);
-    animateDot(dot2Anim, 150);
-    animateDot(dot3Anim, 300);
-
-    // Navigate after splash
-    const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(logoAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => onFinish());
-    }, 2500);
-
-    return () => clearTimeout(timer);
+    // Start sequence
+    setTimeout(runSequence, 500);
   }, []);
 
-  return (
-    <View style={splashStyles.container}>
-      {/* Subtle gradient circles */}
-      <View style={splashStyles.gradientCircle1} />
-      <View style={splashStyles.gradientCircle2} />
+  const currentStory = STORY[stage];
 
-      {/* Main Content */}
+  // Interpolate background colors
+  const bgColor1 = bgOpacity.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ['#1A0B2E', '#0F172A', '#064E3B'] // Deep Purple -> Deep Blue -> Deep Green
+  });
+
+  const bgColor2 = bgOpacity.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ['#2D1545', '#1E3A8A', '#065F46']
+  });
+
+  return (
+    <Animated.View style={[splashStyles.container, { backgroundColor: bgColor1 }]}>
+      {/* Background Gradient elements for depth */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: 0.6, backgroundColor: bgColor2 }]} />
+
       <View style={splashStyles.content}>
-        {/* Logo */}
+        {/* Pulsing Logo */}
         <Animated.View
           style={[
             splashStyles.logoWrapper,
             {
-              opacity: logoAnim,
-              transform: [
-                {
-                  scale: logoAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.9, 1],
-                  }),
-                },
-              ],
+              opacity: logoOpacity,
+              transform: [{ scale: logoScale }],
             },
           ]}
         >
@@ -164,119 +232,102 @@ function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
             <Animated.Image
               source={require("../assets/images/sarvagun_logo.jpg")}
               style={splashStyles.logo}
-              resizeMode="contain"
             />
           </View>
         </Animated.View>
 
-        {/* Brand Text */}
+        {/* Dynamic Story Text */}
         <Animated.View
           style={[
             splashStyles.textContainer,
-            { opacity: contentAnim },
+            {
+              opacity: textOpacity,
+              transform: [
+                { translateY: textTranslateY },
+                { scale: textScale }
+              ],
+            },
           ]}
         >
-          <Text style={splashStyles.brandName}>Sarvagun</Text>
-          <Text style={splashStyles.taglineText}>Work smarter, not harder</Text>
-        </Animated.View>
-
-        {/* Loading Dots */}
-        <Animated.View
-          style={[
-            splashStyles.dotsContainer,
-            { opacity: contentAnim },
-          ]}
-        >
-          <Animated.View style={[splashStyles.dot, { opacity: dot1Anim }]} />
-          <Animated.View style={[splashStyles.dot, { opacity: dot2Anim }]} />
-          <Animated.View style={[splashStyles.dot, { opacity: dot3Anim }]} />
+          {stage < 3 ? (
+            <Text style={[splashStyles.storyText, { color: currentStory.color }]}>
+              {currentStory.text}
+            </Text>
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={splashStyles.brandName}>Sarvagun</Text>
+              <Text style={splashStyles.taglineText}>Work Smarter. Not Harder.</Text>
+            </View>
+          )}
         </Animated.View>
       </View>
-
-      {/* Footer */}
-      <Animated.View style={[splashStyles.footer, { opacity: contentAnim }]}>
-        <Text style={splashStyles.footerText}>by Blingsquare</Text>
-      </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
 const splashStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  gradientCircle1: {
-    position: 'absolute',
-    top: -150,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(99, 102, 241, 0.06)',
-  },
-  gradientCircle2: {
-    position: 'absolute',
-    bottom: -100,
-    left: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(236, 72, 153, 0.04)',
+    backgroundColor: '#1A0B2E', // Fallback
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   logoWrapper: {
-    marginBottom: 32,
+    marginBottom: 40,
+    borderRadius: 30, // Updated to match new logo container
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 35,
+    elevation: 25,
+  },
+  logoGradient: {
+    padding: 0,
+    borderRadius: 30,
+    borderWidth: 0, // Removed border completely
+    borderColor: 'transparent',
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
+    width: 110,
+    height: 110,
+    borderRadius: 28,
+    backgroundColor: 'transparent', // Removed white background
+    overflow: 'hidden',
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'stretch', // Force fill to eliminate any gaps
   },
   textContainer: {
+    height: 80, // Increased height for better retention
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 48,
+  },
+  storyText: {
+    fontSize: 22,
+    fontWeight: '500',
+    letterSpacing: 2,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   brandName: {
-    fontSize: 28,
+    fontSize: 38,
     fontWeight: '600',
-    color: '#18181B',
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    color: '#FFFFFF',
+    letterSpacing: 3,
+    marginBottom: 12,
   },
   taglineText: {
-    fontSize: 15,
-    color: '#71717A',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '400',
-    letterSpacing: 0.2,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#6366F1',
+    letterSpacing: 5,
+    textTransform: 'uppercase',
   },
   footer: {
     position: 'absolute',
@@ -284,12 +335,14 @@ const splashStyles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+    opacity: 0, // Hidden as requested, or I can remove the View entirely in next step
   },
   footerText: {
-    fontSize: 13,
-    color: '#A1A1AA',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
     fontWeight: '500',
-    letterSpacing: 0.3,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });
 

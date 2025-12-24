@@ -39,16 +39,16 @@ function getNotifications(): typeof import('expo-notifications') | null {
     }
     return null;
   }
-  
+
   if (notificationsLoadAttempted) {
     return Notifications;
   }
-  
+
   notificationsLoadAttempted = true;
-  
+
   try {
     Notifications = require('expo-notifications');
-    
+
     // Configure notification handler after successful load
     if (Notifications) {
       Notifications.setNotificationHandler({
@@ -60,10 +60,10 @@ function getNotifications(): typeof import('expo-notifications') | null {
           shouldShowList: true,
         }),
       });
-      
+
       console.log('✅ expo-notifications loaded successfully');
     }
-    
+
     return Notifications;
   } catch (e) {
     console.warn('⚠️ expo-notifications not available:', e);
@@ -118,7 +118,7 @@ class PushNotificationService {
 
       // Register for push notifications
       const token = await this.registerForPushNotifications();
-      
+
       if (token) {
         this.expoPushToken = token;
         await this.savePushToken(token);
@@ -143,7 +143,7 @@ class PushNotificationService {
     try {
       await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
         name: 'Sarvagun Notifications',
-        description: 'All notifications from Sarvagun ERP',
+        description: 'All notifications from Sarvagun',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#6D376D',
@@ -224,7 +224,7 @@ class PushNotificationService {
 
       // Get Expo push token
       const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      
+
       const tokenData = await Notifications.getExpoPushTokenAsync({
         projectId: projectId || '1557dae7-23ca-4db5-85dd-7c09b0f761df',
       });
