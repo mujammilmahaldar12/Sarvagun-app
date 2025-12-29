@@ -26,20 +26,16 @@ export default function HRScreen() {
   const { canManage: canManageStaff, can: canHR } = useModule('hr.employees');
   const { canApprove: canApproveLeaves } = useModule('hr.leaves');
 
-  if (!canHR('view')) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <Ionicons name="lock-closed-outline" size={64} color={theme.textSecondary} />
-        <Text style={{ marginTop: 16, fontSize: 18, color: theme.textSecondary }}>Access Denied</Text>
-      </View>
-    );
-  }
+  // All authenticated users can access HR module for reimbursements (My Requests tab)
+  // Staff tab visibility is controlled separately below
+  const canViewStaffTab = canHR('view');
 
   // Custom 'hire' permission check if needed, or imply from manage
   const canAccessHireActions = canManageStaff;
   const canApprove = canApproveLeaves || canHR('approve');
 
-  const [activeTab, setActiveTab] = useState<TabType>('staff');
+  // Default to 'myrequests' tab - the Reimbursement tab accessible to all users
+  const [activeTab, setActiveTab] = useState<TabType>('myrequests');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<any>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,10 +97,14 @@ export default function HRScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Tab configuration - Pending Approvals only for Admin/HR/Team Lead
+  // Tab configuration
+  // - My Requests: Available to all users (for their own reimbursements)
+  // - Staff: Only for users with hr.employees.view permission
+  // - Approvals: Only for Admin/HR/Team Lead who can approve
+  // - Extensions/Certificates: Only for staff managers
   const tabs = [
-    { key: 'staff', label: 'Staff', icon: 'people-outline' },
     { key: 'myrequests', label: 'My Requests', icon: 'receipt-outline' },
+    ...(canViewStaffTab ? [{ key: 'staff', label: 'Staff', icon: 'people-outline' }] : []),
     ...(canApprove ? [{ key: 'approvals', label: 'Approvals', icon: 'checkmark-circle-outline' }] : []),
     ...(canAccessHireActions ? [{ key: 'extensions', label: 'Extensions', icon: 'time-outline' }] : []),
     ...(canAccessHireActions ? [{ key: 'certificates', label: 'Certificates', icon: 'ribbon-outline' }] : []),
