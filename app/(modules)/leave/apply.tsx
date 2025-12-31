@@ -149,7 +149,7 @@ export default function ApplyLeaveScreen() {
     <View style={styles.container}>
       <ModuleHeader title="Apply Leave" showNotifications={false} />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}

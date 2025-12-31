@@ -237,7 +237,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ expense, event, vendor, theme }
     <Animated.View entering={FadeIn} style={{ gap: spacing.md }}>
       {/* Event Info Card */}
       {event && (
-        <View style={[getCardStyle(theme), { padding: spacing.md, gap: spacing.sm }]}>
+        <View style={[getCardStyle(theme.surface), { padding: spacing.md, gap: spacing.sm }]}>
           <Text style={[getTypographyStyle('label', theme), { color: theme.textSecondary }]}>
             EVENT DETAILS
           </Text>
@@ -276,7 +276,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ expense, event, vendor, theme }
 
       {/* Vendor Info Card */}
       {vendor && (
-        <View style={[getCardStyle(theme), { padding: spacing.md, gap: spacing.sm }]}>
+        <View style={[getCardStyle(theme.surface), { padding: spacing.md, gap: spacing.sm }]}>
           <Text style={[getTypographyStyle('label', theme), { color: theme.textSecondary }]}>
             VENDOR DETAILS
           </Text>
@@ -358,8 +358,8 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ expense, event, vendor, theme }
               expense.payment_status === 'paid'
                 ? 'success'
                 : expense.payment_status === 'partial_paid'
-                ? 'warning'
-                : 'error'
+                  ? 'warning'
+                  : 'error'
             }
           />
         </View>
@@ -442,7 +442,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ expense, event, vendor, theme }
 
       {/* Meta Info Card */}
       {(expense.created_by_name || expense.created_at) && (
-        <View style={[getCardStyle(theme), { padding: spacing.md, gap: spacing.sm }]}>
+        <View style={[getCardStyle(theme.surface), { padding: spacing.md, gap: spacing.sm }]}>
           <Text style={[getTypographyStyle('label', theme), { color: theme.textSecondary }]}>
             RECORD INFORMATION
           </Text>

@@ -107,153 +107,152 @@ export default function LoginScreen() {
     <>
       <StatusBar barStyle="light-content" backgroundColor="#1A0B2E" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
         style={styles.container}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        keyboardVerticalOffset={0}
       >
         <LinearGradient
           colors={['#1A0B2E', '#2D1545', '#3E1F5C']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={styles.gradient}
+          style={StyleSheet.absoluteFill}
+        />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            <Animated.View style={[styles.content, containerStyle]}>
-              {/* Logo Section */}
-              <View style={styles.logoSection}>
-                <View style={styles.logoWrapper}>
-                  <Image
-                    source={require("../../assets/images/sarvagun_logo.jpg")}
-                    style={styles.logo}
+          <Animated.View style={[styles.content, containerStyle]}>
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <View style={styles.logoWrapper}>
+                <Image
+                  source={require("../../assets/images/sarvagun_logo.jpg")}
+                  style={styles.logo}
+                />
+              </View>
+              <Text style={styles.welcomeText}>Welcome Back</Text>
+              <Text style={styles.subtitleText}>
+                Sign in to continue to Sarvagun
+              </Text>
+            </View>
+
+            {/* Form Section */}
+            <View style={styles.form}>
+              {/* Username Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Username</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  usernameFocused && styles.inputWrapperFocused
+                ]}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color={usernameFocused ? "#8B5CF6" : "#9CA3AF"}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your username"
+                    placeholderTextColor="#6B7280"
+                    value={username}
+                    onChangeText={handleUsernameChange}
+                    onFocus={() => setUsernameFocused(true)}
+                    onBlur={() => setUsernameFocused(false)}
+                    autoCapitalize="none"
+                    editable={!isLoading}
                   />
                 </View>
-                <Text style={styles.welcomeText}>Welcome Back</Text>
-                <Text style={styles.subtitleText}>
-                  Sign in to continue to Sarvagun
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  passwordFocused && styles.inputWrapperFocused
+                ]}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={passwordFocused ? "#8B5CF6" : "#9CA3AF"}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#6B7280"
+                    value={password}
+                    onChangeText={handlePasswordChange}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    secureTextEntry={!showPassword}
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                      name={showPassword ? "eye-outline" : "eye-off-outline"}
+                      size={20}
+                      color="#9CA3AF"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Error Message */}
+              {loginError && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle" size={18} color="#FFFFFF" />
+                  <Text style={styles.errorText}>{loginError}</Text>
+                </View>
+              )}
+
+              {/* Forgot Password */}
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+
+              {/* Login Button */}
+              <TouchableOpacity
+                onPress={handleLogin}
+                disabled={isLoading}
+                activeOpacity={0.8}
+                style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
+              >
+                <LinearGradient
+                  colors={['#6D376D', '#8B5CF6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.button}
+                >
+                  {isLoading ? (
+                    <LoadingSpinner />
+                  ) : (
+                    <>
+                      <Text style={styles.buttonText}>Sign In</Text>
+                      <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* New User Link */}
+              <TouchableOpacity
+                style={styles.newUserLink}
+                onPress={() => router.push('/new-user')}
+              >
+                <Text style={styles.newUserText}>
+                  New User? <Text style={styles.newUserBold}>Complete your onboarding</Text>
                 </Text>
-              </View>
+              </TouchableOpacity>
+            </View>
 
-              {/* Form Section */}
-              <View style={styles.form}>
-                {/* Username Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Username</Text>
-                  <View style={[
-                    styles.inputWrapper,
-                    usernameFocused && styles.inputWrapperFocused
-                  ]}>
-                    <Ionicons
-                      name="person-outline"
-                      size={20}
-                      color={usernameFocused ? "#8B5CF6" : "#9CA3AF"}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your username"
-                      placeholderTextColor="#6B7280"
-                      value={username}
-                      onChangeText={handleUsernameChange}
-                      onFocus={() => setUsernameFocused(true)}
-                      onBlur={() => setUsernameFocused(false)}
-                      autoCapitalize="none"
-                      editable={!isLoading}
-                    />
-                  </View>
-                </View>
-
-                {/* Password Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
-                  <View style={[
-                    styles.inputWrapper,
-                    passwordFocused && styles.inputWrapperFocused
-                  ]}>
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={20}
-                      color={passwordFocused ? "#8B5CF6" : "#9CA3AF"}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your password"
-                      placeholderTextColor="#6B7280"
-                      value={password}
-                      onChangeText={handlePasswordChange}
-                      onFocus={() => setPasswordFocused(true)}
-                      onBlur={() => setPasswordFocused(false)}
-                      secureTextEntry={!showPassword}
-                      editable={!isLoading}
-                    />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                      <Ionicons
-                        name={showPassword ? "eye-outline" : "eye-off-outline"}
-                        size={20}
-                        color="#9CA3AF"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Error Message */}
-                {loginError && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={18} color="#FFFFFF" />
-                    <Text style={styles.errorText}>{loginError}</Text>
-                  </View>
-                )}
-
-                {/* Forgot Password */}
-                <TouchableOpacity style={styles.forgotPassword}>
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                </TouchableOpacity>
-
-                {/* Login Button */}
-                <TouchableOpacity
-                  onPress={handleLogin}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                  style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-                >
-                  <LinearGradient
-                    colors={['#6D376D', '#8B5CF6']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.button}
-                  >
-                    {isLoading ? (
-                      <LoadingSpinner />
-                    ) : (
-                      <>
-                        <Text style={styles.buttonText}>Sign In</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#fff" />
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                {/* New User Link */}
-                <TouchableOpacity
-                  style={styles.newUserLink}
-                  onPress={() => router.push('/new-user')}
-                >
-                  <Text style={styles.newUserText}>
-                    New User? <Text style={styles.newUserBold}>Complete your onboarding</Text>
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Footer */}
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Powered by BlingSquare © 2025</Text>
-              </View>
-            </Animated.View>
-          </ScrollView>
-        </LinearGradient>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Powered by BlingSquare © 2025</Text>
+            </View>
+          </Animated.View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </>
   );

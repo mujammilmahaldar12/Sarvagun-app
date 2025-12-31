@@ -183,8 +183,7 @@ export default function AddVendorScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        behavior="padding"
       >
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 20 }} keyboardShouldPersistTaps="handled">
           {/* Basic Information */}

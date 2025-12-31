@@ -88,8 +88,7 @@ export default function AddVenueScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        behavior="padding"
       >
         <ScrollView
           style={{ flex: 1 }}

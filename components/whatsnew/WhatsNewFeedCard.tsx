@@ -41,7 +41,7 @@ export default function WhatsNewFeedCard({ item, onPress, onLike, onShare }: Wha
             onPress={onPress}
             activeOpacity={0.9}
             style={[
-                getCardStyle('lg'),
+                getCardStyle(theme.surface, 'md', 'lg'),
                 { marginBottom: spacing.md, padding: 0, overflow: 'hidden' }
             ]}
         >

@@ -108,7 +108,7 @@ export default function WhatsNewList() {
         <TouchableOpacity
             onPress={() => router.push(`/(modules)/whatsnew/${item.id}`)}
             style={[
-                getCardStyle('md'),
+                getCardStyle(theme.surface, 'md', 'md'),
                 {
                     marginRight: spacing.md,
                     width: 280,
@@ -156,13 +156,13 @@ export default function WhatsNewList() {
             />
 
             {/* Header */}
-            <Animated.View 
+            <Animated.View
                 entering={FadeInDown.duration(600).springify()}
                 style={[styles.header, { backgroundColor: theme.surface }]}
             >
                 <View style={styles.headerContent}>
                     <Text style={[styles.headerTitle, { color: theme.text }]}>What's New</Text>
-                    
+
                     {/* Search Bar */}
                     <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}>
                         <Ionicons name="search" size={20} color={theme.textSecondary} />
@@ -294,7 +294,7 @@ export default function WhatsNewList() {
             </ScrollView>
 
             {/* Floating Action Button */}
-            <Animated.View 
+            <Animated.View
                 entering={FadeInUp.delay(300).springify()}
                 style={styles.fabContainer}
             >
