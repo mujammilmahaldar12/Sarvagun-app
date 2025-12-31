@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from "lottie-react-native";
 import { NetworkStatusBanner } from '@/components';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { NotificationToastProvider } from '@/store/notificationToastContext';
 
 // Keep the native splash screen visible until we're ready
 SplashScreen.preventAutoHideAsync();
@@ -405,25 +406,27 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: rootBgColor }}>
         <QueryProvider>
           <PushNotificationProvider>
-            <PushNotificationInitializer />
-            <ErrorBoundary>
-              <View style={[styles.container, { backgroundColor: rootBgColor }]}>
-                <NetworkStatusBanner />
-                <Stack screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: rootBgColor },
-                  animation: 'none' // Disable animation during rotation
-                }}>
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="(auth)" />
-                  <Stack.Screen name="(dashboard)" />
-                  <Stack.Screen name="(settings)" />
-                  <Stack.Screen name="(modules)" />
-                  <Stack.Screen name="splash" />
-                  <Stack.Screen name="welcome-celebration" />
-                </Stack>
-              </View>
-            </ErrorBoundary>
+            <NotificationToastProvider>
+              <PushNotificationInitializer />
+              <ErrorBoundary>
+                <View style={[styles.container, { backgroundColor: rootBgColor }]}>
+                  <NetworkStatusBanner />
+                  <Stack screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: rootBgColor },
+                    animation: 'none' // Disable animation during rotation
+                  }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="(dashboard)" />
+                    <Stack.Screen name="(settings)" />
+                    <Stack.Screen name="(modules)" />
+                    <Stack.Screen name="splash" />
+                    <Stack.Screen name="welcome-celebration" />
+                  </Stack>
+                </View>
+              </ErrorBoundary>
+            </NotificationToastProvider>
           </PushNotificationProvider>
         </QueryProvider>
       </GestureHandlerRootView>
