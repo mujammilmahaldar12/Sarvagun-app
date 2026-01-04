@@ -17,9 +17,9 @@ type AppButtonProps = {
   style?: ViewStyle;
 };
 
-export default function AppButton({ 
-  title, 
-  onPress, 
+export default function AppButton({
+  title,
+  onPress,
   variant = "primary",
   size = "md",
   disabled = false,
@@ -29,7 +29,7 @@ export default function AppButton({
   fullWidth = false,
   style,
 }: AppButtonProps) {
-  const theme = useTheme();
+  const { theme } = useTheme();
 
   const isDisabled = disabled || loading;
 
@@ -125,15 +125,16 @@ export default function AppButton({
 
   const getTextColor = (): string => {
     if (variant === "primary") {
-      return theme.textInverse;
+      // Always use white for primary buttons for proper contrast
+      return "#FFFFFF";
     }
     return theme.primary;
   };
 
   const getTextStyle = (): TextStyle => {
-    const fontSize = size === "sm" ? designSystem.typography.sizes.base : 
-                   size === "lg" ? designSystem.typography.sizes.xl : 
-                   designSystem.typography.sizes.lg;
+    const fontSize = size === "sm" ? designSystem.typography.sizes.base :
+      size === "lg" ? designSystem.typography.sizes.xl :
+        designSystem.typography.sizes.lg;
     return {
       fontSize,
       fontWeight: '700',

@@ -266,31 +266,40 @@ class PushNotificationService {
 
   /**
    * Send push token to backend for storage
+   * Always sends to backend - the backend handles duplicates via update_or_create
+   * Includes retry logic with exponential backoff for reliability
    */
-  async sendTokenToBackend(token: string): Promise<boolean> {
-    try {
-      // Check if we already sent this token
-      const sentToken = await AsyncStorage.getItem(PUSH_TOKEN_SENT_KEY);
-      if (sentToken === token) {
-        console.log('📤 Token already sent to backend');
+  async sendTokenToBackend(token: string, retryCount = 3): Promise<boolean> {
+    console.log('📤 Registering push token with backend...');
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
+      try {
+        await api.post('/hr/push-token/', {
+          token: token,
+          device_type: Platform.OS,
+          device_name: Device.deviceName || 'Unknown Device',
+        });
+
+        console.log('✅ Push token registered with backend successfully');
+        // Save to local storage only after successful registration
+        await AsyncStorage.setItem(PUSH_TOKEN_SENT_KEY, token);
         return true;
+      } catch (error: any) {
+        console.error(`❌ Push token registration attempt ${attempt}/${retryCount} failed:`, error?.message || error);
+
+        if (attempt < retryCount) {
+          // Wait before retry with exponential backoff (1s, 2s, 4s)
+          const waitTime = Math.pow(2, attempt - 1) * 1000;
+          console.log(`⏳ Retrying in ${waitTime / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
-
-      // Send token to backend
-      await api.post('/hr/push-token/', {
-        token: token,
-        device_type: Platform.OS,
-        device_name: Device.deviceName || 'Unknown Device',
-      });
-
-      // Mark token as sent
-      await AsyncStorage.setItem(PUSH_TOKEN_SENT_KEY, token);
-      console.log('✅ Push token sent to backend');
-      return true;
-    } catch (error) {
-      console.error('❌ Failed to send push token to backend:', error);
-      return false;
     }
+
+    // All retries failed - clear any stale cached token to ensure retry on next launch
+    await AsyncStorage.removeItem(PUSH_TOKEN_SENT_KEY);
+    console.error('❌ All push token registration attempts failed. Will retry on next app launch.');
+    return false;
   }
 
   /**
