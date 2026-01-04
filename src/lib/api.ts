@@ -4,7 +4,7 @@ import { useAuthStore } from "../../store/authStore";
 
 // Base API URL - Using your local network IP
 const API_BASE_URL = __DEV__
-  ? "http://10.104.239.79:8000/api"  // Your PC's current local IP
+  ? "http://10.80.103.189:8000/api"  // Your PC's current local IP
   : "https://api.manager.blingsquare.in/api";  // Production
 
 // Create axios instance

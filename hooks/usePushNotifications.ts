@@ -1,23 +1,39 @@
 /**
  * Push Notifications Hook
  * Connects push notifications with notification store
- * Shows local notifications when new notifications arrive
+ * Shows in-app toast notifications when new notifications arrive
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useNotificationsStore } from '@/store/notificationsStore';
 import pushNotificationService from '@/services/pushNotification.service';
 import { useAuthStore } from '@/store/authStore';
+import { useNotificationToast } from '@/store/notificationToastContext';
 
 export const usePushNotifications = () => {
   const { isAuthenticated } = useAuthStore();
-  const { addNotification, fetchNotifications, fetchStats } = useNotificationsStore();
+  const { addNotification, fetchNotifications, fetchStats, stats } = useNotificationsStore();
+
+  // Use try-catch to safely get the toast context (may not be available during initial render)
+  let showNotification: ((toast: any) => void) | null = null;
+  try {
+    const toastContext = useNotificationToast();
+    showNotification = toastContext.showNotification;
+  } catch {
+    // Toast context not available yet - this is fine during initial render
+  }
+
+  // Track if we've shown the "welcome back" notification
+  const hasShownWelcomeNotification = useRef(false);
 
   /**
    * Initialize push notifications when user is authenticated
    */
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      hasShownWelcomeNotification.current = false;
+      return;
+    }
 
     const initializePushNotifications = async () => {
       try {
@@ -34,6 +50,35 @@ export const usePushNotifications = () => {
   }, [isAuthenticated]);
 
   /**
+   * Show toast when user logs in and has unread notifications
+   */
+  useEffect(() => {
+    if (!isAuthenticated || !showNotification) return;
+    if (hasShownWelcomeNotification.current) return;
+
+    // Fetch stats first
+    fetchStats();
+  }, [isAuthenticated, showNotification, fetchStats]);
+
+  // Show welcome notification when stats update and there are unread notifications
+  useEffect(() => {
+    if (!isAuthenticated || !showNotification) return;
+    if (hasShownWelcomeNotification.current) return;
+
+    if (stats && stats.unread > 0) {
+      hasShownWelcomeNotification.current = true;
+
+      // Show toast about unread notifications
+      showNotification({
+        title: '📬 You have notifications',
+        message: `You have ${stats.unread} unread notification${stats.unread > 1 ? 's' : ''}`,
+        type: 'info',
+        actionUrl: '/(dashboard)/notifications',
+      });
+    }
+  }, [isAuthenticated, showNotification, stats]);
+
+  /**
    * Listen for new notifications from backend
    */
   useEffect(() => {
@@ -43,7 +88,7 @@ export const usePushNotifications = () => {
     pushNotificationService.setupListeners(
       (notification: any) => {
         console.log('📩 New notification received:', notification?.request?.content);
-        
+
         const content = notification?.request?.content;
         if (content) {
           // Add to notification store
@@ -61,6 +106,17 @@ export const usePushNotifications = () => {
           };
 
           addNotification(newNotification as any);
+
+          // Show in-app toast notification
+          if (showNotification) {
+            showNotification({
+              title: content.title || 'New Notification',
+              message: content.body || '',
+              type: content.data?.type || 'info',
+              actionUrl: content.data?.action_url,
+              data: content.data,
+            });
+          }
         }
 
         // Refresh notifications from backend
@@ -77,13 +133,23 @@ export const usePushNotifications = () => {
       // Cleanup listeners
       pushNotificationService.removeListeners();
     };
-  }, [isAuthenticated, addNotification, fetchNotifications, fetchStats]);
+  }, [isAuthenticated, addNotification, fetchNotifications, fetchStats, showNotification]);
 
   /**
-   * Send a test local notification
+   * Send a test local notification (also shows toast)
    */
   const sendTestNotification = useCallback(async () => {
     try {
+      // Show in-app toast
+      if (showNotification) {
+        showNotification({
+          title: 'Test Notification 🔔',
+          message: 'This is a test notification from Sarvagun',
+          type: 'info',
+        });
+      }
+
+      // Also send system notification
       await pushNotificationService.sendLocalNotification(
         'Test Notification',
         'This is a test notification from Sarvagun',
@@ -96,7 +162,7 @@ export const usePushNotifications = () => {
     } catch (error) {
       console.error('❌ Failed to send test notification:', error);
     }
-  }, []);
+  }, [showNotification]);
 
   /**
    * Request notification permissions
@@ -116,3 +182,4 @@ export const usePushNotifications = () => {
     requestPermissions,
   };
 };
+
