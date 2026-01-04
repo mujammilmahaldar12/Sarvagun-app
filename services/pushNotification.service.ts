@@ -284,19 +284,35 @@ class PushNotificationService {
 
       // Get Expo push token
       const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      console.log('📱 Getting push token with projectId:', projectId);
 
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: projectId || '1557dae7-23ca-4db5-85dd-7c09b0f761df',
-      });
-
-      return tokenData.data;
-    } catch (error) {
+      try {
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+          projectId: projectId || '1557dae7-23ca-4db5-85dd-7c09b0f761df',
+        });
+        console.log('✅ Got push token:', tokenData.data?.substring(0, 30) + '...');
+        return tokenData.data;
+      } catch (tokenError: any) {
+        // Send specific token error to backend
+        console.error('❌ getExpoPushTokenAsync failed:', tokenError);
+        await this.sendDebugToBackend({
+          stage: 'token_error',
+          error: tokenError?.message || String(tokenError),
+          projectId: projectId,
+        });
+        return null;
+      }
+    } catch (error: any) {
       // In Expo Go, this may fail but we can still use local notifications
       if (isExpoGo) {
         console.log('ℹ️ Push token unavailable in Expo Go - local notifications will still work');
         return null;
       }
       console.error('❌ Failed to get push token:', error);
+      await this.sendDebugToBackend({
+        stage: 'register_error',
+        error: error?.message || String(error),
+      });
       return null;
     }
   }
