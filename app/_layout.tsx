@@ -355,7 +355,6 @@ function PushNotificationInitializer() {
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
-  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
   const { theme, isDark } = useTheme();
 
   // Background color for smooth rotation transitions
@@ -393,12 +392,9 @@ export default function RootLayout() {
     prepare();
   }, []);
 
-  const handleSplashFinish = () => {
-    setShowAnimatedSplash(false);
-  };
-
-  if (!appReady || showAnimatedSplash) {
-    return <AnimatedSplash onFinish={handleSplashFinish} />;
+  // App not ready yet - show nothing (native splash is still visible)
+  if (!appReady) {
+    return null;
   }
 
   return (

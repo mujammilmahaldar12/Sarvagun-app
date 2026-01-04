@@ -20,6 +20,14 @@ const ANDROID_CHANNEL_ID = 'sarvagun-notifications';
 // Check if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
 
+// DEBUG: Log appOwnership to diagnose production builds
+console.log('🔍 PUSH NOTIFICATION DEBUG:', {
+  appOwnership: Constants.appOwnership,
+  isExpoGo,
+  isDevice: typeof Device !== 'undefined' ? Device.isDevice : 'Device not loaded',
+  platform: Platform.OS,
+});
+
 // Lazy-load Notifications module ONLY when needed (not at module load time)
 // This prevents SDK 53 Expo Go import errors
 let Notifications: typeof import('expo-notifications') | null = null;
@@ -102,9 +110,27 @@ class PushNotificationService {
    * Initialize push notifications - call this on app startup
    */
   async initialize(): Promise<string | null> {
+    console.log('🔔 === PUSH NOTIFICATION INITIALIZATION START ===');
+
+    // Send initial diagnostics to backend
+    await this.sendDebugToBackend({
+      stage: 'init_start',
+      appOwnership: Constants.appOwnership,
+      isExpoGo,
+      isDevice: Device.isDevice,
+      platform: Platform.OS,
+    });
+
     const Notifications = getNotifications();
+    console.log('🔔 getNotifications() returned:', Notifications ? 'Module loaded' : 'NULL - notifications not available');
+
     if (!Notifications) {
-      console.log('ℹ️ Notifications not available - skipping initialization');
+      console.log('⚠️ Notifications not available - skipping initialization');
+      await this.sendDebugToBackend({
+        stage: 'notifications_unavailable',
+        notificationsAvailable: false,
+        error: 'getNotifications() returned null',
+      });
       return null;
     }
 
@@ -113,23 +139,57 @@ class PushNotificationService {
     try {
       // Setup Android notification channel
       if (Platform.OS === 'android') {
+        console.log('📱 Setting up Android notification channel...');
         await this.setupAndroidChannel();
       }
 
+      // Check permissions
+      const { status: permissionStatus } = await Notifications.getPermissionsAsync();
+
       // Register for push notifications
+      console.log('📝 Registering for push notifications...');
       const token = await this.registerForPushNotifications();
+      console.log('📝 registerForPushNotifications() returned:', token ? `Token: ${token.substring(0, 30)}...` : 'NULL - no token received');
+
+      // Send status to backend
+      await this.sendDebugToBackend({
+        stage: token ? 'token_obtained' : 'token_failed',
+        notificationsAvailable: true,
+        permissionStatus,
+        tokenObtained: !!token,
+      });
 
       if (token) {
         this.expoPushToken = token;
         await this.savePushToken(token);
+        console.log('💾 Token saved locally, now sending to backend...');
         await this.sendTokenToBackend(token);
-        console.log('✅ Push notification initialized with token:', token.substring(0, 30) + '...');
+        console.log('✅ Push notification initialized successfully!');
+      } else {
+        console.log('⚠️ No push token obtained.');
       }
 
+      console.log('🔔 === PUSH NOTIFICATION INITIALIZATION END ===');
       return token;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to initialize push notifications:', error);
+      await this.sendDebugToBackend({
+        stage: 'error',
+        error: error?.message || String(error),
+      });
       return null;
+    }
+  }
+
+  /**
+   * Send debug info to backend for server-side logging
+   */
+  private async sendDebugToBackend(data: Record<string, any>): Promise<void> {
+    try {
+      await api.post('/hr/push-token/debug/', data);
+    } catch (e) {
+      // Silently fail - this is just for debugging
+      console.log('Debug endpoint call failed (ok to ignore):', e);
     }
   }
 
