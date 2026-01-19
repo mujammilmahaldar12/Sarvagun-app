@@ -44,14 +44,14 @@ export default function WelcomeCelebration() {
       withSpring(1.2, { damping: 10, stiffness: 80 }),
       withSpring(1, { damping: 15, stiffness: 100 })
     );
-    
+
     opacity.value = withTiming(1, { duration: 800 });
     translateY.value = withSpring(0, { damping: 20, stiffness: 90 });
 
     // Progress bar animation
-    progressWidth.value = withTiming(100, { 
-      duration: 3500, 
-      easing: Easing.linear 
+    progressWidth.value = withTiming(100, {
+      duration: 3500,
+      easing: Easing.linear
     });
 
     // Auto-navigate after animation
@@ -103,7 +103,7 @@ export default function WelcomeCelebration() {
       />
 
       {/* Skip Button */}
-      <Animated.View 
+      <Animated.View
         entering={FadeIn.delay(1000).duration(500)}
         style={styles.skipButton}
       >
@@ -140,14 +140,14 @@ export default function WelcomeCelebration() {
         </View>
 
         {/* Welcome Text */}
-        <Animated.Text 
+        <Animated.Text
           entering={FadeInUp.delay(400).duration(600).springify()}
           style={styles.title}
         >
-          🎉 Welcome to Sarvagun!
+          Welcome to Sarvagun!
         </Animated.Text>
 
-        <Animated.Text 
+        <Animated.Text
           entering={FadeInUp.delay(600).duration(600).springify()}
           style={styles.subtitle}
         >
@@ -176,7 +176,7 @@ export default function WelcomeCelebration() {
         </View>
 
         {/* Loading Progress */}
-        <Animated.View 
+        <Animated.View
           entering={FadeIn.delay(1200).duration(500)}
           style={styles.progressContainer}
         >
@@ -188,21 +188,21 @@ export default function WelcomeCelebration() {
       </Animated.View>
 
       {/* Bottom Decorative Elements */}
-      <Animated.View 
+      <Animated.View
         entering={FadeIn.delay(1500).duration(800)}
         style={styles.bottomDecoration}
       >
         <View style={styles.decorativeDots}>
           {[0, 1, 2].map((i) => (
-            <View 
-              key={i} 
+            <View
+              key={i}
               style={[
                 styles.dot,
-                { 
+                {
                   opacity: 0.3 + (i * 0.2),
                   transform: [{ scale: 0.8 + (i * 0.1) }]
                 }
-              ]} 
+              ]}
             />
           ))}
         </View>
