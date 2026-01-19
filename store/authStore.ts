@@ -91,11 +91,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.log('⚠️ Logout API error (continuing):', e);
     }
 
-    // STEP 2: Clear AsyncStorage
+    // STEP 2: Clear AsyncStorage (including push token cache)
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.multiRemove(['access', 'refresh', 'user']);
-      console.log('✅ Storage cleared');
+      await AsyncStorage.multiRemove([
+        'access',
+        'refresh',
+        'user',
+        '@sarvagun_push_token',
+        '@sarvagun_push_token_sent',
+      ]);
+      console.log('✅ Storage cleared (including push token cache)');
     } catch (e) {
       console.log('⚠️ Storage clear error:', e);
     }

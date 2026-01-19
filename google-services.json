@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "640120315388",
+    "project_id": "sarvagun-app-2",
+    "storage_bucket": "sarvagun-app-2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:640120315388:android:f56f4090921de6dee62679",
+        "android_client_info": {
+          "package_name": "com.anonymous.Sarvagun"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt1KoHaMRwtqhMlKK6CzR-fTtQty_pz9A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

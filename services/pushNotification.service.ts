@@ -20,6 +20,14 @@ const ANDROID_CHANNEL_ID = 'sarvagun-notifications';
 // Check if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
 
+// DEBUG: Log appOwnership to diagnose production builds
+console.log('🔍 PUSH NOTIFICATION DEBUG:', {
+  appOwnership: Constants.appOwnership,
+  isExpoGo,
+  isDevice: typeof Device !== 'undefined' ? Device.isDevice : 'Device not loaded',
+  platform: Platform.OS,
+});
+
 // Lazy-load Notifications module ONLY when needed (not at module load time)
 // This prevents SDK 53 Expo Go import errors
 let Notifications: typeof import('expo-notifications') | null = null;
@@ -102,9 +110,27 @@ class PushNotificationService {
    * Initialize push notifications - call this on app startup
    */
   async initialize(): Promise<string | null> {
+    console.log('🔔 === PUSH NOTIFICATION INITIALIZATION START ===');
+
+    // Send initial diagnostics to backend
+    await this.sendDebugToBackend({
+      stage: 'init_start',
+      appOwnership: Constants.appOwnership,
+      isExpoGo,
+      isDevice: Device.isDevice,
+      platform: Platform.OS,
+    });
+
     const Notifications = getNotifications();
+    console.log('🔔 getNotifications() returned:', Notifications ? 'Module loaded' : 'NULL - notifications not available');
+
     if (!Notifications) {
-      console.log('ℹ️ Notifications not available - skipping initialization');
+      console.log('⚠️ Notifications not available - skipping initialization');
+      await this.sendDebugToBackend({
+        stage: 'notifications_unavailable',
+        notificationsAvailable: false,
+        error: 'getNotifications() returned null',
+      });
       return null;
     }
 
@@ -113,23 +139,57 @@ class PushNotificationService {
     try {
       // Setup Android notification channel
       if (Platform.OS === 'android') {
+        console.log('📱 Setting up Android notification channel...');
         await this.setupAndroidChannel();
       }
 
+      // Check permissions
+      const { status: permissionStatus } = await Notifications.getPermissionsAsync();
+
       // Register for push notifications
+      console.log('📝 Registering for push notifications...');
       const token = await this.registerForPushNotifications();
+      console.log('📝 registerForPushNotifications() returned:', token ? `Token: ${token.substring(0, 30)}...` : 'NULL - no token received');
+
+      // Send status to backend
+      await this.sendDebugToBackend({
+        stage: token ? 'token_obtained' : 'token_failed',
+        notificationsAvailable: true,
+        permissionStatus,
+        tokenObtained: !!token,
+      });
 
       if (token) {
         this.expoPushToken = token;
         await this.savePushToken(token);
+        console.log('💾 Token saved locally, now sending to backend...');
         await this.sendTokenToBackend(token);
-        console.log('✅ Push notification initialized with token:', token.substring(0, 30) + '...');
+        console.log('✅ Push notification initialized successfully!');
+      } else {
+        console.log('⚠️ No push token obtained.');
       }
 
+      console.log('🔔 === PUSH NOTIFICATION INITIALIZATION END ===');
       return token;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to initialize push notifications:', error);
+      await this.sendDebugToBackend({
+        stage: 'error',
+        error: error?.message || String(error),
+      });
       return null;
+    }
+  }
+
+  /**
+   * Send debug info to backend for server-side logging
+   */
+  private async sendDebugToBackend(data: Record<string, any>): Promise<void> {
+    try {
+      await api.post('/hr/push-token/debug/', data);
+    } catch (e) {
+      // Silently fail - this is just for debugging
+      console.log('Debug endpoint call failed (ok to ignore):', e);
     }
   }
 
@@ -224,19 +284,35 @@ class PushNotificationService {
 
       // Get Expo push token
       const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      console.log('📱 Getting push token with projectId:', projectId);
 
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: projectId || '1557dae7-23ca-4db5-85dd-7c09b0f761df',
-      });
-
-      return tokenData.data;
-    } catch (error) {
+      try {
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+          projectId: projectId || '1557dae7-23ca-4db5-85dd-7c09b0f761df',
+        });
+        console.log('✅ Got push token:', tokenData.data?.substring(0, 30) + '...');
+        return tokenData.data;
+      } catch (tokenError: any) {
+        // Send specific token error to backend
+        console.error('❌ getExpoPushTokenAsync failed:', tokenError);
+        await this.sendDebugToBackend({
+          stage: 'token_error',
+          error: tokenError?.message || String(tokenError),
+          projectId: projectId,
+        });
+        return null;
+      }
+    } catch (error: any) {
       // In Expo Go, this may fail but we can still use local notifications
       if (isExpoGo) {
         console.log('ℹ️ Push token unavailable in Expo Go - local notifications will still work');
         return null;
       }
       console.error('❌ Failed to get push token:', error);
+      await this.sendDebugToBackend({
+        stage: 'register_error',
+        error: error?.message || String(error),
+      });
       return null;
     }
   }
@@ -266,31 +342,40 @@ class PushNotificationService {
 
   /**
    * Send push token to backend for storage
+   * Always sends to backend - the backend handles duplicates via update_or_create
+   * Includes retry logic with exponential backoff for reliability
    */
-  async sendTokenToBackend(token: string): Promise<boolean> {
-    try {
-      // Check if we already sent this token
-      const sentToken = await AsyncStorage.getItem(PUSH_TOKEN_SENT_KEY);
-      if (sentToken === token) {
-        console.log('📤 Token already sent to backend');
+  async sendTokenToBackend(token: string, retryCount = 3): Promise<boolean> {
+    console.log('📤 Registering push token with backend...');
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
+      try {
+        await api.post('/hr/push-token/', {
+          token: token,
+          device_type: Platform.OS,
+          device_name: Device.deviceName || 'Unknown Device',
+        });
+
+        console.log('✅ Push token registered with backend successfully');
+        // Save to local storage only after successful registration
+        await AsyncStorage.setItem(PUSH_TOKEN_SENT_KEY, token);
         return true;
+      } catch (error: any) {
+        console.error(`❌ Push token registration attempt ${attempt}/${retryCount} failed:`, error?.message || error);
+
+        if (attempt < retryCount) {
+          // Wait before retry with exponential backoff (1s, 2s, 4s)
+          const waitTime = Math.pow(2, attempt - 1) * 1000;
+          console.log(`⏳ Retrying in ${waitTime / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
-
-      // Send token to backend
-      await api.post('/hr/push-token/', {
-        token: token,
-        device_type: Platform.OS,
-        device_name: Device.deviceName || 'Unknown Device',
-      });
-
-      // Mark token as sent
-      await AsyncStorage.setItem(PUSH_TOKEN_SENT_KEY, token);
-      console.log('✅ Push token sent to backend');
-      return true;
-    } catch (error) {
-      console.error('❌ Failed to send push token to backend:', error);
-      return false;
     }
+
+    // All retries failed - clear any stale cached token to ensure retry on next launch
+    await AsyncStorage.removeItem(PUSH_TOKEN_SENT_KEY);
+    console.error('❌ All push token registration attempts failed. Will retry on next app launch.');
+    return false;
   }
 
   /**

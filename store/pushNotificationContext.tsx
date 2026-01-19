@@ -13,9 +13,20 @@ import { useAuthStore } from '@/store/authStore';
 // Check if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
 
+// Data structure for foreground notifications (for toast display)
+export interface ForegroundNotificationData {
+  title: string;
+  message: string;
+  type: string;
+  actionUrl?: string;
+  data?: Record<string, any>;
+}
+
 interface PushNotificationContextType {
   expoPushToken: string | null;
   notification: any | null;
+  foregroundNotification: ForegroundNotificationData | null;
+  clearForegroundNotification: () => void;
   hasPermission: boolean;
   isLoading: boolean;
   requestPermissions: () => Promise<boolean>;
@@ -33,21 +44,38 @@ interface PushNotificationProviderProps {
 export function PushNotificationProvider({ children }: PushNotificationProviderProps) {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
-  
+
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<any | null>(null);
+  const [foregroundNotification, setForegroundNotification] = useState<ForegroundNotificationData | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Clear the foreground notification (called by toast after displaying)
+  const clearForegroundNotification = useCallback(() => {
+    setForegroundNotification(null);
+  }, []);
+
   /**
    * Handle notification received while app is in foreground
+   * This stores notification data that can be consumed by toast providers
    */
   const handleNotificationReceived = useCallback((notification: any) => {
-    console.log('📩 Notification received in foreground:', notification?.request?.content?.title);
+    const content = notification?.request?.content;
+    console.log('📩 Notification received in foreground:', content?.title);
     setNotification(notification);
-    
-    // You can show an in-app toast/banner here instead of system notification
-    // Or let the system notification handler show it
+
+    // Store the foreground notification for the toast to display
+    if (content) {
+      const notificationData = {
+        title: content.title || 'New Notification',
+        message: content.body || '',
+        type: content.data?.type || 'info',
+        actionUrl: content.data?.action_url,
+        data: content.data,
+      };
+      setForegroundNotification(notificationData);
+    }
   }, []);
 
   /**
@@ -70,13 +98,13 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
             router.push('/(modules)/tasks' as any);
           }
           break;
-          
+
         case 'leave':
         case 'leave_approved':
         case 'leave_rejected':
           router.push('/(modules)/leaves' as any);
           break;
-          
+
         case 'event':
         case 'event_reminder':
           if (data.event_id) {
@@ -85,7 +113,7 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
             router.push('/(modules)/events' as any);
           }
           break;
-          
+
         case 'project':
         case 'project_update':
           if (data.project_id) {
@@ -94,12 +122,12 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
             router.push('/(modules)/projects' as any);
           }
           break;
-          
+
         case 'team':
         case 'team_update':
           router.push('/(modules)/hr' as any);
           break;
-          
+
         case 'announcement':
         case 'general':
         default:
@@ -182,8 +210,8 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
           'To receive important updates, please enable notifications in your device settings.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Open Settings', 
+            {
+              text: 'Open Settings',
               onPress: () => {
                 // This will prompt user to open settings
                 if (Platform.OS === 'ios') {
@@ -229,6 +257,8 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
   const value: PushNotificationContextType = {
     expoPushToken,
     notification,
+    foregroundNotification,
+    clearForegroundNotification,
     hasPermission,
     isLoading,
     requestPermissions,
@@ -249,11 +279,11 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
  */
 export function usePushNotifications(): PushNotificationContextType {
   const context = useContext(PushNotificationContext);
-  
+
   if (context === undefined) {
     throw new Error('usePushNotifications must be used within a PushNotificationProvider');
   }
-  
+
   return context;
 }
 

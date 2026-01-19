@@ -31,7 +31,7 @@ const CreateTaskScreen = () => {
     selectedProjectId || 0,
     !!selectedProjectId
   );
-  
+
   const createTaskMutation = useCreateTask();
 
   // Safe array handling
@@ -98,6 +98,7 @@ const CreateTaskScreen = () => {
         alignItems: 'center',
         paddingHorizontal: spacing.base,
         paddingVertical: spacing.md,
+        backgroundColor: theme.surface,
         borderBottomWidth: 1,
         borderBottomColor: theme.border,
       }}>
@@ -116,8 +117,8 @@ const CreateTaskScreen = () => {
           onPress={handleSubmit}
           disabled={createTaskMutation.isPending || !formData.task_title?.trim() || !dueDate}
           style={{
-            backgroundColor: (!createTaskMutation.isPending && formData.task_title?.trim() && dueDate) 
-              ? theme.primary 
+            backgroundColor: (!createTaskMutation.isPending && formData.task_title?.trim() && dueDate)
+              ? theme.primary
               : theme.border,
             paddingHorizontal: spacing.base,
             paddingVertical: spacing.sm,
@@ -125,8 +126,8 @@ const CreateTaskScreen = () => {
           }}
         >
           <Text style={{
-            color: (!createTaskMutation.isPending && formData.task_title?.trim() && dueDate) 
-              ? '#FFFFFF' 
+            color: (!createTaskMutation.isPending && formData.task_title?.trim() && dueDate)
+              ? '#FFFFFF'
               : theme.textSecondary,
             fontSize: typography.sizes.sm,
             fontWeight: 'bold',
@@ -135,7 +136,7 @@ const CreateTaskScreen = () => {
           </Text>
         </AnimatedPressable>
       </View>
-      
+
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -200,9 +201,9 @@ const CreateTaskScreen = () => {
             {projectsLoading ? (
               <ActivityIndicator size="small" color={theme.primary} />
             ) : (
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
                 style={{ flexDirection: 'row' }}
                 contentContainerStyle={{ gap: spacing.sm }}
               >
@@ -251,8 +252,8 @@ const CreateTaskScreen = () => {
               {sectionsLoading ? (
                 <ActivityIndicator size="small" color={theme.primary} />
               ) : (
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   style={{ flexDirection: 'row' }}
                   contentContainerStyle={{ gap: spacing.sm }}
@@ -318,7 +319,7 @@ const CreateTaskScreen = () => {
             }}>
               Priority
             </Text>
-            
+
             <View style={{
               flexDirection: 'row',
               flexWrap: 'wrap',
@@ -332,8 +333,8 @@ const CreateTaskScreen = () => {
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.sm,
                     borderRadius: borderRadius.md,
-                    backgroundColor: formData.priority_level === priority.value 
-                      ? priority.color 
+                    backgroundColor: formData.priority_level === priority.value
+                      ? priority.color
                       : theme.background,
                     borderWidth: 1,
                     borderColor: priority.color,
@@ -406,10 +407,10 @@ const CreateTaskScreen = () => {
                 padding: spacing.sm,
               }}
             >
-              <Ionicons 
-                name={formData.starred ? 'star' : 'star-outline'} 
-                size={24} 
-                color={formData.starred ? '#F59E0B' : theme.textSecondary} 
+              <Ionicons
+                name={formData.starred ? 'star' : 'star-outline'}
+                size={24}
+                color={formData.starred ? '#F59E0B' : theme.textSecondary}
               />
             </AnimatedPressable>
           </View>
@@ -431,7 +432,7 @@ const CreateTaskScreen = () => {
           }}>
             Task Creation Tips
           </Text>
-          
+
           <Text style={{
             fontSize: typography.sizes.sm,
             color: theme.textSecondary,
@@ -440,7 +441,7 @@ const CreateTaskScreen = () => {
           }}>
             • Choose a descriptive task title that clearly indicates what needs to be done
           </Text>
-          
+
           <Text style={{
             fontSize: typography.sizes.sm,
             color: theme.textSecondary,
@@ -449,7 +450,7 @@ const CreateTaskScreen = () => {
           }}>
             • Set a realistic due date to manage expectations
           </Text>
-          
+
           <Text style={{
             fontSize: typography.sizes.sm,
             color: theme.textSecondary,
